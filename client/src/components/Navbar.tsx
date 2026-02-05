@@ -23,6 +23,7 @@ export function Navbar() {
     { name: "Sobre", href: "/about" },
     { name: "Blog", href: "/blog" },
     { name: "Contato", href: "/contact" },
+    { name: "Login", href: "/login" },
   ];
 
   const handleLinkClick = () => setIsOpen(false);
