@@ -27,6 +27,10 @@ export function Navbar() {
     { name: "Contato", href: "/contact" },
   ];
 
+  if (user) {
+    navLinks.push({ name: "Meus Artigos", href: "/my-articles" });
+  }
+
   const handleLinkClick = () => setIsOpen(false);
 
   return (
@@ -90,13 +94,15 @@ export function Navbar() {
 
             {user ? (
               <div className="flex items-center gap-4">
-                <div className={cn(
-                  "flex items-center gap-2 text-sm font-medium",
-                  scrolled || location !== "/" ? "text-foreground" : "text-white"
-                )}>
-                  <UserIcon className="w-4 h-4" />
-                  <span>{user.username}</span>
-                </div>
+                <Link href="/profile">
+                  <div className={cn(
+                    "flex items-center gap-2 text-sm font-medium cursor-pointer hover:text-primary transition-colors",
+                    scrolled || location !== "/" ? "text-foreground" : "text-white"
+                  )}>
+                    <UserIcon className="w-4 h-4" />
+                    <span>{user.username}</span>
+                  </div>
+                </Link>
                 <button 
                   onClick={logout}
                   className={cn(

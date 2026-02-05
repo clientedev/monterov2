@@ -21,6 +21,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
     const { logout } = useAuth();
 
     const navItems = [
+        { href: "/", icon: ImageIcon, label: "Voltar para o Site", special: true },
         { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
         { href: "/admin/posts", icon: FileText, label: "Posts" },
         { href: "/admin/comments", icon: MessageSquare, label: "Comentários" },
@@ -43,9 +44,11 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
                         const isActive = location === item.href;
                         return (
                             <Link key={item.href} href={item.href}>
-                                <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                        ? "bg-blue-50 text-blue-600"
-                                        : "text-gray-600 hover:bg-gray-50"
+                                <a className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${item.special 
+                                        ? "bg-primary/10 text-primary hover:bg-primary/20 mb-4"
+                                        : isActive
+                                            ? "bg-blue-50 text-blue-600"
+                                            : "text-gray-600 hover:bg-gray-50"
                                     }`}>
                                     <Icon className="w-5 h-5" />
                                     <span>{item.label}</span>

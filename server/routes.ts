@@ -47,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const token = generateToken({ id: user.id, role: user.role });
-      res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+      res.json({ token, user: { id: user.id, username: user.username, role: user.role, email: user.email } });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Erro ao registrar usuário" });
@@ -80,19 +80,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user) return res.status(401).send();
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
-      select: { id: true, username: true, role: true, email: true }
+      select: { id: true, username: true, role: true, email: true, bio: true, avatar: true }
     });
     res.json(user);
   });
 
+  app.put("/api/auth/profile", requireAuth, async (req, res) => {
+    try {
+      const { bio, avatar } = req.body;
+      const user = await prisma.user.update({
+        where: { id: req.user!.userId },
+        data: { bio, avatar },
+        select: { id: true, username: true, role: true, email: true, bio: true, avatar: true }
+      });
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao atualizar perfil" });
+    }
+  });
+
   // --- Public Content Routes ---
 
-  // Get Posts (Published only)
+  // Get Posts (Published and Approved only)
   app.get("/api/posts", async (req, res) => {
     try {
       const posts = await prisma.post.findMany({
-        where: { published: true },
-        include: { author: { select: { username: true } } },
+        where: { published: true, approved: true },
+        include: { 
+          author: { select: { username: true, avatar: true } },
+          _count: { select: { likes: true, comments: true } }
+        },
         orderBy: { createdAt: "desc" },
       });
       res.json(posts);
@@ -107,27 +124,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const post = await prisma.post.findUnique({
         where: { slug: req.params.slug },
         include: {
-          author: { select: { username: true } },
+          author: { select: { username: true, avatar: true, bio: true } },
           comments: {
             where: { approved: true },
-            include: { author: { select: { username: true } } },
+            include: { author: { select: { username: true, avatar: true } } },
             orderBy: { createdAt: "desc" }
-          }
+          },
+          likes: {
+            select: { userId: true }
+          },
+          _count: { select: { likes: true } }
         },
       });
 
       if (!post) return res.status(404).json({ message: "Post não encontrado" });
 
-      // If not published and not admin, hide it
-      if (!post.published) {
+      // If not published/approved and not admin, hide it
+      if (!post.published || !post.approved) {
         if (!req.user || req.user.role !== "ADMIN") {
-          return res.status(404).json({ message: "Post não encontrado" });
+          // Allow author to see their own pending post
+          if (!req.user || req.user.userId !== post.authorId) {
+            return res.status(404).json({ message: "Post não encontrado" });
+          }
         }
       }
 
       res.json(post);
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar post" });
+    }
+  });
+
+  // Like Post
+  app.post("/api/posts/:id/like", requireAuth, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const userId = req.user!.userId;
+
+      const existingLike = await prisma.like.findUnique({
+        where: { postId_userId: { postId, userId } }
+      });
+
+      if (existingLike) {
+        await prisma.like.delete({
+          where: { id: existingLike.id }
+        });
+        return res.json({ liked: false });
+      }
+
+      await prisma.like.create({
+        data: { postId, userId }
+      });
+      res.json({ liked: true });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao curtir" });
     }
   });
 
@@ -143,13 +193,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content,
           postId,
           authorId: userId,
-          approved: false, // Must be approved by admin
+          approved: true, // Auto-approve comments
         },
       });
 
       res.json(comment);
     } catch (error) {
       res.status(500).json({ message: "Erro ao comentar" });
+    }
+  });
+
+  // User Article Submission
+  app.post("/api/user/posts", requireAuth, async (req, res) => {
+    try {
+      const { title, slug, content, summary, coverImage } = req.body;
+      const post = await prisma.post.create({
+        data: {
+          title, slug, content, summary, coverImage,
+          authorId: req.user!.userId,
+          published: false,
+          approved: false // Requires admin approval
+        }
+      });
+      res.json(post);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao submeter artigo" });
+    }
+  });
+
+  app.get("/api/user/posts", requireAuth, async (req, res) => {
+    try {
+      const posts = await prisma.post.findMany({
+        where: { authorId: req.user!.userId },
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(posts);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar seus artigos" });
     }
   });
 
@@ -226,7 +306,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const postCount = await prisma.post.count();
     const commentPending = await prisma.comment.count({ where: { approved: false } });
     const testimonialPending = await prisma.testimonial.count({ where: { approved: false } });
-    res.json({ postCount, commentPending, testimonialPending });
+    const pendingPosts = await prisma.post.count({ where: { approved: false } });
+    res.json({ postCount, commentPending, testimonialPending, pendingPosts });
   });
 
   // Manage Posts

@@ -14,6 +14,8 @@ import About from "@/pages/About";
 import Blog from "@/pages/Blog";
 import PostDetail from "@/pages/PostDetail";
 import Contact from "@/pages/Contact";
+import Profile from "@/pages/Profile";
+import UserArticles from "@/pages/UserArticles";
 
 // Admin Pages
 import AdminDashboard from "@/pages/Admin/Dashboard";
@@ -35,6 +37,9 @@ function Router() {
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={PostDetail} />
       <Route path="/contact" component={Contact} />
+      
+      <ProtectedRoute path="/profile" component={Profile} />
+      <ProtectedRoute path="/my-articles" component={UserArticles} />
 
       {/* Admin Routes */}
       <Route path="/admin">

@@ -21,10 +21,13 @@ model User {
   email     String   @unique
   password  String
   role      Role     @default(USER)
+  bio       String?
+  avatar    String?
   createdAt DateTime @default(now())
   
   posts     Post[]
   comments  Comment[]
+  likes     Like[]
 }
 
 model Post {
@@ -36,6 +39,7 @@ model Post {
   coverImage  String
   videoUrl    String?
   published   Boolean   @default(false)
+  approved    Boolean   @default(true) // Posts by admin are auto-approved
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
@@ -43,12 +47,26 @@ model Post {
   author      User      @relation(fields: [authorId], references: [id])
   
   comments    Comment[]
+  likes       Like[]
+}
+
+model Like {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  
+  postId    Int
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
 }
 
 model Comment {
   id        Int      @id @default(autoincrement())
   content   String
-  approved  Boolean  @default(false)
+  approved  Boolean  @default(true)
   createdAt DateTime @default(now())
   
   postId    Int
