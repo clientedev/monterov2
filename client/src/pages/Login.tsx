@@ -1,32 +1,36 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLocation, Link } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === "admin" && password === "admin123") {
-      localStorage.setItem("auth", "true");
-      toast({
-        title: "Sucesso",
-        description: "Login realizado com sucesso!",
-      });
-      setLocation("/");
-    } else {
+    setLoading(true);
+    try {
+      const res = await api.post("/auth/login", { username, password });
+      login(res.data.token, res.data.user);
+      setLocation(res.data.user.role === "ADMIN" ? "/admin" : "/");
+    } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: "Usuário ou senha incorretos.",
+        title: "Erro no login",
+        description: error.response?.data?.message || "Usuário ou senha incorretos.",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -44,7 +48,7 @@ export default function Login() {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                placeholder="usuario"
                 required
               />
             </div>
@@ -59,11 +63,16 @@ export default function Login() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full">
-              Entrar
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
         </CardContent>
+        <CardFooter className="justify-center">
+          <span className="text-sm text-gray-500">
+            Não tem conta? <Link href="/register" className="text-blue-500 hover:underline">Cadastre-se</Link>
+          </span>
+        </CardFooter>
       </Card>
     </div>
   );

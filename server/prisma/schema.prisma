@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  
+  posts     Post[]
+  comments  Comment[]
+}
+
+model Post {
+  id          Int       @id @default(autoincrement())
+  title       String
+  slug        String    @unique
+  content     String
+  summary     String
+  coverImage  String
+  videoUrl    String?
+  published   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  authorId    Int
+  author      User      @relation(fields: [authorId], references: [id])
+  
+  comments    Comment[]
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  postId    Int
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model HeroSlide {
+  id          Int      @id @default(autoincrement())
+  image       String
+  title       String
+  text        String
+  buttonText  String
+  buttonLink  String
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Testimonial {
+  id        Int      @id @default(autoincrement())
+  name      String
+  text      String
+  rating    Int      @default(5)
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model SiteConfig {
+  id             Int    @id @default(autoincrement())
+  primaryColor   String @default("#0ea5e9") // sky-500
+  secondaryColor String @default("#64748b") // slate-500
+  heroImage      String?
+  updatedAt      DateTime @updatedAt
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  icon        String
+}

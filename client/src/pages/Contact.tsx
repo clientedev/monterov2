@@ -1,12 +1,19 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { useCreateInquiry } from "@/hooks/use-inquiries";
+import { useCreateInquiry, type InsertInquiry } from "@/hooks/use-inquiries";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertInquirySchema, type InsertInquiry } from "@shared/schema";
+import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Phone, MapPin, Loader2, Send } from "lucide-react";
 import { motion } from "framer-motion";
+
+const insertInquirySchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("E-mail inválido"),
+  phone: z.string().optional(),
+  message: z.string().min(1, "Mensagem é obrigatória"),
+});
 
 export default function Contact() {
   const { toast } = useToast();
@@ -47,7 +54,7 @@ export default function Contact() {
 
       <div className="pt-32 pb-20 bg-slate-900 text-white">
         <div className="container px-4 mx-auto text-center">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-5xl font-display font-bold mb-4"
@@ -62,11 +69,11 @@ export default function Contact() {
 
       <div className="container px-4 py-16 mx-auto -mt-10 relative z-10">
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden grid md:grid-cols-5 border border-slate-100">
-          
+
           {/* Contact Info Sidebar */}
           <div className="md:col-span-2 bg-slate-50 p-10 border-r border-slate-100">
             <h3 className="text-xl font-bold font-display text-slate-900 mb-8">Informações de Contato</h3>
-            
+
             <div className="space-y-8">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -107,12 +114,12 @@ export default function Contact() {
           {/* Form Area */}
           <div className="md:col-span-3 p-10">
             <h3 className="text-xl font-bold font-display text-slate-900 mb-6">Envie-nos uma Mensagem</h3>
-            
+
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label htmlFor="name" className="text-sm font-medium text-slate-700">Nome Completo</label>
-                  <input 
+                  <input
                     {...form.register("name")}
                     id="name"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
@@ -122,10 +129,10 @@ export default function Contact() {
                     <p className="text-red-500 text-xs">{form.formState.errors.name.message}</p>
                   )}
                 </div>
-                
+
                 <div className="space-y-2">
                   <label htmlFor="phone" className="text-sm font-medium text-slate-700">Telefone (Opcional)</label>
-                  <input 
+                  <input
                     {...form.register("phone")}
                     id="phone"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
@@ -136,7 +143,7 @@ export default function Contact() {
 
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-slate-700">Endereço de E-mail</label>
-                <input 
+                <input
                   {...form.register("email")}
                   id="email"
                   type="email"
@@ -150,7 +157,7 @@ export default function Contact() {
 
               <div className="space-y-2">
                 <label htmlFor="message" className="text-sm font-medium text-slate-700">Mensagem</label>
-                <textarea 
+                <textarea
                   {...form.register("message")}
                   id="message"
                   rows={4}
