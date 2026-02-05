@@ -23,7 +23,6 @@ export function Navbar() {
     { name: "Sobre", href: "/about" },
     { name: "Blog", href: "/blog" },
     { name: "Contato", href: "/contact" },
-    { name: "Login", href: "/login" },
   ];
 
   const handleLinkClick = () => setIsOpen(false);
@@ -69,16 +68,26 @@ export function Navbar() {
               {link.name}
             </Link>
           ))}
-          <Link href="/contact">
-            <button className={cn(
-              "px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg",
-              scrolled || location !== "/"
-                ? "bg-primary text-white hover:bg-primary/90"
-                : "bg-white text-primary hover:bg-white/90"
-            )}>
-              Solicitar Cotação
-            </button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/login">
+              <span className={cn(
+                "text-sm font-medium cursor-pointer transition-colors hover:text-primary",
+                scrolled || location !== "/" ? "text-muted-foreground" : "text-white/90 hover:text-white"
+              )}>
+                Entrar
+              </span>
+            </Link>
+            <Link href="/contact">
+              <button className={cn(
+                "px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg",
+                scrolled || location !== "/"
+                  ? "bg-primary text-white hover:bg-primary/90"
+                  : "bg-white text-primary hover:bg-white/90"
+              )}>
+                Solicitar Cotação
+              </button>
+            </Link>
+          </div>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -111,6 +120,13 @@ export function Navbar() {
             {link.name}
           </Link>
         ))}
+        <Link
+          href="/login"
+          onClick={handleLinkClick}
+          className="text-2xl font-display font-medium text-foreground hover:text-primary transition-colors"
+        >
+          Entrar
+        </Link>
       </div>
     </header>
   );
