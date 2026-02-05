@@ -93,10 +93,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const posts = await prisma.post.findMany({
         where: { published: true },
         include: { author: { select: { username: true } } },
-        orderBy: { publishedAt: "desc" }, // or createdAt if publishedAt is null? Schema says defaultNow()
+        orderBy: { createdAt: "desc" },
       });
-      // Corrected: publishedAt is timestamp defaultNow(), likely non-null if published.
-      // But let's stick to simple orderBy createdAt for now or publishedAt
       res.json(posts);
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar posts" });
