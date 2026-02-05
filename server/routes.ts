@@ -353,6 +353,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(config);
   });
 
+  // --- Chat Routes ---
+  app.get("/api/chat/messages", async (req, res) => {
+    const sessionId = req.query.sessionId as string;
+    if (!sessionId) return res.status(400).json({ message: "Session ID required" });
+    const messages = await prisma.message.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: "asc" }
+    });
+    res.json(messages);
+  });
+
+  app.post("/api/chat/messages", async (req, res) => {
+    const { content, sessionId } = req.body;
+    const message = await prisma.message.create({
+      data: { content, sessionId, isAdmin: false }
+    });
+
+    // Auto-reply
+    setTimeout(async () => {
+      await prisma.message.create({
+        data: {
+          content: "Olá! Recebemos sua mensagem. Um atendente irá te responder em breve na nossa área administrativa.",
+          sessionId,
+          isAdmin: true
+        }
+      });
+    }, 1000);
+
+    res.json(message);
+  });
+
+  app.get("/api/admin/chat", requireAuth, isAdmin, async (req, res) => {
+    const messages = await prisma.message.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(messages);
+  });
+
+  app.post("/api/admin/chat/reply", requireAuth, isAdmin, async (req, res) => {
+    const { content, sessionId } = req.body;
+    const message = await prisma.message.create({
+      data: { content, sessionId, isAdmin: true }
+    });
+    res.json(message);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

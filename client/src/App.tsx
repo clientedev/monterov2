@@ -22,6 +22,7 @@ import AdminComments from "@/pages/Admin/Comments";
 import AdminHero from "@/pages/Admin/Hero";
 import AdminTestimonials from "@/pages/Admin/Testimonials";
 import AdminSettings from "@/pages/Admin/Settings";
+import AdminChat from "@/pages/Admin/Chat";
 
 function Router() {
   return (
@@ -54,6 +55,9 @@ function Router() {
       <Route path="/admin/settings">
         <ProtectedRoute component={AdminSettings} adminOnly />
       </Route>
+      <Route path="/admin/chat">
+        <ProtectedRoute component={AdminChat} adminOnly />
+      </Route>
 
       <Route component={NotFound} />
     </Switch>
@@ -61,6 +65,7 @@ function Router() {
 }
 
 import { SiteConfigProvider } from "@/components/SiteConfigProvider";
+import { ChatWidget } from "@/components/ChatWidget";
 
 function App() {
   return (
@@ -70,6 +75,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
+            <ChatWidget />
           </TooltipProvider>
         </AuthProvider>
       </SiteConfigProvider>

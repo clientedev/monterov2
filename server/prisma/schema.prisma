@@ -87,6 +87,14 @@ model SiteConfig {
   updatedAt      DateTime @updatedAt
 }
 
+model Message {
+  id        Int      @id @default(autoincrement())
+  content   String
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  sessionId String
+}
+
 model Service {
   id          Int      @id @default(autoincrement())
   title       String

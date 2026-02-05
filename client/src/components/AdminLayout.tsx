@@ -25,6 +25,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
         { href: "/admin/posts", icon: FileText, label: "Posts" },
         { href: "/admin/comments", icon: MessageSquare, label: "Comentários" },
         { href: "/admin/hero", icon: ImageIcon, label: "Hero Slider" },
+        { href: "/admin/chat", icon: MessageSquare, label: "Chat" },
         { href: "/admin/testimonials", icon: Users, label: "Depoimentos" },
         { href: "/admin/settings", icon: Settings, label: "Configurações" },
     ];
