@@ -47,18 +47,18 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
                                     <span>Corretora de Seguros #1 em São Paulo</span>
                                 </div>
 
-                                <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6 whitespace-pre-line">
+                                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white leading-tight mb-4 whitespace-pre-line">
                                     {slide.title}
                                 </h1>
 
-                                <p className="text-base sm:text-lg md:text-xl text-slate-200 mb-8 md:mb-10 max-w-xl leading-relaxed">
+                                <p className="text-sm sm:text-base md:text-lg text-slate-200 mb-6 md:mb-8 max-w-xl leading-relaxed">
                                     {slide.text}
                                 </p>
 
                                 <div className="flex flex-col sm:flex-row gap-4">
                                     {slide.buttonLink && (
                                         <Link href={slide.buttonLink}>
-                                            <button className="w-full sm:w-auto px-8 py-3.5 md:py-4 rounded-full bg-primary text-white font-semibold text-lg hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-1 flex items-center justify-center gap-2">
+                                            <button className="w-full sm:w-auto px-6 py-3 rounded-full bg-primary text-white font-semibold text-base hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-1 flex items-center justify-center gap-2">
                                                 {slide.buttonText || "Saiba Mais"}
                                                 <ArrowRight className="w-5 h-5" />
                                             </button>
