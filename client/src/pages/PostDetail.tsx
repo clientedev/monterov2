@@ -3,12 +3,51 @@ import { Footer } from "@/components/Footer";
 import { usePost } from "@/hooks/use-content";
 import { useRoute, Link } from "wouter";
 import { format } from "date-fns";
-import { ArrowLeft, Share2 } from "lucide-react";
+import { ArrowLeft, Share2, MessageSquare, Heart, Send, Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function PostDetail() {
   const [match, params] = useRoute("/blog/:slug");
   const slug = params?.slug || "";
-  const { data: post, isLoading } = usePost(slug);
+  const { data: post, isLoading, refetch } = usePost(slug);
+  const { user } = useAuth();
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const likeMutation = useMutation({
+    mutationFn: async () => {
+      await api.post(`/posts/${post?.id}/like`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/${slug}`] });
+      refetch();
+    },
+  });
+
+  const handleComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setSubmitting(true);
+    try {
+      await api.post(`/posts/${post?.id}/comments`, { content: comment });
+      toast({ title: "Comentário enviado", description: "Publicado com sucesso." });
+      setComment("");
+      refetch();
+    } catch {
+      toast({ variant: "destructive", title: "Erro", description: "Falha ao enviar." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -34,6 +73,8 @@ export default function PostDetail() {
     );
   }
 
+  const isLiked = post.likes?.some((l: any) => l.userId === user?.id);
+
   return (
     <div className="min-h-screen bg-white font-sans">
       <Navbar />
@@ -48,40 +89,90 @@ export default function PostDetail() {
           </Link>
 
           <header className="mb-10">
-             <div className="flex gap-4 items-center text-sm text-slate-500 mb-6">
-                <span className="bg-slate-100 px-3 py-1 rounded-full text-slate-800 font-medium">News</span>
-                <span>{post.publishedAt && format(new Date(post.publishedAt), 'MMMM dd, yyyy')}</span>
-             </div>
-             
-             <h1 className="text-4xl md:text-5xl font-display font-bold text-slate-900 leading-tight mb-8">
-               {post.title}
-             </h1>
+            <div className="flex flex-wrap gap-4 items-center text-sm text-slate-500 mb-6">
+              <span className="bg-slate-100 px-3 py-1 rounded-full text-slate-800 font-medium">News</span>
+              <span>{post.createdAt && format(new Date(post.createdAt), 'MMMM dd, yyyy')}</span>
+              <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {post.comments?.length || 0}</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={`gap-2 h-auto py-1 px-2 ${isLiked ? "text-red-500" : ""}`}
+                onClick={() => user ? likeMutation.mutate() : toast({ title: "Faça login para curtir" })}
+              >
+                <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
+                {post._count?.likes || 0}
+              </Button>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-slate-900 leading-tight mb-8">
+              {post.title}
+            </h1>
           </header>
 
           <div className="aspect-video rounded-2xl overflow-hidden mb-12 shadow-lg">
-            <img 
-              src={post.coverImage} 
+            <img
+              src={post.coverImage}
               alt={post.title}
-              className="w-full h-full object-cover" 
+              className="w-full h-full object-cover"
             />
           </div>
 
           <div className="prose prose-lg prose-slate prose-headings:font-display prose-headings:font-bold prose-a:text-primary max-w-none">
-            {/* In a real app, this would be rendered Markdown or HTML */}
-            <div className="whitespace-pre-line text-slate-600 leading-relaxed">
-              {post.content}
-            </div>
+            <div className="whitespace-pre-line text-slate-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: post.content }} />
           </div>
 
           <div className="mt-12 pt-8 border-t border-slate-100 flex justify-between items-center">
-             <span className="font-display font-bold text-slate-900">Share this article:</span>
-             <div className="flex gap-2">
-               <button className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-600">
-                 <Share2 className="w-5 h-5" />
-               </button>
-               {/* Add social share buttons here */}
-             </div>
+            <span className="font-display font-bold text-slate-900">Share this article:</span>
+            <div className="flex gap-2">
+              <button className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-600">
+                <Share2 className="w-5 h-5" />
+              </button>
+            </div>
           </div>
+
+          <section className="mt-16">
+            <h3 className="text-2xl font-bold mb-8">Comentários ({post.comments?.length || 0})</h3>
+
+            <div className="space-y-6 mb-10">
+              {post.comments?.map((c: any) => (
+                <div key={c.id} className="bg-slate-50 p-6 rounded-xl">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={c.author?.avatar} />
+                        <AvatarFallback>U</AvatarFallback>
+                      </Avatar>
+                      <span className="font-bold text-slate-900">{c.author?.username}</span>
+                    </div>
+                    <span className="text-xs text-slate-500">{format(new Date(c.createdAt), 'dd MMMM yyyy HH:mm')}</span>
+                  </div>
+                  <p className="text-slate-700">{c.content}</p>
+                </div>
+              ))}
+              {(!post.comments || post.comments.length === 0) && <p className="text-slate-500 italic">Seja o primeiro a comentar!</p>}
+            </div>
+
+            {user ? (
+              <form onSubmit={handleComment} className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                <h4 className="font-semibold mb-4">Deixe um comentário</h4>
+                <Textarea
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  placeholder="Escreva sua opinião..."
+                  className="bg-white mb-4"
+                  required
+                />
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? "Enviando..." : "Enviar Comentário"}
+                </Button>
+              </form>
+            ) : (
+              <div className="bg-slate-50 p-6 rounded-xl text-center">
+                <p className="text-slate-600 mb-4">Faça login para comentar.</p>
+                <Link href="/login"><Button variant="outline">Login</Button></Link>
+              </div>
+            )}
+          </section>
         </div>
       </article>
 
