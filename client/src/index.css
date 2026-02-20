@@ -5,34 +5,45 @@
 @tailwind utilities;
 
 :root {
-  /* Font Family Variables */
-  --font-sans: 'Manrope', sans-serif;
-  --font-display: 'Playfair Display', serif;
+  /* Premium Agency Theme */
 
-  /* Color Palette - HSL Space Separated */
-  --background: 0 0% 100%;       /* White */
-  --foreground: 220 30% 15%;     /* Dark Slate */
-  
-  --primary: 221 70% 40%;        /* Deep Blue (#1e40af eq) */
-  --primary-foreground: 0 0% 100%;
-  
-  --secondary: 210 20% 96%;      /* Very Light Blue/Gray */
-  --secondary-foreground: 220 30% 20%;
-  
-  --muted: 220 15% 94%;
-  --muted-foreground: 220 10% 45%;
-  
-  --accent: 200 80% 90%;         /* Soft Cyan/Blue Tint */
-  --accent-foreground: 221 70% 40%;
-  
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
+  /* Typography */
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Outfit', sans-serif;
 
-  --border: 220 15% 90%;
-  --input: 220 15% 90%;
-  --ring: 221 70% 40%;
-  
-  --radius: 0.5rem;
+  /* Color Palette - Deep Corporate & Gold Accents */
+  --background: 210 40% 98%;
+  /* Soft Blue-White */
+  --foreground: 222 47% 11%;
+  /* Deep Navy/Black */
+
+  --primary: 221 39% 11%;
+  /* Midnight Blue (Brand Base) */
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 48 100% 50%;
+  /* Gold (Accent) - adjusted for elegance below */
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221 39% 11%;
+
+  --radius: 0.75rem;
+  /* Slightly more rounded for modern feel */
+
+  /* Gold Gradient specific hooks */
+  --gold-start: #D4AF37;
+  --gold-end: #C5A028;
 }
 
 @layer base {
@@ -41,36 +52,79 @@
     font-family: var(--font-sans);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  body:has([data-theme-active]) {
+    /* Fallback and dynamic injection support */
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
     @apply font-bold tracking-tight text-foreground;
   }
+}
+
+/* Dynamic Overrides */
+:root {
+  --primary: var(--primary-hex, 221 39% 11%);
+}
+
+.bg-primary {
+  background-color: var(--primary-hex, hsl(var(--primary)));
+}
+
+.text-primary {
+  color: var(--primary-hex, hsl(var(--primary)));
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
-  
+
   .glass-card {
-    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+    @apply bg-white/70 backdrop-blur-lg border border-white/40 shadow-xl;
   }
-  
+
+  .glass-sidebar {
+    @apply bg-primary/95 backdrop-blur-xl border-r border-white/10 text-white;
+  }
+
+  .premium-card {
+    @apply bg-white rounded-xl border border-gray-100 transition-all duration-300;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  }
+
+  .premium-card:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  }
+
   .premium-gradient {
-    @apply bg-gradient-to-br from-primary via-primary/90 to-blue-900;
+    @apply bg-gradient-to-r;
+    background-image: linear-gradient(to right, #0F172A, #1E293B);
+  }
+
+  .text-gold {
+    @apply text-yellow-600;
   }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
+  @apply bg-gray-300 rounded-full;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
+  @apply bg-gray-400;
 }
