@@ -161,6 +161,7 @@ export const tasks = pgTable("tasks", {
   status: text("status").notNull().default("todo"), // todo, in_progress, done
   priority: text("priority").notNull().default("medium"), // low, medium, high
   assignedTo: integer("assigned_to").references(() => users.id).notNull(),
+  contactId: integer("contact_id").references(() => contacts.id),
   createdBy: integer("created_by").references(() => users.id).notNull(),
   dueDate: timestamp("due_date"),
   createdAt: timestamp("created_at").defaultNow(),

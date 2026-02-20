@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,13 @@ export default function Login() {
   const { loginMutation, user } = useAuth();
 
   // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      setLocation("/admin");
+    }
+  }, [user, setLocation]);
+
   if (user) {
-    setLocation("/admin");
     return null;
   }
 

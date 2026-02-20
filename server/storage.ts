@@ -69,7 +69,7 @@ export interface IStorage {
   createContact(contact: InsertContact): Promise<Contact>;
 
   // Leads
-  getLeads(): Promise<Lead[]>;
+  getLeads(contactId?: number): Promise<Lead[]>;
   getLead(id: number): Promise<Lead | undefined>;
   createLead(lead: InsertLead): Promise<Lead>;
   updateLeadStatus(id: number, status: string): Promise<Lead | undefined>;
@@ -84,7 +84,7 @@ export interface IStorage {
   deleteCampaign(id: number): Promise<void>;
 
   // Tasks
-  getTasks(assignedTo?: number): Promise<Task[]>;
+  getTasks(assignedTo?: number, contactId?: number): Promise<Task[]>;
   getTask(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTaskStatus(id: number, status: string): Promise<Task | undefined>;
@@ -195,8 +195,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Leads
-  async getLeads(): Promise<Lead[]> {
-    return await db.select().from(leads).orderBy(desc(leads.createdAt));
+  async getLeads(contactId?: number): Promise<Lead[]> {
+    let query = db.select().from(leads);
+    if (contactId) {
+      query = query.where(eq(leads.contactId, contactId)) as any;
+    }
+    return await query.orderBy(desc(leads.createdAt));
   }
 
   async getLead(id: number): Promise<Lead | undefined> {
@@ -252,11 +256,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Tasks
-  async getTasks(assignedTo?: number): Promise<Task[]> {
+  async getTasks(assignedTo?: number, contactId?: number): Promise<Task[]> {
+    let query = db.select().from(tasks);
+
     if (assignedTo) {
-      return await db.select().from(tasks).where(eq(tasks.assignedTo, assignedTo)).orderBy(desc(tasks.createdAt));
+      query = query.where(eq(tasks.assignedTo, assignedTo)) as any;
     }
-    return await db.select().from(tasks).orderBy(desc(tasks.createdAt));
+
+    if (contactId) {
+      query = query.where(eq(tasks.contactId, contactId)) as any;
+    }
+
+    return await query.orderBy(desc(tasks.createdAt));
   }
 
   async getTask(id: number): Promise<Task | undefined> {
@@ -489,8 +500,12 @@ export class MemStorage implements IStorage {
   }
 
   // Leads
-  async getLeads(): Promise<Lead[]> {
-    return [...this.leads].sort((a, b) => {
+  async getLeads(contactId?: number): Promise<Lead[]> {
+    let filteredLeads = [...this.leads];
+    if (contactId) {
+      filteredLeads = filteredLeads.filter(l => l.contactId === contactId);
+    }
+    return filteredLeads.sort((a, b) => {
       const timeA = a.createdAt?.getTime() ?? 0;
       const timeB = b.createdAt?.getTime() ?? 0;
       return timeB - timeA;
@@ -585,10 +600,13 @@ export class MemStorage implements IStorage {
   }
 
   // Tasks
-  async getTasks(assignedTo?: number): Promise<Task[]> {
+  async getTasks(assignedTo?: number, contactId?: number): Promise<Task[]> {
     let filteredTasks = [...this.tasks];
     if (assignedTo) {
       filteredTasks = filteredTasks.filter(t => t.assignedTo === assignedTo);
+    }
+    if (contactId) {
+      filteredTasks = filteredTasks.filter(t => t.contactId === contactId);
     }
     return filteredTasks.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
@@ -605,6 +623,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       dueDate: task.dueDate ? new Date(task.dueDate) : null,
       description: task.description || null,
+      contactId: task.contactId || null,
       priority: task.priority || "medium",
       status: task.status || "todo",
     };

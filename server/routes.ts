@@ -103,6 +103,12 @@ export async function registerRoutes(
     res.json(contacts);
   });
 
+  app.get("/api/contacts/:id", isAuthenticated, async (req, res) => {
+    const contact = await storage.getContact(parseInt(req.params.id));
+    if (!contact) return res.status(404).json({ message: "Contact not found" });
+    res.json(contact);
+  });
+
   app.post("/api/contacts", isAuthenticated, async (req, res) => {
     try {
       const input = insertContactSchema.parse(req.body);
@@ -118,7 +124,8 @@ export async function registerRoutes(
 
   // Leads
   app.get("/api/leads", isAuthenticated, async (req, res) => {
-    const leads = await storage.getLeads();
+    const contactId = req.query.contactId ? parseInt(req.query.contactId as string) : undefined;
+    const leads = await storage.getLeads(contactId);
     res.json(leads);
   });
 
@@ -205,8 +212,16 @@ export async function registerRoutes(
 
   // Tasks
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
-    const assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
-    const tasks = await storage.getTasks(assignedTo);
+    const user = req.user as any;
+    let assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
+    const contactId = req.query.contactId ? parseInt(req.query.contactId as string) : undefined;
+
+    // RBAC: Employees can ONLY see their own tasks
+    if (user.role === "employee") {
+      assignedTo = user.id;
+    }
+
+    const tasks = await storage.getTasks(assignedTo, contactId);
     res.json(tasks);
   });
 
@@ -241,6 +256,123 @@ export async function registerRoutes(
   app.get("/api/site-settings", async (req, res) => {
     const settings = await storage.getSiteSettings();
     res.json(settings);
+  });
+
+  // CNPJ Proxy with multiple fallback APIs
+  app.get("/api/proxy/cnpj/:cnpj", isAuthenticated, async (req, res) => {
+    const cnpj = req.params.cnpj.replace(/\D/g, "");
+
+    if (cnpj.length !== 14) {
+      return res.status(400).json({ message: `CNPJ inválido: esperado 14 dígitos, recebido ${cnpj.length}` });
+    }
+
+    const fetchWithTimeout = async (url: string, timeoutMs = 8000) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        return response;
+      } catch (err) {
+        clearTimeout(timer);
+        throw err;
+      }
+    };
+
+    const formatAddress = (data: any) => {
+      const parts = [
+        data.logradouro,
+        data.numero,
+        data.complemento ? `- ${data.complemento}` : null,
+        `- ${data.bairro}`,
+        `${data.municipio} - ${data.uf}`,
+        data.cep
+      ].filter(Boolean);
+      return parts.join(", ");
+    };
+
+    // API 1: BrasilAPI
+    try {
+      console.log(`[CNPJ] Tentando BrasilAPI para ${cnpj}...`);
+      const brasilRes = await fetchWithTimeout(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+      if (brasilRes.ok) {
+        const data = await brasilRes.json();
+        console.log(`[CNPJ] ✅ BrasilAPI respondeu com sucesso`);
+        return res.json({
+          name: data.razao_social || data.nome_fantasia,
+          email: data.email || null,
+          phone: data.ddd_telefone_1 || data.ddd_telefone_2 || null,
+          address: formatAddress(data)
+        });
+      }
+      console.log(`[CNPJ] BrasilAPI retornou status ${brasilRes.status}`);
+    } catch (e: any) {
+      console.log(`[CNPJ] BrasilAPI falhou: ${e.message}`);
+    }
+
+    // API 2: ReceitaWS
+    try {
+      console.log(`[CNPJ] Tentando ReceitaWS para ${cnpj}...`);
+      const receitaRes = await fetchWithTimeout(`https://receitaws.com.br/v1/cnpj/${cnpj}`);
+      if (receitaRes.ok) {
+        const data = await receitaRes.json();
+        if (data.status !== "ERROR") {
+          console.log(`[CNPJ] ✅ ReceitaWS respondeu com sucesso`);
+          return res.json({
+            name: data.nome || data.fantasia,
+            email: data.email || null,
+            phone: data.telefone || null,
+            address: formatAddress(data)
+          });
+        }
+        console.log(`[CNPJ] ReceitaWS retornou ERROR: ${data.message}`);
+      }
+    } catch (e: any) {
+      console.log(`[CNPJ] ReceitaWS falhou: ${e.message}`);
+    }
+
+    // API 3: publica.cnpj.ws
+    try {
+      console.log(`[CNPJ] Tentando publica.cnpj.ws para ${cnpj}...`);
+      const publicaRes = await fetchWithTimeout(`https://publica.cnpj.ws/cnpj/${cnpj}`);
+      if (publicaRes.ok) {
+        const data = await publicaRes.json();
+        console.log(`[CNPJ] ✅ publica.cnpj.ws respondeu com sucesso`);
+        const est = data.estabelecimento || {};
+        return res.json({
+          name: data.razao_social || est.nome_fantasia,
+          email: est.email || null,
+          phone: est.ddd1 && est.telefone1 ? `(${est.ddd1}) ${est.telefone1}` : null,
+          address: est.logradouro ? `${est.tipo_logradouro || ''} ${est.logradouro}, ${est.numero || 'S/N'}${est.complemento ? ` - ${est.complemento}` : ''} - ${est.bairro}, ${est.cidade?.nome || ''} - ${est.estado?.sigla || ''}, ${est.cep}` : null
+        });
+      }
+      console.log(`[CNPJ] publica.cnpj.ws retornou status ${publicaRes.status}`);
+    } catch (e: any) {
+      console.log(`[CNPJ] publica.cnpj.ws falhou: ${e.message}`);
+    }
+
+    // API 4: Open CNPJ (cnpja.com open)
+    try {
+      console.log(`[CNPJ] Tentando open.cnpja.com para ${cnpj}...`);
+      const openRes = await fetchWithTimeout(`https://open.cnpja.com/office/${cnpj}`);
+      if (openRes.ok) {
+        const data = await openRes.json();
+        console.log(`[CNPJ] ✅ open.cnpja.com respondeu com sucesso`);
+        const addr = data.address || {};
+        return res.json({
+          name: data.company?.name || data.alias,
+          email: data.emails?.[0]?.address || null,
+          phone: data.phones?.[0] ? `(${data.phones[0].area}) ${data.phones[0].number}` : null,
+          address: addr.street ? `${addr.street}, ${addr.number || 'S/N'}${addr.details ? ` - ${addr.details}` : ''} - ${addr.district}, ${addr.city} - ${addr.state}, ${addr.zip}` : null
+        });
+      }
+      console.log(`[CNPJ] open.cnpja.com retornou status ${openRes.status}`);
+    } catch (e: any) {
+      console.log(`[CNPJ] open.cnpja.com falhou: ${e.message}`);
+    }
+
+    console.log(`[CNPJ] ❌ Todas as APIs falharam para ${cnpj}`);
+    res.status(404).json({ message: "Nenhuma das APIs conseguiu encontrar dados para este CNPJ. Verifique o número e tente novamente." });
   });
 
   app.patch("/api/site-settings", isAuthenticated, isAdmin, async (req, res) => {

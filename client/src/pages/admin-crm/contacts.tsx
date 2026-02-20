@@ -39,10 +39,13 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Plus, Users, Building, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ContactProfile } from "@/components/ContactProfile";
 
 export default function ContactsPage() {
     const { toast } = useToast();
     const [open, setOpen] = useState(false);
+    const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
+    const [profileOpen, setProfileOpen] = useState(false);
 
     const { data: contacts, isLoading } = useQuery<Contact[]>({
         queryKey: ["/api/contacts"],
@@ -80,9 +83,46 @@ export default function ContactsPage() {
         },
     });
 
+    const [isSearchingCnpj, setIsSearchingCnpj] = useState(false);
+
+    const lookupCnpj = async (rawCnpj: string) => {
+        const cnpj = rawCnpj.replace(/\D/g, "");
+        if (!cnpj || cnpj.length < 14) {
+            toast({ title: "Digite um CNPJ com 14 dígitos", description: `Você digitou ${cnpj.length} dígitos`, variant: "destructive" });
+            return;
+        }
+
+        setIsSearchingCnpj(true);
+        try {
+            const res = await fetch(`/api/proxy/cnpj/${cnpj}`);
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || "Erro ao consultar CNPJ");
+            }
+
+            const data = await res.json();
+            form.setValue("name", data.name || "");
+            if (data.email) form.setValue("email", data.email);
+            if (data.phone) form.setValue("phone", data.phone);
+            if (data.address) form.setValue("address", data.address);
+
+            toast({ title: "✅ Dados recuperados com sucesso!" });
+        } catch (error: any) {
+            toast({
+                title: "Falha na busca",
+                description: error.message,
+                variant: "destructive",
+            });
+        } finally {
+            setIsSearchingCnpj(false);
+        }
+    };
+
     const onSubmit = (data: InsertContact) => {
         createMutation.mutate(data);
     };
+
+    const clientType = form.watch("type");
 
     if (isLoading) {
         return (
@@ -137,6 +177,62 @@ export default function ContactsPage() {
                                         </FormItem>
                                     )}
                                 />
+
+                                {clientType === "company" ? (
+                                    <div className="flex gap-2 items-end">
+                                        <FormField
+                                            control={form.control}
+                                            name="document"
+                                            render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                    <FormLabel className="text-gray-600 font-bold">CNPJ</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="00.000.000/0000-00"
+                                                            className="rounded-xl h-11"
+                                                            {...field}
+                                                            value={field.value || ""}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="h-11 rounded-xl px-4 font-bold border-primary text-primary hover:bg-primary/5 mb-[2px]"
+                                            onClick={() => lookupCnpj(form.getValues("document") || "")}
+                                            disabled={isSearchingCnpj}
+                                        >
+                                            {isSearchingCnpj ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                "Buscar"
+                                            )}
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <FormField
+                                        control={form.control}
+                                        name="document"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-600 font-bold">CPF</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="000.000.000-00"
+                                                        className="rounded-xl h-11"
+                                                        {...field}
+                                                        value={field.value || ""}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
+
                                 <FormField
                                     control={form.control}
                                     name="name"
@@ -211,6 +307,7 @@ export default function ContactsPage() {
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="py-4 font-bold text-gray-600">Identificação</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Tipo</TableHead>
+                            <TableHead className="py-4 font-bold text-gray-600">Documento</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Email</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Telefone</TableHead>
                             <TableHead className="py-4 text-right font-bold text-gray-600">Ações</TableHead>
@@ -219,7 +316,7 @@ export default function ContactsPage() {
                     <TableBody>
                         {contacts?.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center h-32 text-muted-foreground">
+                                <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
                                     <div className="flex flex-col items-center gap-2">
                                         <Users className="h-8 w-8 opacity-20" />
                                         <p>Nenhum contato cadastrado ainda.</p>
@@ -249,6 +346,7 @@ export default function ContactsPage() {
                                             {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
                                         </Badge>
                                     </TableCell>
+                                    <TableCell className="text-gray-600 font-medium py-4">{contact.document || "—"}</TableCell>
                                     <TableCell className="text-gray-500 py-4">{contact.email || "—"}</TableCell>
                                     <TableCell className="text-gray-500 py-4">{contact.phone || "—"}</TableCell>
                                     <TableCell className="text-right py-4">
@@ -256,6 +354,10 @@ export default function ContactsPage() {
                                             variant="ghost"
                                             size="sm"
                                             className="font-bold text-primary hover:bg-primary/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={() => {
+                                                setSelectedContactId(contact.id);
+                                                setProfileOpen(true);
+                                            }}
                                         >
                                             Ver Perfil
                                         </Button>
@@ -266,6 +368,11 @@ export default function ContactsPage() {
                     </TableBody>
                 </Table>
             </div>
+            <ContactProfile
+                contactId={selectedContactId}
+                open={profileOpen}
+                onOpenChange={setProfileOpen}
+            />
         </div>
     );
 }
