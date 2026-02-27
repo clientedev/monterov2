@@ -22,6 +22,7 @@ import ContactsPage from "@/pages/admin-crm/contacts";
 import LeadsPage from "@/pages/admin-crm/leads";
 import InteractionsPage from "@/pages/admin-crm/interactions";
 import PostsPage from "@/pages/admin-crm/posts";
+import CommentsPage from "@/pages/admin-crm/comments";
 import ServicesPage from "@/pages/admin-crm/services";
 import AnalyticsPage from "@/pages/admin-crm/marketing/analytics";
 import CampaignsPage from "@/pages/admin-crm/marketing/campaigns";
@@ -75,6 +76,7 @@ function Router() {
       <ProtectedAdminRoute path="/admin/leads" component={LeadsPage} />
       <ProtectedAdminRoute path="/admin/interactions" component={InteractionsPage} />
       <ProtectedAdminRoute path="/admin/posts" component={PostsPage} />
+      <ProtectedAdminRoute path="/admin/comments" component={CommentsPage} />
       <ProtectedAdminRoute path="/admin/services" component={ServicesPage} />
       <ProtectedAdminRoute path="/admin/marketing/results" component={AnalyticsPage} />
       <ProtectedAdminRoute path="/admin/marketing/campaigns" component={CampaignsPage} />

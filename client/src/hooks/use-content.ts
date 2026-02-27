@@ -36,3 +36,15 @@ export function useServices() {
     },
   });
 }
+
+export function useComments(postId: number) {
+  return useQuery({
+    queryKey: ['/api/posts', postId, 'comments'],
+    queryFn: async () => {
+      const res = await fetch(`/api/posts/${postId}/comments`);
+      if (!res.ok) throw new Error("Failed to fetch comments");
+      return await res.json();
+    },
+    enabled: !!postId,
+  });
+}

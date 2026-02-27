@@ -17,7 +17,8 @@ import {
     Settings,
     PhoneCall,
     Search,
-    KeyRound
+    KeyRound,
+    MessageSquare
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import logo from "@assets/image_1770228718109.png";
@@ -119,6 +120,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <p className="text-[11px] uppercase text-slate-500 font-bold mb-4 px-2 tracking-[0.15em]">Conteúdo Presencial</p>
                         <nav className="space-y-1">
                             <NavLink href="/admin/posts" icon={FileText} label="Blog Central" />
+                            <NavLink href="/admin/comments" icon={MessageSquare} label="Moderar Comentários" />
                             <NavLink href="/admin/services" icon={Briefcase} label="Portfólio de Serviços" />
                         </nav>
                     </div>
