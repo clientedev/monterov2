@@ -31,12 +31,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Trash2, Pencil } from "lucide-react";
+import { Loader2, Plus, Trash2, Pencil, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
+import { ImageUpload } from "@/components/ImageUpload";
 
 export default function PostsPage() {
     const { toast } = useToast();
     const [open, setOpen] = useState(false);
+    const [editingPost, setEditingPost] = useState<Post | null>(null);
 
     const { data: posts, isLoading } = useQuery<Post[]>({
         queryKey: ["/api/posts"],
@@ -58,6 +60,19 @@ export default function PostsPage() {
                 description: error.message,
                 variant: "destructive",
             });
+        },
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: async ({ id, data }: { id: number, data: InsertPost }) => {
+            const res = await apiRequest("PATCH", `/api/posts/${id}`, data);
+            return await res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+            toast({ title: "Post atualizado com sucesso" });
+            setOpen(false);
+            setEditingPost(null);
         },
     });
 
@@ -83,8 +98,36 @@ export default function PostsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Blog Posts</h2>
-                <CreatePostDialog open={open} setOpen={setOpen} createMutation={createMutation} />
+                <Button onClick={() => {
+                    setEditingPost(null);
+                    setOpen(true);
+                }}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo Post
+                </Button>
             </div>
+
+            <Dialog open={open} onOpenChange={(val) => {
+                setOpen(val);
+                if (!val) setEditingPost(null);
+            }}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>{editingPost ? "Editar Post" : "Novo Post"}</DialogTitle>
+                    </DialogHeader>
+                    <PostForm
+                        initialData={editingPost}
+                        onSubmit={(data: InsertPost) => {
+                            if (editingPost) {
+                                updateMutation.mutate({ id: editingPost.id, data });
+                            } else {
+                                createMutation.mutate(data);
+                            }
+                        }}
+                        isSubmitting={createMutation.isPending || updateMutation.isPending}
+                    />
+                </DialogContent>
+            </Dialog>
 
             <div className="rounded-md border bg-white">
                 <Table>
@@ -111,7 +154,17 @@ export default function PostsPage() {
                                     <TableCell>
                                         {post.publishedAt ? format(new Date(post.publishedAt), "PPP") : "-"}
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="space-x-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                                setEditingPost(post);
+                                                setOpen(true);
+                                            }}
+                                        >
+                                            <Pencil className="h-4 w-4 text-slate-500" />
+                                        </Button>
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -134,120 +187,114 @@ export default function PostsPage() {
     );
 }
 
-function CreatePostDialog({ open, setOpen, createMutation }: any) {
+function PostForm({ initialData, onSubmit, isSubmitting }: any) {
     const form = useForm<InsertPost>({
         resolver: zodResolver(insertPostSchema),
-        defaultValues: {
+        defaultValues: initialData ? {
+            title: initialData.title,
+            slug: initialData.slug,
+            content: initialData.content,
+            summary: initialData.summary,
+            coverImage: initialData.coverImage,
+        } : {
             title: "",
             slug: "",
             content: "",
             summary: "",
-            coverImage: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40",
+            coverImage: "",
         },
     });
 
-    const onSubmit = (data: InsertPost) => {
-        createMutation.mutate(data);
-    };
-
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Novo Post
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="title"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Título</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Título do post" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="slug"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Slug (URL)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="titulo-do-post" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                <FormField
+                    control={form.control}
+                    name="summary"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Resumo</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Breve resumo..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="content"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Conteúdo</FormLabel>
+                            <FormControl>
+                                <Textarea
+                                    placeholder="Conteúdo do post..."
+                                    className="min-h-[200px]"
+                                    {...field}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="coverImage"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Imagem de Capa</FormLabel>
+                            <FormControl>
+                                <ImageUpload
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    description="Será exibida como imagem principal do post."
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {initialData ? "Atualizar Post" : "Publicar"}
                 </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>Novo Post</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="title"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Título</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Título do post" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="slug"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Slug (URL)</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="titulo-do-post" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                        <FormField
-                            control={form.control}
-                            name="summary"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Resumo</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Breve resumo..." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="content"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Conteúdo</FormLabel>
-                                    <FormControl>
-                                        <Textarea
-                                            placeholder="Conteúdo do post..."
-                                            className="min-h-[200px]"
-                                            {...field}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="coverImage"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Imagem de Capa (URL)</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="https://..." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Button
-                            type="submit"
-                            className="w-full"
-                            disabled={createMutation.isPending}
-                        >
-                            {createMutation.isPending && (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            )}
-                            Publicar
-                        </Button>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
+            </form>
+        </Form>
     );
 }
+

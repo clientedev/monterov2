@@ -26,6 +26,16 @@ export function ThemeInjector() {
             if (settings.fontDisplay) {
                 root.style.setProperty("--font-display", settings.fontDisplay + ", sans-serif");
             }
+
+            if (settings.logoBase64) {
+                let favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+                if (!favicon) {
+                    favicon = document.createElement('link');
+                    favicon.rel = 'shortcut icon';
+                    document.head.appendChild(favicon);
+                }
+                favicon.href = settings.logoBase64;
+            }
         }
     }, [settings]);
 

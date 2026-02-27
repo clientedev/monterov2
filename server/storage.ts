@@ -47,6 +47,7 @@ export interface IStorage {
   getPosts(): Promise<Post[]>;
   getPostBySlug(slug: string): Promise<Post | undefined>;
   createPost(post: InsertPost): Promise<Post>;
+  updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined>;
   deletePost(id: number): Promise<void>;
 
   // Services
@@ -65,6 +66,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
+  updateUserPassword(id: number, hashedPassword: string): Promise<void>;
   deleteUser(id: number): Promise<void>;
 
   // Contacts
@@ -140,6 +142,11 @@ export class DatabaseStorage implements IStorage {
     return newPost;
   }
 
+  async updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined> {
+    const [updated] = await db.update(posts).set(post).where(eq(posts.id, id)).returning();
+    return updated;
+  }
+
   async deletePost(id: number): Promise<void> {
     await db.delete(posts).where(eq(posts.id, id));
   }
@@ -191,6 +198,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
+  }
+
+  async updateUserPassword(id: number, hashedPassword: string): Promise<void> {
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id));
   }
 
   async deleteUser(id: number): Promise<void> {
@@ -461,6 +472,13 @@ export class MemStorage implements IStorage {
     return newPost;
   }
 
+  async updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined> {
+    const index = this.posts.findIndex((p) => p.id === id);
+    if (index === -1) return undefined;
+    this.posts[index] = { ...this.posts[index], ...post };
+    return this.posts[index];
+  }
+
   async deletePost(id: number): Promise<void> {
     this.posts = this.posts.filter((p) => p.id !== id);
   }
@@ -527,6 +545,13 @@ export class MemStorage implements IStorage {
     return user;
   }
 
+  async updateUserPassword(id: number, hashedPassword: string): Promise<void> {
+    const user = this.users.find((u) => u.id === id);
+    if (user) {
+      user.password = hashedPassword;
+    }
+  }
+
   async deleteUser(id: number): Promise<void> {
     this.users = this.users.filter((u) => u.id !== id);
   }
@@ -560,6 +585,17 @@ export class MemStorage implements IStorage {
     return newContact;
   }
 
+  async updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact | undefined> {
+    const index = this.contacts.findIndex((c) => c.id === id);
+    if (index === -1) return undefined;
+    this.contacts[index] = { ...this.contacts[index], ...contact };
+    return this.contacts[index];
+  }
+
+  async deleteContact(id: number): Promise<void> {
+    this.contacts = this.contacts.filter((c) => c.id !== id);
+  }
+
   // Leads
   async getLeads(contactId?: number): Promise<Lead[]> {
     let filteredLeads = [...this.leads];
@@ -591,6 +627,17 @@ export class MemStorage implements IStorage {
     };
     this.leads.push(newLead);
     return newLead;
+  }
+
+  async updateLead(id: number, lead: Partial<InsertLead>): Promise<Lead | undefined> {
+    const index = this.leads.findIndex((l) => l.id === id);
+    if (index === -1) return undefined;
+    this.leads[index] = { ...this.leads[index], ...lead };
+    return this.leads[index];
+  }
+
+  async deleteLead(id: number): Promise<void> {
+    this.leads = this.leads.filter((l) => l.id !== id);
   }
 
   async updateLeadStatus(id: number, status: string): Promise<Lead | undefined> {

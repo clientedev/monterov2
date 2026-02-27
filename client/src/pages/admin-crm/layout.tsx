@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,16 +16,19 @@ import {
     Users2,
     Settings,
     PhoneCall,
-    Search
+    Search,
+    KeyRound
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import logo from "@assets/image_1770228718109.png";
 import { Separator } from "@/components/ui/separator";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, logoutMutation } = useAuth();
     const [location] = useLocation();
     const { settings } = useSiteSettings();
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
     if (!user) return null;
 
@@ -145,7 +149,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3 mb-3">
                         <Link href="/">
                             <Button variant="outline" className="w-full bg-transparent border-white/10 text-white hover:bg-white/5 border text-xs h-9 rounded-lg">
                                 Ver Site
@@ -160,7 +164,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             Sair
                         </Button>
                     </div>
+
+                    <Button
+                        variant="outline"
+                        className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 text-xs h-9 rounded-lg gap-2"
+                        onClick={() => setPasswordDialogOpen(true)}
+                    >
+                        <KeyRound className="h-3.5 w-3.5 text-amber-400" />
+                        Mudar Senha
+                    </Button>
                 </div>
+
+                <ChangePasswordDialog
+                    open={passwordDialogOpen}
+                    onOpenChange={setPasswordDialogOpen}
+                />
             </aside>
 
             {/* Main Workspace */}

@@ -81,12 +81,6 @@ export default function Home() {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            {activeSlides.length > 1 && (
-              <>
-                <CarouselPrevious className="left-8 text-white border-white/20 hover:bg-white/10" />
-                <CarouselNext className="right-8 text-white border-white/20 hover:bg-white/10" />
-              </>
-            )}
           </Carousel>
         ) : (
           <>

@@ -211,6 +211,30 @@ export default function LeadsPage() {
                     </div>
                 ))}
             </div>
+
+            <AlertDialog open={!!deleteLeadId} onOpenChange={(open) => !open && setDeleteLeadId(null)}>
+                <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Tem certeza que deseja excluir?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. O negócio e todo o seu histórico no funil serão removidos permanentemente.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl border-gray-200">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => deleteLeadId && deleteLeadMutation.mutate(deleteLeadId)}
+                            className="bg-red-500 hover:bg-red-600 text-white rounded-xl border-none shadow-lg shadow-red-200"
+                        >
+                            {deleteLeadMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                "Confirmar Exclusão"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

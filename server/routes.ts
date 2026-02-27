@@ -54,6 +54,12 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  app.patch("/api/posts/:id", isAuthenticated, isAdmin, async (req, res) => {
+    const post = await storage.updatePost(parseInt(req.params.id), req.body);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+    res.json(post);
+  });
+
   app.post("/api/posts", isAuthenticated, isAdmin, async (req, res) => {
     const input = req.body;
     const post = await storage.createPost(input);
@@ -254,6 +260,26 @@ export async function registerRoutes(
       res.status(201).json(safeUser);
     } catch (err) {
       res.status(500).json({ message: "Erro ao criar usuário" });
+    }
+  });
+
+  app.post("/api/user/change-password", isAuthenticated, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const user = req.user as any;
+
+      const { comparePasswords } = await import("./auth");
+      const isValid = await comparePasswords(currentPassword, user.password);
+
+      if (!isValid) {
+        return res.status(400).json({ message: "Senha atual incorreta" });
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateUserPassword(user.id, hashedPassword);
+      res.sendStatus(200);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao alterar senha" });
     }
   });
 
