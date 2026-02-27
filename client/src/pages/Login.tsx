@@ -230,7 +230,15 @@ export default function Login() {
             </Button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-200">
+          <div className="mt-8 pt-6 border-t border-slate-200 space-y-3">
+            <Link href="/register">
+              <Button
+                variant="ghost"
+                className="w-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold rounded-xl gap-2 h-11"
+              >
+                Ainda não tem conta? Cadastre-se
+              </Button>
+            </Link>
             <Link href="/">
               <Button
                 variant="ghost"

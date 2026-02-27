@@ -210,6 +210,42 @@ export async function registerRoutes(
     res.json(safeUser);
   });
 
+  // Admin: Create user
+  app.post("/api/admin/users", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { username, password, name, role } = req.body;
+      if (!username || !password || !name) {
+        return res.status(400).json({ message: "username, password e name são obrigatórios" });
+      }
+      const existing = await storage.getUserByUsername(username);
+      if (existing) {
+        return res.status(400).json({ message: "Nome de usuário já existe" });
+      }
+      const hashedPassword = await hashPassword(password);
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        name,
+        role: role || "employee",
+      });
+      const { password: _, ...safeUser } = user;
+      res.status(201).json(safeUser);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao criar usuário" });
+    }
+  });
+
+  // Admin: Delete user
+  app.delete("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const currentUser = req.user as any;
+    if (currentUser.id === id) {
+      return res.status(400).json({ message: "Você não pode deletar sua própria conta" });
+    }
+    await storage.deleteUser(id);
+    res.sendStatus(204);
+  });
+
   // Tasks
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
     const user = req.user as any;

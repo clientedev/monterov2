@@ -65,6 +65,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
+  deleteUser(id: number): Promise<void>;
 
   // Contacts
   getContacts(): Promise<Contact[]>;
@@ -185,6 +186,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 
   // Contacts
@@ -492,6 +497,10 @@ export class MemStorage implements IStorage {
       user.role = role as "admin" | "employee";
     }
     return user;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    this.users = this.users.filter((u) => u.id !== id);
   }
 
   // Contacts

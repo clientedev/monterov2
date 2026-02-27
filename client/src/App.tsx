@@ -9,6 +9,7 @@ import { ThemeInjector } from "@/components/ThemeInjector";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 import About from "@/pages/About";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/PostDetail";
@@ -60,6 +61,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
       <Route path="/about" component={About} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
