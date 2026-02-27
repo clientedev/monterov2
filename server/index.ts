@@ -61,6 +61,13 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  log("running migrations...");
+  const { migrate } = await import("drizzle-orm/node-postgres/migrator");
+  const { db } = await import("./db");
+  const path = await import("path");
+  await migrate(db, { migrationsFolder: path.resolve(__dirname, "migrations") });
+  log("migrations completed");
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

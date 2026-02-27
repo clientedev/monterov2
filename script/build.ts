@@ -28,6 +28,10 @@ async function buildAll() {
   await viteBuild();
 
   console.log("building server...");
+  const { mkdir, cp } = await import("fs/promises");
+  await mkdir("dist/migrations", { recursive: true });
+  await cp("migrations", "dist/migrations", { recursive: true });
+
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));
   const allDeps = [
     ...Object.keys(pkg.dependencies || {}),
