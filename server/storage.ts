@@ -38,9 +38,12 @@ import {
   type InsertHeroSlide,
   prospectingChecklists,
   type ProspectingChecklist,
-  type InsertProspectingChecklist
+  type InsertProspectingChecklist,
+  comments,
+  type Comment,
+  type InsertComment
 } from "@shared/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { sql, and, desc, eq } from "drizzle-orm";
 
 export interface IStorage {
   // Posts
@@ -49,6 +52,13 @@ export interface IStorage {
   createPost(post: InsertPost): Promise<Post>;
   updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined>;
   deletePost(id: number): Promise<void>;
+  likePost(id: number): Promise<Post | undefined>;
+
+  // Comments
+  createComment(comment: InsertComment): Promise<Comment>;
+  getComments(postId?: number, approvedOnly?: boolean): Promise<Comment[]>;
+  approveComment(id: number): Promise<Comment | undefined>;
+  deleteComment(id: number): Promise<void>;
 
   // Services
   getServices(): Promise<Service[]>;
@@ -149,6 +159,48 @@ export class DatabaseStorage implements IStorage {
 
   async deletePost(id: number): Promise<void> {
     await db.delete(posts).where(eq(posts.id, id));
+  }
+
+  async likePost(id: number): Promise<Post | undefined> {
+    const [updated] = await db
+      .update(posts)
+      .set({ likes: sql`${posts.likes} + 1` })
+      .where(eq(posts.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Comments
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [newComment] = await db.insert(comments).values(comment).returning();
+    return newComment;
+  }
+
+  async getComments(postId?: number, approvedOnly = true): Promise<Comment[]> {
+    let query = db.select().from(comments);
+
+    const conditions = [];
+    if (postId) conditions.push(eq(comments.postId, postId));
+    if (approvedOnly) conditions.push(eq(comments.isApproved, true));
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    return await query.orderBy(desc(comments.createdAt));
+  }
+
+  async approveComment(id: number): Promise<Comment | undefined> {
+    const [updated] = await db
+      .update(comments)
+      .set({ isApproved: true })
+      .where(eq(comments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteComment(id: number): Promise<void> {
+    await db.delete(comments).where(eq(comments.id, id));
   }
 
   // Services
@@ -426,6 +478,7 @@ export class MemStorage implements IStorage {
   private interactions: Interaction[] = [];
   private campaigns: Campaign[] = [];
   private tasks: Task[] = [];
+  private comments: Comment[] = [];
 
   sessionStore: session.Store;
 
@@ -442,6 +495,7 @@ export class MemStorage implements IStorage {
     siteSettings: 1,
     heroSlides: 1,
     prospectingChecklists: 1,
+    comments: 1,
   };
 
   private siteSettingsData: SiteSettings | null = null;
@@ -467,7 +521,13 @@ export class MemStorage implements IStorage {
 
   async createPost(post: InsertPost): Promise<Post> {
     const id = this.currentId.posts++;
-    const newPost: Post = { ...post, id, publishedAt: new Date(), createdAt: new Date() };
+    const newPost: Post = {
+      ...post,
+      id,
+      likes: 0,
+      publishedAt: new Date(),
+      createdAt: new Date()
+    };
     this.posts.push(newPost);
     return newPost;
   }
@@ -481,6 +541,46 @@ export class MemStorage implements IStorage {
 
   async deletePost(id: number): Promise<void> {
     this.posts = this.posts.filter((p) => p.id !== id);
+  }
+
+  async likePost(id: number): Promise<Post | undefined> {
+    const post = this.posts.find(p => p.id === id);
+    if (post) {
+      post.likes += 1;
+    }
+    return post;
+  }
+
+  // Comments
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const id = this.currentId.comments++;
+    const newComment: Comment = {
+      ...comment,
+      id,
+      isApproved: false,
+      createdAt: new Date()
+    };
+    this.comments.push(newComment);
+    return newComment;
+  }
+
+  async getComments(postId?: number, approvedOnly = true): Promise<Comment[]> {
+    let results = this.comments;
+    if (postId) results = results.filter(c => c.postId === postId);
+    if (approvedOnly) results = results.filter(c => c.isApproved);
+    return results.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
+  async approveComment(id: number): Promise<Comment | undefined> {
+    const comment = this.comments.find(c => c.id === id);
+    if (comment) {
+      comment.isApproved = true;
+    }
+    return comment;
+  }
+
+  async deleteComment(id: number): Promise<void> {
+    this.comments = this.comments.filter(c => c.id !== id);
   }
 
   // Services

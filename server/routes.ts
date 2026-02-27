@@ -3,7 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { setupAuth, hashPassword } from "./auth";
+import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import {
   insertContactSchema,
   insertLeadSchema,
@@ -11,7 +11,8 @@ import {
   insertCampaignSchema,
   insertTaskSchema,
   insertSiteSettingsSchema,
-  insertHeroSlideSchema
+  insertHeroSlideSchema,
+  insertCommentSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -64,6 +65,51 @@ export async function registerRoutes(
     const input = req.body;
     const post = await storage.createPost(input);
     res.status(201).json(post);
+  });
+
+  app.post("/api/posts/:id/like", async (req, res) => {
+    const post = await storage.likePost(parseInt(req.params.id));
+    if (!post) return res.status(404).json({ message: "Post not found" });
+    res.json(post);
+  });
+
+  // Comments (Public)
+  app.post("/api/posts/:postId/comments", async (req, res) => {
+    try {
+      const input = insertCommentSchema.parse({
+        ...req.body,
+        postId: parseInt(req.params.postId)
+      });
+      const comment = await storage.createComment(input);
+      res.status(201).json(comment);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors });
+      }
+      throw err;
+    }
+  });
+
+  app.get("/api/posts/:postId/comments", async (req, res) => {
+    const comments = await storage.getComments(parseInt(req.params.postId), true);
+    res.json(comments);
+  });
+
+  // Comments (Admin Moderation)
+  app.get("/api/admin/comments", isAuthenticated, isAdmin, async (req, res) => {
+    const comments = await storage.getComments(undefined, false);
+    res.json(comments);
+  });
+
+  app.patch("/api/admin/comments/:id/approve", isAuthenticated, isAdmin, async (req, res) => {
+    const comment = await storage.approveComment(parseInt(req.params.id));
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+    res.json(comment);
+  });
+
+  app.delete("/api/admin/comments/:id", isAuthenticated, isAdmin, async (req, res) => {
+    await storage.deleteComment(parseInt(req.params.id));
+    res.sendStatus(204);
   });
 
   // Services

@@ -10,7 +10,18 @@ export const posts = pgTable("posts", {
   content: text("content").notNull(),
   summary: text("summary").notNull(),
   coverImage: text("cover_image").notNull(),
+  likes: integer("likes").default(0).notNull(),
   publishedAt: timestamp("published_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Blog Comments
+export const comments = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").references(() => posts.id).notNull(),
+  authorName: text("author_name").notNull(),
+  content: text("content").notNull(),
+  isApproved: boolean("is_approved").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -194,6 +205,7 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, creat
 export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({ id: true, updatedAt: true });
 export const insertHeroSlideSchema = createInsertSchema(heroSlides).omit({ id: true, createdAt: true });
 export const insertProspectingChecklistSchema = createInsertSchema(prospectingChecklists).omit({ id: true, createdAt: true });
+export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, isApproved: true });
 
 // Types
 export type Post = typeof posts.$inferSelect;
@@ -222,3 +234,5 @@ export type HeroSlide = typeof heroSlides.$inferSelect;
 export type InsertHeroSlide = z.infer<typeof insertHeroSlideSchema>;
 export type ProspectingChecklist = typeof prospectingChecklists.$inferSelect;
 export type InsertProspectingChecklist = z.infer<typeof insertProspectingChecklistSchema>;
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
