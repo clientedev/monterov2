@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { ThemeInjector } from "@/components/ThemeInjector";
+import { ChatBubble } from "@/components/ChatBubble";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
@@ -95,6 +96,7 @@ function App() {
         <TooltipProvider>
           <ThemeInjector />
           <Router />
+          <ChatBubble />
           <Toaster />
         </TooltipProvider>
       </AuthProvider>

@@ -2,6 +2,7 @@
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
+import Groq from "groq-sdk";
 import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import {
@@ -20,6 +21,51 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+
+  // AI Chat Route
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { messages } = req.body;
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ message: "Invalid messages format" });
+      }
+
+      // Initialize Groq only if key exists
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ message: "GROQ_API_KEY não configurada no ambiente." });
+      }
+
+      const groq = new Groq({ apiKey });
+
+      const stream = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "Você é a Carol, especialista da Monteiro Corretora (focada em planos de saúde e seguros de vida corporativos e familiares). Seja extremamente profissional, educada, amigável e MUITO concisa. Resolva dúvidas rapidamente."
+          },
+          ...messages
+        ],
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.5,
+        max_tokens: 512,
+        stream: true,
+      });
+
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Transfer-Encoding', 'chunked');
+
+      for await (const chunk of stream) {
+        const text = chunk.choices[0]?.delta?.content || "";
+        if (text) res.write(text);
+      }
+
+      res.end();
+    } catch (error: any) {
+      console.error("Groq Chat Error:", error);
+      res.status(500).json({ message: error.message || "Internal server error connecting to AI" });
+    }
+  });
 
   // Middleware to check authentication
   const isAuthenticated = (req: any, res: any, next: any) => {

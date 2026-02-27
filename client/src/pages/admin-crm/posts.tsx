@@ -4,6 +4,7 @@ import { Post, InsertPost, insertPostSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
     Table,
@@ -190,13 +191,7 @@ export default function PostsPage() {
 function PostForm({ initialData, onSubmit, isSubmitting }: any) {
     const form = useForm<InsertPost>({
         resolver: zodResolver(insertPostSchema),
-        defaultValues: initialData ? {
-            title: initialData.title,
-            slug: initialData.slug,
-            content: initialData.content,
-            summary: initialData.summary,
-            coverImage: initialData.coverImage,
-        } : {
+        defaultValues: initialData || {
             title: "",
             slug: "",
             content: "",
@@ -204,6 +199,21 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
             coverImage: "",
         },
     });
+
+    useEffect(() => {
+        if (initialData) {
+            form.reset(initialData);
+        } else {
+            form.reset({
+                title: "",
+                slug: "",
+                content: "",
+                summary: "",
+                coverImage: "",
+            });
+        }
+    }, [initialData, form]);
+
 
     return (
         <Form {...form}>
