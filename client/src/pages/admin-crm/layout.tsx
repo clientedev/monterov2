@@ -13,13 +13,18 @@ import {
     Target,
     CheckSquare,
     Users2,
-    Settings
+    Settings,
+    PhoneCall,
+    Search
 } from "lucide-react";
+import { useSiteSettings } from "@/hooks/use-site-settings";
+import logo from "@assets/image_1770228718109.png";
 import { Separator } from "@/components/ui/separator";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, logoutMutation } = useAuth();
     const [location] = useLocation();
+    const { settings } = useSiteSettings();
 
     if (!user) return null;
 
@@ -53,15 +58,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="p-8 pb-10">
                     <Link href="/admin">
                         <div className="flex items-center gap-3 cursor-pointer group">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:rotate-6 transition-transform">
-                                <span className="text-primary font-black text-xl italic leading-none">M</span>
+                            <div className="relative overflow-hidden rounded-lg group-hover:rotate-3 transition-transform duration-300">
+                                {settings?.logoBase64 ? (
+                                    <img
+                                        src={settings.logoBase64}
+                                        alt={settings.siteName}
+                                        className="h-10 w-auto object-contain"
+                                    />
+                                ) : (
+                                    <img
+                                        src={logo}
+                                        alt="Monteiro Corretora"
+                                        className="h-10 w-auto object-contain"
+                                    />
+                                )}
                             </div>
-                            <div className="flex flex-col">
-                                <h1 className="text-xl font-display font-bold text-white tracking-tight">
-                                    Monteiro<span className="text-amber-400">.</span>
-                                </h1>
-                                <span className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-bold leading-none mt-1">
-                                    Corretora Premium
+                            <div className="flex flex-col font-display leading-tight">
+                                <span className="text-lg font-bold tracking-tight text-white">
+                                    {settings?.siteName?.split(' ')[0] || "Monteiro"}
+                                </span>
+                                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] leading-none mt-1">
+                                    {settings?.siteName?.split(' ').slice(1).join(' ') || "Corretora Premium"}
                                 </span>
                             </div>
                         </div>
@@ -79,16 +96,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <NavLink href="/admin/contacts" icon={Users} label="Base de Contatos" />
                             <NavLink href="/admin/leads" icon={UserPlus} label="Leads & Pipeline" />
                             <NavLink href="/admin/interactions" icon={Megaphone} label="Régua de Contato" />
-                        </nav>
-                    </div>
-
-                    {/* Site & Content Section */}
-                    <div className="animate-in fade-in slide-in-from-left-4 duration-700">
-                        <p className="text-[11px] uppercase text-slate-500 font-bold mb-4 px-2 tracking-[0.15em]">Conteúdo Presencial</p>
-                        <nav className="space-y-1">
-                            <NavLink href="/admin/posts" icon={FileText} label="Blog Central" />
-                            <NavLink href="/admin/services" icon={Briefcase} label="Portfólio de Serviços" />
-                            {isAdmin && <NavLink href="/admin/site-config" icon={Settings} label="Configurações Web" />}
+                            <NavLink href="/admin/prospecting" icon={PhoneCall} label="Prospecção" />
+                            <NavLink href="/admin/company-search" icon={Search} label="Busca de Empresas" />
                         </nav>
                     </div>
 
@@ -98,6 +107,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <nav className="space-y-1">
                             <NavLink href="/admin/tasks" icon={CheckSquare} label="Fluxo de Trabalho" />
                             {isAdmin && <NavLink href="/admin/users" icon={Users2} label="Controle de Acesso" />}
+                        </nav>
+                    </div>
+
+                    {/* Site & Content Section */}
+                    <div className="animate-in fade-in slide-in-from-left-4 duration-700">
+                        <p className="text-[11px] uppercase text-slate-500 font-bold mb-4 px-2 tracking-[0.15em]">Conteúdo Presencial</p>
+                        <nav className="space-y-1">
+                            <NavLink href="/admin/posts" icon={FileText} label="Blog Central" />
+                            <NavLink href="/admin/services" icon={Briefcase} label="Portfólio de Serviços" />
+                        </nav>
+                    </div>
+
+                    {/* Bottom Settings Section */}
+                    <div className="animate-in fade-in slide-in-from-left-4 duration-1000 mt-auto pt-6">
+                        <p className="text-[11px] uppercase text-slate-500 font-bold mb-4 px-2 tracking-[0.15em]">Sistema</p>
+                        <nav className="space-y-1">
+                            {isAdmin && <NavLink href="/admin/site-config" icon={Settings} label="Configurações Web" />}
                         </nav>
                     </div>
                 </div>

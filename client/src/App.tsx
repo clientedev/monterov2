@@ -28,6 +28,8 @@ import TasksPage from "@/pages/admin-crm/tasks";
 import AdminDashboard from "@/pages/admin-crm/dashboard";
 import AdminLayout from "@/pages/admin-crm/layout";
 import SiteConfigPage from "@/pages/admin-crm/site-config";
+import ProspectingPage from "@/pages/admin-crm/prospecting";
+import CompanySearchPage from "@/pages/admin-crm/company-search";
 
 function ProtectedAdminRoute({ path, component: Component }: { path: string; component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
@@ -76,6 +78,8 @@ function Router() {
       <ProtectedAdminRoute path="/admin/users" component={UsersPage} />
       <ProtectedAdminRoute path="/admin/tasks" component={TasksPage} />
       <ProtectedAdminRoute path="/admin/site-config" component={SiteConfigPage} />
+      <ProtectedAdminRoute path="/admin/prospecting" component={ProspectingPage} />
+      <ProtectedAdminRoute path="/admin/company-search" component={CompanySearchPage} />
 
       <Route component={NotFound} />
     </Switch>

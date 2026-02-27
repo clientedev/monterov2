@@ -168,6 +168,18 @@ export const tasks = pgTable("tasks", {
 });
 
 
+// Prospecting Checklists
+export const prospectingChecklists = pgTable("prospecting_checklists", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contact_id").references(() => contacts.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  callOutcome: text("call_outcome").notNull(), // connected, busy, no_answer, wrong_number
+  interestLevel: text("interest_level").notNull(), // high, medium, low, none
+  notes: text("notes"),
+  checklistData: text("checklist_data"), // JSON string for flexible checklist items
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schemas
 export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true });
 export const insertInquirySchema = createInsertSchema(inquiries).omit({ id: true, createdAt: true });
@@ -181,6 +193,7 @@ export const insertMarketingStatsSchema = createInsertSchema(marketingStats).omi
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true });
 export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({ id: true, updatedAt: true });
 export const insertHeroSlideSchema = createInsertSchema(heroSlides).omit({ id: true, createdAt: true });
+export const insertProspectingChecklistSchema = createInsertSchema(prospectingChecklists).omit({ id: true, createdAt: true });
 
 // Types
 export type Post = typeof posts.$inferSelect;
@@ -207,3 +220,5 @@ export type SiteSettings = typeof siteSettings.$inferSelect;
 export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;
 export type HeroSlide = typeof heroSlides.$inferSelect;
 export type InsertHeroSlide = z.infer<typeof insertHeroSlideSchema>;
+export type ProspectingChecklist = typeof prospectingChecklists.$inferSelect;
+export type InsertProspectingChecklist = z.infer<typeof insertProspectingChecklistSchema>;

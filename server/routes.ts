@@ -1,4 +1,4 @@
-import type { Express } from "express";
+﻿import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
@@ -263,7 +263,7 @@ export async function registerRoutes(
     const cnpj = req.params.cnpj.replace(/\D/g, "");
 
     if (cnpj.length !== 14) {
-      return res.status(400).json({ message: `CNPJ inválido: esperado 14 dígitos, recebido ${cnpj.length}` });
+      return res.status(400).json({ message: `CNPJ invÃ¡lido: esperado 14 dÃ­gitos, recebido ${cnpj.length}` });
     }
 
     const fetchWithTimeout = async (url: string, timeoutMs = 8000) => {
@@ -297,7 +297,7 @@ export async function registerRoutes(
       const brasilRes = await fetchWithTimeout(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
       if (brasilRes.ok) {
         const data = await brasilRes.json();
-        console.log(`[CNPJ] ✅ BrasilAPI respondeu com sucesso`);
+        console.log(`[CNPJ] âœ… BrasilAPI respondeu com sucesso`);
         return res.json({
           name: data.razao_social || data.nome_fantasia,
           email: data.email || null,
@@ -317,7 +317,7 @@ export async function registerRoutes(
       if (receitaRes.ok) {
         const data = await receitaRes.json();
         if (data.status !== "ERROR") {
-          console.log(`[CNPJ] ✅ ReceitaWS respondeu com sucesso`);
+          console.log(`[CNPJ] âœ… ReceitaWS respondeu com sucesso`);
           return res.json({
             name: data.nome || data.fantasia,
             email: data.email || null,
@@ -337,7 +337,7 @@ export async function registerRoutes(
       const publicaRes = await fetchWithTimeout(`https://publica.cnpj.ws/cnpj/${cnpj}`);
       if (publicaRes.ok) {
         const data = await publicaRes.json();
-        console.log(`[CNPJ] ✅ publica.cnpj.ws respondeu com sucesso`);
+        console.log(`[CNPJ] âœ… publica.cnpj.ws respondeu com sucesso`);
         const est = data.estabelecimento || {};
         return res.json({
           name: data.razao_social || est.nome_fantasia,
@@ -357,7 +357,7 @@ export async function registerRoutes(
       const openRes = await fetchWithTimeout(`https://open.cnpja.com/office/${cnpj}`);
       if (openRes.ok) {
         const data = await openRes.json();
-        console.log(`[CNPJ] ✅ open.cnpja.com respondeu com sucesso`);
+        console.log(`[CNPJ] âœ… open.cnpja.com respondeu com sucesso`);
         const addr = data.address || {};
         return res.json({
           name: data.company?.name || data.alias,
@@ -371,8 +371,8 @@ export async function registerRoutes(
       console.log(`[CNPJ] open.cnpja.com falhou: ${e.message}`);
     }
 
-    console.log(`[CNPJ] ❌ Todas as APIs falharam para ${cnpj}`);
-    res.status(404).json({ message: "Nenhuma das APIs conseguiu encontrar dados para este CNPJ. Verifique o número e tente novamente." });
+    console.log(`[CNPJ] âŒ Todas as APIs falharam para ${cnpj}`);
+    res.status(404).json({ message: "Nenhuma das APIs conseguiu encontrar dados para este CNPJ. Verifique o nÃºmero e tente novamente." });
   });
 
   app.patch("/api/site-settings", isAuthenticated, isAdmin, async (req, res) => {
@@ -423,6 +423,292 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  // Prospecting Checklists
+  app.get("/api/prospecting", isAuthenticated, async (req, res) => {
+    const contactId = req.query.contactId ? parseInt(req.query.contactId as string) : undefined;
+    const results = await storage.getProspectingChecklists(contactId);
+    res.json(results);
+  });
+
+  app.post("/api/prospecting", isAuthenticated, async (req, res) => {
+    try {
+      const input = req.body;
+      const userId = (req.user as any).id;
+
+      const result = await storage.createProspectingChecklist({
+        ...input,
+        userId,
+      });
+
+      // Automatically create an interaction of type 'call' to show in history
+      const outcomeLabel = {
+        'connected': 'Conectado',
+        'no_answer': 'Sem Atendimento',
+        'busy': 'Ocupado',
+        'wrong_number': 'NÃºmero Errado'
+      }[input.callOutcome as string] || input.callOutcome;
+
+      await storage.createInteraction({
+        contactId: input.contactId,
+        userId: userId,
+        type: "call",
+        description: `ProspecÃ§Ã£o Realizada - Resultado: ${outcomeLabel}. Notas: ${input.notes || "Sem observaÃ§Ãµes."}`,
+        date: new Date(),
+      });
+
+      res.status(201).json(result);
+    } catch (err) {
+      console.error("[Prospecting] Error saving:", err);
+      res.status(500).json({ message: "Failed to save prospecting result" });
+    }
+  });
+
+  // Company Search Proxy (Filtered by region and CNAE)
+  app.get("/api/proxy/companies/search", isAuthenticated, async (req, res) => {
+    const { state, city, cnae, q, neighborhood } = req.query;
+
+    if (!state && !q) {
+      return res.status(400).json({ message: "Informe pelo menos o Estado." });
+    }
+
+    const uf = (state as string || "").toUpperCase();
+    const municipio = (city as string || "").toUpperCase();
+    const bairroFiltro = (neighborhood as string || "").toUpperCase();
+    const keyword = (q as string || "").toLowerCase().trim();
+    const targetCity = municipio || "SÃƒO PAULO";
+    const targetUf = uf || "SP";
+
+    // -----------------------------------------------------------------------
+    // Keyword â†’ CNAE mapping + niche label
+    // -----------------------------------------------------------------------
+    const NICHE_MAP: Array<{ terms: string[]; cnae: string; label: string; cnaeDesc: string }> = [
+      { terms: ["restaurante", "lanchonete", "comida", "alimentaÃ§Ã£o", "refeiÃ§Ã£o", "bar", "boteco", "pizzaria", "hamburgueria", "self service", "cafeteria", "padaria", "confeitaria", "doce", "bolo"], cnae: "5611201", label: "AlimentaÃ§Ã£o", cnaeDesc: "Restaurantes e similares" },
+      { terms: ["academia", "fitness", "musculaÃ§Ã£o", "ginÃ¡stica", "pilates", "crossfit", "nataÃ§Ã£o", "esporte"], cnae: "9313100", label: "Academia/Fitness", cnaeDesc: "Atividades de condicionamento fÃ­sico" },
+      { terms: ["mÃ©dico", "clÃ­nica", "hospital", "consultÃ³rio", "saÃºde", "dentista", "odonto", "pediatra", "cardiologista", "ortopedista", "dermatologista"], cnae: "8610101", label: "SaÃºde", cnaeDesc: "Atividades de atendimento hospitalar, exceto pronto-socorro" },
+      { terms: ["advocacia", "advogado", "escritÃ³rio", "jurÃ­dico", "direito", "advocacia"], cnae: "6911701", label: "Advocacia", cnaeDesc: "ServiÃ§os advocatÃ­cios" },
+      { terms: ["contabilidade", "contador", "contÃ¡bil", "fiscal", "tributÃ¡rio", "imposto", "declaraÃ§Ã£o"], cnae: "6920601", label: "Contabilidade", cnaeDesc: "Atividades de contabilidade" },
+      { terms: ["seguro", "corretora", "apÃ³lice", "previdÃªncia", "seguradora", "vida", "residencial"], cnae: "6512000", label: "Seguros", cnaeDesc: "Seguros de vida" },
+      { terms: ["farmÃ¡cia", "drogaria", "medicamento", "remÃ©dio", "genÃ©rico"], cnae: "4771701", label: "FarmÃ¡cia", cnaeDesc: "ComÃ©rcio varejista de produtos farmacÃªuticos" },
+      { terms: ["auto", "automÃ³vel", "veÃ­culo", "carro", "moto", "oficina", "mecÃ¢nica", "funilaria", "pintura", "borracharia", "lava jato", "estÃ©tica automotiva"], cnae: "4520001", label: "Automotivo", cnaeDesc: "ServiÃ§os de manutenÃ§Ã£o e reparaÃ§Ã£o de automÃ³veis" },
+      { terms: ["imobiliÃ¡ria", "imÃ³vel", "imÃ³veis", "corretora de imÃ³veis", "aluguel", "locaÃ§Ã£o", "venda de imÃ³veis"], cnae: "6821801", label: "ImÃ³veis", cnaeDesc: "Corretagem na compra e venda de imÃ³veis" },
+      { terms: ["supermercado", "mercado", "mercearia", "hortifruti", "verdura", "frutas"], cnae: "4711301", label: "Supermercado", cnaeDesc: "ComÃ©rcio varejista de mercadorias em geral" },
+      { terms: ["roupa", "moda", "vestuÃ¡rio", "calÃ§ado", "tÃªnis", "boutique", "loja", "confecÃ§Ã£o", "roupas", "moda feminina", "moda masculina"], cnae: "4781400", label: "VestuÃ¡rio", cnaeDesc: "ComÃ©rcio varejista de artigos do vestuÃ¡rio e acessÃ³rios" },
+      { terms: ["escola", "ensino", "educaÃ§Ã£o", "curso", "colÃ©gio", "faculdade", "universidade", "prÃ©-escola", "creche"], cnae: "8531700", label: "EducaÃ§Ã£o", cnaeDesc: "EducaÃ§Ã£o superior - graduaÃ§Ã£o" },
+      { terms: ["salÃ£o", "beleza", "cabeleireiro", "manicure", "pedicure", "estÃ©tica", "spa", "nail", "hair"], cnae: "9602501", label: "Beleza", cnaeDesc: "Cabeleireiros, manicure e pedicure" },
+      { terms: ["hotel", "pousada", "hospedagem", "resort", "hostel", "motel"], cnae: "5510801", label: "Hotelaria", cnaeDesc: "HotÃ©is e similares" },
+      { terms: ["tecnologia", "software", "ti", "informÃ¡tica", "sistema", "desenvolvimento", "app", "aplicativo", "startup"], cnae: "6201500", label: "Tecnologia", cnaeDesc: "Desenvolvimento de programas de computador sob encomenda" },
+      { terms: ["marketing", "publicidade", "propaganda", "agÃªncia", "comunicaÃ§Ã£o", "mÃ­dia", "design", "criativo"], cnae: "7311400", label: "Marketing", cnaeDesc: "AgÃªncias de publicidade" },
+      { terms: ["construÃ§Ã£o", "construtora", "obras", "engenharia", "reforma", "civil", "edificaÃ§Ã£o"], cnae: "4120400", label: "ConstruÃ§Ã£o", cnaeDesc: "ConstruÃ§Ã£o de edifÃ­cios" },
+      { terms: ["logÃ­stica", "transporte", "frete", "entrega", "courier", "mudanÃ§a", "armazenagem", "distribuiÃ§Ã£o"], cnae: "4930201", label: "Transporte", cnaeDesc: "Transporte rodoviÃ¡rio de carga" },
+      { terms: ["petshop", "veterinÃ¡rio", "animal", "bicho", "pet", "banho e tosa"], cnae: "7500100", label: "Pet Shop", cnaeDesc: "Atividades veterinÃ¡rias" },
+      { terms: ["banco", "financeiro", "crÃ©dito", "emprÃ©stimo", "financeira", "cÃ¢mbio", "investimento"], cnae: "6422100", label: "Financeiro", cnaeDesc: "Bancos mÃºltiplos, com carteira comercial" },
+      { terms: ["consultoria", "gestÃ£o", "rh", "recursos humanos", "estratÃ©gia", "negÃ³cios"], cnae: "7020400", label: "Consultoria", cnaeDesc: "Atividades de consultoria em gestÃ£o empresarial" },
+      { terms: ["grÃ¡fica", "impressÃ£o", "papel", "grÃ¡fico", "tipografia", "plotagem"], cnae: "1811301", label: "GrÃ¡fica", cnaeDesc: "ImpressÃ£o de jornais, livros, revistas e outras publicaÃ§Ãµes" },
+      { terms: ["eletrica", "elÃ©trico", "instalaÃ§Ã£o", "painel", "energia", "solar", "fotovoltaico"], cnae: "4321500", label: "ElÃ©trica", cnaeDesc: "InstalaÃ§Ã£o e manutenÃ§Ã£o elÃ©trica" },
+      { terms: ["seguranÃ§a", "vigilÃ¢ncia", "monitoramento", "alarme", "cÃ¢mera", "cftv", "portaria"], cnae: "8011101", label: "SeguranÃ§a", cnaeDesc: "Atividades de vigilÃ¢ncia e seguranÃ§a privada" },
+      { terms: ["limpeza", "higienizaÃ§Ã£o", "lavanderia", "dedetizaÃ§Ã£o", "conservaÃ§Ã£o", "faxina"], cnae: "8121400", label: "Limpeza", cnaeDesc: "Limpeza em prÃ©dios e em domicÃ­lios" },
+      { terms: ["mÃ³veis", "decoraÃ§Ã£o", "interiores", "arquitetura", "design de interiores", "home"], cnae: "4754701", label: "MÃ³veis/DecoraÃ§Ã£o", cnaeDesc: "ComÃ©rcio varejista de mÃ³veis" },
+      { terms: ["eventos", "cerimonial", "casamento", "festa", "buffet", "dj", "fotografia", "video"], cnae: "8230001", label: "Eventos", cnaeDesc: "ServiÃ§os de organizaÃ§Ã£o de feiras, congressos, exposiÃ§Ãµes e festas" },
+      { terms: ["farmÃ¡cias de manipulaÃ§Ã£o", "manipulaÃ§Ã£o", "homeopatia", "fitoterÃ¡pico"], cnae: "4771702", label: "FarmÃ¡cia ManipulaÃ§Ã£o", cnaeDesc: "ComÃ©rcio varejista de produtos farmacÃªuticos, com manipulaÃ§Ã£o" },
+    ];
+
+    // Detect niche from keyword
+    let detectedNiche = NICHE_MAP.find(n =>
+      n.terms.some(term => keyword.includes(term) || term.includes(keyword))
+    );
+
+    // Explicit CNAE override
+    const cnaeCode = cnae
+      ? (cnae as string).replace(/\D/g, "")
+      : detectedNiche?.cnae || "";
+
+    console.log(`[CompanySearch] UF=${uf} | Cidade=${municipio} | Bairro=${bairroFiltro} | CNAE=${cnaeCode} | Nicho=${detectedNiche?.label || "geral"} | Keyword="${keyword}"`);
+
+    let results: any[] = [];
+    let apiSuccess = false;
+
+    // -----------------------------------------------------------------------
+    // Strategy: publica.cnpj.ws â€” search by UF + municipio + CNAE
+    // -----------------------------------------------------------------------
+    if (cnaeCode || municipio) {
+      try {
+        const params = new URLSearchParams();
+        if (uf) params.set("uf", uf);
+        if (municipio) params.set("municipio", municipio);
+        if (cnaeCode) params.set("cnae", cnaeCode);
+        if (bairroFiltro) params.set("q", (neighborhood as string).toUpperCase());
+
+        const url = `https://publica.cnpj.ws/cnpjs?${params.toString()}`;
+        const apiRes = await fetch(url, {
+          headers: { "Accept": "application/json", "User-Agent": "MonteiroSeguros/1.0" },
+          signal: AbortSignal.timeout(7000),
+        });
+
+        if (apiRes.ok) {
+          const data = await apiRes.json();
+          const raw = Array.isArray(data) ? data : (data.data || data.companies || []);
+
+          results = raw.map((c: any) => ({
+            razao_social: c.razao_social || c.nome || "",
+            nome_fantasia: c.nome_fantasia || "",
+            cnpj: c.cnpj || "",
+            logradouro: c.logradouro || c.endereco?.logradouro || "",
+            numero: c.numero || c.endereco?.numero || "",
+            bairro: c.bairro || c.endereco?.bairro || "",
+            municipio: c.municipio || c.endereco?.municipio || targetCity,
+            uf: c.uf || c.endereco?.uf || targetUf,
+            cep: c.cep || c.endereco?.cep || "",
+            cnae_principal_descricao: c.cnae_fiscal_descricao || c.atividade_principal?.[0]?.text || detectedNiche?.cnaeDesc || "",
+            ddd_telefone_1: c.ddd_telefone_1 || c.telefone || "",
+            email: c.email || "",
+          }));
+
+          if (results.length > 0) {
+            apiSuccess = true;
+            console.log(`[CompanySearch] API retornou ${results.length} empresas reais`);
+          }
+        } else {
+          console.warn(`[CompanySearch] API HTTP ${apiRes.status}`);
+        }
+      } catch (e: any) {
+        console.warn(`[CompanySearch] API falhou: ${e.message}`);
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // OSM Overpass fallback â€” fetch REAL businesses from OpenStreetMap
+    // -----------------------------------------------------------------------
+    if (!apiSuccess) {
+      console.warn(`[CompanySearch] CNPJ API sem resultado. Buscando negÃ³cios reais no OSM para: ${bairroFiltro || municipio}`);
+
+      // Map niche keyword to OSM amenity/shop tags
+      const OSM_TAG_MAP: Record<string, string[]> = {
+        "AlimentaÃ§Ã£o": ["amenity=restaurant", "amenity=cafe", "amenity=fast_food", "amenity=food_court", "amenity=bar", "shop=bakery"],
+        "Academia/Fitness": ["leisure=fitness_centre", "leisure=sports_centre", "leisure=gym"],
+        "SaÃºde": ["amenity=clinic", "amenity=doctors", "amenity=hospital", "healthcare=yes"],
+        "Advocacia": ["office=lawyer"],
+        "Contabilidade": ["office=accountant", "office=financial"],
+        "Automotivo": ["shop=car_repair", "amenity=car_wash", "shop=tyres", "shop=car"],
+        "Beleza": ["shop=hairdresser", "shop=beauty", "amenity=beauty_salon"],
+        "Pet Shop": ["shop=pet", "amenity=veterinary"],
+        "ImÃ³veis": ["office=estate_agent"],
+        "Seguros": ["office=insurance"],
+        "Tecnologia": ["office=it", "office=software"],
+        "Marketing": ["office=advertising_agency", "office=marketing"],
+        "ConstruÃ§Ã£o": ["office=construction", "craft=construction"],
+        "LogÃ­stica": ["amenity=courier", "shop=shipping"],
+        "FarmÃ¡cia ManipulaÃ§Ã£o": ["amenity=pharmacy", "healthcare=pharmacy"],
+      };
+
+      const nicheLabel = detectedNiche?.label || "";
+      let osmTags = OSM_TAG_MAP[nicheLabel] || ["amenity=yes", "shop=yes", "office=yes"];
+
+      // Build Overpass QL query â€” search within the neighborhood polygon in the city
+      const locationQuery = bairroFiltro
+        ? `"${(neighborhood as string)}" "${municipio || ""}" Brazil`
+        : `"${municipio || "SÃ£o Paulo"}" Brazil`;
+
+      // Build tag union for Overpass
+      const tagUnion = osmTags
+        .map(tag => {
+          const [k, v] = tag.split("=");
+          return v === "yes"
+            ? `node["${k}"](area.searchArea);\nway["${k}"](area.searchArea);`
+            : `node["${k}"="${v}"](area.searchArea);\nway["${k}"="${v}"](area.searchArea);`;
+        })
+        .join("\n");
+
+      const overpassQuery = `
+[out:json][timeout:15];
+area[name="${bairroFiltro ? (neighborhood as string) : (municipio || "SÃ£o Paulo")}"]->.searchArea;
+(
+${tagUnion}
+);
+out center 50;
+`.trim();
+
+      try {
+        const overpassUrl = "https://overpass-api.de/api/interpreter";
+        console.log(`[CompanySearch] Overpass query para: ${bairroFiltro || municipio}`);
+
+        const osmRes = await fetch(overpassUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `data=${encodeURIComponent(overpassQuery)}`,
+          signal: AbortSignal.timeout(15000),
+        });
+
+        if (osmRes.ok) {
+          const osmData = await osmRes.json();
+          const elements: any[] = osmData.elements || [];
+          console.log(`[CompanySearch] OSM retornou ${elements.length} elementos`);
+
+          if (elements.length > 0) {
+            results = elements
+              .filter((el: any) => el.tags && el.tags.name)
+              .map((el: any, i: number) => {
+                const t = el.tags;
+                const lat = el.lat ?? el.center?.lat ?? -23.55;
+                const lng = el.lon ?? el.center?.lon ?? -46.63;
+                const street = [t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(", ");
+                const neighborhood_name = t["addr:suburb"] || t["addr:neighbourhood"] || (bairroFiltro ? (neighborhood as string) : "");
+                const city_name = t["addr:city"] || targetCity;
+                const phone = t.phone || t["contact:phone"] || "";
+                const website = t.website || t["contact:website"] || "";
+                return {
+                  razao_social: t.name || `Estabelecimento ${i + 1}`,
+                  nome_fantasia: t.name || "",
+                  cnpj: "** Consultar separadamente **",
+                  logradouro: street || t["addr:street"] || "",
+                  numero: t["addr:housenumber"] || "",
+                  bairro: neighborhood_name || (bairroFiltro ? (neighborhood as string) : ""),
+                  municipio: city_name,
+                  uf: targetUf,
+                  cep: t["addr:postcode"] || "",
+                  cnae_principal_descricao: t.amenity || t.shop || t.office || t.leisure || detectedNiche?.cnaeDesc || "Estabelecimento",
+                  ddd_telefone_1: phone,
+                  website,
+                  lat,
+                  lng,
+                };
+              });
+            apiSuccess = true;
+            console.log(`[CompanySearch] OSM: ${results.length} negÃ³cios reais encontrados`);
+          }
+        }
+      } catch (e: any) {
+        console.warn(`[CompanySearch] OSM Overpass falhou: ${e.message}`);
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Last resort: if both CNPJ API and OSM failed, return empty with a message
+    // -----------------------------------------------------------------------
+    if (!apiSuccess || results.length === 0) {
+      console.warn(`[CompanySearch] Nenhum dado real encontrado para: ${bairroFiltro || municipio}`);
+      // Return empty â€” the frontend will show "Nenhum resultado encontrado"
+      return res.json([]);
+    }
+
+    // -----------------------------------------------------------------------
+    // Post-processing filter: Ensure results match the city and bairro filters strictly
+    // -----------------------------------------------------------------------
+    if (bairroFiltro && results.length > 0) {
+      results = results.filter(c =>
+        (c.bairro || "").toUpperCase().trim().includes(bairroFiltro)
+      );
+    }
+
+    if (municipio && results.length > 0) {
+      results = results.filter(c =>
+        !c.municipio || (c.municipio || "").toUpperCase().trim().includes(municipio)
+      );
+    }
+
+    console.log(`[CompanySearch] Retornando ${results.length} empresas reais | nicho=${detectedNiche?.label || "geral"} | bairro=${bairroFiltro || "todos"}`);
+    return res.json(results);
+  });
+
 
   // Seed Data
   const servicesList = await storage.getServices();
@@ -449,6 +735,7 @@ export async function registerRoutes(
     });
   }
 
+
   const postsList = await storage.getPosts();
   if (postsList.length === 0) {
     await storage.createPost({
@@ -466,6 +753,7 @@ export async function registerRoutes(
       coverImage: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1000",
     });
   }
+
 
   // Seed Admin User
   const existingUser = await storage.getUserByUsername("admin");

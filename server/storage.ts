@@ -35,7 +35,10 @@ import {
   type SiteSettings,
   type InsertSiteSettings,
   type HeroSlide,
-  type InsertHeroSlide
+  type InsertHeroSlide,
+  prospectingChecklists,
+  type ProspectingChecklist,
+  type InsertProspectingChecklist
 } from "@shared/schema";
 import { eq, desc, and } from "drizzle-orm";
 
@@ -99,6 +102,10 @@ export interface IStorage {
   createHeroSlide(slide: InsertHeroSlide): Promise<HeroSlide>;
   updateHeroSlide(id: number, slide: Partial<InsertHeroSlide>): Promise<HeroSlide | undefined>;
   deleteHeroSlide(id: number): Promise<void>;
+
+  // Prospecting
+  getProspectingChecklists(contactId?: number): Promise<ProspectingChecklist[]>;
+  createProspectingChecklist(checklist: InsertProspectingChecklist): Promise<ProspectingChecklist>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -349,6 +356,20 @@ export class DatabaseStorage implements IStorage {
   async deleteHeroSlide(id: number): Promise<void> {
     await db.delete(heroSlides).where(eq(heroSlides.id, id));
   }
+
+  // Prospecting
+  async getProspectingChecklists(contactId?: number): Promise<ProspectingChecklist[]> {
+    let query = db.select().from(prospectingChecklists);
+    if (contactId) {
+      query = query.where(eq(prospectingChecklists.contactId, contactId)) as any;
+    }
+    return await query.orderBy(desc(prospectingChecklists.createdAt));
+  }
+
+  async createProspectingChecklist(checklist: InsertProspectingChecklist): Promise<ProspectingChecklist> {
+    const [newChecklist] = await db.insert(prospectingChecklists).values(checklist).returning();
+    return newChecklist;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -376,10 +397,12 @@ export class MemStorage implements IStorage {
     tasks: 1,
     siteSettings: 1,
     heroSlides: 1,
+    prospectingChecklists: 1,
   };
 
   private siteSettingsData: SiteSettings | null = null;
   private heroSlidesData: HeroSlide[] = [];
+  private prospectingChecklistsData: ProspectingChecklist[] = [];
 
   constructor() {
     this.sessionStore = new session.MemoryStore();
@@ -714,6 +737,28 @@ export class MemStorage implements IStorage {
 
   async deleteHeroSlide(id: number): Promise<void> {
     this.heroSlidesData = this.heroSlidesData.filter(s => s.id !== id);
+  }
+
+  // Prospecting
+  async getProspectingChecklists(contactId?: number): Promise<ProspectingChecklist[]> {
+    let filtered = [...this.prospectingChecklistsData];
+    if (contactId) {
+      filtered = filtered.filter(p => p.contactId === contactId);
+    }
+    return filtered.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
+  async createProspectingChecklist(checklist: InsertProspectingChecklist): Promise<ProspectingChecklist> {
+    const id = this.currentId.prospectingChecklists++;
+    const newChecklist: ProspectingChecklist = {
+      ...checklist,
+      id,
+      createdAt: new Date(),
+      notes: checklist.notes || null,
+      checklistData: checklist.checklistData || null
+    };
+    this.prospectingChecklistsData.push(newChecklist);
+    return newChecklist;
   }
 }
 

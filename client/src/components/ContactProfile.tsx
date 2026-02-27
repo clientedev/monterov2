@@ -176,7 +176,7 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                                     {interaction.date ? format(new Date(interaction.date), "dd 'de' MMM, yyyy 'às' HH:mm", { locale: ptBR }) : '-'}
                                                                 </time>
                                                             </div>
-                                                            <p className="text-sm text-gray-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                                            <p className="text-sm text-gray-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
                                                                 {interaction.description}
                                                             </p>
                                                         </div>
