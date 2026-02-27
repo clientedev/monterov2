@@ -84,15 +84,15 @@ export function ChatBubble() {
         return (
             <Button
                 onClick={() => { setIsOpen(true); setIsMinimized(false); }}
-                className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-transform hover:scale-105 z-50 p-0 overflow-hidden group"
+                className="fixed bottom-6 right-6 h-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300 z-50 flex items-center justify-center p-0 group overflow-hidden w-16 hover:w-64"
             >
-                <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
-                <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop"
-                    alt="Carol"
-                    className="w-full h-full object-cover group-hover:opacity-10 transition-opacity"
-                />
-                <MessageCircle className="absolute inset-0 m-auto h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-white/10 animate-pulse rounded-full" />
+                <div className="flex items-center justify-center w-full h-full relative z-10 px-4">
+                    <MessageCircle className="h-8 w-8 text-white shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="text-white font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 group-hover:max-w-[200px] group-hover:opacity-100 group-hover:ml-3">
+                        Converse com a Carol
+                    </span>
+                </div>
             </Button>
         );
     }
@@ -102,11 +102,9 @@ export function ChatBubble() {
             <CardHeader className="bg-primary text-primary-foreground py-3 px-4 flex flex-row items-center justify-between shrink-0 cursor-pointer" onClick={() => setIsMinimized(!isMinimized)}>
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        <img
-                            src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop"
-                            alt="Carol"
-                            className="w-10 h-10 rounded-full object-cover border-2 border-white/20"
-                        />
+                        <div className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center bg-white/10 shrink-0">
+                            <Bot className="h-6 w-6 text-white" />
+                        </div>
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-primary" />
                     </div>
                     <div>
