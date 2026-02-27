@@ -199,8 +199,8 @@ export default function CompanySearchPage() {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!stateName) {
-            toast({ title: "Campo Obrigatório", description: "Informe pelo menos o Estado.", variant: "destructive" });
+        if (!stateName || !cityName) {
+            toast({ title: "Campo Obrigatório", description: "Informe o Estado e a Cidade para melhores resultados.", variant: "destructive" });
             return;
         }
         const url = `/api/proxy/companies/search?state=${encodeURIComponent(stateName)}&city=${encodeURIComponent(cityName)}&neighborhood=${encodeURIComponent(neighborhood)}&cnae=${encodeURIComponent(cnae)}&q=${encodeURIComponent(query)}`;

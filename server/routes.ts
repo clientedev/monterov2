@@ -606,7 +606,7 @@ export async function registerRoutes(
       // Build Overpass QL query — search within the neighborhood polygon in the city
       const locationQuery = bairroFiltro
         ? `"${(neighborhood as string)}" "${municipio || ""}" Brazil`
-        : `"${municipio || "São Paulo"}" Brazil`;
+        : `"${municipio || targetCity}" Brazil`;
 
       // Build tag union for Overpass
       const tagUnion = osmTags
@@ -618,9 +618,10 @@ export async function registerRoutes(
         })
         .join("\n");
 
+      const areaName = bairroFiltro ? (neighborhood as string) : (municipio || targetCity);
       const overpassQuery = `
-[out:json][timeout:15];
-area[name="${bairroFiltro ? (neighborhood as string) : (municipio || "São Paulo")}"]->.searchArea;
+[out:json][timeout:30];
+area[name="${areaName}"]->.searchArea;
 (
 ${tagUnion}
 );
@@ -635,7 +636,7 @@ out center 50;
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: `data=${encodeURIComponent(overpassQuery)}`,
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(30000),
         });
 
         if (osmRes.ok) {
