@@ -103,6 +103,17 @@ export async function registerRoutes(
     res.json(contacts);
   });
 
+  app.patch("/api/contacts/:id", isAuthenticated, async (req, res) => {
+    const contact = await storage.updateContact(parseInt(req.params.id), req.body);
+    if (!contact) return res.status(404).json({ message: "Contact not found" });
+    res.json(contact);
+  });
+
+  app.delete("/api/contacts/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteContact(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
   app.get("/api/contacts/:id", isAuthenticated, async (req, res) => {
     const contact = await storage.getContact(parseInt(req.params.id));
     if (!contact) return res.status(404).json({ message: "Contact not found" });
@@ -146,6 +157,17 @@ export async function registerRoutes(
     const lead = await storage.updateLeadStatus(parseInt(req.params.id), req.body.status);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
     res.json(lead);
+  });
+
+  app.patch("/api/leads/:id", isAuthenticated, async (req, res) => {
+    const lead = await storage.updateLead(parseInt(req.params.id), req.body);
+    if (!lead) return res.status(404).json({ message: "Lead not found" });
+    res.json(lead);
+  });
+
+  app.delete("/api/leads/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteLead(parseInt(req.params.id));
+    res.sendStatus(204);
   });
 
   // Interactions
@@ -279,6 +301,12 @@ export async function registerRoutes(
 
   app.patch("/api/tasks/:id/status", isAuthenticated, async (req, res) => {
     const task = await storage.updateTaskStatus(parseInt(req.params.id), req.body.status);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+    res.json(task);
+  });
+
+  app.patch("/api/tasks/:id", isAuthenticated, async (req, res) => {
+    const task = await storage.updateTask(parseInt(req.params.id), req.body);
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
   });

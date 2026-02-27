@@ -42,7 +42,8 @@ import {
     Clock,
     Filter,
     GripVertical,
-    MoreVertical
+    MoreVertical,
+    Edit2
 } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +61,7 @@ export default function TasksPage() {
     const [open, setOpen] = useState(false);
     const [quickAddStatus, setQuickAddStatus] = useState<string | null>(null);
     const [filterUser, setFilterUser] = useState<string>("all");
+    const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
 
     const { data: tasks, isLoading } = useQuery<Task[]>({
         queryKey: ["/api/tasks", filterUser !== "all" ? { assignedTo: filterUser } : undefined],
@@ -96,6 +98,19 @@ export default function TasksPage() {
             toast({ title: "Tarefa criada com sucesso" });
             setOpen(false);
             setQuickAddStatus(null);
+        },
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: async (data: Partial<InsertTask>) => {
+            const res = await apiRequest("PATCH", `/api/tasks/${editingTaskId}`, data);
+            return await res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+            toast({ title: "Tarefa atualizada" });
+            setOpen(false);
+            setEditingTaskId(null);
         },
     });
 
@@ -161,16 +176,27 @@ export default function TasksPage() {
                         </div>
                     )}
 
-                    <CreateTaskDialog
-                        open={open || quickAddStatus !== null}
+                    <TaskDialog
+                        open={open || quickAddStatus !== null || editingTaskId !== null}
                         setOpen={(val: boolean) => {
                             setOpen(val);
-                            if (!val) setQuickAddStatus(null);
+                            if (!val) {
+                                setQuickAddStatus(null);
+                                setEditingTaskId(null);
+                            }
                         }}
                         users={users || []}
                         currentUser={currentUser}
-                        createMutation={createMutation}
+                        onSubmit={(data: InsertTask) => {
+                            if (editingTaskId) {
+                                updateMutation.mutate(data);
+                            } else {
+                                createMutation.mutate(data);
+                            }
+                        }}
+                        isPending={createMutation.isPending || updateMutation.isPending}
                         defaultStatus={quickAddStatus || "todo"}
+                        initialData={editingTaskId ? tasks?.find(t => t.id === editingTaskId) : undefined}
                     />
                 </div>
             </div>
@@ -218,6 +244,7 @@ export default function TasksPage() {
                                                                 task={task}
                                                                 users={users || []}
                                                                 deleteMutation={deleteMutation}
+                                                                onEdit={() => setEditingTaskId(task.id)}
                                                                 isDragging={snapshot.isDragging}
                                                             />
                                                         </div>
@@ -245,7 +272,7 @@ export default function TasksPage() {
     );
 }
 
-function TaskCard({ task, users, deleteMutation, isDragging }: any) {
+function TaskCard({ task, users, deleteMutation, onEdit, isDragging }: any) {
     const assignedUser = users.find((u: any) => u.id === task.assignedTo);
     const priorityColors: Record<string, { bg: string, text: string, dot: string, label: string }> = {
         high: { bg: "bg-rose-50", text: "text-rose-600", dot: "bg-rose-500", label: "Prioridade Ata" },
@@ -268,6 +295,17 @@ function TaskCard({ task, users, deleteMutation, isDragging }: any) {
                 </div>
 
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit();
+                        }}
+                    >
+                        <Edit2 className="h-3 w-3" />
+                    </Button>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -317,13 +355,15 @@ function TaskCard({ task, users, deleteMutation, isDragging }: any) {
     );
 }
 
-function CreateTaskDialog({ open, setOpen, users, currentUser, createMutation, defaultStatus }: any) {
-    // Create a client-side schema that omits 'createdBy' since the server adds it
+function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, defaultStatus, initialData }: any) {
     const clientTaskSchema = insertTaskSchema.omit({ createdBy: true });
 
     const form = useForm<any>({
         resolver: zodResolver(clientTaskSchema),
-        defaultValues: {
+        defaultValues: initialData ? {
+            ...initialData,
+            dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : "",
+        } : {
             title: "",
             description: "",
             status: defaultStatus || "todo",
@@ -332,35 +372,43 @@ function CreateTaskDialog({ open, setOpen, users, currentUser, createMutation, d
         },
     });
 
-    // Reset status when defaultStatus changes (e.g. clicking quick add in different columns)
     useEffect(() => {
         if (open) {
-            form.reset({
-                ...form.getValues(),
-                status: defaultStatus,
-                assignedTo: currentUser?.id,
-                title: "",
-                description: ""
-            });
+            if (initialData) {
+                form.reset({
+                    ...initialData,
+                    dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : "",
+                });
+            } else {
+                form.reset({
+                    title: "",
+                    description: "",
+                    status: defaultStatus || "todo",
+                    priority: "medium",
+                    assignedTo: currentUser?.id,
+                });
+            }
         }
-    }, [open, defaultStatus, currentUser, form.reset]);
-
-    const onSubmit = (data: InsertTask) => {
-        createMutation.mutate(data);
-    };
+    }, [open, initialData, defaultStatus, currentUser, form.reset]);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-11 px-6 font-bold rounded-xl transition-all hover:scale-[1.02]">
-                    <Plus className="mr-2 h-5 w-5" />
-                    Nova Atividade
-                </Button>
-            </DialogTrigger>
+            {!initialData && (
+                <DialogTrigger asChild>
+                    <Button className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-11 px-6 font-bold rounded-xl transition-all hover:scale-[1.02]">
+                        <Plus className="mr-2 h-5 w-5" />
+                        Nova Atividade
+                    </Button>
+                </DialogTrigger>
+            )}
             <DialogContent className="sm:max-w-[500px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
                 <DialogHeader className="p-8 bg-slate-50 border-b border-slate-100">
-                    <DialogTitle className="text-2xl font-display font-bold text-slate-900">Nova Tarefa Profissional</DialogTitle>
-                    <p className="text-slate-500 text-sm mt-1">Defina os detalhes da atividade para a equipe.</p>
+                    <DialogTitle className="text-2xl font-display font-bold text-slate-900">
+                        {initialData ? "Editar Tarefa" : "Nova Tarefa Profissional"}
+                    </DialogTitle>
+                    <p className="text-slate-500 text-sm mt-1">
+                        {initialData ? "Atualize os detalhes da atividade." : "Defina os detalhes da atividade para a equipe."}
+                    </p>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="p-8 space-y-5 bg-white">
@@ -450,12 +498,12 @@ function CreateTaskDialog({ open, setOpen, users, currentUser, createMutation, d
                         <Button
                             type="submit"
                             className="w-full h-14 rounded-2xl text-lg font-black shadow-lg shadow-primary/20 mt-4 transition-all active:scale-95"
-                            disabled={createMutation.isPending}
+                            disabled={isPending}
                         >
-                            {createMutation.isPending ? (
+                            {isPending ? (
                                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                             ) : (
-                                "Confirmar e Agendar"
+                                initialData ? "Salvar Alterações" : "Confirmar e Agendar"
                             )}
                         </Button>
                     </form>

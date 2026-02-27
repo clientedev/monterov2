@@ -71,12 +71,16 @@ export interface IStorage {
   getContacts(): Promise<Contact[]>;
   getContact(id: number): Promise<Contact | undefined>;
   createContact(contact: InsertContact): Promise<Contact>;
+  updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact | undefined>;
+  deleteContact(id: number): Promise<void>;
 
   // Leads
   getLeads(contactId?: number): Promise<Lead[]>;
   getLead(id: number): Promise<Lead | undefined>;
   createLead(lead: InsertLead): Promise<Lead>;
   updateLeadStatus(id: number, status: string): Promise<Lead | undefined>;
+  updateLead(id: number, lead: Partial<InsertLead>): Promise<Lead | undefined>;
+  deleteLead(id: number): Promise<void>;
 
   // Interactions
   getInteractions(leadId?: number, contactId?: number): Promise<Interaction[]>;
@@ -92,6 +96,7 @@ export interface IStorage {
   getTask(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTaskStatus(id: number, status: string): Promise<Task | undefined>;
+  updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined>;
   deleteTask(id: number): Promise<void>;
 
   // Site Settings
@@ -207,6 +212,15 @@ export class DatabaseStorage implements IStorage {
     return newContact;
   }
 
+  async updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact | undefined> {
+    const [updated] = await db.update(contacts).set(contact).where(eq(contacts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteContact(id: number): Promise<void> {
+    await db.delete(contacts).where(eq(contacts.id, id));
+  }
+
   // Leads
   async getLeads(contactId?: number): Promise<Lead[]> {
     let query = db.select().from(leads);
@@ -233,6 +247,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(leads.id, id))
       .returning();
     return updatedLead;
+  }
+
+  async updateLead(id: number, lead: Partial<InsertLead>): Promise<Lead | undefined> {
+    const [updated] = await db.update(leads).set(lead).where(eq(leads.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLead(id: number): Promise<void> {
+    await db.delete(leads).where(eq(leads.id, id));
   }
 
   // Interactions
@@ -300,6 +323,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tasks.id, id))
       .returning();
     return updatedTask;
+  }
+
+  async updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined> {
+    const [updated] = await db.update(tasks).set(task).where(eq(tasks.id, id)).returning();
+    return updated;
   }
 
   async deleteTask(id: number): Promise<void> {

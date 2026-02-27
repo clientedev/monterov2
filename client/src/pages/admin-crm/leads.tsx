@@ -32,6 +32,17 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Edit2, Trash2 } from "lucide-react";
 
 const STATUSES = [
     { id: "new", label: "Novo Lead", color: "bg-blue-500", light: "bg-blue-50" },
@@ -46,6 +57,8 @@ export default function LeadsPage() {
     const { toast } = useToast();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
+    const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
+    const [deleteLeadId, setDeleteLeadId] = useState<number | null>(null);
 
     const { data: leads, isLoading: leadsLoading } = useQuery<Lead[]>({
         queryKey: ["/api/leads"],
@@ -74,6 +87,30 @@ export default function LeadsPage() {
             queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
             toast({ title: "Lead criado com sucesso" });
             setOpen(false);
+        },
+    });
+
+    const updateLeadMutation = useMutation({
+        mutationFn: async (data: Partial<InsertLead>) => {
+            const res = await apiRequest("PATCH", `/api/leads/${editingLeadId}`, data);
+            return await res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+            toast({ title: "Lead atualizado" });
+            setOpen(false);
+            setEditingLeadId(null);
+        },
+    });
+
+    const deleteLeadMutation = useMutation({
+        mutationFn: async (id: number) => {
+            await apiRequest("DELETE", `/api/leads/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+            toast({ title: "Lead removido" });
+            setDeleteLeadId(null);
         },
     });
 
@@ -106,19 +143,34 @@ export default function LeadsPage() {
 
                     <Dialog open={open} onOpenChange={setOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-10 px-6 font-bold">
+                            <Button
+                                onClick={() => {
+                                    setEditingLeadId(null);
+                                    setOpen(true);
+                                }}
+                                className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-10 px-6 font-bold"
+                            >
                                 <Plus className="mr-2 h-4 w-4" />
                                 Novo Negócio
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[450px] rounded-2xl border-none shadow-2xl">
                             <DialogHeader>
-                                <DialogTitle className="text-2xl font-display font-bold tracking-tight">Iniciar Novo Negócio</DialogTitle>
+                                <DialogTitle className="text-2xl font-display font-bold tracking-tight">
+                                    {editingLeadId ? "Editar Negócio" : "Iniciar Novo Negócio"}
+                                </DialogTitle>
                             </DialogHeader>
-                            <CreateLeadForm
+                            <LeadForm
                                 contacts={contacts || []}
-                                onSubmit={(data: InsertLead) => createMutation.mutate(data)}
-                                isPending={createMutation.isPending}
+                                initialData={editingLeadId ? leads?.find(l => l.id === editingLeadId) : undefined}
+                                onSubmit={(data: InsertLead) => {
+                                    if (editingLeadId) {
+                                        updateLeadMutation.mutate(data);
+                                    } else {
+                                        createMutation.mutate(data);
+                                    }
+                                }}
+                                isPending={createMutation.isPending || updateLeadMutation.isPending}
                             />
                         </DialogContent>
                     </Dialog>
@@ -148,6 +200,11 @@ export default function LeadsPage() {
                                     lead={lead}
                                     contact={contacts?.find(c => c.id === lead.contactId)}
                                     onMove={(newStatus) => updateStatusMutation.mutate({ id: lead.id, status: newStatus })}
+                                    onEdit={() => {
+                                        setEditingLeadId(lead.id);
+                                        setOpen(true);
+                                    }}
+                                    onDelete={() => setDeleteLeadId(lead.id)}
                                 />
                             ))}
                         </div>
@@ -158,18 +215,49 @@ export default function LeadsPage() {
     );
 }
 
-function LeadCard({ lead, contact, onMove }: { lead: Lead, contact?: Contact, onMove: (s: string) => void }) {
+function LeadCard({
+    lead,
+    contact,
+    onMove,
+    onEdit,
+    onDelete
+}: {
+    lead: Lead,
+    contact?: Contact,
+    onMove: (s: string) => void,
+    onEdit: () => void,
+    onDelete: () => void
+}) {
     const nextStatus = STATUSES[STATUSES.findIndex(s => s.id === lead.status) + 1]?.id;
     const prevStatus = STATUSES[STATUSES.findIndex(s => s.id === lead.status) - 1]?.id;
 
     return (
         <div className="group bg-white p-5 rounded-2xl border border-gray-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300 hover:shadow-[0_4px_20px_rgb(0,0,0,0.08)] hover:-translate-y-1 relative">
+            <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+                    onClick={onEdit}
+                >
+                    <Edit2 className="h-3 w-3" />
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 rounded-lg text-red-300 hover:text-red-600 hover:bg-red-50"
+                    onClick={onDelete}
+                >
+                    <Trash2 className="h-3 w-3" />
+                </Button>
+            </div>
+
             <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
-                    <h4 className="font-bold text-gray-900 line-clamp-1">{contact?.name || "Desconhecido"}</h4>
+                    <h4 className="font-bold text-gray-900 line-clamp-1 pr-14">{contact?.name || "Desconhecido"}</h4>
                     <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{lead.source || "Direto"}</span>
                 </div>
-                <div className="text-secondary font-display font-black text-xs">
+                <div className="text-secondary font-display font-black text-xs pt-1">
                     {lead.value ? `R$ ${lead.value}` : "Sob consulta"}
                 </div>
             </div>
@@ -208,10 +296,15 @@ function LeadCard({ lead, contact, onMove }: { lead: Lead, contact?: Contact, on
     );
 }
 
-function CreateLeadForm({ contacts, onSubmit, isPending }: any) {
+function LeadForm({ contacts, onSubmit, isPending, initialData }: any) {
     const form = useForm<InsertLead>({
         resolver: zodResolver(insertLeadSchema),
-        defaultValues: {
+        defaultValues: initialData ? {
+            ...initialData,
+            value: initialData.value || "",
+            source: initialData.source || "",
+            notes: initialData.notes || "",
+        } : {
             contactId: 0,
             status: "new",
             source: "",
@@ -232,6 +325,7 @@ function CreateLeadForm({ contacts, onSubmit, isPending }: any) {
                             <Select
                                 onValueChange={(val) => field.onChange(parseInt(val))}
                                 defaultValue={field.value.toString()}
+                                disabled={!!initialData}
                             >
                                 <FormControl>
                                     <SelectTrigger className="rounded-xl h-11">
@@ -300,7 +394,7 @@ function CreateLeadForm({ contacts, onSubmit, isPending }: any) {
                     disabled={isPending}
                 >
                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Criar Negócio
+                    {initialData ? "Salvar Alterações" : "Criar Negócio"}
                 </Button>
             </form>
         </Form>
