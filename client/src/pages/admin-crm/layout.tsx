@@ -55,7 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Professional Sidebar */}
             <aside className="w-80 bg-[#0f172a] border-r border-white/5 flex flex-col shadow-2xl z-30">
                 {/* Logo & Brand */}
-                <div className="p-8 pb-10">
+                <div className="p-6 pb-2">
                     <Link href="/admin">
                         <div className="flex items-center gap-3 cursor-pointer group">
                             <div className="relative overflow-hidden rounded-lg group-hover:rotate-3 transition-transform duration-300">
@@ -86,7 +86,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
 
                 {/* Navigation Scrollable Area */}
-                <div className="flex-1 overflow-y-auto px-6 space-y-9 custom-scrollbar pb-10">
+                <div className="flex-1 overflow-y-auto px-5 space-y-7 custom-scrollbar pb-10">
 
                     {/* CRM Section */}
                     <div className="animate-in fade-in slide-in-from-left-4 duration-500">
@@ -129,8 +129,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
 
                 {/* Footer User Info */}
-                <div className="mt-auto p-6 bg-black/30 border-t border-white/5">
-                    <div className="flex items-center gap-4 mb-6">
+                <div className="mt-auto p-5 bg-black/30 border-t border-white/5">
+                    <div className="flex items-center gap-4 mb-4">
                         <div className="relative">
                             <div className="h-12 w-12 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-lg text-white shadow-inner">
                                 {user.username.charAt(0).toUpperCase()}
