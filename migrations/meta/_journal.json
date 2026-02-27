@@ -8,6 +8,13 @@
       "when": 1772201395955,
       "tag": "0000_awesome_puppet_master",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772202742551,
+      "tag": "0001_adorable_lenny_balinger",
+      "breakpoints": true
     }
   ]
 }
