@@ -472,10 +472,10 @@ export async function registerRoutes(
     }
 
     const uf = (state as string || "").toUpperCase();
-    const municipio = (city as string || "").toUpperCase();
-    const bairroFiltro = (neighborhood as string || "").toUpperCase();
+    const municipio = (city as string || "").trim(); // Preserve original casing
+    const bairroFiltroInput = (neighborhood as string || "").trim();
     const keyword = (q as string || "").toLowerCase().trim();
-    const targetCity = municipio || "SÃO PAULO";
+    const targetCity = municipio.toUpperCase() || "SÃO PAULO";
     const targetUf = uf || "SP";
 
     // -----------------------------------------------------------------------
@@ -522,7 +522,7 @@ export async function registerRoutes(
       ? (cnae as string).replace(/\D/g, "")
       : detectedNiche?.cnae || "";
 
-    console.log(`[CompanySearch] UF=${uf} | Cidade=${municipio} | Bairro=${bairroFiltro} | CNAE=${cnaeCode} | Nicho=${detectedNiche?.label || "geral"} | Keyword="${keyword}"`);
+    console.log(`[CompanySearch] UF=${uf} | Cidade=${municipio} | Bairro=${bairroFiltroInput} | CNAE=${cnaeCode} | Nicho=${detectedNiche?.label || "geral"} | Keyword="${keyword}"`);
 
     let results: any[] = [];
     let apiSuccess = false;
@@ -534,9 +534,9 @@ export async function registerRoutes(
       try {
         const params = new URLSearchParams();
         if (uf) params.set("uf", uf);
-        if (municipio) params.set("municipio", municipio);
+        if (municipio) params.set("municipio", municipio.toUpperCase());
         if (cnaeCode) params.set("cnae", cnaeCode);
-        if (bairroFiltro) params.set("q", (neighborhood as string).toUpperCase());
+        if (bairroFiltroInput) params.set("q", bairroFiltroInput.toUpperCase());
 
         const url = `https://publica.cnpj.ws/cnpjs?${params.toString()}`;
         const apiRes = await fetch(url, {
@@ -579,7 +579,7 @@ export async function registerRoutes(
     // OSM Overpass fallback — fetch REAL businesses from OpenStreetMap
     // -----------------------------------------------------------------------
     if (!apiSuccess) {
-      console.warn(`[CompanySearch] CNPJ API sem resultado. Buscando negócios reais no OSM para: ${bairroFiltro || municipio}`);
+      console.warn(`[CompanySearch] CNPJ API sem resultado. Buscando negócios reais no OSM para: ${bairroFiltroInput || municipio}`);
 
       // Map niche keyword to OSM amenity/shop tags
       const OSM_TAG_MAP: Record<string, string[]> = {
@@ -604,8 +604,8 @@ export async function registerRoutes(
       let osmTags = OSM_TAG_MAP[nicheLabel] || ["amenity=yes", "shop=yes", "office=yes"];
 
       // Build Overpass QL query — search within the neighborhood polygon in the city
-      const locationQuery = bairroFiltro
-        ? `"${(neighborhood as string)}" "${municipio || ""}" Brazil`
+      const locationQuery = bairroFiltroInput
+        ? `"${bairroFiltroInput}" "${municipio || ""}" Brazil`
         : `"${municipio || targetCity}" Brazil`;
 
       // Build tag union for Overpass
@@ -618,7 +618,7 @@ export async function registerRoutes(
         })
         .join("\n");
 
-      const areaName = bairroFiltro ? (neighborhood as string) : (municipio || targetCity);
+      const areaName = bairroFiltroInput || municipio || "São Paulo";
       const overpassQuery = `
 [out:json][timeout:30];
 area[name="${areaName}"]->.searchArea;
@@ -630,7 +630,7 @@ out center 50;
 
       try {
         const overpassUrl = "https://overpass-api.de/api/interpreter";
-        console.log(`[CompanySearch] Overpass query para: ${bairroFiltro || municipio}`);
+        console.log(`[CompanySearch] Overpass query para: ${areaName}`);
 
         const osmRes = await fetch(overpassUrl, {
           method: "POST",
@@ -652,8 +652,8 @@ out center 50;
                 const lat = el.lat ?? el.center?.lat ?? -23.55;
                 const lng = el.lon ?? el.center?.lon ?? -46.63;
                 const street = [t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(", ");
-                const neighborhood_name = t["addr:suburb"] || t["addr:neighbourhood"] || (bairroFiltro ? (neighborhood as string) : "");
-                const city_name = t["addr:city"] || targetCity;
+                const neighborhood_name = t["addr:suburb"] || t["addr:neighbourhood"] || bairroFiltroInput || "";
+                const city_name = t["addr:city"] || (municipio || targetCity);
                 const phone = t.phone || t["contact:phone"] || "";
                 const website = t.website || t["contact:website"] || "";
                 return {
@@ -662,7 +662,7 @@ out center 50;
                   cnpj: "** Consultar separadamente **",
                   logradouro: street || t["addr:street"] || "",
                   numero: t["addr:housenumber"] || "",
-                  bairro: neighborhood_name || (bairroFiltro ? (neighborhood as string) : ""),
+                  bairro: neighborhood_name,
                   municipio: city_name,
                   uf: targetUf,
                   cep: t["addr:postcode"] || "",
@@ -686,27 +686,27 @@ out center 50;
     // Last resort: if both CNPJ API and OSM failed, return empty with a message
     // -----------------------------------------------------------------------
     if (!apiSuccess || results.length === 0) {
-      console.warn(`[CompanySearch] Nenhum dado real encontrado para: ${bairroFiltro || municipio}`);
+      console.warn(`[CompanySearch] Nenhum dado real encontrado para: ${bairroFiltroInput || municipio}`);
       // Return empty — the frontend will show "Nenhum resultado encontrado"
       return res.json([]);
     }
 
-    // -----------------------------------------------------------------------
-    // Post-processing filter: Ensure results match the city and bairro filters strictly
-    // -----------------------------------------------------------------------
-    if (bairroFiltro && results.length > 0) {
+    // Post-processing filter: Ensure results match the city and bairro filters strictly (case-insensitive)
+    if (bairroFiltroInput && results.length > 0) {
+      const bSearch = bairroFiltroInput.toUpperCase().trim();
       results = results.filter(c =>
-        (c.bairro || "").toUpperCase().trim().includes(bairroFiltro)
+        (c.bairro || "").toUpperCase().trim().includes(bSearch)
       );
     }
 
     if (municipio && results.length > 0) {
+      const mSearch = municipio.toUpperCase().trim();
       results = results.filter(c =>
-        !c.municipio || (c.municipio || "").toUpperCase().trim().includes(municipio)
+        !c.municipio || (c.municipio || "").toUpperCase().trim().includes(mSearch)
       );
     }
 
-    console.log(`[CompanySearch] Retornando ${results.length} empresas reais | nicho=${detectedNiche?.label || "geral"} | bairro=${bairroFiltro || "todos"}`);
+    console.log(`[CompanySearch] Retornando ${results.length} empresas reais | nicho=${detectedNiche?.label || "geral"} | bairro=${bairroFiltroInput || "todos"}`);
     return res.json(results);
   });
 
