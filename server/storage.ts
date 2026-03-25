@@ -104,7 +104,7 @@ export interface IStorage {
   deleteCampaign(id: number): Promise<void>;
 
   // Tasks
-  getTasks(assignedTo?: number, contactId?: number): Promise<Task[]>;
+  getTasks(assignedTo?: number, contactId?: number, status?: string): Promise<Task[]>;
   getTask(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTaskStatus(id: number, status: string): Promise<Task | undefined>;
@@ -355,15 +355,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Tasks
-  async getTasks(assignedTo?: number, contactId?: number): Promise<Task[]> {
+  async getTasks(assignedTo?: number, contactId?: number, status?: string): Promise<Task[]> {
     let query = db.select().from(tasks);
 
-    if (assignedTo) {
-      query = query.where(eq(tasks.assignedTo, assignedTo)) as any;
-    }
+    const conditions = [];
+    if (assignedTo) conditions.push(eq(tasks.assignedTo, assignedTo));
+    if (contactId) conditions.push(eq(tasks.contactId, contactId));
+    if (status) conditions.push(eq(tasks.status, status as any));
 
-    if (contactId) {
-      query = query.where(eq(tasks.contactId, contactId)) as any;
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
     }
 
     return await query.orderBy(desc(tasks.createdAt));
@@ -382,7 +383,7 @@ export class DatabaseStorage implements IStorage {
   async updateTaskStatus(id: number, status: string): Promise<Task | undefined> {
     const [updatedTask] = await db
       .update(tasks)
-      .set({ status })
+      .set({ status: status as any })
       .where(eq(tasks.id, id))
       .returning();
     return updatedTask;
@@ -833,7 +834,7 @@ export class MemStorage implements IStorage {
       description: task.description || null,
       contactId: task.contactId || null,
       priority: task.priority || "medium",
-      status: task.status || "todo",
+      status: (task.status as any) || "pendencia",
     };
     this.tasks.push(newTask);
     return newTask;
@@ -842,9 +843,29 @@ export class MemStorage implements IStorage {
   async updateTaskStatus(id: number, status: string): Promise<Task | undefined> {
     const task = this.tasks.find(t => t.id === id);
     if (task) {
-      task.status = status;
+      task.status = status as any;
     }
     return task;
+  }
+
+  async updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined> {
+    const index = this.tasks.findIndex(t => t.id === id);
+    if (index === -1) return undefined;
+    
+    // Create new object to avoid type errors with Partial<InsertTask> matching Task
+    const existing = this.tasks[index];
+    this.tasks[index] = { ...existing } as Task;
+    
+    // Apply updates manually to handle type issues
+    if (task.title !== undefined) this.tasks[index].title = task.title;
+    if (task.description !== undefined) this.tasks[index].description = task.description;
+    if (task.status !== undefined) this.tasks[index].status = task.status as any;
+    if (task.priority !== undefined) this.tasks[index].priority = task.priority;
+    if (task.assignedTo !== undefined) this.tasks[index].assignedTo = task.assignedTo;
+    if (task.contactId !== undefined) this.tasks[index].contactId = task.contactId;
+    if (task.dueDate !== undefined) this.tasks[index].dueDate = task.dueDate ? new Date(task.dueDate) : null;
+    
+    return this.tasks[index];
   }
 
   async deleteTask(id: number): Promise<void> {

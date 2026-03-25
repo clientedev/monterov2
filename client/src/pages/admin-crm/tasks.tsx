@@ -50,9 +50,14 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const COLUMNS = [
-    { id: "todo", label: "A Fazer", icon: Clock, color: "text-slate-400", bg: "bg-slate-100/50", accent: "border-slate-300" },
-    { id: "in_progress", label: "Em Andamento", icon: AlertCircle, color: "text-blue-500", bg: "bg-blue-50/50", accent: "border-blue-300" },
-    { id: "done", label: "Concluído", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50/50", accent: "border-emerald-300" },
+    { id: "pendencia", label: "Pendência", icon: Clock, color: "text-slate-400", bg: "bg-slate-100/50", accent: "border-slate-300" },
+    { id: "revisao", icon: MoreVertical, label: "Revisão", color: "text-blue-500", bg: "bg-blue-50/50", accent: "border-blue-300" },
+    { id: "prospect", icon: Plus, label: "Prospect", color: "text-indigo-500", bg: "bg-indigo-50/50", accent: "border-indigo-300" },
+    { id: "cotacao_enviada", icon: Filter, label: "Cotação enviada", color: "text-amber-500", bg: "bg-amber-50/50", accent: "border-amber-300" },
+    { id: "implantacao", icon: AlertCircle, label: "Implantação", color: "text-orange-500", bg: "bg-orange-50/50", accent: "border-orange-300" },
+    { id: "fechado", icon: CheckCircle2, label: "Fechado", color: "text-emerald-500", bg: "bg-emerald-50/50", accent: "border-emerald-300" },
+    { id: "venda_perdida", icon: Trash2, label: "Venda Perdida", color: "text-rose-500", bg: "bg-rose-50/50", accent: "border-rose-300" },
+    { id: "venda_cancelada", icon: CheckCircle2, label: "Venda Cancelada", color: "text-slate-500", bg: "bg-slate-50/50", accent: "border-slate-300" },
 ];
 
 export default function TasksPage() {
@@ -61,13 +66,19 @@ export default function TasksPage() {
     const [open, setOpen] = useState(false);
     const [quickAddStatus, setQuickAddStatus] = useState<string | null>(null);
     const [filterUser, setFilterUser] = useState<string>("all");
+    const [filterStatus, setFilterStatus] = useState<string>("all");
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
 
     const { data: tasks, isLoading } = useQuery<Task[]>({
-        queryKey: ["/api/tasks", filterUser !== "all" ? { assignedTo: filterUser } : undefined],
+        queryKey: ["/api/tasks", { 
+            assignedTo: filterUser !== "all" ? filterUser : undefined, 
+            status: filterStatus !== "all" ? filterStatus : undefined 
+        }],
         queryFn: async ({ queryKey }) => {
             const [_url, params] = queryKey as any;
-            const url = params ? `/api/tasks?assignedTo=${params.assignedTo}` : "/api/tasks";
+            let url = "/api/tasks?";
+            if (params?.assignedTo) url += `assignedTo=${params.assignedTo}&`;
+            if (params?.status) url += `status=${params.status}&`;
             const res = await fetch(url);
             if (!res.ok) throw new Error("Erro ao carregar tarefas");
             return res.json();
@@ -160,20 +171,36 @@ export default function TasksPage() {
 
                 <div className="flex items-center gap-3">
                     {currentUser?.role === "admin" && (
-                        <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-4 py-2 text-sm shadow-sm">
-                            <Filter className="h-4 w-4 text-slate-400" />
-                            <select
-                                className="bg-transparent border-none focus:outline-none text-slate-700 font-semibold appearance-none pr-4"
-                                value={filterUser}
-                                onChange={(e) => setFilterUser(e.target.value)}
-                            >
-                                <option value="all">Equipe Completa</option>
-                                <option value={currentUser?.id.toString()}>Minhas Atividades</option>
-                                {users?.filter(u => u.id !== currentUser?.id).map(user => (
-                                    <option key={user.id} value={user.id.toString()}>{user.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        <>
+                            <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-4 py-2 text-sm shadow-sm">
+                                <Filter className="h-4 w-4 text-slate-400" />
+                                <select
+                                    className="bg-transparent border-none focus:outline-none text-slate-700 font-semibold appearance-none pr-4"
+                                    value={filterUser}
+                                    onChange={(e) => setFilterUser(e.target.value)}
+                                >
+                                    <option value="all">Equipe Completa</option>
+                                    <option value={currentUser?.id.toString()}>Minhas Atividades</option>
+                                    {users?.filter(u => u.id !== currentUser?.id).map(user => (
+                                        <option key={user.id} value={user.id.toString()}>{user.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-4 py-2 text-sm shadow-sm">
+                                <Filter className="h-4 w-4 text-slate-400" />
+                                <select
+                                    className="bg-transparent border-none focus:outline-none text-slate-700 font-semibold appearance-none pr-4"
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                >
+                                    <option value="all">Todos Status</option>
+                                    {COLUMNS.map(col => (
+                                        <option key={col.id} value={col.id}>{col.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
                     )}
 
                     <TaskDialog
@@ -195,7 +222,7 @@ export default function TasksPage() {
                             }
                         }}
                         isPending={createMutation.isPending || updateMutation.isPending}
-                        defaultStatus={quickAddStatus || "todo"}
+                        defaultStatus={quickAddStatus || "pendencia"}
                         initialData={editingTaskId ? tasks?.find(t => t.id === editingTaskId) : undefined}
                     />
                 </div>
@@ -366,7 +393,7 @@ function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, de
         } : {
             title: "",
             description: "",
-            status: defaultStatus || "todo",
+            status: defaultStatus || "pendencia",
             priority: "medium",
             assignedTo: currentUser?.id,
         },
@@ -383,7 +410,7 @@ function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, de
                 form.reset({
                     title: "",
                     description: "",
-                    status: defaultStatus || "todo",
+                    status: defaultStatus || "pendencia",
                     priority: "medium",
                     assignedTo: currentUser?.id,
                 });
@@ -495,17 +522,43 @@ function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, de
                             />
                         </div>
 
-                        <Button
-                            type="submit"
-                            className="w-full h-14 rounded-2xl text-lg font-black shadow-lg shadow-primary/20 mt-4 transition-all active:scale-95"
-                            disabled={isPending}
-                        >
-                            {isPending ? (
-                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            ) : (
-                                initialData ? "Salvar Alterações" : "Confirmar e Agendar"
-                            )}
-                        </Button>
+                            <FormField
+                                control={form.control}
+                                name="status"
+                                render={({ field }) => (
+                                    <FormItem className="col-span-2">
+                                        <FormLabel className="text-slate-700 font-bold text-sm">Status Atual</FormLabel>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="rounded-xl border-slate-200 h-11 bg-slate-50/50">
+                                                    <SelectValue placeholder="Selecione" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                {COLUMNS.map(col => (
+                                                    <SelectItem key={col.id} value={col.id}>{col.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <Button
+                                type="submit"
+                                className="w-full h-14 rounded-2xl text-lg font-black shadow-lg shadow-primary/20 mt-4 transition-all active:scale-95"
+                                disabled={isPending}
+                            >
+                                {isPending ? (
+                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                ) : (
+                                    initialData ? "Salvar Alterações" : "Confirmar e Agendar"
+                                )}
+                            </Button>
                     </form>
                 </Form>
             </DialogContent>

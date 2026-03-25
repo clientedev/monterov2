@@ -22,6 +22,13 @@
       "when": 1772215858112,
       "tag": "0002_blushing_mentallo",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774455184569,
+      "tag": "0003_amazing_omega_sentinel",
+      "breakpoints": true
     }
   ]
 }

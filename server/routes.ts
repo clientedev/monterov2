@@ -1,4 +1,4 @@
-﻿import type { Express } from "express";
+import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
@@ -391,13 +391,14 @@ export async function registerRoutes(
     const user = req.user as any;
     let assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
     const contactId = req.query.contactId ? parseInt(req.query.contactId as string) : undefined;
+    const status = req.query.status as string | undefined;
 
     // RBAC: Employees can ONLY see their own tasks
     if (user.role === "employee") {
       assignedTo = user.id;
     }
 
-    const tasks = await storage.getTasks(assignedTo, contactId);
+    const tasks = await storage.getTasks(assignedTo, contactId, status);
     res.json(tasks);
   });
 
@@ -418,6 +419,13 @@ export async function registerRoutes(
   });
 
   app.patch("/api/tasks/:id/status", isAuthenticated, async (req, res) => {
+    const validStatuses = [
+      "pendencia", "revisao", "prospect", "cotacao_enviada", 
+      "implantacao", "fechado", "venda_perdida", "venda_cancelada"
+    ];
+    if (!validStatuses.includes(req.body.status)) {
+      return res.status(400).json({ message: "Status inválido" });
+    }
     const task = await storage.updateTaskStatus(parseInt(req.params.id), req.body.status);
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);

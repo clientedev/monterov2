@@ -169,7 +169,7 @@ export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
-  status: text("status").notNull().default("todo"), // todo, in_progress, done
+  status: text("status", { enum: ["pendencia", "revisao", "prospect", "cotacao_enviada", "implantacao", "fechado", "venda_perdida", "venda_cancelada"] }).notNull().default("pendencia"), // pendencia, revisao, prospect, cotacao_enviada, implantacao, fechado, venda_perdida, venda_cancelada
   priority: text("priority").notNull().default("medium"), // low, medium, high
   assignedTo: integer("assigned_to").references(() => users.id).notNull(),
   contactId: integer("contact_id").references(() => contacts.id),
