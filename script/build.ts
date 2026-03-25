@@ -49,12 +49,15 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: false,
-    external: externals,
     logLevel: "info",
   });
+  console.log("server build completed.");
 }
 
-buildAll().catch((err) => {
-  console.error(err);
+console.log("Starting build process...");
+buildAll().then(() => {
+  console.log("All builds completed successfully!");
+}).catch((err) => {
+  console.error("Build failed:", err);
   process.exit(1);
 });
