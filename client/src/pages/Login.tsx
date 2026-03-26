@@ -60,13 +60,13 @@ export default function Login() {
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
-                  className="h-16 w-auto object-contain"
+                  className="h-24 w-auto object-contain"
                 />
               ) : (
                 <img
                   src={logo}
                   alt="Monteiro Seguros & Benefícios"
-                  className="h-16 w-auto object-contain"
+                  className="h-24 w-auto object-contain"
                 />
               )}
             </div>
@@ -123,13 +123,13 @@ export default function Login() {
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
-                  className="h-12 w-auto object-contain"
+                  className="h-20 w-auto object-contain"
                 />
               ) : (
                 <img
                   src={logo}
                   alt="Monteiro Seguros & Benefícios"
-                  className="h-12 w-auto object-contain"
+                  className="h-20 w-auto object-contain"
                 />
               )}
             </div>

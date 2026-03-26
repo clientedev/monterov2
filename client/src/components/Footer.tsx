@@ -24,13 +24,13 @@ export function Footer() {
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
-                  className="h-14 w-auto bg-white rounded p-1"
+                  className="h-20 w-auto bg-white rounded p-1"
                 />
               ) : (
                 <img
                   src={logo}
                   alt="Monteiro Seguros & Benefícios"
-                  className="h-14 w-auto bg-white rounded p-1"
+                  className="h-20 w-auto bg-white rounded p-1"
                 />
               )}
             </div>

@@ -71,9 +71,9 @@ export default function Register() {
                     <div className="flex items-center mb-2">
                         <div className="relative overflow-hidden">
                             {settings?.logoBase64 ? (
-                                <img src={settings.logoBase64} alt={settings.siteName} className="h-16 w-auto object-contain" />
+                                <img src={settings.logoBase64} alt={settings.siteName} className="h-24 w-auto object-contain" />
                             ) : (
-                                <img src={logo} alt="Monteiro Seguros & Benefícios" className="h-16 w-auto object-contain" />
+                                <img src={logo} alt="Monteiro Seguros & Benefícios" className="h-24 w-auto object-contain" />
                             )}
                         </div>
                     </div>
@@ -126,9 +126,9 @@ export default function Register() {
                     <div className="lg:hidden flex items-center mb-10">
                         <div className="relative overflow-hidden">
                             {settings?.logoBase64 ? (
-                                <img src={settings.logoBase64} alt={settings.siteName} className="h-12 w-auto object-contain" />
+                                <img src={settings.logoBase64} alt={settings.siteName} className="h-20 w-auto object-contain" />
                             ) : (
-                                <img src={logo} alt="Monteiro Seguros & Benefícios" className="h-12 w-auto object-contain" />
+                                <img src={logo} alt="Monteiro Seguros & Benefícios" className="h-20 w-auto object-contain" />
                             )}
                         </div>
                     </div>
