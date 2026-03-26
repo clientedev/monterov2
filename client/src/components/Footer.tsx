@@ -1,4 +1,4 @@
-import logo from "@assets/logo_monteiro.png";
+import logo from "@assets/logo_monteiro_v2.png";
 import { Facebook, Instagram, Linkedin, Twitter, MapPin, Phone, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { useSiteSettings } from "@/hooks/use-site-settings";

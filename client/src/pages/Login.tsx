@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { Eye, EyeOff, ArrowLeft, Lock, User } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import logo from "@assets/logo_monteiro.png";
+import logo from "@assets/logo_monteiro_v2.png";
 import { cn } from "@/lib/utils";
 
 export default function Login() {

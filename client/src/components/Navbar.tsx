@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
-import logo from "@assets/logo_monteiro.png";
+import logo from "@assets/logo_monteiro_v2.png";
 import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
@@ -39,7 +39,7 @@ export function Navbar() {
       )}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between overflow-visible">
-        <Link href="/" className="flex items-center group relative">
+        <Link href="/" className="flex items-center gap-3 group relative">
           <div className="relative overflow-visible">
             {settings?.logoBase64 ? (
               <img
@@ -54,6 +54,16 @@ export function Navbar() {
                 className="h-48 w-auto object-contain transition-transform duration-300 group-hover:scale-105 -my-16"
               />
             )}
+          </div>
+          <div className={cn(
+            "hidden sm:flex items-center gap-2 transition-colors duration-300",
+            scrolled || location !== "/" ? "text-slate-500" : "text-white/80"
+          )}>
+            <div className={cn(
+              "w-px h-8 transition-colors duration-300",
+              scrolled || location !== "/" ? "bg-slate-300" : "bg-white/30"
+            )} />
+            <span className="text-xs font-semibold tracking-widest uppercase leading-tight">Seguros &<br />Benefícios</span>
           </div>
         </Link>
 

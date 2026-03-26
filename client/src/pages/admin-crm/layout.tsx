@@ -21,7 +21,7 @@ import {
     MessageSquare
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import logo from "@assets/logo_monteiro.png";
+import logo from "@assets/logo_monteiro_v2.png";
 import { Separator } from "@/components/ui/separator";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
