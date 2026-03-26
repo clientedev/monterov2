@@ -66,15 +66,18 @@ export default function Register() {
                     }}
                 />
 
-                {/* Logo / Brand */}
                 <div className="relative z-10">
-                    <div className="flex items-center mb-2">
+                    <div className="flex items-center gap-4 mb-2">
                         <div className="relative overflow-hidden">
                             {settings?.logoBase64 ? (
                                 <img src={settings.logoBase64} alt={settings.siteName} className="h-24 w-auto object-contain" />
                             ) : (
                                 <img src={logo} alt="Monteiro Seguros & Benefícios" className="h-24 w-auto object-contain" />
                             )}
+                        </div>
+                        <div className="flex flex-col border-l border-white/20 pl-4">
+                            <span className="text-2xl font-bold tracking-tight text-white leading-none">Monteiro</span>
+                            <span className="text-xs font-medium text-amber-500 mt-1 uppercase tracking-wider">Seguros & Benefícios</span>
                         </div>
                     </div>
                 </div>
@@ -123,13 +126,17 @@ export default function Register() {
             <div className="flex-1 flex items-center justify-center p-8 bg-slate-50">
                 <div className="w-full max-w-[420px]">
                     {/* Mobile logo */}
-                    <div className="lg:hidden flex items-center mb-10">
+                    <div className="lg:hidden flex items-center gap-4 mb-10">
                         <div className="relative overflow-hidden">
                             {settings?.logoBase64 ? (
                                 <img src={settings.logoBase64} alt={settings.siteName} className="h-20 w-auto object-contain" />
                             ) : (
                                 <img src={logo} alt="Monteiro Seguros & Benefícios" className="h-20 w-auto object-contain" />
                             )}
+                        </div>
+                        <div className="flex flex-col border-l border-slate-200 pl-4">
+                            <span className="text-xl font-bold tracking-tight text-slate-900 leading-none">Monteiro</span>
+                            <span className="text-[10px] uppercase font-medium text-amber-600 mt-1 tracking-wider">Seguros & Benefícios</span>
                         </div>
                     </div>
 

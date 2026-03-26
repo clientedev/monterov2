@@ -19,7 +19,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand */}
           <div className="space-y-6">
-            <div className="flex items-center">
+            <div className="flex items-center gap-4">
               {settings?.logoBase64 ? (
                 <img
                   src={settings.logoBase64}
@@ -33,6 +33,10 @@ export function Footer() {
                   className="h-20 w-auto bg-white rounded p-1"
                 />
               )}
+              <div className="flex flex-col border-l border-white/20 pl-4">
+                <span className="font-display text-xl font-bold text-white tracking-tight leading-none">Monteiro</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-primary mt-1">Seguros & Benefícios</span>
+              </div>
             </div>
             <p className="text-slate-400 leading-relaxed text-sm">
               {settings?.footerText || "Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios. Confiança, integridade e excelência."}
