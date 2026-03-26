@@ -45,13 +45,13 @@ export function Navbar() {
               <img
                 src={settings.logoBase64}
                 alt={settings.siteName}
-                className="h-20 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-40 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
               <img
                 src={logo}
                 alt="Monteiro Seguros & Benefícios"
-                className="h-20 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-40 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
               />
             )}
           </div>
