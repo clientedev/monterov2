@@ -59,7 +59,7 @@ export function Navbar() {
             "hidden sm:flex items-center gap-3 transition-colors duration-300 border-l pl-4",
             scrolled || location !== "/" ? "text-slate-500 border-slate-200" : "text-white/70 border-white/20"
           )}>
-            <span className="text-[10px] font-bold tracking-[0.2em] uppercase leading-tight">Seguros &<br />Benefícios</span>
+            <span className="text-[10px] font-bold tracking-[0.2em] uppercase leading-tight">Seguros & Benefícios</span>
           </div>
         </Link>
 

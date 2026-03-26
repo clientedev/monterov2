@@ -79,8 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 )}
                             </div>
                             <div className="flex flex-col border-l border-white/20 pl-4">
-                                <span className="text-xl font-bold tracking-tight text-white leading-none">Monteiro</span>
-                                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] leading-none mt-1">Seguros & Benefícios</span>
+                                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] leading-none">Seguros & Benefícios</span>
                             </div>
                         </div>
                     </Link>

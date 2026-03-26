@@ -76,8 +76,7 @@ export default function Register() {
                             )}
                         </div>
                         <div className="flex flex-col border-l border-white/20 pl-4">
-                            <span className="text-2xl font-bold tracking-tight text-white leading-none">Monteiro</span>
-                            <span className="text-xs font-medium text-amber-500 mt-1 uppercase tracking-wider">Seguros & Benefícios</span>
+                            <span className="text-xs font-medium text-amber-500 uppercase tracking-wider">Seguros & Benefícios</span>
                         </div>
                     </div>
                 </div>
@@ -135,8 +134,7 @@ export default function Register() {
                             )}
                         </div>
                         <div className="flex flex-col border-l border-slate-200 pl-4">
-                            <span className="text-xl font-bold tracking-tight text-slate-900 leading-none">Monteiro</span>
-                            <span className="text-[10px] uppercase font-medium text-amber-600 mt-1 tracking-wider">Seguros & Benefícios</span>
+                            <span className="text-[10px] uppercase font-medium text-amber-600 tracking-wider">Seguros & Benefícios</span>
                         </div>
                     </div>
 
