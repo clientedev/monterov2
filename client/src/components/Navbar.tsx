@@ -32,38 +32,34 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out overflow-visible",
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out",
         scrolled
-          ? "bg-white/90 backdrop-blur-md shadow-sm py-2"
-          : "bg-transparent py-3"
+          ? "bg-white/95 backdrop-blur-md shadow-sm py-4"
+          : "bg-transparent py-5"
       )}
     >
-      <div className="container mx-auto px-4 md:px-6 flex items-center justify-between overflow-visible">
-        <Link href="/" className="flex items-center gap-3 group relative">
-          <div className="relative overflow-visible">
+      <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-4 group">
+          <div className="relative">
             {settings?.logoBase64 ? (
               <img
                 src={settings.logoBase64}
                 alt={settings.siteName}
-                className="h-48 w-auto object-contain transition-transform duration-300 group-hover:scale-105 -my-16"
+                className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
               <img
                 src={logo}
                 alt="Monteiro Seguros & Benefícios"
-                className="h-48 w-auto object-contain transition-transform duration-300 group-hover:scale-105 -my-16"
+                className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
               />
             )}
           </div>
           <div className={cn(
-            "hidden sm:flex items-center gap-2 transition-colors duration-300",
-            scrolled || location !== "/" ? "text-slate-500" : "text-white/80"
+            "hidden sm:flex items-center gap-3 transition-colors duration-300 border-l pl-4",
+            scrolled || location !== "/" ? "text-slate-500 border-slate-200" : "text-white/70 border-white/20"
           )}>
-            <div className={cn(
-              "w-px h-8 transition-colors duration-300",
-              scrolled || location !== "/" ? "bg-slate-300" : "bg-white/30"
-            )} />
-            <span className="text-xs font-semibold tracking-widest uppercase leading-tight">Seguros &<br />Benefícios</span>
+            <span className="text-[10px] font-bold tracking-[0.2em] uppercase leading-tight">Seguros &<br />Benefícios</span>
           </div>
         </Link>
 
