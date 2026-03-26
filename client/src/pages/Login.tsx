@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { Eye, EyeOff, ArrowLeft, Lock, User } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import logo from "@assets/image_1770228718109.png";
+import logo from "@assets/logo_monteiro.png";
 import { cn } from "@/lib/utils";
 
 export default function Login() {
@@ -54,29 +54,21 @@ export default function Login() {
 
         {/* Logo / Brand */}
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="relative overflow-hidden rounded-lg">
+          <div className="flex items-center mb-2">
+            <div className="relative overflow-hidden">
               {settings?.logoBase64 ? (
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
-                  className="h-12 w-auto object-contain"
+                  className="h-16 w-auto object-contain"
                 />
               ) : (
                 <img
                   src={logo}
-                  alt="Monteiro Corretora"
-                  className="h-12 w-auto object-contain"
+                  alt="Monteiro Seguros & Benefícios"
+                  className="h-16 w-auto object-contain"
                 />
               )}
-            </div>
-            <div className="flex flex-col font-display leading-tight">
-              <span className="text-xl font-bold tracking-tight text-white">
-                {settings?.siteName?.split(' ')[0] || "Monteiro"}
-              </span>
-              <span className="text-sm font-medium text-amber-500">
-                {settings?.siteName?.split(' ').slice(1).join(' ') || "Corretora"}
-              </span>
             </div>
           </div>
         </div>
@@ -125,29 +117,21 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-8 bg-slate-50">
         <div className="w-full max-w-[420px]">
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-10">
-            <div className="relative overflow-hidden rounded-lg">
+          <div className="lg:hidden flex items-center mb-10">
+            <div className="relative overflow-hidden">
               {settings?.logoBase64 ? (
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
-                  className="h-10 w-auto object-contain"
+                  className="h-12 w-auto object-contain"
                 />
               ) : (
                 <img
                   src={logo}
-                  alt="Monteiro Corretora"
-                  className="h-10 w-auto object-contain"
+                  alt="Monteiro Seguros & Benefícios"
+                  className="h-12 w-auto object-contain"
                 />
               )}
-            </div>
-            <div className="flex flex-col font-display leading-tight">
-              <span className="text-lg font-bold tracking-tight text-slate-900">
-                {settings?.siteName?.split(' ')[0] || "Monteiro"}
-              </span>
-              <span className="text-xs font-medium text-amber-600">
-                {settings?.siteName?.split(' ').slice(1).join(' ') || "Corretora"}
-              </span>
             </div>
           </div>
 

@@ -21,7 +21,7 @@ import {
     MessageSquare
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import logo from "@assets/image_1770228718109.png";
+import logo from "@assets/logo_monteiro.png";
 import { Separator } from "@/components/ui/separator";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
@@ -62,29 +62,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {/* Logo & Brand */}
                 <div className="p-6 pb-2">
                     <Link href="/admin">
-                        <div className="flex items-center gap-3 cursor-pointer group">
-                            <div className="relative overflow-hidden rounded-lg group-hover:rotate-3 transition-transform duration-300">
+                        <div className="flex items-center cursor-pointer group">
+                            <div className="relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
                                 {settings?.logoBase64 ? (
                                     <img
                                         src={settings.logoBase64}
                                         alt={settings.siteName}
-                                        className="h-10 w-auto object-contain"
+                                        className="h-12 w-auto object-contain"
                                     />
                                 ) : (
                                     <img
                                         src={logo}
-                                        alt="Monteiro Corretora"
-                                        className="h-10 w-auto object-contain"
+                                        alt="Monteiro Seguros & Benefícios"
+                                        className="h-12 w-auto object-contain"
                                     />
                                 )}
-                            </div>
-                            <div className="flex flex-col font-display leading-tight">
-                                <span className="text-lg font-bold tracking-tight text-white">
-                                    {settings?.siteName?.split(' ')[0] || "Monteiro"}
-                                </span>
-                                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] leading-none mt-1">
-                                    {settings?.siteName?.split(' ').slice(1).join(' ') || "Corretora Premium"}
-                                </span>
                             </div>
                         </div>
                     </Link>

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
-import logo from "@assets/image_1770228718109.png";
+import logo from "@assets/logo_monteiro.png";
 import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
@@ -39,28 +39,21 @@ export function Navbar() {
       )}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative overflow-hidden rounded-lg">
+        <Link href="/" className="flex items-center group">
+          <div className="relative overflow-hidden">
             {settings?.logoBase64 ? (
               <img
                 src={settings.logoBase64}
                 alt={settings.siteName}
-                className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-14 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
               <img
                 src={logo}
-                alt="Monteiro Corretora"
-                className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                alt="Monteiro Seguros & Benefícios"
+                className="h-14 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
               />
             )}
-          </div>
-          <div className={cn(
-            "flex flex-col font-display leading-tight transition-colors duration-300",
-            scrolled || location !== "/" ? "text-foreground" : "text-white"
-          )}>
-            <span className="text-xl font-bold tracking-tight">{settings?.siteName?.split(' ')[0] || "Monteiro"}</span>
-            <span className="text-sm font-medium opacity-90">{settings?.siteName?.split(' ').slice(1).join(' ') || "Corretora"}</span>
           </div>
         </Link>
 

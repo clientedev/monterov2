@@ -1,4 +1,4 @@
-import logo from "@assets/image_1770228718109.png";
+import logo from "@assets/logo_monteiro.png";
 import { Facebook, Instagram, Linkedin, Twitter, MapPin, Phone, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { useSiteSettings } from "@/hooks/use-site-settings";
@@ -19,21 +19,20 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center">
               {settings?.logoBase64 ? (
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
-                  className="h-10 w-auto bg-white rounded p-1"
+                  className="h-14 w-auto bg-white rounded p-1"
                 />
               ) : (
                 <img
                   src={logo}
-                  alt="Monteiro Corretora"
-                  className="h-10 w-auto bg-white rounded p-1"
+                  alt="Monteiro Seguros & Benefícios"
+                  className="h-14 w-auto bg-white rounded p-1"
                 />
               )}
-              <span className="font-display text-xl font-bold text-white">{settings?.siteName || "Monteiro"}</span>
             </div>
             <p className="text-slate-400 leading-relaxed text-sm">
               {settings?.footerText || "Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios. Confiança, integridade e excelência."}
