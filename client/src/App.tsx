@@ -18,6 +18,7 @@ import BlogPost from "@/pages/PostDetail";
 import Contact from "@/pages/Contact";
 import PublicServicesPage from "@/pages/Services";
 import ServiceDetail from "@/pages/ServiceDetail";
+import CustomerDashboard from "@/pages/CustomerDashboard";
 
 // Admin CRM Pages
 import ContactsPage from "@/pages/admin-crm/contacts";
@@ -47,7 +48,7 @@ function ProtectedAdminRoute({ path, component: Component }: { path: string; com
     );
   }
 
-  if (!user) {
+  if (!user || (user.role !== "admin" && user.role !== "employee")) {
     return <Route path={path} component={Login} />;
   }
 
@@ -56,6 +57,28 @@ function ProtectedAdminRoute({ path, component: Component }: { path: string; com
       <AdminLayout>
         <Component />
       </AdminLayout>
+    </Route>
+  );
+}
+
+function ProtectedClientRoute({ path, component: Component }: { path: string; component: React.ComponentType }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Route path={path} component={Login} />;
+  }
+
+  return (
+    <Route path={path}>
+      <Component />
     </Route>
   );
 }
@@ -72,6 +95,9 @@ function Router() {
       <Route path="/services" component={PublicServicesPage} />
       <Route path="/services/:id" component={ServiceDetail} />
       <Route path="/contact" component={Contact} />
+
+      {/* Customer Area */}
+      <ProtectedClientRoute path="/dashboard" component={CustomerDashboard} />
 
       {/* Admin CRM Routes */}
       <ProtectedAdminRoute path="/admin" component={AdminDashboard} />

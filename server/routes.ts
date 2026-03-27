@@ -75,6 +75,13 @@ export async function registerRoutes(
     res.status(401).json({ message: "Unauthorized" });
   };
 
+  const isTeam = (req: any, res: any, next: any) => {
+    if (req.isAuthenticated() && (req.user.role === "admin" || req.user.role === "employee")) {
+      return next();
+    }
+    res.status(403).json({ message: "Forbidden: Team access required" });
+  };
+
   const isAdmin = (req: any, res: any, next: any) => {
     if (req.isAuthenticated() && req.user.role === "admin") {
       return next();
@@ -187,7 +194,8 @@ export async function registerRoutes(
   app.post(api.inquiries.create.path, async (req, res) => {
     try {
       const input = api.inquiries.create.input.parse(req.body);
-      const inquiry = await storage.createInquiry(input);
+      const userId = req.isAuthenticated() ? (req.user as any).id : null;
+      const inquiry = await storage.createInquiry({ ...input, userId });
       res.status(201).json(inquiry);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -200,33 +208,39 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/my-inquiries", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).id;
+    const inquiries = await storage.getInquiriesByUserId(userId);
+    res.json(inquiries);
+  });
+
 
   // CRM Routes
 
   // Contacts
-  app.get("/api/contacts", isAuthenticated, async (req, res) => {
+  app.get("/api/contacts", isTeam, async (req, res) => {
     const contacts = await storage.getContacts();
     res.json(contacts);
   });
 
-  app.patch("/api/contacts/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/contacts/:id", isTeam, async (req, res) => {
     const contact = await storage.updateContact(parseInt(req.params.id), req.body);
     if (!contact) return res.status(404).json({ message: "Contact not found" });
     res.json(contact);
   });
 
-  app.delete("/api/contacts/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/contacts/:id", isTeam, async (req, res) => {
     await storage.deleteContact(parseInt(req.params.id));
     res.sendStatus(204);
   });
 
-  app.get("/api/contacts/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/contacts/:id", isTeam, async (req, res) => {
     const contact = await storage.getContact(parseInt(req.params.id));
     if (!contact) return res.status(404).json({ message: "Contact not found" });
     res.json(contact);
   });
 
-  app.post("/api/contacts", isAuthenticated, async (req, res) => {
+  app.post("/api/contacts", isTeam, async (req, res) => {
     try {
       const input = insertContactSchema.parse(req.body);
       const contact = await storage.createContact(input);
@@ -240,13 +254,13 @@ export async function registerRoutes(
   });
 
   // Leads
-  app.get("/api/leads", isAuthenticated, async (req, res) => {
+  app.get("/api/leads", isTeam, async (req, res) => {
     const contactId = req.query.contactId ? parseInt(req.query.contactId as string) : undefined;
     const leads = await storage.getLeads(contactId);
     res.json(leads);
   });
 
-  app.post("/api/leads", isAuthenticated, async (req, res) => {
+  app.post("/api/leads", isTeam, async (req, res) => {
     try {
       const input = insertLeadSchema.parse(req.body);
       const lead = await storage.createLead(input);
@@ -259,32 +273,32 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/leads/:id/status", isAuthenticated, async (req, res) => {
+  app.patch("/api/leads/:id/status", isTeam, async (req, res) => {
     const lead = await storage.updateLeadStatus(parseInt(req.params.id), req.body.status);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
     res.json(lead);
   });
 
-  app.patch("/api/leads/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/leads/:id", isTeam, async (req, res) => {
     const lead = await storage.updateLead(parseInt(req.params.id), req.body);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
     res.json(lead);
   });
 
-  app.delete("/api/leads/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/leads/:id", isTeam, async (req, res) => {
     await storage.deleteLead(parseInt(req.params.id));
     res.sendStatus(204);
   });
 
   // Interactions
-  app.get("/api/interactions", isAuthenticated, async (req, res) => {
+  app.get("/api/interactions", isTeam, async (req, res) => {
     const leadId = req.query.leadId ? parseInt(req.query.leadId as string) : undefined;
     const contactId = req.query.contactId ? parseInt(req.query.contactId as string) : undefined;
     const interactions = await storage.getInteractions(leadId, contactId);
     res.json(interactions);
   });
 
-  app.post("/api/interactions", isAuthenticated, async (req, res) => {
+  app.post("/api/interactions", isTeam, async (req, res) => {
     try {
       const input = insertInteractionSchema.parse(req.body);
       const interaction = await storage.createInteraction({
@@ -301,7 +315,7 @@ export async function registerRoutes(
   });
 
   // Campaigns
-  app.get("/api/campaigns", isAuthenticated, async (req, res) => {
+  app.get("/api/campaigns", isTeam, async (req, res) => {
     const campaigns = await storage.getCampaigns();
     res.json(campaigns);
   });
@@ -325,7 +339,7 @@ export async function registerRoutes(
   });
 
   // Users Management
-  app.get("/api/users", isAuthenticated, async (req, res) => {
+  app.get("/api/users", isAdmin, async (req, res) => {
     const result = await storage.getUsers();
     // Don't leak passwords
     res.json(result.map(({ password, ...user }) => user));
@@ -395,7 +409,7 @@ export async function registerRoutes(
   });
 
   // Tasks
-  app.get("/api/tasks", isAuthenticated, async (req, res) => {
+  app.get("/api/tasks", isTeam, async (req, res) => {
     const user = req.user as any;
     let assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
     const contactId = req.query.contactId ? parseInt(req.query.contactId as string) : undefined;
@@ -410,7 +424,7 @@ export async function registerRoutes(
     res.json(tasks);
   });
 
-  app.post("/api/tasks", isAuthenticated, async (req, res) => {
+  app.post("/api/tasks", isTeam, async (req, res) => {
     try {
       const input = insertTaskSchema.parse({
         ...req.body,
@@ -439,13 +453,13 @@ export async function registerRoutes(
     res.json(task);
   });
 
-  app.patch("/api/tasks/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/tasks/:id", isTeam, async (req, res) => {
     const task = await storage.updateTask(parseInt(req.params.id), req.body);
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
   });
 
-  app.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/tasks/:id", isTeam, async (req, res) => {
     await storage.deleteTask(parseInt(req.params.id));
     res.sendStatus(204);
   });

@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
-import { Eye, EyeOff, ArrowLeft, Lock, User, UserPlus } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Lock, User as UserIcon, UserPlus } from "lucide-react";
+import { User } from "@shared/schema";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import logo from "@assets/logo_monteiro_v2.png";
 
@@ -21,7 +22,7 @@ export default function Register() {
     const { settings } = useSiteSettings();
 
     useEffect(() => {
-        if (user) setLocation("/admin");
+        if (user) setLocation(user.role === "client" ? "/dashboard" : "/admin");
     }, [user, setLocation]);
 
     if (user) return null;
@@ -40,8 +41,8 @@ export default function Register() {
         }
 
         registerMutation.mutate(
-            { username, password, name, role: "employee" },
-            { onSuccess: () => setLocation("/admin") }
+            { username, password, name, role: "client" },
+            { onSuccess: (user: User) => setLocation(user.role === "client" ? "/dashboard" : "/admin") }
         );
     };
 
@@ -148,7 +149,7 @@ export default function Register() {
                         <div className="space-y-2">
                             <Label htmlFor="name" className="text-slate-700 font-bold text-sm">Nome completo</Label>
                             <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input
                                     id="name"
                                     value={name}

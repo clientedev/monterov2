@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
-import { Eye, EyeOff, ArrowLeft, Lock, User } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Lock, User as UserIcon } from "lucide-react";
+import { User } from "@shared/schema";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import logo from "@assets/logo_monteiro_v2.png";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,7 @@ export default function Login() {
   const { settings } = useSiteSettings();
 
   useEffect(() => {
-    if (user) setLocation("/admin");
+    if (user) setLocation(user.role === "client" ? "/dashboard" : "/admin");
   }, [user, setLocation]);
 
   if (user) return null;
@@ -27,7 +28,7 @@ export default function Login() {
     e.preventDefault();
     loginMutation.mutate(
       { username, password },
-      { onSuccess: () => setLocation("/admin") }
+      { onSuccess: (user: User) => setLocation(user.role === "client" ? "/dashboard" : "/admin") }
     );
   };
 
@@ -150,7 +151,7 @@ export default function Login() {
             <div className="space-y-2">
               <Label htmlFor="username" className="text-slate-700 font-bold text-sm">Usuário</Label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="username"
                   value={username}

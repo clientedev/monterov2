@@ -68,6 +68,7 @@ export interface IStorage {
 
   // Inquiries
   createInquiry(inquiry: InsertInquiry): Promise<Inquiry>;
+  getInquiriesByUserId(userId: number): Promise<Inquiry[]>;
 
   sessionStore: session.Store;
 
@@ -235,6 +236,10 @@ export class DatabaseStorage implements IStorage {
   async createInquiry(inquiry: InsertInquiry): Promise<Inquiry> {
     const [newInquiry] = await db.insert(inquiries).values(inquiry).returning();
     return newInquiry;
+  }
+
+  async getInquiriesByUserId(userId: number): Promise<Inquiry[]> {
+    return await db.select().from(inquiries).where(eq(inquiries.userId, userId)).orderBy(desc(inquiries.createdAt));
   }
 
   // Users
@@ -630,11 +635,18 @@ export class MemStorage implements IStorage {
     const newInquiry: Inquiry = {
       ...inquiry,
       id,
+      userId: inquiry.userId ?? null,
       createdAt: new Date(),
       phone: inquiry.phone || null
     };
     this.inquiries.push(newInquiry);
     return newInquiry;
+  }
+
+  async getInquiriesByUserId(userId: number): Promise<Inquiry[]> {
+    return this.inquiries
+      .filter(i => i.userId === userId)
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   // Users

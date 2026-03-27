@@ -29,6 +29,7 @@ export const comments = pgTable("comments", {
 // Contact Inquiries
 export const inquiries = pgTable("inquiries", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id), // Optional: link to registered user
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone"),
@@ -49,7 +50,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role", { enum: ["admin", "employee"] }).notNull().default("employee"),
+  role: text("role", { enum: ["admin", "employee", "client"] }).notNull().default("client"),
   name: text("name").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });

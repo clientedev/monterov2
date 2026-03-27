@@ -4,12 +4,15 @@ import { Menu, X } from "lucide-react";
 import logo from "@assets/logo_monteiro_v2.png";
 import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/hooks/use-site-settings";
+import { useAuth } from "@/hooks/use-auth";
+import { LogOut, User as UserIcon, LayoutDashboard, Settings } from "lucide-react";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { settings } = useSiteSettings();
+  const { user, logoutMutation } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -80,24 +83,62 @@ export function Navbar() {
             </Link>
           ))}
           <div className="flex items-center gap-4">
-            <Link href="/login">
-              <a className={cn(
-                "text-sm font-medium cursor-pointer transition-colors hover:text-primary",
-                scrolled || location !== "/" ? "text-slate-600" : "text-white/90 hover:text-white"
-              )}>
-                Entrar
-              </a>
-            </Link>
-            <Link href="/contact">
-              <button className={cn(
-                "px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg cursor-pointer",
-                scrolled || location !== "/"
-                  ? "bg-primary text-white hover:bg-primary/90"
-                  : "bg-white text-primary hover:bg-white/90"
-              )}>
-                Solicitar Cotação
-              </button>
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-4">
+                <Link href={user.role === "client" ? "/dashboard" : "/admin"}>
+                  <a className={cn(
+                    "text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-xl transition-all",
+                    scrolled || location !== "/" 
+                      ? "bg-slate-100 text-slate-900 hover:bg-slate-200" 
+                      : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
+                  )}>
+                    {user.role === "client" ? (
+                      <>
+                        <UserIcon className="h-4 w-4 text-amber-500" />
+                        Área do Cliente
+                      </>
+                    ) : (
+                      <>
+                        <LayoutDashboard className="h-4 w-4 text-amber-500" />
+                        Painel Admin
+                      </>
+                    )}
+                  </a>
+                </Link>
+                <button
+                  onClick={() => logoutMutation.mutate()}
+                  disabled={logoutMutation.isPending}
+                  className={cn(
+                    "p-2 rounded-xl transition-colors",
+                    scrolled || location !== "/" ? "text-slate-400 hover:text-red-500 hover:bg-red-50" : "text-white/60 hover:text-white hover:bg-white/10"
+                  )}
+                  title="Sair"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link href="/login">
+                  <a className={cn(
+                    "text-sm font-medium cursor-pointer transition-colors hover:text-primary",
+                    scrolled || location !== "/" ? "text-slate-600" : "text-white/90 hover:text-white"
+                  )}>
+                    Entrar
+                  </a>
+                </Link>
+                <Link href="/contact">
+                  <button className={cn(
+                    "px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg cursor-pointer",
+                    scrolled || location !== "/"
+                      ? "bg-primary text-white hover:bg-primary/90"
+                      : "bg-white text-primary hover:bg-white/90"
+                  )}>
+                    Solicitar Cotação
+                  </button>
+                </Link>
+              </>
+            )}
           </div>
         </nav>
 
@@ -121,24 +162,44 @@ export function Navbar() {
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
       >
-        {navLinks.map((link) => (
-          <Link key={link.name} href={link.href}>
-            <a
-              onClick={handleLinkClick}
-              className="text-2xl font-display font-medium text-slate-900 hover:text-primary transition-colors cursor-pointer"
-            >
-              {link.name}
-            </a>
-          </Link>
-        ))}
-        <Link href="/login">
+        <Link href="/blog">
           <a
             onClick={handleLinkClick}
             className="text-2xl font-display font-medium text-slate-900 hover:text-primary transition-colors cursor-pointer"
           >
-            Entrar
+            Blog
           </a>
         </Link>
+        {user ? (
+          <>
+            <Link href={user.role === "client" ? "/dashboard" : "/admin"}>
+              <a
+                onClick={handleLinkClick}
+                className="text-2xl font-display font-medium text-slate-900 hover:text-primary transition-colors cursor-pointer"
+              >
+                {user.role === "client" ? "Minha Conta" : "Painel Admin"}
+              </a>
+            </Link>
+            <button
+              onClick={() => {
+                logoutMutation.mutate();
+                handleLinkClick();
+              }}
+              className="text-2xl font-display font-medium text-red-600 hover:text-red-700 transition-colors cursor-pointer"
+            >
+              Sair
+            </button>
+          </>
+        ) : (
+          <Link href="/login">
+            <a
+              onClick={handleLinkClick}
+              className="text-2xl font-display font-medium text-slate-900 hover:text-primary transition-colors cursor-pointer"
+            >
+              Entrar
+            </a>
+          </Link>
+        )}
       </div>
     </header>
   );
