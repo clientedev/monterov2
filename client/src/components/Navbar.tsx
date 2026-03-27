@@ -1,11 +1,10 @@
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut, User as UserIcon, LayoutDashboard, Camera } from "lucide-react";
 import logo from "@assets/logo_monteiro_v2.png";
 import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, User as UserIcon, LayoutDashboard, Settings } from "lucide-react";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -112,14 +111,6 @@ export function Navbar() {
                     <span className="hidden lg:inline">
                       {user.role === "client" ? "Área do Cliente" : "Painel Admin"}
                     </span>
-                  </a>
-                </Link>
-                <Link href="/profile">
-                  <a className={cn(
-                    "p-2 rounded-xl transition-colors",
-                    scrolled || location !== "/" ? "text-slate-400 hover:text-primary hover:bg-primary/5" : "text-white/60 hover:text-white hover:bg-white/10"
-                  )} title="Meu Perfil">
-                    <UserIcon className="h-5 w-5" />
                   </a>
                 </Link>
                 <button
