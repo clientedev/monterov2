@@ -27,7 +27,7 @@ import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, logoutMutation } = useAuth();
-    const [location] = useLocation();
+    const [location, setLocation] = useLocation();
     const { settings } = useSiteSettings();
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
@@ -131,16 +131,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 {/* Footer User Info */}
                 <div className="mt-auto p-5 bg-black/30 border-t border-white/5">
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-4 mb-4 group cursor-pointer" onClick={() => setLocation("/profile")}>
                         <div className="relative">
-                            <div className="h-12 w-12 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-lg text-white shadow-inner">
-                                {user.username.charAt(0).toUpperCase()}
+                            <div className="h-12 w-12 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-lg text-white shadow-inner overflow-hidden group-hover:border-amber-500/50 transition-colors">
+                                {user.avatar ? (
+                                    <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                                ) : (
+                                    user.username.charAt(0).toUpperCase()
+                                )}
                             </div>
                             <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-[#161b22] shadow-sm"></div>
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-white truncate">{user.name || user.username}</h4>
-                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-0.5">
+                            <h4 className="text-sm font-semibold text-white truncate group-hover:text-amber-400 transition-colors">{user.name || user.username}</h4>
+                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-0.5 group-hover:text-slate-300 transition-colors">
                                 {user.role === 'admin' ? 'Master Admin' : 'Operador'}
                             </p>
                         </div>

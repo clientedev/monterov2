@@ -9,15 +9,65 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CustomerDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [quoteMessage, setQuoteMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { data: inquiries, isLoading } = useQuery<Inquiry[]>({
     queryKey: ["/api/my-inquiries"],
   });
 
+  const handleQuoteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quoteMessage.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await apiRequest("POST", "/api/inquiries", {
+        name: user?.name || "Cliente Logado",
+        email: user?.username || "", // Using username as fallback email
+        phone: "", // Will use existing info if available
+        message: quoteMessage,
+      });
+
+      toast({
+        title: "Solicitação enviada!",
+        description: "Nossa equipe entrará em contato em breve.",
+      });
+      setShowQuoteModal(false);
+      setQuoteMessage("");
+      queryClient.invalidateQueries({ queryKey: ["/api/my-inquiries"] });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col pt-24">
       <Navbar />
 
       <main className="flex-1 py-12 px-4 sm:px-6 lg:px-8">
@@ -55,9 +105,7 @@ export default function CustomerDashboard() {
                   <Button 
                     className="w-full justify-between font-bold h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl"
                     onClick={() => {
-                        // The chat bubble should open automatically or handle this
-                        const chatBtn = document.querySelector('[aria-label="Toggle chat"]') as HTMLButtonElement;
-                        chatBtn?.click();
+                        window.dispatchEvent(new CustomEvent('open-carol-chat'));
                     }}
                   >
                     Falar com a Carol
@@ -115,9 +163,12 @@ export default function CustomerDashboard() {
                          Você ainda não realizou nenhuma solicitação de cotação pelo site.
                        </p>
                        <Link href="/services">
-                          <Button className="mt-6 font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl">
-                             Fazer minha primeira cotação
-                          </Button>
+                       <Button 
+                        className="mt-6 font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl"
+                        onClick={() => setShowQuoteModal(true)}
+                       >
+                         Fazer minha primeira cotação
+                       </Button>
                        </Link>
                     </div>
                   ) : (
@@ -152,6 +203,48 @@ export default function CustomerDashboard() {
       </main>
 
       <Footer />
+
+      {/* Quick Quote Modal */}
+      <Dialog open={showQuoteModal} onOpenChange={setShowQuoteModal}>
+        <DialogContent className="sm:max-w-[500px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-slate-900">O que você precisa?</DialogTitle>
+            <DialogDescription className="text-slate-500">
+              Descreva brevemente o seguro ou plano de saúde que você busca. Nossa equipe entrará em contato para apresentar as melhores opções.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleQuoteSubmit} className="space-y-6 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="message" className="text-sm font-bold text-slate-700">Detalhes da solicitação</Label>
+              <Textarea
+                id="message"
+                placeholder="Ex: Gostaria de uma cotação para seguro de vida individual e plano de saúde empresarial para 5 vidas..."
+                className="min-h-[150px] rounded-xl border-slate-200 focus:ring-amber-500"
+                value={quoteMessage}
+                onChange={(e) => setQuoteMessage(e.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => setShowQuoteModal(false)}
+                className="font-bold text-slate-500 rounded-xl"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                type="submit" 
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 rounded-xl"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Enviar Solicitação"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

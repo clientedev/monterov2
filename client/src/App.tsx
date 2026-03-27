@@ -17,8 +17,9 @@ import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/PostDetail";
 import Contact from "@/pages/Contact";
 import PublicServicesPage from "@/pages/Services";
-import ServiceDetail from "@/pages/ServiceDetail";
-import CustomerDashboard from "@/pages/CustomerDashboard";
+import ServiceDetail from "./pages/ServiceDetail";
+import CustomerDashboard from "./pages/CustomerDashboard";
+import ProfilePage from "./pages/Profile";
 
 // Admin CRM Pages
 import ContactsPage from "@/pages/admin-crm/contacts";

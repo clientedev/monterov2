@@ -27,6 +27,15 @@ export function ChatBubble() {
         }
     }, [messages, isOpen, isMinimized]);
 
+    useEffect(() => {
+        const handleOpen = () => {
+            setIsOpen(true);
+            setIsMinimized(false);
+        };
+        window.addEventListener('open-carol-chat', handleOpen);
+        return () => window.removeEventListener('open-carol-chat', handleOpen);
+    }, []);
+
     const handleSend = async (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!input.trim() || isLoading) return;

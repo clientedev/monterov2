@@ -75,12 +75,7 @@ export async function registerRoutes(
   });
 
   // Middleware to check authentication
-  const isAuthenticated = (req: any, res: any, next: any) => {
-    if (req.isAuthenticated()) {
-      return next();
-    }
-    res.status(401).json({ message: "Unauthorized" });
-  };
+  // (using imported isAuthenticated)
 
   const isTeam = (req: any, res: any, next: any) => {
     if (req.isAuthenticated() && (req.user.role === "admin" || req.user.role === "employee")) {
@@ -986,6 +981,17 @@ out center 50;
       role: "admin",
     });
   }
+
+  app.patch("/api/user/profile", isAuthenticated, async (req, res) => {
+    try {
+      const { name, avatar } = req.body;
+      const userId = (req.user as any).id;
+      const updatedUser = await storage.updateUserProfile(userId, { name, avatar });
+      res.json(updatedUser);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
 
   // Update existing users with no role to 'client'
   await db.execute(sql`UPDATE users SET role = 'client' WHERE role IS NULL`);

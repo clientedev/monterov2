@@ -79,6 +79,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
   updateUserPassword(id: number, hashedPassword: string): Promise<void>;
+  updateUserProfile(id: number, data: { name?: string; avatar?: string }): Promise<User | undefined>;
   deleteUser(id: number): Promise<void>;
 
   // Contacts
@@ -273,6 +274,15 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserPassword(id: number, hashedPassword: string): Promise<void> {
     await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id));
+  }
+
+  async updateUserProfile(id: number, data: { name?: string; avatar?: string }): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
   }
 
   async deleteUser(id: number): Promise<void> {
@@ -665,10 +675,13 @@ export class MemStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const id = this.currentId.users++;
     const newUser: User = {
-      ...user,
       id,
+      username: user.username,
+      password: user.password,
+      name: user.name,
+      role: user.role || "client",
+      avatar: user.avatar || null,
       createdAt: new Date(),
-      role: user.role || "employee"
     };
     this.users.push(newUser);
     return newUser;
@@ -687,6 +700,15 @@ export class MemStorage implements IStorage {
     if (user) {
       user.password = hashedPassword;
     }
+  }
+
+  async updateUserProfile(id: number, data: { name?: string; avatar?: string }): Promise<User | undefined> {
+    const user = this.users.find((u) => u.id === id);
+    if (user) {
+      if (data.name) user.name = data.name;
+      if (data.avatar) user.avatar = data.avatar;
+    }
+    return user;
   }
 
   async deleteUser(id: number): Promise<void> {

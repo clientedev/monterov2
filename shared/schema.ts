@@ -52,6 +52,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role", { enum: ["admin", "employee", "client"] }).notNull().default("client"),
   name: text("name").notNull(),
+  avatar: text("avatar"), // Base64 or URL
   createdAt: timestamp("created_at").defaultNow(),
 });
 

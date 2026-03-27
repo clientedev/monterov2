@@ -92,17 +92,26 @@ export function Navbar() {
                       ? "bg-slate-100 text-slate-900 hover:bg-slate-200" 
                       : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
                   )}>
-                    {user.role === "client" ? (
-                      <>
-                        <UserIcon className="h-4 w-4 text-amber-500" />
-                        Área do Cliente
-                      </>
+                    {user.avatar ? (
+                      <img src={user.avatar} alt={user.name} className="h-5 w-5 rounded-full object-cover" />
                     ) : (
-                      <>
+                      user.role === "client" ? (
+                        <UserIcon className="h-4 w-4 text-amber-500" />
+                      ) : (
                         <LayoutDashboard className="h-4 w-4 text-amber-500" />
-                        Painel Admin
-                      </>
+                      )
                     )}
+                    <span className="hidden lg:inline">
+                      {user.role === "client" ? "Área do Cliente" : "Painel Admin"}
+                    </span>
+                  </a>
+                </Link>
+                <Link href="/profile">
+                  <a className={cn(
+                    "p-2 rounded-xl transition-colors",
+                    scrolled || location !== "/" ? "text-slate-400 hover:text-primary hover:bg-primary/5" : "text-white/60 hover:text-white hover:bg-white/10"
+                  )} title="Meu Perfil">
+                    <UserIcon className="h-5 w-5" />
                   </a>
                 </Link>
                 <button
