@@ -16,6 +16,7 @@ import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/PostDetail";
 import Contact from "@/pages/Contact";
 import PublicServicesPage from "@/pages/Services";
+import ServiceDetail from "@/pages/ServiceDetail";
 
 // Admin CRM Pages
 import ContactsPage from "@/pages/admin-crm/contacts";
@@ -68,6 +69,7 @@ function Router() {
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/services" component={PublicServicesPage} />
+      <Route path="/services/:id" component={ServiceDetail} />
       <Route path="/contact" component={Contact} />
 
       {/* Admin CRM Routes */}

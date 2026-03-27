@@ -216,8 +216,8 @@ export default function PostDetail() {
                   <div className="h-20 bg-slate-200 rounded-2xl w-full"></div>
                   <div className="h-20 bg-slate-200 rounded-2xl w-full"></div>
                 </div>
-              ) : comments && comments.length > 0 ? (
-                comments.map((comment: any) => (
+              ) : comments && comments.filter((c: any) => c.isApproved).length > 0 ? (
+                comments.filter((c: any) => c.isApproved).map((comment: any) => (
                   <div key={comment.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex gap-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
                       <span className="text-primary font-bold text-lg">{comment.authorName.charAt(0).toUpperCase()}</span>
