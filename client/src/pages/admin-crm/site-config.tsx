@@ -255,7 +255,7 @@ export default function SiteConfigPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl grid grid-cols-2 md:grid-cols-5 gap-1 h-auto mb-8 border border-white/40 shadow-sm">
+                <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl grid grid-cols-3 md:grid-cols-6 gap-1 h-auto mb-8 border border-white/40 shadow-sm">
                     <TabsTrigger value="identity" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <Globe className="h-4 w-4" /> Identidade
                     </TabsTrigger>
