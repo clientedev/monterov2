@@ -35,6 +35,7 @@ import TasksPage from "@/pages/admin-crm/tasks";
 import AdminDashboard from "@/pages/admin-crm/dashboard";
 import AdminLayout from "@/pages/admin-crm/layout";
 import SiteConfigPage from "@/pages/admin-crm/site-config";
+import ReviewsPage from "@/pages/admin-crm/reviews";
 import ProspectingPage from "@/pages/admin-crm/prospecting";
 import CompanySearchPage from "@/pages/admin-crm/company-search";
 
@@ -114,6 +115,7 @@ function Router() {
       <ProtectedAdminRoute path="/admin/users" component={UsersPage} />
       <ProtectedAdminRoute path="/admin/tasks" component={TasksPage} />
       <ProtectedAdminRoute path="/admin/site-config" component={SiteConfigPage} />
+      <ProtectedAdminRoute path="/admin/reviews" component={ReviewsPage} />
       <ProtectedAdminRoute path="/admin/prospecting" component={ProspectingPage} />
       <ProtectedAdminRoute path="/admin/company-search" component={CompanySearchPage} />
 

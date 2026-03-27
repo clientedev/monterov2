@@ -26,13 +26,9 @@ import {
     Image as ImageIcon,
     LayoutTemplate,
     Eye,
-    Smartphone,
-    Star,
-    Check,
-    X
+    Smartphone
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
-import { useAdminReviews, useApproveReview, useDeleteReview } from "@/hooks/use-reviews";
 import { ImageUpload } from "@/components/ImageUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -255,7 +251,7 @@ export default function SiteConfigPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl grid grid-cols-3 md:grid-cols-6 gap-1 h-auto mb-8 border border-white/40 shadow-sm">
+                <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl grid grid-cols-2 md:grid-cols-5 gap-1 h-auto mb-8 border border-white/40 shadow-sm">
                     <TabsTrigger value="identity" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <Globe className="h-4 w-4" /> Identidade
                     </TabsTrigger>
@@ -270,9 +266,6 @@ export default function SiteConfigPage() {
                     </TabsTrigger>
                     <TabsTrigger value="contact" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <PhoneCall className="h-4 w-4" /> Contato
-                    </TabsTrigger>
-                    <TabsTrigger value="reviews" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
-                        <Star className="h-4 w-4" /> Avaliações
                     </TabsTrigger>
                 </TabsList>
 
@@ -746,129 +739,10 @@ export default function SiteConfigPage() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
-
-                        {/* Reviews Moderation TAB */}
-                        <TabsContent value="reviews" className="mt-0 focus-visible:outline-none">
-                            <ReviewsModeration />
-                        </TabsContent>
                     </form>
                 </Form>
             </Tabs>
         </div>
-    );
-}
-
-function ReviewsModeration() {
-    const { data: reviews, isLoading } = useAdminReviews();
-    const approveMutation = useApproveReview();
-    const deleteMutation = useDeleteReview();
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
-    }
-
-    return (
-        <Card className="premium-card border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-white border-b border-slate-100 py-8">
-                <CardTitle className="text-2xl font-display font-bold">Moderação de Avaliações</CardTitle>
-                <CardDescription>Gerencie as avaliações dos clientes antes que elas fiquem públicas.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-8">
-                <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                    <Table>
-                        <TableHeader className="bg-slate-50">
-                            <TableRow>
-                                <TableHead className="font-bold">Usuário</TableHead>
-                                <TableHead className="font-bold">Nota</TableHead>
-                                <TableHead className="font-bold text-center">Comentário</TableHead>
-                                <TableHead className="font-bold">Status</TableHead>
-                                <TableHead className="text-right font-bold">Ações</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {reviews && reviews.length > 0 ? (
-                                reviews.map((review) => (
-                                    <TableRow key={review.id} className="hover:bg-slate-50/50">
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">
-                                                    U
-                                                </div>
-                                                <span className="font-medium text-xs">User #{review.userId}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex gap-0.5">
-                                                {[...Array(5)].map((_, i) => (
-                                                    <Star
-                                                        key={i}
-                                                        className={`w-3 h-3 ${
-                                                            i < review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"
-                                                        }`}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="max-w-xs text-center">
-                                            <p className="text-sm text-slate-600 italic">"{review.comment}"</p>
-                                        </TableCell>
-                                        <TableCell>
-                                            {review.isApproved ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase">
-                                                    <Check className="w-3 h-3" /> Aprovado
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase">
-                                                    Pendente
-                                                </span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                {!review.isApproved && (
-                                                    <Button
-                                                        size="icon"
-                                                        variant="outline"
-                                                        className="h-8 w-8 rounded-lg border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                                                        onClick={() => approveMutation.mutate(review.id)}
-                                                        disabled={approveMutation.isPending}
-                                                    >
-                                                        <Check className="w-4 h-4" />
-                                                    </Button>
-                                                )}
-                                                <Button
-                                                    size="icon"
-                                                    variant="outline"
-                                                    className="h-8 w-8 rounded-lg border-red-200 text-red-600 hover:bg-red-50"
-                                                    onClick={() => {
-                                                        if (confirm("Tem certeza que deseja excluir esta avaliação?")) {
-                                                            deleteMutation.mutate(review.id);
-                                                        }
-                                                    }}
-                                                    disabled={deleteMutation.isPending}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-10 text-slate-400">
-                                        Nenhuma avaliação encontrada.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-            </CardContent>
-        </Card>
     );
 }
 
