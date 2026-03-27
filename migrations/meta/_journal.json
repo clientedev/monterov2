@@ -43,6 +43,13 @@
       "when": 1774621008841,
       "tag": "0005_sturdy_charles_xavier",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774637731392,
+      "tag": "0006_hard_frank_castle",
+      "breakpoints": true
     }
   ]
 }
