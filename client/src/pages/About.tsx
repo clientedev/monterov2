@@ -32,7 +32,7 @@ export default function About() {
             <div className="inline-block px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-sm font-semibold tracking-wider uppercase mb-6 text-primary-300">
               Nossa Essência
             </div>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6 text-white">
               {settings?.aboutTitle || "Proteção que Evolui com Você"}
             </h1>
             <p className="text-xl md:text-2xl text-slate-300 max-w-2xl font-light leading-relaxed">

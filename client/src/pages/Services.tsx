@@ -42,7 +42,7 @@ export default function ServicesPage() {
                             <span className="inline-block px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-sm font-semibold tracking-wider uppercase mb-6 text-primary-300">
                                 Portfólio de Soluções
                             </span>
-                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-8 leading-tight">
+                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-8 leading-tight text-white">
                                 {settings?.servicesTitle || "Proteção Elevada ao Máximo"}
                             </h1>
                             <p className="text-xl md:text-2xl text-slate-300 font-light leading-relaxed max-w-2xl">
