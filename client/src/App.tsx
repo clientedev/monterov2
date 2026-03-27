@@ -99,6 +99,7 @@ function Router() {
 
       {/* Customer Area */}
       <ProtectedClientRoute path="/dashboard" component={CustomerDashboard} />
+      <ProtectedClientRoute path="/profile" component={ProfilePage} />
 
       {/* Admin CRM Routes */}
       <ProtectedAdminRoute path="/admin" component={AdminDashboard} />
