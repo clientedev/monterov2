@@ -21,7 +21,7 @@ export function Navbar() {
 
   const navLinks = [
     { name: "Início", href: "/" },
-    { name: "Serviços", href: "/#services" },
+    { name: "Serviços", href: "/services" },
     { name: "Sobre", href: "/about" },
     { name: "Blog", href: "/blog" },
     { name: "Contato", href: "/contact" },
@@ -39,56 +39,58 @@ export function Navbar() {
       )}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-4 group">
-          <div className="relative">
-            {settings?.logoBase64 ? (
-              <img
-                src={settings.logoBase64}
-                alt={settings.siteName}
-                className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-              />
-            ) : (
-              <img
-                src={logo}
-                alt="Monteiro Seguros & Benefícios"
-                className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-              />
-            )}
-          </div>
-          <div className={cn(
-            "hidden sm:flex items-center gap-3 transition-colors duration-300 border-l pl-4",
-            scrolled || location !== "/" ? "text-slate-500 border-slate-200" : "text-white/70 border-white/20"
-          )}>
-            <span className="text-[10px] font-bold tracking-[0.2em] uppercase leading-tight">Seguros & Benefícios</span>
-          </div>
+        <Link href="/">
+          <a className="flex items-center gap-4 group cursor-pointer">
+            <div className="relative">
+              {settings?.logoBase64 ? (
+                <img
+                  src={settings.logoBase64}
+                  alt={settings.siteName}
+                  className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <img
+                  src={logo}
+                  alt="Monteiro Seguros & Benefícios"
+                  className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+              )}
+            </div>
+            <div className={cn(
+              "hidden sm:flex items-center gap-3 transition-colors duration-300 border-l pl-4",
+              scrolled || location !== "/" ? "text-slate-500 border-slate-200" : "text-white/70 border-white/20"
+            )}>
+              <span className="text-[10px] font-bold tracking-[0.2em] uppercase leading-tight">Seguros & Benefícios</span>
+            </div>
+          </a>
         </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-primary relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all after:duration-300 hover:after:w-full",
-                scrolled || location !== "/" ? "text-muted-foreground" : "text-white/90 hover:text-white"
-              )}
-            >
-              {link.name}
+            <Link key={link.name} href={link.href}>
+              <a
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-primary relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all after:duration-300 hover:after:w-full cursor-pointer",
+                  scrolled || location !== "/" ? "text-slate-600" : "text-white/90 hover:text-white"
+                )}
+              >
+                {link.name}
+              </a>
             </Link>
           ))}
           <div className="flex items-center gap-4">
             <Link href="/login">
-              <span className={cn(
+              <a className={cn(
                 "text-sm font-medium cursor-pointer transition-colors hover:text-primary",
-                scrolled || location !== "/" ? "text-muted-foreground" : "text-white/90 hover:text-white"
+                scrolled || location !== "/" ? "text-slate-600" : "text-white/90 hover:text-white"
               )}>
                 Entrar
-              </span>
+              </a>
             </Link>
             <Link href="/contact">
               <button className={cn(
-                "px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg",
+                "px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg cursor-pointer",
                 scrolled || location !== "/"
                   ? "bg-primary text-white hover:bg-primary/90"
                   : "bg-white text-primary hover:bg-white/90"
@@ -101,13 +103,13 @@ export function Navbar() {
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden p-2 rounded-full hover:bg-black/5 transition-colors"
+          className="md:hidden p-2 rounded-full hover:bg-slate-100 transition-colors"
           onClick={() => setIsOpen(!isOpen)}
         >
           {isOpen ? (
-            <X className={scrolled || location !== "/" ? "text-foreground" : "text-white"} />
+            <X className={scrolled || location !== "/" ? "text-slate-800" : "text-white"} />
           ) : (
-            <Menu className={scrolled || location !== "/" ? "text-foreground" : "text-white"} />
+            <Menu className={scrolled || location !== "/" ? "text-slate-800" : "text-white"} />
           )}
         </button>
       </div>
@@ -115,26 +117,27 @@ export function Navbar() {
       {/* Mobile Nav Overlay */}
       <div
         className={cn(
-          "md:hidden fixed inset-0 bg-background/95 backdrop-blur-lg z-40 transition-all duration-300 flex flex-col items-center justify-center gap-8",
+          "md:hidden fixed inset-0 bg-white/95 backdrop-blur-lg z-40 transition-all duration-300 flex flex-col items-center justify-center gap-8",
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
       >
         {navLinks.map((link) => (
-          <Link
-            key={link.name}
-            href={link.href}
-            onClick={handleLinkClick}
-            className="text-2xl font-display font-medium text-foreground hover:text-primary transition-colors"
-          >
-            {link.name}
+          <Link key={link.name} href={link.href}>
+            <a
+              onClick={handleLinkClick}
+              className="text-2xl font-display font-medium text-slate-900 hover:text-primary transition-colors cursor-pointer"
+            >
+              {link.name}
+            </a>
           </Link>
         ))}
-        <Link
-          href="/login"
-          onClick={handleLinkClick}
-          className="text-2xl font-display font-medium text-foreground hover:text-primary transition-colors"
-        >
-          Entrar
+        <Link href="/login">
+          <a
+            onClick={handleLinkClick}
+            className="text-2xl font-display font-medium text-slate-900 hover:text-primary transition-colors cursor-pointer"
+          >
+            Entrar
+          </a>
         </Link>
       </div>
     </header>

@@ -84,7 +84,8 @@ export async function registerRoutes(
 
   // Posts
   app.get(api.posts.list.path, async (req, res) => {
-    const posts = await storage.getPosts();
+    const isAdminUser = req.isAuthenticated() && (req.user as any).role === "admin";
+    const posts = await storage.getPosts(!isAdminUser);
     res.json(posts);
   });
 
@@ -107,9 +108,16 @@ export async function registerRoutes(
     res.json(post);
   });
 
-  app.post("/api/posts", isAuthenticated, isAdmin, async (req, res) => {
+  app.patch("/api/admin/posts/:id/approve", isAuthenticated, isAdmin, async (req, res) => {
+    const post = await storage.approvePost(parseInt(req.params.id));
+    if (!post) return res.status(404).json({ message: "Post not found" });
+    res.json(post);
+  });
+
+  app.post("/api/posts", isAuthenticated, async (req, res) => {
     const input = req.body;
-    const post = await storage.createPost(input);
+    const isApproved = (req.user as any).role === "admin";
+    const post = await storage.createPost({ ...input, isApproved });
     res.status(201).json(post);
   });
 

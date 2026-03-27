@@ -47,12 +47,13 @@ import { sql, and, desc, eq } from "drizzle-orm";
 
 export interface IStorage {
   // Posts
-  getPosts(): Promise<Post[]>;
+  getPosts(approvedOnly?: boolean): Promise<Post[]>;
   getPostBySlug(slug: string): Promise<Post | undefined>;
   createPost(post: InsertPost): Promise<Post>;
   updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined>;
   deletePost(id: number): Promise<void>;
   likePost(id: number): Promise<Post | undefined>;
+  approvePost(id: number): Promise<Post | undefined>;
 
   // Comments
   createComment(comment: InsertComment): Promise<Comment>;
@@ -138,8 +139,12 @@ export class DatabaseStorage implements IStorage {
     });
   }
   // Posts
-  async getPosts(): Promise<Post[]> {
-    return await db.select().from(posts).orderBy(desc(posts.publishedAt));
+  async getPosts(approvedOnly = true): Promise<Post[]> {
+    let query = db.select().from(posts);
+    if (approvedOnly) {
+      query = query.where(eq(posts.isApproved, true)) as any;
+    }
+    return await query.orderBy(desc(posts.publishedAt));
   }
 
   async getPostBySlug(slug: string): Promise<Post | undefined> {
@@ -165,6 +170,15 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(posts)
       .set({ likes: sql`${posts.likes} + 1` })
+      .where(eq(posts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async approvePost(id: number): Promise<Post | undefined> {
+    const [updated] = await db
+      .update(posts)
+      .set({ isApproved: true })
       .where(eq(posts.id, id))
       .returning();
     return updated;
@@ -508,8 +522,9 @@ export class MemStorage implements IStorage {
   }
 
   // Posts
-  async getPosts(): Promise<Post[]> {
-    return [...this.posts].sort((a, b) => {
+  async getPosts(approvedOnly = true): Promise<Post[]> {
+    const results = approvedOnly ? this.posts.filter(p => p.isApproved) : this.posts;
+    return [...results].sort((a, b) => {
       const timeA = a.publishedAt?.getTime() ?? 0;
       const timeB = b.publishedAt?.getTime() ?? 0;
       return timeB - timeA;
@@ -526,6 +541,7 @@ export class MemStorage implements IStorage {
       ...post,
       id,
       likes: 0,
+      isApproved: post.isApproved ?? false,
       publishedAt: new Date(),
       createdAt: new Date()
     };
@@ -548,6 +564,14 @@ export class MemStorage implements IStorage {
     const post = this.posts.find(p => p.id === id);
     if (post) {
       post.likes += 1;
+    }
+    return post;
+  }
+
+  async approvePost(id: number): Promise<Post | undefined> {
+    const post = this.posts.find(p => p.id === id);
+    if (post) {
+      post.isApproved = true;
     }
     return post;
   }
