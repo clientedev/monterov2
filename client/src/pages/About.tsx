@@ -99,19 +99,19 @@ export default function About() {
         </div>
       </div>
 
-      {/* Leadership Section */}
+      {/* Team Section */}
       <div className="py-24 bg-slate-900 text-white">
         <div className="container px-4 mx-auto text-center max-w-5xl">
           <div className="inline-block px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-sm font-semibold tracking-wider uppercase mb-6 text-primary-300">
-            Nossa Liderança
+            Nosso Time
           </div>
           <h2 className="text-4xl md:text-5xl font-display font-bold mb-16">Pessoas Construindo um Futuro Seguro</h2>
           
           <div className="grid md:grid-cols-3 gap-10">
             {[
-              { name: "Carlos Monteiro", role: "Fundador e CEO", img: "1560250097-0b9358e10e2e" },
-              { name: "Ana Silva", role: "Diretora de Operações", img: "1573496359142-b8d87734a5a2" },
-              { name: "Pedro Santos", role: "Head de Riscos Corporativos", img: "1580489944761-15a19d654956" }
+              { img: "/assets/team/team-1.png" },
+              { img: "/assets/team/team-2.jpg" },
+              { img: "/assets/team/team-3.jpg" }
             ].map((member, i) => (
               <motion.div 
                 key={i} 
@@ -121,29 +121,20 @@ export default function About() {
                 transition={{ duration: 0.6, delay: i * 0.15 }}
                 className="group relative"
               >
-                <div className="aspect-[4/5] rounded-3xl bg-slate-800 overflow-hidden mb-6 relative">
-                  <div className="absolute inset-0 bg-primary/20 mix-blend-overlay group-hover:opacity-0 transition-opacity z-10 duration-500" />
+                <div className="aspect-[4/5] rounded-3xl bg-slate-800 overflow-hidden mb-6 relative shadow-2xl border border-white/5">
+                  <div className="absolute inset-0 bg-primary/10 mix-blend-overlay group-hover:opacity-0 transition-opacity z-10 duration-500" />
                   <img
-                    src={`https://images.unsplash.com/photo-${member.img}?auto=format&fit=crop&q=80&w=800`}
-                    className="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
-                    alt={member.name}
+                    src={member.img}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
+                    alt={`Team Member ${i + 1}`}
                   />
-                  <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent z-20 flex justify-between items-end transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                     <div className="text-left">
-                        <h3 className="font-bold text-2xl text-white mb-1 group-hover:text-primary-300 transition-colors">{member.name}</h3>
-                        <p className="text-slate-300 font-medium">{member.role}</p>
-                     </div>
-                     <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
-                       <ArrowRight className="w-5 h-5 text-white" />
-                     </div>
-                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent z-20" />
                 </div>
               </motion.div>
             ))}
           </div>
         </div>
       </div>
-
       <Footer />
     </div>
   );
