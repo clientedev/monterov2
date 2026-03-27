@@ -265,7 +265,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserRole(id: number, role: string): Promise<User | undefined> {
     const [updatedUser] = await db
       .update(users)
-      .set({ role: role as "admin" | "employee" })
+      .set({ role: role as "admin" | "employee" | "client" })
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
@@ -677,7 +677,7 @@ export class MemStorage implements IStorage {
   async updateUserRole(id: number, role: string): Promise<User | undefined> {
     const user = this.users.find((u) => u.id === id);
     if (user) {
-      user.role = role as "admin" | "employee";
+      user.role = role as "admin" | "employee" | "client";
     }
     return user;
   }

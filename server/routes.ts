@@ -1,19 +1,26 @@
 import type { Express } from "express";
-import type { Server } from "http";
+import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import Groq from "groq-sdk";
 import { z } from "zod";
-import { setupAuth, hashPassword, comparePasswords } from "./auth";
+import { setupAuth, hashPassword, isAuthenticated } from "./auth";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 import {
+  insertInquirySchema,
   insertContactSchema,
   insertLeadSchema,
-  insertInteractionSchema,
-  insertCampaignSchema,
   insertTaskSchema,
-  insertSiteSettingsSchema,
+  insertCampaignSchema,
+  insertUserSchema,
+  insertPostSchema,
+  insertServiceSchema,
   insertHeroSlideSchema,
-  insertCommentSchema
+  insertProspectingChecklistSchema,
+  insertCommentSchema,
+  insertInteractionSchema,
+  insertSiteSettingsSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -979,6 +986,12 @@ out center 50;
       role: "admin",
     });
   }
+
+  // Update existing users with no role to 'client'
+  await db.execute(sql`UPDATE users SET role = 'client' WHERE role IS NULL`);
+
+  // Ensure 'admin' has the admin role
+  await db.execute(sql`UPDATE users SET role = 'admin' WHERE username = 'admin'`);
 
   return httpServer;
 }
