@@ -22,7 +22,8 @@ import {
   insertProspectingChecklistSchema,
   insertCommentSchema,
   insertInteractionSchema,
-  insertSiteSettingsSchema
+  insertSiteSettingsSchema,
+  insertReviewSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -220,10 +221,47 @@ export async function registerRoutes(
     res.json(comment);
   });
 
-  app.delete("/api/admin/comments/:id", isAuthenticated, isAdmin, async (req, res) => {
-    await storage.deleteComment(parseInt(req.params.id));
+  app.delete("/api/admin/comments/:id", isAdmin, async (req, res) => {
+    await storage.deleteComment(Number(req.params.id));
     res.sendStatus(204);
   });
+
+  // Reviews
+  app.get("/api/reviews", async (req, res) => {
+    const reviews = await storage.getReviews(true);
+    res.json(reviews);
+  });
+
+  app.post("/api/reviews", isAuthenticated, async (req, res) => {
+    try {
+      const input = insertReviewSchema.parse(req.body);
+      const review = await storage.createReview((req.user as any).id, input);
+      res.status(201).json(review);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors });
+      }
+      throw err;
+    }
+  });
+
+  // Admin Reviews
+  app.get("/api/admin/reviews", isAdmin, async (req, res) => {
+    const reviews = await storage.getReviews(false);
+    res.json(reviews);
+  });
+
+  app.patch("/api/admin/reviews/:id", isAdmin, async (req, res) => {
+    const updated = await storage.approveReview(Number(req.params.id));
+    if (!updated) return res.status(404).json({ message: "Review not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/admin/reviews/:id", isAdmin, async (req, res) => {
+    await storage.deleteReview(Number(req.params.id));
+    res.sendStatus(204);
+  });
+
 
   // Services
   app.get(api.services.list.path, async (req, res) => {

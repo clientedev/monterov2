@@ -41,7 +41,10 @@ import {
   type InsertProspectingChecklist,
   comments,
   type Comment,
-  type InsertComment
+  type InsertComment,
+  reviews,
+  type Review,
+  type InsertReview
 } from "@shared/schema";
 import { sql, and, desc, eq } from "drizzle-orm";
 
@@ -125,8 +128,13 @@ export interface IStorage {
   deleteHeroSlide(id: number): Promise<void>;
 
   // Prospecting
-  getProspectingChecklists(contactId?: number): Promise<ProspectingChecklist[]>;
   createProspectingChecklist(checklist: InsertProspectingChecklist): Promise<ProspectingChecklist>;
+
+  // Reviews
+  getReviews(approvedOnly?: boolean): Promise<Review[]>;
+  createReview(userId: number, review: InsertReview): Promise<Review>;
+  approveReview(id: number): Promise<Review | undefined>;
+  deleteReview(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -496,6 +504,33 @@ export class DatabaseStorage implements IStorage {
     const [newChecklist] = await db.insert(prospectingChecklists).values(checklist).returning();
     return newChecklist;
   }
+
+  // Reviews
+  async getReviews(approvedOnly = true): Promise<Review[]> {
+    let query = db.select().from(reviews);
+    if (approvedOnly) {
+      query = query.where(eq(reviews.isApproved, true)) as any;
+    }
+    return await query.orderBy(desc(reviews.createdAt));
+  }
+
+  async createReview(userId: number, review: InsertReview): Promise<Review> {
+    const [newReview] = await db.insert(reviews).values({ ...review, userId }).returning();
+    return newReview;
+  }
+
+  async approveReview(id: number): Promise<Review | undefined> {
+    const [updated] = await db
+      .update(reviews)
+      .set({ isApproved: true })
+      .where(eq(reviews.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteReview(id: number): Promise<void> {
+    await db.delete(reviews).where(eq(reviews.id, id));
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -526,11 +561,14 @@ export class MemStorage implements IStorage {
     heroSlides: 1,
     prospectingChecklists: 1,
     comments: 1,
+    reviews: 1,
   };
 
   private siteSettingsData: SiteSettings | null = null;
   private heroSlidesData: HeroSlide[] = [];
   private prospectingChecklistsData: ProspectingChecklist[] = [];
+  private reviewsData: Review[] = [];
+
 
   constructor() {
     this.sessionStore = new session.MemoryStore();
@@ -1015,15 +1053,40 @@ export class MemStorage implements IStorage {
 
   async createProspectingChecklist(checklist: InsertProspectingChecklist): Promise<ProspectingChecklist> {
     const id = this.currentId.prospectingChecklists++;
-    const newChecklist: ProspectingChecklist = {
-      ...checklist,
-      id,
+    const newChecklist: ProspectingChecklist = { 
+      ...checklist, 
+      id, 
       createdAt: new Date(),
-      notes: checklist.notes || null,
-      checklistData: checklist.checklistData || null
+      notes: checklist.notes ?? null,
+      checklistData: checklist.checklistData ?? null
     };
     this.prospectingChecklistsData.push(newChecklist);
     return newChecklist;
+  }
+
+  // Reviews
+  async getReviews(approvedOnly = true): Promise<Review[]> {
+    const results = approvedOnly ? this.reviewsData.filter(r => r.isApproved) : this.reviewsData;
+    return [...results].sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
+  async createReview(userId: number, review: InsertReview): Promise<Review> {
+    const id = this.currentId.reviews++;
+    const newReview: Review = { ...review, id, userId, isApproved: false, createdAt: new Date() };
+    this.reviewsData.push(newReview);
+    return newReview;
+  }
+
+  async approveReview(id: number): Promise<Review | undefined> {
+    const review = this.reviewsData.find(r => r.id === id);
+    if (review) {
+      review.isApproved = true;
+    }
+    return review;
+  }
+
+  async deleteReview(id: number): Promise<void> {
+    this.reviewsData = this.reviewsData.filter(r => r.id !== id);
   }
 }
 

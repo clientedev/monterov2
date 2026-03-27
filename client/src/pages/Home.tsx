@@ -10,6 +10,8 @@ import { format } from "date-fns";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import { useRef } from "react";
+import { ReviewsSection } from "@/components/ReviewsSection";
+
 
 export default function Home() {
   const { data: services, isLoading: loadingServices } = useServices();
@@ -330,6 +332,7 @@ export default function Home() {
         </div>
       </section>
 
+      <ReviewsSection />
       <Footer />
     </div>
   );
