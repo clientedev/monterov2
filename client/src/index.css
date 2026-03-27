@@ -117,6 +117,14 @@
   .text-gold {
     @apply text-yellow-600;
   }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Custom Scrollbar */

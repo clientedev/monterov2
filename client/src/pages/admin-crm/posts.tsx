@@ -113,7 +113,7 @@ export default function PostsPage() {
                 setOpen(val);
                 if (!val) setEditingPost(null);
             }}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{editingPost ? "Editar Post" : "Novo Post"}</DialogTitle>
                     </DialogHeader>

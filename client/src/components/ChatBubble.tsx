@@ -18,12 +18,12 @@ export function ChatBubble() {
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const bottomRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
 
     useEffect(() => {
-        if (isOpen && !isMinimized) {
-            bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (isOpen && !isMinimized && scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
         }
     }, [messages, isOpen, isMinimized]);
 
@@ -133,7 +133,10 @@ export function ChatBubble() {
 
             {!isMinimized && (
                 <>
-                    <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 relative">
+                    <CardContent 
+                        ref={scrollContainerRef}
+                        className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 relative hide-scrollbar"
+                    >
                         {messages.map((msg, i) => (
                             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
                                 <div className={`max-w-[85%] rounded-2xl p-3 ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-tl-sm'}`}>
@@ -155,7 +158,6 @@ export function ChatBubble() {
                                 </div>
                             </div>
                         )}
-                        <div ref={bottomRef} />
                     </CardContent>
 
                     <CardFooter className="p-3 bg-white border-t border-slate-100 shrink-0">
