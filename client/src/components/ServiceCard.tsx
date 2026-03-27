@@ -22,25 +22,31 @@ export function ServiceCard({ service, index }: ServiceCardProps) {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: index * 0.1 }}
         viewport={{ once: true, margin: "-50px" }}
-        className="group relative bg-white rounded-3xl p-8 shadow-sm border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer overflow-hidden h-full flex flex-col"
+        className="group relative bg-white rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer overflow-hidden h-full flex flex-col"
       >
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -z-10 transition-transform duration-500 group-hover:scale-150" />
-        
-        <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-8 group-hover:bg-primary group-hover:text-white transition-all duration-500 text-primary group-hover:scale-110 group-hover:-rotate-3">
-          <Icon className="w-8 h-8" />
+        {/* Dark Header Area for the White Title */}
+        <div className="bg-slate-900 p-8 pb-10 relative overflow-hidden shrink-0">
+          <div className="absolute inset-0 bg-primary/20 mix-blend-overlay z-0" />
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/5 rounded-full blur-2xl" />
+          
+          <div className="relative z-10 w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 text-white">
+            <Icon className="w-7 h-7" />
+          </div>
+          
+          <h3 className="text-2xl font-display font-bold text-white leading-tight relative z-10">
+            {service.title}
+          </h3>
         </div>
         
-        <h3 className="text-2xl font-display font-bold mb-4 text-slate-900 group-hover:text-primary transition-colors flex-1">
-          {service.title}
-        </h3>
-        
-        <p className="text-slate-600 mb-8 leading-relaxed line-clamp-3">
-          {service.description}
-        </p>
-        
-        <div className="flex items-center gap-2 text-sm font-bold text-primary opacity-0 group-hover:opacity-100 transform translate-x-[-20px] group-hover:translate-x-0 transition-all duration-500 uppercase tracking-widest mt-auto">
-          <span>Saiba mais</span>
-          <ArrowRight className="w-4 h-4" />
+        <div className="p-8 pt-6 flex-1 flex flex-col">
+          <p className="text-slate-600 mb-8 leading-relaxed line-clamp-3 text-sm">
+            {service.description}
+          </p>
+          
+          <div className="flex items-center gap-2 text-sm font-bold text-primary group-hover:translate-x-1 transition-all duration-500 uppercase tracking-widest mt-auto">
+            <span>Explorar Solução</span>
+            <ArrowRight className="w-4 h-4" />
+          </div>
         </div>
       </motion.div>
     </Link>

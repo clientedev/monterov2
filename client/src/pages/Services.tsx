@@ -22,7 +22,7 @@ export default function ServicesPage() {
             <Navbar />
 
             {/* Premium Hero Section */}
-            <section className="relative pt-32 pb-24 lg:pt-48 lg:pb-32 bg-slate-900 text-white overflow-hidden">
+            <section className="relative pt-24 pb-24 lg:pt-32 lg:pb-32 bg-slate-900 text-white overflow-hidden">
                 <div className="absolute inset-0 z-0">
                     <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/90 to-transparent z-10" />
                     <img 

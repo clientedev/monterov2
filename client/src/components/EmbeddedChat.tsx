@@ -88,7 +88,7 @@ export function EmbeddedChat({ initialMessage = "Olá! Como posso ajudar você a
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50 relative">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50 relative scroll-smooth" style={{ overscrollBehavior: 'contain' }}>
                 {messages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
                         <div className={`max-w-[85%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-tl-sm'}`}>

@@ -61,7 +61,7 @@ export default function ServiceDetail() {
             <Navbar />
 
             {/* Premium Header */}
-            <section className="pt-32 pb-20 bg-slate-900 text-white relative overflow-hidden">
+            <section className="pt-24 pb-20 bg-slate-900 text-white relative overflow-hidden">
                 <div className="absolute inset-0 z-0">
                     <div className="absolute inset-0 bg-primary/20 mix-blend-overlay z-10" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent z-10" />
@@ -88,7 +88,7 @@ export default function ServiceDetail() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
                         >
-                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold leading-tight mb-4">
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold leading-tight mb-4 text-white">
                                 {service.title}
                             </h1>
                             <p className="text-xl text-slate-300 font-light max-w-2xl">

@@ -136,6 +136,7 @@ export function ChatBubble() {
                     <CardContent 
                         ref={scrollContainerRef}
                         className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 relative hide-scrollbar"
+                        style={{ overscrollBehavior: 'contain' }}
                     >
                         {messages.map((msg, i) => (
                             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
