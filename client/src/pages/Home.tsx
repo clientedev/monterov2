@@ -7,12 +7,9 @@ import { useServices, usePosts } from "@/hooks/use-content";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { ServiceCard } from "@/components/ServiceCard";
 import { format } from "date-fns";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import { useRef } from "react";
-import heroBg from "@assets/image_1770228204877.png"; // Using provided image as asset reference, though logically a hero bg would be different.
-// Ideally, we'd use a real high-res hero image here. I'll use a placeholder URL for the hero background to match the "modern" request
-// while keeping the logo as requested.
 
 export default function Home() {
   const { data: services, isLoading: loadingServices } = useServices();
@@ -28,10 +25,10 @@ export default function Home() {
   const heroImageUrl = "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2400";
 
   return (
-    <div className="min-h-screen font-sans bg-slate-50">
+    <div className="min-h-screen font-sans bg-slate-900 text-white selection:bg-primary/20 selection:text-white">
       <Navbar />
 
-      {/* Hero Section */}
+      {/* Hero Section (Unchanged per request) */}
       <section className="relative h-screen min-h-[600px] flex items-center overflow-hidden">
         {activeSlides.length > 0 ? (
           <Carousel
@@ -134,15 +131,15 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="py-24 bg-white relative">
-        <div className="container px-4 md:px-6 mx-auto">
+      <section id="services" className="py-24 bg-slate-950 relative border-t border-slate-800">
+        <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-primary font-semibold tracking-wider text-sm uppercase">Nossa Expertise</span>
-            <h2 className="text-3xl md:text-4xl font-display font-bold mt-3 mb-4 text-slate-900">
+            <span className="text-primary-400 font-semibold tracking-wider text-sm uppercase">Nossa Expertise</span>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mt-3 mb-6 text-white drop-shadow-sm">
               {settings?.servicesTitle || "Soluções Completas em Seguros"}
             </h2>
-            <p className="text-slate-500 text-lg">
-              {settings?.servicesSubtitle || "Planos de cobertura personalizados projetados para atender às suas necessidades específicas."}
+            <p className="text-slate-400 text-lg">
+              {settings?.servicesSubtitle || "Planos de cobertura personalizados projetados para atender às suas necessidades específicas com máxima eficiência."}
             </p>
           </div>
 
@@ -150,7 +147,7 @@ export default function Home() {
             {loadingServices ? (
               // Skeleton loading
               Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-slate-50 h-64 rounded-2xl animate-pulse" />
+                <div key={i} className="bg-slate-800/50 h-64 rounded-3xl animate-pulse border border-slate-700/50" />
               ))
             ) : (
               services?.map((service, index) => (
@@ -160,7 +157,7 @@ export default function Home() {
 
             {/* Fallback if no services loaded yet */}
             {!loadingServices && (!services || services.length === 0) && (
-              <div className="col-span-full text-center text-slate-500 py-12">
+              <div className="col-span-full text-center text-slate-400 py-12">
                 Nossos serviços estão sendo atualizados. Por favor, volte em breve.
               </div>
             )}
@@ -169,8 +166,9 @@ export default function Home() {
       </section>
 
       {/* Why Choose Us */}
-      <section className="py-24 bg-slate-50">
-        <div className="container px-4 md:px-6 mx-auto">
+      <section className="py-24 bg-slate-900 relative">
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/3 h-[600px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -179,53 +177,62 @@ export default function Home() {
               transition={{ duration: 0.6 }}
               className="relative"
             >
-              <div className="absolute -inset-4 bg-primary/10 rounded-full blur-3xl" />
               {/* Meeting / Handshake image */}
-              <img
-                src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600"
-                alt="Reunião de Negócios"
-                className="relative rounded-2xl shadow-2xl z-10"
-              />
-              <div className="absolute -bottom-8 -right-8 bg-white p-6 rounded-xl shadow-xl z-20 hidden md:block">
+              <div className="relative rounded-[2.5rem] shadow-2xl z-10 overflow-hidden border border-slate-800">
+                <div className="absolute inset-0 bg-primary/10 mix-blend-overlay z-10" />
+                <img
+                  src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600"
+                  alt="Reunião de Negócios"
+                  className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-700"
+                />
+              </div>
+              <div className="absolute -bottom-8 -right-8 bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl z-20 hidden md:block">
                 <div className="flex items-center gap-4">
-                  <div className="bg-green-100 p-3 rounded-full text-green-600">
+                  <div className="bg-emerald-500/20 p-3 rounded-xl text-emerald-400">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-sm text-slate-500">Satisfação do Cliente</p>
-                    <p className="text-2xl font-bold text-slate-900">98%</p>
+                    <p className="text-sm text-slate-400">Satisfação do Cliente</p>
+                    <p className="text-2xl font-bold text-white">98%</p>
                   </div>
                 </div>
               </div>
             </motion.div>
 
             <div>
-              <span className="text-primary font-semibold tracking-wider text-sm uppercase">Por que nos escolher</span>
-              <h2 className="text-3xl md:text-4xl font-display font-bold mt-3 mb-6 text-slate-900">
+              <span className="text-primary-400 font-semibold tracking-wider text-sm uppercase">Por que nos escolher</span>
+              <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-white drop-shadow-sm leading-tight">
                 Um parceiro em quem você pode confiar seu futuro
               </h2>
-              <p className="text-slate-500 text-lg mb-8 leading-relaxed">
-                Não apenas vendemos apólices; construímos relacionamentos. Nossa equipe dedicada trabalha incansavelmente para garantir a melhor cobertura.
+              <p className="text-slate-400 text-lg mb-8 leading-relaxed">
+                Não apenas vendemos apólices; construímos relacionamentos sólidos. Nossa equipe dedicada trabalha incansavelmente para garantir a melhor cobertura com transparência total.
               </p>
 
-              <ul className="space-y-4 mb-8">
+              <ul className="space-y-5 mb-10">
                 {[
-                  "Avaliação de risco personalizada",
-                  "Suporte 24/7 para sinistros",
-                  "Acesso às melhores seguradoras",
-                  "Atendimento exclusivo para cada cliente"
+                  "Avaliação de risco arquitetada para o seu perfil",
+                  "Suporte irrestrito 24/7 para sinistros e dúvidas",
+                  "Acesso privilegiado às melhores seguradoras do mercado",
+                  "Atendimento consultivo e inteiramente focado em você"
                 ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-1 rounded-full text-primary">
+                  <motion.li 
+                    key={i} 
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-center gap-4 bg-slate-800/30 p-4 rounded-2xl border border-slate-800"
+                  >
+                    <div className="bg-primary/20 p-2 rounded-lg text-primary-300">
                       <CheckCircle2 className="w-5 h-5" />
                     </div>
-                    <span className="text-slate-700 font-medium">{item}</span>
-                  </li>
+                    <span className="text-slate-200 font-medium">{item}</span>
+                  </motion.li>
                 ))}
               </ul>
 
               <Link href="/about">
-                <button className="text-primary font-semibold hover:text-primary/80 transition-colors flex items-center gap-2 group">
+                <button className="text-white bg-slate-800 border border-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-700 hover:border-slate-600 transition-all flex items-center gap-2 group">
                   Mais sobre nossa história
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
@@ -236,17 +243,17 @@ export default function Home() {
       </section>
 
       {/* Blog Teaser */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-slate-950 border-t border-slate-800">
         <div className="container px-4 md:px-6 mx-auto">
-          <div className="flex justify-between items-end mb-12">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
             <div>
-              <span className="text-primary font-semibold tracking-wider text-sm uppercase">Últimas Notícias</span>
-              <h2 className="text-3xl md:text-4xl font-display font-bold mt-3 text-slate-900">
+              <span className="text-primary-400 font-semibold tracking-wider text-sm uppercase">Últimas Notícias</span>
+              <h2 className="text-3xl md:text-5xl font-display font-bold mt-3 text-white">
                 {settings?.blogTitle || "Blog e Novidades"}
               </h2>
             </div>
             <Link href="/blog">
-              <button className="hidden md:flex items-center gap-2 px-6 py-3 rounded-full border border-slate-200 hover:border-primary hover:text-primary transition-all">
+              <button className="hidden md:flex items-center gap-2 px-6 py-3 rounded-full text-white border border-slate-700 hover:border-slate-500 hover:bg-slate-800 transition-all">
                 Ver Todas as Postagens
               </button>
             </Link>
@@ -255,7 +262,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {loadingPosts ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-96 bg-slate-50 rounded-2xl animate-pulse" />
+                <div key={i} className="h-96 bg-slate-800/50 rounded-3xl animate-pulse border border-slate-700/50" />
               ))
             ) : (
               posts?.slice(0, 3).map((post, index) => (
@@ -264,35 +271,38 @@ export default function Home() {
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="group cursor-pointer"
+                    className="group cursor-pointer bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 hover:border-slate-700 hover:-translate-y-1 transition-all h-full flex flex-col"
                   >
-                    <div className="overflow-hidden rounded-2xl mb-4 h-60 bg-slate-100">
+                    <div className="overflow-hidden h-56 bg-slate-800 relative">
+                      <div className="absolute inset-0 bg-slate-900/20 group-hover:bg-transparent transition-colors z-10" />
                       <img
                         src={post.coverImage}
                         alt={post.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                       />
                     </div>
-                    <div className="flex gap-2 text-sm text-slate-500 mb-3">
-                      <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Rascunho'}</span>
-                      <span>•</span>
-                      <span>5 min de leitura</span>
+                    <div className="p-6 flex-1 flex flex-col">
+                        <div className="flex gap-2 text-sm text-slate-400 mb-3 font-medium">
+                          <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Rascunho'}</span>
+                          <span>•</span>
+                          <span className="text-primary-400">Ler postagem</span>
+                        </div>
+                        <h3 className="text-xl font-bold font-display text-white mb-3 group-hover:text-primary-300 transition-colors">
+                          {post.title}
+                        </h3>
+                        <p className="text-slate-400 line-clamp-2">
+                          {post.summary}
+                        </p>
                     </div>
-                    <h3 className="text-xl font-bold font-display text-slate-900 mb-2 group-hover:text-primary transition-colors">
-                      {post.title}
-                    </h3>
-                    <p className="text-slate-500 line-clamp-2">
-                      {post.summary}
-                    </p>
                   </motion.div>
                 </Link>
               ))
             )}
           </div>
 
-          <div className="mt-8 text-center md:hidden">
+          <div className="mt-10 text-center md:hidden">
             <Link href="/blog">
-              <button className="px-6 py-3 rounded-full border border-slate-200 hover:border-primary hover:text-primary transition-all">
+              <button className="px-6 py-3 rounded-full text-white border border-slate-700 hover:border-slate-500 hover:bg-slate-800 transition-all w-full">
                 Ver Todas as Postagens
               </button>
             </Link>
@@ -300,19 +310,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-24 bg-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
-        <div className="container px-4 md:px-6 mx-auto relative z-10 text-center">
-          <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-6">
-            Pronto para garantir seu futuro?
+      {/* Premium CTA Section */}
+      <section className="py-24 bg-slate-900 relative overflow-hidden border-t border-slate-800">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[150px] pointer-events-none" />
+        <div className="container px-4 md:px-6 mx-auto relative z-10 text-center max-w-4xl">
+          <h2 className="text-4xl md:text-6xl font-display font-bold text-white mb-8 leading-tight">
+            Pronto para impulsionar a sua segurança?
           </h2>
-          <p className="text-slate-300 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-            Vamos conversar sobre como podemos personalizar um plano que se adapte perfeitamente à sua vida.
+          <p className="text-slate-300 text-xl max-w-2xl mx-auto mb-12 font-light">
+            Nossos especialistas estão dedicados a personalizar um plano que blinde perfeitamente a sua vida e seu patrimônio.
           </p>
           <Link href="/contact">
-            <button className="px-10 py-5 bg-white text-slate-900 rounded-full font-bold text-lg hover:bg-primary hover:text-white transition-all duration-300 shadow-xl shadow-white/10 hover:shadow-primary/50 hover:-translate-y-1">
+            <button className="px-10 py-5 bg-white text-slate-900 rounded-full font-bold text-lg hover:bg-slate-50 transition-all duration-300 shadow-xl shadow-white/5 hover:shadow-white/20 hover:-translate-y-1 inline-flex items-center gap-3">
               Fale Conosco Hoje
+              <ArrowRight className="w-5 h-5" />
             </button>
           </Link>
         </div>
