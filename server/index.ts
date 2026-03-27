@@ -68,6 +68,24 @@ app.use((req, res, next) => {
   const migrationsPath = resolve(process.cwd(), "migrations");
   await migrate(db, { migrationsFolder: migrationsPath });
   log("migrations completed");
+  
+  // Force cleanup of "Carlos" from database on startup
+  try {
+    const { siteSettings } = await import("@shared/schema");
+    const { eq, like } = await import("drizzle-orm");
+    const settings = await db.select().from(siteSettings);
+    if (settings.length > 0) {
+      const target = settings[0];
+      if (target.aboutContent.includes("Carlos")) {
+        log("Purging 'Carlos' from database...");
+        const newContent = "A Monteiro Corretora nasceu com a missão de tornar o seguro compreensível, acessível e verdadeiramente protetor para famílias e empresas em São Paulo.\n\nAo longo das últimas décadas, crescemos e nos tornamos uma das corretoras mais respeitadas da região. Nosso crescimento não mudou nossos valores fundamentais — tratar cada cliente com exclusividade e dedicação, garantindo a proteção do que é mais importante para você.";
+        await db.update(siteSettings).set({ aboutContent: newContent }).where(eq(siteSettings.id, target.id));
+        log("Database content cleaned successfully.");
+      }
+    }
+  } catch (err) {
+    log(`Startup cleanup failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+  }
 
   await registerRoutes(httpServer, app);
 
