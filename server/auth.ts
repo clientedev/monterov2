@@ -33,10 +33,18 @@ export function setupAuth(app: Express) {
         resave: false,
         saveUninitialized: false,
         store: storage.sessionStore,
+        cookie: {
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+            httpOnly: true,
+        }
     };
 
     if (app.get("env") === "production") {
         app.set("trust proxy", 1);
+        if (sessionSettings.cookie) {
+            sessionSettings.cookie.secure = true;
+            (sessionSettings.cookie as any).sameSite = "none";
+        }
     }
 
     app.use(session(sessionSettings));
@@ -45,11 +53,22 @@ export function setupAuth(app: Express) {
 
     passport.use(
         new LocalStrategy(async (username, password, done) => {
-            const user = await storage.getUserByUsername(username);
-            if (!user || !(await comparePasswords(password, user.password))) {
-                return done(null, false);
-            } else {
+            try {
+                const user = await storage.getUserByUsername(username);
+                if (!user) {
+                    console.log(`[AUTH] Login failed: User not found (${username})`);
+                    return done(null, false);
+                }
+                const isValid = await comparePasswords(password, user.password);
+                if (!isValid) {
+                    console.log(`[AUTH] Login failed: Invalid password for (${username})`);
+                    return done(null, false);
+                }
+                console.log(`[AUTH] Login successful for (${username}) role: ${user.role}`);
                 return done(null, user);
+            } catch (err) {
+                console.error(`[AUTH] Login error for (${username}):`, err);
+                return done(err);
             }
         }),
     );
