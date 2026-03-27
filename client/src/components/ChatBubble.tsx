@@ -36,8 +36,7 @@ export function ChatBubble() {
         return () => window.removeEventListener('open-carol-chat', handleOpen);
     }, []);
 
-    const handleSend = async (e?: React.FormEvent) => {
-        e?.preventDefault();
+    const handleSend = async () => {
         if (!input.trim() || isLoading) return;
 
         const userMsg: Message = { role: 'user', content: input.trim() };
@@ -162,23 +161,30 @@ export function ChatBubble() {
                     </CardContent>
 
                     <CardFooter className="p-3 bg-white border-t border-slate-100 shrink-0">
-                        <form onSubmit={handleSend} className="w-full flex items-center gap-2 relative">
+                        <div className="w-full flex items-center gap-2 relative">
                             <Input
                                 value={input}
                                 onChange={e => setInput(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSend();
+                                    }
+                                }}
                                 placeholder="Digite sua dúvida..."
                                 className="pr-12 rounded-xl border-slate-200 bg-slate-50 focus-visible:ring-primary"
                                 disabled={isLoading}
                             />
                             <Button
-                                type="submit"
+                                type="button"
+                                onClick={() => handleSend()}
                                 size="icon"
                                 className="absolute right-1 top-1 h-8 w-8 rounded-lg"
                                 disabled={!input.trim() || isLoading}
                             >
                                 <Send className="h-4 w-4" />
                             </Button>
-                        </form>
+                        </div>
                     </CardFooter>
                 </>
             )}

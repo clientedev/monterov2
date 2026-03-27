@@ -24,8 +24,7 @@ export function EmbeddedChat({ initialMessage = "Olá! Como posso ajudar você a
         }
     }, [messages]);
 
-    const handleSend = async (e?: React.FormEvent) => {
-        e?.preventDefault();
+    const handleSend = async () => {
         if (!input.trim() || isLoading) return;
 
         const userMsg: Message = { role: 'user', content: input.trim() };
@@ -120,23 +119,30 @@ export function EmbeddedChat({ initialMessage = "Olá! Como posso ajudar você a
             </div>
 
             <div className="p-4 bg-white border-t border-slate-100 shrink-0">
-                <form onSubmit={handleSend} className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                     <Input
                         value={input}
                         onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                            }
+                        }}
                         placeholder="Quais são as coberturas deste serviço?"
                         className="flex-1 rounded-xl border-slate-200 bg-slate-50 h-12 focus-visible:ring-primary"
                         disabled={isLoading}
                     />
                     <Button
-                        type="submit"
+                        type="button"
+                        onClick={() => handleSend()}
                         disabled={!input.trim() || isLoading}
                         className="h-12 px-6 rounded-xl font-bold w-full sm:w-auto shrink-0"
                     >
                         <Send className="w-4 h-4 mr-2" />
                         Enviar
                     </Button>
-                </form>
+                </div>
             </div>
         </div>
     );
