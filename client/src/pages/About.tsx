@@ -59,7 +59,7 @@ export default function About() {
                 {settings?.aboutContent || (
                   <>
                     <p>
-                      Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, **Carolina Monteiro** é especialista em seguros de vida e fundadora da Monteiro Corretora.
+                      Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, a Monteiro Corretora é especialista em soluções de proteção e planejamento financeiro.
                     </p>
                     <p className="p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-slate-700 font-medium">
                       "Nosso objetivo é oferecer sempre o seguro mais adequado ao seu perfil – pessoal ou empresarial – e às suas expectativas, com um atendimento personalizado, humano e qualificado."
