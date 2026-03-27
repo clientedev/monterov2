@@ -3,11 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { fileURLToPath } from "url";
-import { dirname, resolve } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { resolve } from "path";
 
 const app = express();
 const httpServer = createServer(app);
@@ -69,7 +65,7 @@ app.use((req, res, next) => {
   log("running migrations...");
   const { migrate } = await import("drizzle-orm/node-postgres/migrator");
   const { db } = await import("./db");
-  const migrationsPath = resolve(__dirname, "..", "migrations");
+  const migrationsPath = resolve(process.cwd(), "migrations");
   await migrate(db, { migrationsFolder: migrationsPath });
   log("migrations completed");
 
