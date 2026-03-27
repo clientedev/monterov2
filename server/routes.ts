@@ -286,6 +286,14 @@ export async function registerRoutes(
       const input = api.inquiries.create.input.parse(req.body);
       const userId = req.isAuthenticated() ? (req.user as any).id : null;
       
+      // Find a fallback admin/employee if no logged-in user
+      let attributionId = userId;
+      if (!attributionId) {
+        const teamMembers = await storage.getUsers();
+        const defaultAdmin = teamMembers.find(u => u.role === "admin" || u.role === "employee");
+        attributionId = defaultAdmin ? defaultAdmin.id : 1; // Fallback to 1 if no admin found yet
+      }
+
       // Save the inquiry for the user's history
       const inquiry = await storage.createInquiry({ ...input, userId });
 
@@ -301,7 +309,7 @@ export async function registerRoutes(
           phone: input.phone || null,
           document: null,
           address: null,
-          assignedTo: 0
+          assignedTo: attributionId
         });
       } else if (input.phone && !contact.phone) {
         await storage.updateContact(contact.id, { phone: input.phone });
@@ -318,7 +326,7 @@ export async function registerRoutes(
       await storage.createInteraction({
         contactId: contact.id,
         leadId: lead.id,
-        userId: userId || 0,
+        userId: attributionId,
         type: "Web Inquiry",
         description: `Cliente solicitou cotação pelo site: ${input.message}`,
         date: new Date()
