@@ -935,7 +935,7 @@ out center 50;
   }
 
 
-  const postsList = await storage.getPosts();
+  const postsList = await storage.getPosts(false);
   if (postsList.length === 0) {
     await storage.createPost({
       title: "Por que contratar um seguro auto?",
