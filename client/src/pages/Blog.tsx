@@ -223,70 +223,69 @@ export default function Blog() {
               viewport={{ once: true, margin: "-50px" }}
               className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 group relative"
             >
-              {/* Overlay Link for the whole post area (header + content + media) */}
               <Link href={`/blog/${post.slug}`}>
-                <a className="absolute inset-x-0 top-0 bottom-16 z-10" aria-label={post.title} />
-              </Link>
-
-              <div className="p-5 flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900">Monteiro Corretora</h3>
-                    <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
-                       <ShieldCheck className="w-2.5 h-2.5" />
-                    </span>
-                  </div>
-                  <p className="text-xs font-medium text-slate-500">
-                    {post.publishedAt ? format(new Date(post.publishedAt), "dd 'de' MMMM 'às' HH:mm") : 'Rascunho'} • Especialista
-                  </p>
-                </div>
-              </div>
-
-              <div className="px-5 pb-3">
-                <h2 className="text-xl font-display font-bold text-slate-900 mb-2">
-                  {post.title}
-                </h2>
-                <p className="text-slate-600 text-sm leading-relaxed mb-4">
-                  {post.summary}
-                </p>
-              </div>
-
-              <div className="relative overflow-hidden border-y border-slate-100 bg-slate-50">
-                {post.videoUrl ? (
-                  <div className="relative">
-                    <video 
-                      src={post.videoUrl} 
-                      className="w-full max-h-[400px] object-cover"
-                      muted
-                      onMouseOver={e => (e.target as HTMLVideoElement).play()}
-                      onMouseOut={e => (e.target as HTMLVideoElement).pause()}
-                    />
-                    <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-bold uppercase">Vídeo</div>
-                  </div>
-                ) : post.youtubeUrl ? (
-                  <div className="relative aspect-video bg-black flex items-center justify-center">
-                    <img 
-                      src={`https://img.youtube.com/vi/${(post.youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/) || [])[2]}/0.jpg`}
-                      alt={post.title}
-                      className="w-full h-full object-cover opacity-60"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                       <div className="w-16 h-12 bg-red-600 rounded-xl flex items-center justify-center text-white">
-                          <div className="border-y-[8px] border-y-transparent border-l-[14px] border-l-white ml-1" />
-                       </div>
+                <a className="block group/link">
+                  <div className="p-5 flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-slate-900 group-hover/link:text-primary transition-colors">Monteiro Corretora</h3>
+                        <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
+                           <ShieldCheck className="w-2.5 h-2.5" />
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium text-slate-500">
+                        {post.publishedAt ? format(new Date(post.publishedAt), "dd 'de' MMMM 'às' HH:mm") : 'Rascunho'} • Especialista
+                      </p>
                     </div>
                   </div>
-                ) : (
-                  <img 
-                    src={post.coverImage} 
-                    alt={post.title} 
-                    className="w-full max-h-[400px] object-cover hover:scale-105 transition-transform duration-700"
-                  />
-                )}
-              </div>
+
+                  <div className="px-5 pb-3">
+                    <h2 className="text-xl font-display font-bold text-slate-900 mb-2 group-hover/link:text-primary transition-colors">
+                      {post.title}
+                    </h2>
+                    <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                      {post.summary}
+                    </p>
+                  </div>
+
+                  <div className="relative overflow-hidden border-y border-slate-100 bg-slate-50">
+                    {post.videoUrl ? (
+                      <div className="relative">
+                        <video 
+                          src={post.videoUrl} 
+                          className="w-full max-h-[400px] object-cover"
+                          muted
+                          onMouseOver={e => (e.target as HTMLVideoElement).play()}
+                          onMouseOut={e => (e.target as HTMLVideoElement).pause()}
+                        />
+                        <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-bold uppercase">Vídeo</div>
+                      </div>
+                    ) : post.youtubeUrl ? (
+                      <div className="relative aspect-video bg-black flex items-center justify-center">
+                        <img 
+                          src={`https://img.youtube.com/vi/${(post.youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/) || [])[2]}/0.jpg`}
+                          alt={post.title}
+                          className="w-full h-full object-cover opacity-60"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                           <div className="w-16 h-12 bg-red-600 rounded-xl flex items-center justify-center text-white">
+                              <div className="border-y-[8px] border-y-transparent border-l-[14px] border-l-white ml-1" />
+                           </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <img 
+                        src={post.coverImage} 
+                        alt={post.title} 
+                        className="w-full max-h-[400px] object-cover hover:scale-105 transition-transform duration-700"
+                      />
+                    )}
+                  </div>
+                </a>
+              </Link>
 
                   {/* Post Stats */}
                   <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between text-xs font-medium text-slate-500">

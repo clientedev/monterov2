@@ -12,6 +12,7 @@ import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/use-auth";
 
 function getYouTubeID(url: string) {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -25,6 +26,8 @@ export default function PostDetail() {
   const { data: post, isLoading } = usePost(slug);
   const { data: comments, isLoading: isLoadingComments } = useComments(post?.id ?? 0);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const [commentName, setCommentName] = useState("");
   const [commentText, setCommentText] = useState("");
@@ -245,6 +248,15 @@ export default function PostDetail() {
             </form>
 
             <div className="space-y-6">
+              {isAdmin && comments && comments.filter((c: any) => !c.isApproved).length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3 text-amber-800 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <p>Existem <strong>{comments.filter((c: any) => !c.isApproved).length}</strong> comentário(s) aguardando sua aprovação.</p>
+                  <Link href="/admin/crm">
+                    <a className="ml-auto font-bold underline">Moderar</a>
+                  </Link>
+                </div>
+              )}
               {isLoadingComments ? (
                 <div className="animate-pulse space-y-4">
                   <div className="h-20 bg-slate-200 rounded-2xl w-full"></div>

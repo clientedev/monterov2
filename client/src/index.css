@@ -76,15 +76,32 @@
 
 /* Dynamic Overrides */
 :root {
-  --primary: var(--primary-hex, 221 39% 11%);
+  --primary-default: #0f172a;
+  --secondary-default: #fbbf24;
 }
 
 .bg-primary {
-  background-color: var(--primary-hex, hsl(var(--primary)));
+  background-color: var(--primary-hex, var(--primary-default)) !important;
 }
 
 .text-primary {
-  color: var(--primary-hex, hsl(var(--primary)));
+  color: var(--primary-hex, var(--primary-default)) !important;
+}
+
+.bg-secondary {
+  background-color: var(--secondary-hex, var(--secondary-default)) !important;
+}
+
+.text-secondary {
+  color: var(--secondary-hex, var(--secondary-default)) !important;
+}
+
+.border-primary {
+  border-color: var(--primary-hex, var(--primary-default)) !important;
+}
+
+.border-secondary {
+  border-color: var(--secondary-hex, var(--secondary-default)) !important;
 }
 
 @layer utilities {

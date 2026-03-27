@@ -555,10 +555,22 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
-  // Site Settings
   app.get("/api/site-settings", async (req, res) => {
     const settings = await storage.getSiteSettings();
     res.json(settings);
+  });
+
+  app.patch("/api/site-settings", isAdmin, async (req, res) => {
+    try {
+      const input = insertSiteSettingsSchema.partial().parse(req.body);
+      const settings = await storage.updateSiteSettings(input);
+      res.json(settings);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors });
+      }
+      throw err;
+    }
   });
 
   // CNPJ Proxy with multiple fallback APIs
