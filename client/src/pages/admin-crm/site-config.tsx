@@ -189,84 +189,6 @@ function SlideDialog({
     );
 }
 
-function LivePreview({ settings, slide }: { settings: InsertSiteSettings, slide?: Partial<HeroSlide> }) {
-    const style = {
-        '--primary': settings.primaryColor || '#0f172a',
-        '--secondary': settings.secondaryColor || '#fbbf24',
-        '--font-sans': settings.fontSans || 'Inter',
-        '--font-display': settings.fontDisplay || 'Outfit',
-    } as React.CSSProperties;
-
-    return (
-        <div style={style} className="w-full h-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col font-sans scale-[0.8] origin-top">
-            {/* Header Mini */}
-            <div className="h-12 border-b border-slate-100 flex items-center justify-between px-6 bg-white shrink-0">
-                <div className="flex items-center gap-2">
-                    {settings.logoBase64 ? <img src={settings.logoBase64} className="h-6 w-auto" /> : <div className="h-4 w-4 rounded-full bg-primary" />}
-                    <span className="font-bold text-[10px] uppercase tracking-tighter" style={{ color: 'var(--primary)' }}>{settings.siteName}</span>
-                </div>
-                <div className="flex gap-3">
-                    <div className="h-1 w-6 bg-slate-200 rounded-full" />
-                    <div className="h-1 w-6 bg-slate-200 rounded-full" />
-                    <div className="h-1 w-6 bg-slate-200 rounded-full" />
-                </div>
-            </div>
-
-            {/* Hero Section Mini */}
-            <div className="relative h-64 overflow-hidden shrink-0 flex items-center justify-center text-center p-8">
-                <div className="absolute inset-0 bg-slate-900">
-                    {slide?.imageBase64 && <img src={slide.imageBase64} className="absolute inset-0 w-full h-full object-cover opacity-60" />}
-                    {!slide?.imageBase64 && <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-800" />}
-                </div>
-                <div className="relative z-10 space-y-3">
-                    <h2 className="text-2xl font-display font-bold text-white leading-tight">
-                        {slide?.title || settings.heroTitle}
-                    </h2>
-                    <p className="text-[10px] text-slate-300 max-w-[200px] mx-auto">
-                        {slide?.subtitle || settings.heroSubtitle}
-                    </p>
-                    <div className="pt-2">
-                        <button className="px-5 py-2 rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: 'var(--secondary)', color: '#000' }}>
-                            {slide?.buttonText || "Cotação Gratuita"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Content Mini */}
-            <div className="p-8 space-y-6 flex-1 bg-white overflow-hidden">
-                <div className="space-y-2">
-                    <h3 className="text-sm font-bold border-l-4 border-amber-400 pl-3" style={{ color: 'var(--primary)', fontFamily: 'var(--font-display)' }}>
-                        {settings.servicesTitle || "Nossos Serviços"}
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="h-16 bg-slate-50 rounded-xl border border-slate-100" />
-                        <div className="h-16 bg-slate-50 rounded-xl border border-slate-100" />
-                    </div>
-                </div>
-
-                <div className="pt-4 space-y-4">
-                    <div className="flex gap-4">
-                        <div className="w-1/2 h-32 bg-slate-200 rounded-xl overflow-hidden">
-                            {settings.aboutImageBase64 && <img src={settings.aboutImageBase64} className="w-full h-full object-cover" />}
-                        </div>
-                        <div className="w-1/2 space-y-2">
-                            <h4 className="text-xs font-bold leading-none">{settings.aboutTitle}</h4>
-                            <div className="h-1 w-full bg-slate-100 rounded" />
-                            <div className="h-1 w-full bg-slate-100 rounded" />
-                            <div className="h-1 w-2/3 bg-slate-100 rounded" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="h-8 bg-slate-900 flex items-center px-6 shrink-0">
-                <div className="h-1 w-20 bg-slate-700 rounded-full" />
-            </div>
-        </div>
-    );
-}
-
 export default function SiteConfigPage() {
     const { settings, isLoadingSettings, slides, isLoadingSlides, updateSettings, isUpdatingSettings, createSlide, updateSlide, deleteSlide } = useSiteSettings();
     const [activeTab, setActiveTab] = useState("identity");
@@ -819,47 +741,7 @@ export default function SiteConfigPage() {
                             </Card>
                         </TabsContent>
 
-                        {/* Live Preview Panel (Always visible on Desktop if tab != identity?) */}
                         <TabsContent value="identity" className="hidden" />
-
-                        <div className="mt-12 pt-12 border-t border-slate-100">
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl">
-                                    <Eye className="h-6 w-6" />
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-display font-bold">Pré-visualização Instantânea</h3>
-                                    <p className="text-slate-500">Veja como as mudanças afetam o visual do seu site antes de publicar.</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-slate-100/50 p-12 rounded-[40px] border border-white shadow-inner">
-                                <div className="space-y-6">
-                                    <div className="flex gap-2 p-1 bg-slate-200 w-fit rounded-lg">
-                                        <Button size="sm" variant="ghost" className="rounded-md bg-white shadow-sm h-8 px-3 gap-2">
-                                            <Monitor className="h-3.5 w-3.5" /> Desktop
-                                        </Button>
-                                        <Button size="sm" variant="ghost" className="rounded-md h-8 px-3 gap-2 text-slate-500">
-                                            <Smartphone className="h-3.5 w-3.5" /> Mobile
-                                        </Button>
-                                    </div>
-                                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-4">
-                                        <Info className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                                        <p className="text-sm text-amber-800 leading-relaxed font-medium">
-                                            Esta é uma versão reduzida focada em layout e cores.
-                                            Use-a para validar a legibilidade e harmonia dos elementos.
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="h-[600px] overflow-hidden flex items-start justify-center">
-                                    <LivePreview
-                                        settings={siteForm.watch()}
-                                        slide={slides && slides.length > 0 ? slides[0] : undefined}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
                     </form>
                 </Form>
             </Tabs>

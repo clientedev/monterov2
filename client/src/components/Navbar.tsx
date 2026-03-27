@@ -85,6 +85,22 @@ export function Navbar() {
           <div className="flex items-center gap-4">
             {user ? (
               <div className="flex items-center gap-4">
+                <Link href="/profile">
+                  <a className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all group/avatar",
+                    scrolled || location !== "/" 
+                      ? "bg-slate-100 hover:bg-slate-200" 
+                      : "bg-white/10 hover:bg-white/20 backdrop-blur-sm"
+                  )} title="Meu Perfil (Editar Foto)">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt={user.name} className="h-6 w-6 rounded-full object-cover group-hover/avatar:opacity-70 transition-opacity" />
+                    ) : (
+                      <div className="h-6 w-6 rounded-full bg-amber-500/20 flex items-center justify-center">
+                        <UserIcon className="h-4 w-4 text-amber-600" />
+                      </div>
+                    )}
+                  </a>
+                </Link>
                 <Link href={user.role === "client" ? "/dashboard" : "/admin"}>
                   <a className={cn(
                     "text-sm font-bold flex items-center gap-2 px-4 py-2 rounded-xl transition-all",
@@ -92,15 +108,7 @@ export function Navbar() {
                       ? "bg-slate-100 text-slate-900 hover:bg-slate-200" 
                       : "bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
                   )}>
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={user.name} className="h-5 w-5 rounded-full object-cover" />
-                    ) : (
-                      user.role === "client" ? (
-                        <UserIcon className="h-4 w-4 text-amber-500" />
-                      ) : (
-                        <LayoutDashboard className="h-4 w-4 text-amber-500" />
-                      )
-                    )}
+                    <LayoutDashboard className="h-4 w-4 text-amber-500" />
                     <span className="hidden lg:inline">
                       {user.role === "client" ? "Área do Cliente" : "Painel Admin"}
                     </span>

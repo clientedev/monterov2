@@ -92,22 +92,22 @@ export default function Blog() {
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-primary/20">
       <Navbar />
 
-      <div className="pt-32 pb-8 bg-slate-900 border-b border-white/10 sticky top-0 z-30 shadow-xl">
+      <div className="pt-32 pb-8 bg-slate-50 border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div className="container px-4 mx-auto md:max-w-4xl flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white group flex items-center gap-3">
-              <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-primary-foreground border border-white/10">
+            <h1 className="text-3xl font-display font-bold text-slate-900 group flex items-center gap-3">
+              <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/10">
                 <Users className="w-5 h-5" />
               </span>
               Comunidade Monteiro
             </h1>
-            <p className="text-sm text-slate-400 mt-1 font-medium hidden sm:block">
+            <p className="text-sm text-slate-500 mt-1 font-medium hidden sm:block">
               Fique por dentro das novidades, interaja e compartilhe experiências.
             </p>
           </div>
           <div className="flex gap-2">
-            <div className="px-4 py-2 rounded-full bg-white/10 border border-white/10 flex items-center gap-2 text-sm font-semibold text-slate-300">
-              <TrendingUp className="w-4 h-4 text-primary-foreground" />
+            <div className="px-4 py-2 rounded-full bg-slate-100 border border-slate-200 flex items-center gap-2 text-sm font-semibold text-slate-600">
+              <TrendingUp className="w-4 h-4 text-primary" />
               Em alta
             </div>
           </div>
@@ -182,117 +182,111 @@ export default function Blog() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center px-1 mt-4">
-                    <div className="flex gap-2">
-                       {/* Future: Add small icons for media upload if needed */}
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button 
-                        onClick={() => setIsCreating(false)}
-                        className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                      <button 
-                        onClick={() => createPostMutation.mutate(postText)}
-                        disabled={createPostMutation.isPending || !postText.trim()}
-                        className="px-6 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:bg-primary/90 transition-colors disabled:opacity-50"
-                      >
-                        {createPostMutation.isPending ? "Enviando..." : "Publicar"}
-                      </button>
-                    </div>
-                  </div>
+              <div className="flex justify-between items-center px-1 mt-4">
+                <div className="flex gap-2">
                 </div>
-              )}
+                <div className="flex justify-end gap-2">
+                  <button 
+                    onClick={() => setIsCreating(false)}
+                    className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={() => createPostMutation.mutate(postText)}
+                    disabled={createPostMutation.isPending || !postText.trim()}
+                    className="px-6 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {createPostMutation.isPending ? "Enviando..." : "Publicar"}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+        </div>
+      </div>
 
-          {isLoading ? (
-            <div className="space-y-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-slate-100" />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {posts?.map((post, index) => (
-                <motion.article 
-                  key={post.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 group"
-                >
-                  {/* Post Header & Content - ALL CLICKABLE */}
-                  <Link href={`/blog/${post.slug}`}>
-                    <div className="cursor-pointer">
-                      <div className="p-5 flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0">
-                          <ShieldCheck className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-slate-900">Monteiro Corretora</h3>
-                            <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
-                               <ShieldCheck className="w-2.5 h-2.5" />
-                            </span>
-                          </div>
-                          <p className="text-xs font-medium text-slate-500">
-                            {post.publishedAt ? format(new Date(post.publishedAt), "dd 'de' MMMM 'às' HH:mm") : 'Rascunho'} • Especialista
-                          </p>
-                        </div>
-                      </div>
+      {isLoading ? (
+        <div className="space-y-6 px-4 md:px-0">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-slate-100" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-8 px-4 md:px-0 pb-16">
+          {posts?.map((post, index) => (
+            <motion.article 
+              key={post.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              viewport={{ once: true, margin: "-50px" }}
+              className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 group relative"
+            >
+              {/* Overlay Link for the whole post area (header + content + media) */}
+              <Link href={`/blog/${post.slug}`}>
+                <a className="absolute inset-x-0 top-0 bottom-16 z-10" aria-label={post.title} />
+              </Link>
 
-                      <div className="px-5 pb-3">
-                        <h2 className="text-xl font-display font-bold text-slate-900 mb-2">
-                          {post.title}
-                        </h2>
-                        <p className="text-slate-600 text-sm leading-relaxed mb-4">
-                          {post.summary}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-
-                  {/* Post Media */}
-                  <div className="relative">
-                    <Link href={`/blog/${post.slug}`}>
-                      <div className="block cursor-pointer overflow-hidden border-y border-slate-100 bg-slate-50">
-                        {post.videoUrl ? (
-                          <div className="relative">
-                            <video 
-                              src={post.videoUrl} 
-                              className="w-full max-h-[400px] object-cover"
-                              muted
-                              onMouseOver={e => (e.target as HTMLVideoElement).play()}
-                              onMouseOut={e => (e.target as HTMLVideoElement).pause()}
-                            />
-                            <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-bold uppercase">Vídeo</div>
-                          </div>
-                        ) : post.youtubeUrl ? (
-                          <div className="relative aspect-video bg-black flex items-center justify-center">
-                            <img 
-                              src={`https://img.youtube.com/vi/${(post.youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/) || [])[2]}/0.jpg`}
-                              alt={post.title}
-                              className="w-full h-full object-cover opacity-60"
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                               <div className="w-16 h-12 bg-red-600 rounded-xl flex items-center justify-center text-white">
-                                  <div className="border-y-[8px] border-y-transparent border-l-[14px] border-l-white ml-1" />
-                               </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <img 
-                            src={post.coverImage} 
-                            alt={post.title} 
-                            className="w-full max-h-[400px] object-cover hover:scale-105 transition-transform duration-700"
-                          />
-                        )}
-                      </div>
-                    </Link>
+              <div className="p-5 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900">Monteiro Corretora</h3>
+                    <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
+                       <ShieldCheck className="w-2.5 h-2.5" />
+                    </span>
                   </div>
+                  <p className="text-xs font-medium text-slate-500">
+                    {post.publishedAt ? format(new Date(post.publishedAt), "dd 'de' MMMM 'às' HH:mm") : 'Rascunho'} • Especialista
+                  </p>
+                </div>
+              </div>
+
+              <div className="px-5 pb-3">
+                <h2 className="text-xl font-display font-bold text-slate-900 mb-2">
+                  {post.title}
+                </h2>
+                <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                  {post.summary}
+                </p>
+              </div>
+
+              <div className="relative overflow-hidden border-y border-slate-100 bg-slate-50">
+                {post.videoUrl ? (
+                  <div className="relative">
+                    <video 
+                      src={post.videoUrl} 
+                      className="w-full max-h-[400px] object-cover"
+                      muted
+                      onMouseOver={e => (e.target as HTMLVideoElement).play()}
+                      onMouseOut={e => (e.target as HTMLVideoElement).pause()}
+                    />
+                    <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-bold uppercase">Vídeo</div>
+                  </div>
+                ) : post.youtubeUrl ? (
+                  <div className="relative aspect-video bg-black flex items-center justify-center">
+                    <img 
+                      src={`https://img.youtube.com/vi/${(post.youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/) || [])[2]}/0.jpg`}
+                      alt={post.title}
+                      className="w-full h-full object-cover opacity-60"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                       <div className="w-16 h-12 bg-red-600 rounded-xl flex items-center justify-center text-white">
+                          <div className="border-y-[8px] border-y-transparent border-l-[14px] border-l-white ml-1" />
+                       </div>
+                    </div>
+                  </div>
+                ) : (
+                  <img 
+                    src={post.coverImage} 
+                    alt={post.title} 
+                    className="w-full max-h-[400px] object-cover hover:scale-105 transition-transform duration-700"
+                  />
+                )}
+              </div>
 
                   {/* Post Stats */}
                   <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between text-xs font-medium text-slate-500">

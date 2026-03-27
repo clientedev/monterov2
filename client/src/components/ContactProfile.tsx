@@ -168,9 +168,10 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                         <div className="space-y-1">
                                                             <div className="flex items-center justify-between">
                                                                 <p className="text-sm font-bold text-gray-900 capitalize italic">
-                                                                    {interaction.type === 'call' ? '📞 Ligação' :
+                                                                    {(interaction.type === 'call' || interaction.type === 'phone') ? '📞 Ligação' :
                                                                         interaction.type === 'email' ? '📧 E-mail' :
-                                                                            interaction.type === 'meeting' ? '🤝 Reunião' : '📝 Nota'}
+                                                                            interaction.type === 'meeting' ? '🤝 Reunião' : 
+                                                                                interaction.type === 'Web Inquiry' ? '🌐 Site' : '📝 Nota'}
                                                                 </p>
                                                                 <time className="text-[10px] font-bold text-gray-400 uppercase">
                                                                     {interaction.date ? format(new Date(interaction.date), "dd 'de' MMM, yyyy 'às' HH:mm", { locale: ptBR }) : '-'}
@@ -231,7 +232,7 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                                     </p>
                                                                 )}
                                                             </div>
-                                                            <Badge variant={task.status === 'done' ? 'default' : 'outline'} className="rounded-full font-bold uppercase text-[9px]">
+                                                            <Badge variant={task.status === 'fechado' ? 'default' : 'outline'} className="rounded-full font-bold uppercase text-[9px]">
                                                                 {task.status}
                                                             </Badge>
                                                         </CardHeader>

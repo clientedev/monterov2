@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import path from "path";
+import fs from "fs";
 import { api } from "@shared/routes";
 import Groq from "groq-sdk";
 import { z } from "zod";

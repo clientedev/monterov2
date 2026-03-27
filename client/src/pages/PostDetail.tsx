@@ -8,6 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -102,8 +103,8 @@ export default function PostDetail() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">Post Not Found</h1>
-          <Link href="/blog" className="text-primary hover:underline">Return to Blog</Link>
+          <h1 className="text-4xl font-bold text-slate-900 mb-4">Postagem não encontrada</h1>
+          <Link href="/blog" className="text-primary hover:underline">Voltar para a Comunidade</Link>
         </div>
       </div>
     );
@@ -118,14 +119,14 @@ export default function PostDetail() {
           <Link href="/blog">
             <button className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors mb-8 text-sm font-medium">
               <ArrowLeft className="w-4 h-4" />
-              Back to Blog
+              Voltar para a Comunidade
             </button>
           </Link>
 
           <header className="mb-10">
             <div className="flex gap-4 items-center text-sm text-slate-500 mb-6">
-              <span className="bg-slate-100 px-3 py-1 rounded-full text-slate-800 font-medium">News</span>
-              <span>{post.publishedAt && format(new Date(post.publishedAt), 'MMMM dd, yyyy')}</span>
+              <span className="bg-slate-100 px-3 py-1 rounded-full text-slate-800 font-medium">Notícias</span>
+              <span>{post.publishedAt && format(new Date(post.publishedAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
             </div>
 
             <h1 className="text-4xl md:text-5xl font-display font-bold text-slate-900 leading-tight mb-8">

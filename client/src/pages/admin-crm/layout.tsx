@@ -18,7 +18,8 @@ import {
     PhoneCall,
     Search,
     KeyRound,
-    MessageSquare
+    MessageSquare,
+    Camera
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import logo from "@assets/logo_monteiro_v2.png";
@@ -132,15 +133,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {/* Footer User Info */}
                 <div className="mt-auto p-5 bg-black/30 border-t border-white/5">
                     <div className="flex items-center gap-4 mb-4 group cursor-pointer" onClick={() => setLocation("/profile")}>
-                        <div className="relative">
-                            <div className="h-12 w-12 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-lg text-white shadow-inner overflow-hidden group-hover:border-amber-500/50 transition-colors">
+                        <div className="relative group/avatar">
+                            <div className="h-12 w-12 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-lg text-white shadow-inner overflow-hidden group-hover:border-amber-500/50 transition-colors relative">
                                 {user.avatar ? (
-                                    <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                                    <img src={user.avatar} alt={user.name} className="h-full w-full object-cover group-hover:opacity-40 transition-opacity" />
                                 ) : (
                                     user.username.charAt(0).toUpperCase()
                                 )}
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity bg-black/20">
+                                    <Camera className="h-5 w-5 text-white" />
+                                </div>
                             </div>
-                            <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-[#161b22] shadow-sm"></div>
+                            <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-[#161b22] shadow-sm z-10"></div>
                         </div>
                         <div className="flex-1 min-w-0">
                             <h4 className="text-sm font-semibold text-white truncate group-hover:text-amber-400 transition-colors">{user.name || user.username}</h4>
