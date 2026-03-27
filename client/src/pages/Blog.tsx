@@ -10,6 +10,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUpload } from "@/components/ImageUpload";
+import { VideoUpload } from "@/components/VideoUpload";
 
 export default function Blog() {
   const { data: posts, isLoading } = usePosts();
@@ -17,6 +19,11 @@ export default function Blog() {
   const { toast } = useToast();
   const [postText, setPostText] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [mediaData, setMediaData] = useState({
+    coverImage: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=800",
+    videoUrl: "",
+    youtubeUrl: ""
+  });
 
   const likeMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -34,7 +41,7 @@ export default function Blog() {
         slug: `post-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         content: text,
         summary: text,
-        coverImage: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=800", // Default placeholder
+        ...mediaData
       };
       await apiRequest("POST", "/api/posts", payload);
     },
@@ -143,20 +150,57 @@ export default function Blog() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[100px] resize-none"
                     autoFocus
                   />
-                  <div className="flex justify-end gap-2">
-                    <button 
-                      onClick={() => setIsCreating(false)}
-                      className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      onClick={() => createPostMutation.mutate(postText)}
-                      disabled={createPostMutation.isPending || !postText.trim()}
-                      className="px-6 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:bg-primary/90 transition-colors disabled:opacity-50"
-                    >
-                      {createPostMutation.isPending ? "Enviando..." : "Publicar"}
-                    </button>
+                  
+                  {isCreating && (
+                    <div className="space-y-4 mt-4 p-4 bg-slate-100/50 rounded-2xl border border-slate-100">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase px-1">Link do YouTube</p>
+                          <input 
+                            type="text"
+                            placeholder="Cole o link do YouTube aqui..."
+                            value={mediaData.youtubeUrl}
+                            onChange={(e) => setMediaData(prev => ({ ...prev, youtubeUrl: e.target.value }))}
+                            className="w-full bg-white border border-slate-200 rounded-xl py-2 px-4 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase px-1">Imagem de Capa</p>
+                          <ImageUpload 
+                            value={mediaData.coverImage}
+                            onChange={(val) => setMediaData(prev => ({ ...prev, coverImage: val }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="pt-2">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase px-1 mb-2">Vídeo Direto (Opcional)</p>
+                        <VideoUpload 
+                           value={mediaData.videoUrl}
+                           onChange={(val) => setMediaData(prev => ({ ...prev, videoUrl: val }))}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center px-1 mt-4">
+                    <div className="flex gap-2">
+                       {/* Future: Add small icons for media upload if needed */}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button 
+                        onClick={() => setIsCreating(false)}
+                        className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button 
+                        onClick={() => createPostMutation.mutate(postText)}
+                        disabled={createPostMutation.isPending || !postText.trim()}
+                        className="px-6 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      >
+                        {createPostMutation.isPending ? "Enviando..." : "Publicar"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -180,43 +224,72 @@ export default function Blog() {
                   viewport={{ once: true, margin: "-50px" }}
                   className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 group"
                 >
-                  {/* Post Header */}
-                  <div className="p-5 flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0">
-                      <ShieldCheck className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-slate-900">Monteiro Corretora</h3>
-                        <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
-                           <ShieldCheck className="w-2.5 h-2.5" />
-                        </span>
+                  {/* Post Header & Content - ALL CLICKABLE */}
+                  <Link href={`/blog/${post.slug}`}>
+                    <div className="cursor-pointer">
+                      <div className="p-5 flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0">
+                          <ShieldCheck className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-900">Monteiro Corretora</h3>
+                            <span className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
+                               <ShieldCheck className="w-2.5 h-2.5" />
+                            </span>
+                          </div>
+                          <p className="text-xs font-medium text-slate-500">
+                            {post.publishedAt ? format(new Date(post.publishedAt), "dd 'de' MMMM 'às' HH:mm") : 'Rascunho'} • Especialista
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs font-medium text-slate-500">
-                        {post.publishedAt ? format(new Date(post.publishedAt), "dd 'de' MMMM 'às' HH:mm") : 'Rascunho'} • Especialista
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Post Content */}
-                  <div className="px-5 pb-3">
-                    <h2 className="text-xl font-display font-bold text-slate-900 mb-2">
-                      {post.title}
-                    </h2>
-                    <p className="text-slate-600 text-sm leading-relaxed mb-4">
-                      {post.summary}
-                    </p>
-                  </div>
+                      <div className="px-5 pb-3">
+                        <h2 className="text-xl font-display font-bold text-slate-900 mb-2">
+                          {post.title}
+                        </h2>
+                        <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                          {post.summary}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
 
                   {/* Post Media */}
                   <div className="relative">
                     <Link href={`/blog/${post.slug}`}>
                       <div className="block cursor-pointer overflow-hidden border-y border-slate-100 bg-slate-50">
-                        <img 
-                          src={post.coverImage} 
-                          alt={post.title} 
-                          className="w-full max-h-[400px] object-cover hover:scale-105 transition-transform duration-700"
-                        />
+                        {post.videoUrl ? (
+                          <div className="relative">
+                            <video 
+                              src={post.videoUrl} 
+                              className="w-full max-h-[400px] object-cover"
+                              muted
+                              onMouseOver={e => (e.target as HTMLVideoElement).play()}
+                              onMouseOut={e => (e.target as HTMLVideoElement).pause()}
+                            />
+                            <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-bold uppercase">Vídeo</div>
+                          </div>
+                        ) : post.youtubeUrl ? (
+                          <div className="relative aspect-video bg-black flex items-center justify-center">
+                            <img 
+                              src={`https://img.youtube.com/vi/${(post.youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/) || [])[2]}/0.jpg`}
+                              alt={post.title}
+                              className="w-full h-full object-cover opacity-60"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                               <div className="w-16 h-12 bg-red-600 rounded-xl flex items-center justify-center text-white">
+                                  <div className="border-y-[8px] border-y-transparent border-l-[14px] border-l-white ml-1" />
+                               </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <img 
+                            src={post.coverImage} 
+                            alt={post.title} 
+                            className="w-full max-h-[400px] object-cover hover:scale-105 transition-transform duration-700"
+                          />
+                        )}
                       </div>
                     </Link>
                   </div>
