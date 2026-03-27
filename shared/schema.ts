@@ -11,6 +11,8 @@ export const posts = pgTable("posts", {
   summary: text("summary").notNull(),
   coverImage: text("cover_image").notNull(),
   likes: integer("likes").default(0).notNull(),
+  videoUrl: text("video_url"),
+  youtubeUrl: text("youtube_url"),
   isApproved: boolean("is_approved").default(false).notNull(),
   publishedAt: timestamp("published_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),

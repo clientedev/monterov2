@@ -12,6 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+function getYouTubeID(url: string) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
 export default function PostDetail() {
   const [match, params] = useRoute("/blog/:slug");
   const slug = params?.slug || "";
@@ -136,11 +142,38 @@ export default function PostDetail() {
           </div>
 
           <div className="prose prose-lg prose-slate prose-headings:font-display prose-headings:font-bold prose-a:text-primary max-w-none">
-            {/* In a real app, this would be rendered Markdown or HTML */}
             <div className="whitespace-pre-line text-slate-600 leading-relaxed">
               {post.content}
             </div>
           </div>
+
+          {(post.videoUrl || post.youtubeUrl) && (
+            <div className="mt-12 space-y-8">
+              {post.videoUrl && (
+                <div className="rounded-2xl overflow-hidden shadow-lg bg-black">
+                  <video 
+                    src={post.videoUrl} 
+                    controls 
+                    className="w-full h-auto max-h-[600px]"
+                  />
+                </div>
+              )}
+              
+              {post.youtubeUrl && getYouTubeID(post.youtubeUrl) && (
+                <div className="aspect-video rounded-2xl overflow-hidden shadow-lg bg-black">
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    src={`https://www.youtube.com/embed/${getYouTubeID(post.youtubeUrl)}`}
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-4">

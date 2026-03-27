@@ -35,6 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Trash2, Pencil, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ImageUpload } from "@/components/ImageUpload";
+import { VideoUpload } from "@/components/VideoUpload";
 
 export default function PostsPage() {
     const { toast } = useToast();
@@ -197,12 +198,18 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
             content: "",
             summary: "",
             coverImage: "",
+            videoUrl: "",
+            youtubeUrl: "",
         },
     });
 
     useEffect(() => {
         if (initialData) {
-            form.reset(initialData);
+            form.reset({
+                ...initialData,
+                videoUrl: initialData.videoUrl || "",
+                youtubeUrl: initialData.youtubeUrl || "",
+            });
         } else {
             form.reset({
                 title: "",
@@ -210,6 +217,8 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                 content: "",
                 summary: "",
                 coverImage: "",
+                videoUrl: "",
+                youtubeUrl: "",
             });
         }
     }, [initialData, form]);
@@ -293,6 +302,49 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                         </FormItem>
                     )}
                 />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                    <FormField
+                        control={form.control}
+                        name="videoUrl"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Vídeo (Upload)</FormLabel>
+                                <FormControl>
+                                    <VideoUpload
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        description="Anexe um vídeo curto (Max. 5MB)."
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="youtubeUrl"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Link do YouTube</FormLabel>
+                                <FormControl>
+                                    <div className="space-y-2">
+                                        <Input 
+                                            placeholder="https://www.youtube.com/watch?v=..." 
+                                            {...field} 
+                                            value={field.value || ""} 
+                                        />
+                                        <p className="text-[10px] text-muted-foreground italic">
+                                            Cole a URL completa do vídeo do YouTube.
+                                        </p>
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
                 <Button
                     type="submit"
                     className="w-full"

@@ -556,6 +556,8 @@ export class MemStorage implements IStorage {
       ...post,
       id,
       likes: 0,
+      videoUrl: post.videoUrl || null,
+      youtubeUrl: post.youtubeUrl || null,
       isApproved: post.isApproved ?? false,
       publishedAt: new Date(),
       createdAt: new Date()

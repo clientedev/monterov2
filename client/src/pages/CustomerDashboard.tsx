@@ -41,10 +41,13 @@ export default function CustomerDashboard() {
 
     setIsSubmitting(true);
     try {
+      const form = e.currentTarget as HTMLFormElement;
+      const phone = (form.elements.namedItem("phone") as HTMLInputElement)?.value || "";
+      
       await apiRequest("POST", "/api/inquiries", {
-        name: user?.name || "Cliente Logado",
-        email: user?.username || "", // Using username as fallback email
-        phone: "", // Will use existing info if available
+        name: user?.name || user?.username || "Cliente Logado",
+        email: user?.username || "", 
+        phone: phone,
         message: quoteMessage,
       });
 
@@ -214,16 +217,29 @@ export default function CustomerDashboard() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleQuoteSubmit} className="space-y-6 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="message" className="text-sm font-bold text-slate-700">Detalhes da solicitação</Label>
-              <Textarea
-                id="message"
-                placeholder="Ex: Gostaria de uma cotação para seguro de vida individual e plano de saúde empresarial para 5 vidas..."
-                className="min-h-[150px] rounded-xl border-slate-200 focus:ring-amber-500"
-                value={quoteMessage}
-                onChange={(e) => setQuoteMessage(e.target.value)}
-                required
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-sm font-bold text-slate-700">Seu Telefone / WhatsApp</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  placeholder="(11) 99999-9999"
+                  className="rounded-xl border-slate-200 focus:ring-amber-500"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="message" className="text-sm font-bold text-slate-700">Detalhes da solicitação</Label>
+                <Textarea
+                  id="message"
+                  name="message"
+                  placeholder="Ex: Gostaria de uma cotação para seguro de vida individual e plano de saúde empresarial para 5 vidas..."
+                  className="min-h-[120px] rounded-xl border-slate-200 focus:ring-amber-500"
+                  value={quoteMessage}
+                  onChange={(e) => setQuoteMessage(e.target.value)}
+                  required
+                />
+              </div>
             </div>
             <DialogFooter className="gap-2 sm:gap-0">
               <Button 

@@ -91,6 +91,54 @@ export async function registerRoutes(
     res.status(403).json({ message: "Forbidden: Admin access required" });
   };
 
+  // SEO / Blog Social Previews
+  app.get("/blog/:slug", async (req, res, next) => {
+    try {
+      const slug = req.params.slug;
+      const post = await storage.getPostBySlug(slug);
+
+      if (!post) {
+        return next(); // Fall through to 404 handled by frontend
+      }
+
+      // Read index.html
+      const indexPath = process.env.NODE_ENV === "production"
+        ? path.resolve(process.cwd(), "dist", "public", "index.html")
+        : path.resolve(process.cwd(), "client", "index.html");
+
+      if (!fs.existsSync(indexPath)) {
+        return next();
+      }
+
+      let html = fs.readFileSync(indexPath, "utf8");
+
+      // OG Tags to inject
+      const ogTags = `
+    <!-- Dynamic OG Tags -->
+    <title>${post.title} | Monteiro Corretora</title>
+    <meta name="description" content="${post.summary.replace(/"/g, '&quot;')}" />
+    <meta property="og:title" content="${post.title}" />
+    <meta property="og:description" content="${post.summary.replace(/"/g, '&quot;')}" />
+    <meta property="og:image" content="${post.coverImage}" />
+    <meta property="og:url" content="${req.protocol}://${req.get('host')}${req.originalUrl}" />
+    <meta property="og:type" content="article" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${post.title}" />
+    <meta name="twitter:description" content="${post.summary.replace(/"/g, '&quot;')}" />
+    <meta name="twitter:image" content="${post.coverImage}" />
+      `.trim();
+
+      // Inject before </head>
+      html = html.replace("</head>", `${ogTags}\n</head>`);
+
+      res.setHeader("Content-Type", "text/html");
+      return res.send(html);
+    } catch (error) {
+      console.error("SEO Middleware Error:", error);
+      next();
+    }
+  });
+
   // Posts
   app.get(api.posts.list.path, async (req, res) => {
     const isAdminUser = req.isAuthenticated() && (req.user as any).role === "admin";
@@ -197,7 +245,45 @@ export async function registerRoutes(
     try {
       const input = api.inquiries.create.input.parse(req.body);
       const userId = req.isAuthenticated() ? (req.user as any).id : null;
+      
+      // Save the inquiry for the user's history
       const inquiry = await storage.createInquiry({ ...input, userId });
+
+      // Integration with CRM: Check for contact and create Lead
+      const contacts = await storage.getContacts();
+      let contact = contacts.find(c => c.email === input.email);
+      
+      if (!contact) {
+        contact = await storage.createContact({
+          type: "individual",
+          name: input.name,
+          email: input.email,
+          phone: input.phone || null,
+          document: null,
+          address: null,
+          assignedTo: 0
+        });
+      } else if (input.phone && !contact.phone) {
+        await storage.updateContact(contact.id, { phone: input.phone });
+      }
+
+      const lead = await storage.createLead({
+        contactId: contact.id,
+        status: "new",
+        value: null,
+        source: "Website Inquérito",
+        notes: `Mensagem: ${input.message}`,
+      });
+
+      await storage.createInteraction({
+        contactId: contact.id,
+        leadId: lead.id,
+        userId: userId || 0,
+        type: "Web Inquiry",
+        description: `Cliente solicitou cotação pelo site: ${input.message}`,
+        date: new Date()
+      });
+
       res.status(201).json(inquiry);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -206,7 +292,8 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      console.error("Inquiry error:", err);
+      res.status(400).json({ message: "Invalid inquiry data" });
     }
   });
 
