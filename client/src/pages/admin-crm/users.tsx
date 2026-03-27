@@ -51,7 +51,7 @@ export default function UsersPage() {
     const [newName, setNewName] = useState("");
     const [newUsername, setNewUsername] = useState("");
     const [newPassword, setNewPassword] = useState("");
-    const [newRole, setNewRole] = useState<"admin" | "employee">("employee");
+    const [newRole, setNewRole] = useState<"admin" | "employee" | "client">("client");
     const [showNewPassword, setShowNewPassword] = useState(false);
 
     // Delete confirm state
@@ -100,7 +100,7 @@ export default function UsersPage() {
             setNewName("");
             setNewUsername("");
             setNewPassword("");
-            setNewRole("employee");
+            setNewRole("client");
         },
         onError: (error: Error) => {
             toast({
@@ -214,8 +214,14 @@ export default function UsersPage() {
                                                 </SelectItem>
                                                 <SelectItem value="employee">
                                                     <div className="flex items-center gap-2">
-                                                        <UserIcon className="h-3 w-3 text-gray-500" />
+                                                        <UserIcon className="h-3.5 w-3.5 text-gray-500" />
                                                         Funcionário
+                                                    </div>
+                                                </SelectItem>
+                                                <SelectItem value="client">
+                                                    <div className="flex items-center gap-2">
+                                                        <UserIcon className="h-3.5 w-3.5 text-amber-600" />
+                                                        Cliente
                                                     </div>
                                                 </SelectItem>
                                             </SelectContent>
@@ -224,8 +230,10 @@ export default function UsersPage() {
                                         <span className="flex items-center gap-1.5 text-sm">
                                             {user.role === "admin" ? (
                                                 <><Shield className="h-3.5 w-3.5 text-yellow-600" /> Administrador</>
-                                            ) : (
+                                            ) : user.role === "employee" ? (
                                                 <><UserIcon className="h-3.5 w-3.5 text-gray-400" /> Funcionário</>
+                                            ) : (
+                                                <><UserIcon className="h-3.5 w-3.5 text-amber-500" /> Cliente</>
                                             )}
                                         </span>
                                     )}
@@ -303,7 +311,7 @@ export default function UsersPage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="font-semibold text-sm">Cargo</Label>
-                            <Select value={newRole} onValueChange={(v) => setNewRole(v as "admin" | "employee")}>
+                            <Select value={newRole} onValueChange={(v) => setNewRole(v as "admin" | "employee" | "client")}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
@@ -312,6 +320,12 @@ export default function UsersPage() {
                                         <div className="flex items-center gap-2">
                                             <UserIcon className="h-3.5 w-3.5 text-gray-500" />
                                             Funcionário
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="client">
+                                        <div className="flex items-center gap-2">
+                                            <UserIcon className="h-3.5 w-3.5 text-amber-600" />
+                                            Cliente
                                         </div>
                                     </SelectItem>
                                     <SelectItem value="admin">
