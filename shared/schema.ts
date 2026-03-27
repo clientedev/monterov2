@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, integer, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -194,6 +194,13 @@ export const prospectingChecklists = pgTable("prospecting_checklists", {
   notes: text("notes"),
   checklistData: text("checklist_data"), // JSON string for flexible checklist items
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Sessions for connect-pg-simple
+export const sessions = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
 });
 
 // Schemas
