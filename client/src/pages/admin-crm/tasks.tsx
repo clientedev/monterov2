@@ -181,7 +181,7 @@ export default function TasksPage() {
                                 >
                                     <option value="all">Equipe Completa</option>
                                     <option value={currentUser?.id.toString()}>Minhas Atividades</option>
-                                    {users?.filter(u => u.id !== currentUser?.id).map(user => (
+                                    {users?.filter(u => u.id !== currentUser?.id && (u.role === "admin" || u.role === "employee")).map(user => (
                                         <option key={user.id} value={user.id.toString()}>{user.name}</option>
                                     ))}
                                 </select>
@@ -484,7 +484,7 @@ function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, de
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent className="rounded-xl border-slate-200 shadow-xl">
-                                                {users.map((u: any) => (
+                                                {users.filter((u: any) => u.role === "admin" || u.role === "employee").map((u: any) => (
                                                     <SelectItem key={u.id} value={u.id.toString()}>
                                                         {u.name}
                                                     </SelectItem>
