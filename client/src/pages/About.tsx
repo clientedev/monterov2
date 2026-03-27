@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
-import { Users, Award, History, Target, ArrowRight } from "lucide-react";
+import { Users, Award, History, Target, ArrowRight, Zap, Heart, ShieldCheck } from "lucide-react";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
 export default function About() {
@@ -59,13 +59,13 @@ export default function About() {
                 {settings?.aboutContent || (
                   <>
                     <p>
-                      Fundada por Carlos Monteiro, a Monteiro Corretora começou com uma missão simples: tornar o seguro compreensível, acessível e verdadeiramente protetor para famílias e empresas em São Paulo.
+                      Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, **Carolina Monteiro** é especialista em seguros de vida e fundadora da Monteiro Corretora.
                     </p>
                     <p className="p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-slate-700 font-medium">
-                      "Nas últimas três décadas, crescemos de um pequeno escritório familiar para uma das corretoras mais respeitadas. Contudo, nossos valores continuam os mesmos: cada cliente é parte da nossa família."
+                      "Nosso objetivo é oferecer sempre o seguro mais adequado ao seu perfil – pessoal ou empresarial – e às suas expectativas, com um atendimento personalizado, humano e qualificado."
                     </p>
                     <p>
-                      Acreditamos que inovação e tradição não são conceitos opostos. Trazemos a agilidade do digital com o calor do atendimento humano que sempre nos destacou no mercado.
+                      Nos preocupamos em oferecer aos segurados acompanhamento durante todas as etapas do processo, ou seja, durante a contratação e também no pós-venda, garantindo tranquilidade e segurança para você e sua família.
                     </p>
                   </>
                 )}
@@ -74,10 +74,10 @@ export default function About() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 lg:mt-12">
               {[
-                { icon: Users, title: "Foco no Cliente", desc: "Suas necessidades mapeiam nossas soluções, sem exceções." },
-                { icon: Award, title: "Excelência", desc: "Suporte premiado e atendimento contínuo 24/7." },
-                { icon: History, title: "Experiência", desc: "Mais de 30 anos navegando nas complexidades do mercado." },
-                { icon: Target, title: "Precisão", desc: "Apólices cirúrgicas, desenhadas para o seu perfil exato." }
+                { icon: Zap, title: "Agilidade", desc: "Trabalho bem feito, com respeito às individualidades, seriedade e transparência." },
+                { icon: Heart, title: "Atendimento Humanizado", desc: "Fazemos o nosso melhor para te ver satisfeito. Sempre presentes quando precisar." },
+                { icon: ShieldCheck, title: "Segurança", desc: "Proteção personalizada de acordo com seu perfil e necessidade real." },
+                { icon: Award, title: "Acompanhamento", desc: "Suporte completo e qualificado desde a contratação até o pós-venda." }
               ].map((item, i) => (
                 <motion.div
                   key={i}

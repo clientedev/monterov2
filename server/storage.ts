@@ -422,7 +422,7 @@ export class DatabaseStorage implements IStorage {
         heroTitle: "Protegendo seu Futuro,\nGarantindo seu Legado",
         heroSubtitle: "Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna.",
         aboutTitle: "Sobre a Monteiro Corretora",
-        aboutContent: "Fundada por Carlos Monteiro, a Monteiro Corretora começou com uma missão simples: tornar o seguro compreensível, acessível e verdadeiramente protetor para famílias e empresas em São Paulo.\n\nNas últimas três décadas, crescemos de um pequeno escritório familiar para uma das corretoras mais respeitadas da região. Nosso crescimento não mudou nossos valores fundamentais — ainda tratamos cada cliente como parte da família.",
+        aboutContent: "Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, Carolina Monteiro é especialista em seguros de vida e fundadora da Monteiro Corretora. Nosso objetivo é oferecer sempre o seguro mais adequado ao seu perfil – pessoal ou empresarial – e às suas expectativas, com um atendimento personalizado, humano e qualificado.\n\nNos preocupamos em oferecer aos segurados acompanhamento durante todas as etapas do processo, ou seja, durante a contratação e também no pós-venda, garantindo tranquilidade e segurança.",
         aboutImageBase64: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600",
         servicesTitle: "Soluções Completas em Seguros",
         servicesSubtitle: "Planos de cobertura personalizados projetados para atender às suas necessidades específicas.",
