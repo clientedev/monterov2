@@ -112,9 +112,19 @@ export default function Blog() {
         {/* Feed Column */}
         <div className="w-full md:w-2/3 space-y-8">
           {/* Create Post Field */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex gap-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
-               <span className="font-bold">{user ? user.name.substring(0,2).toUpperCase() : "VC"}</span>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div className="flex gap-4 mb-4">
+              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0 overflow-hidden">
+                 {user?.avatar ? (
+                   <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                 ) : (
+                   <span className="font-bold">{user ? user.name.substring(0,2).toUpperCase() : "VC"}</span>
+                 )}
+              </div>
+              <div className="flex-1 pt-1">
+                <p className="text-sm font-bold text-slate-900">{user?.name || "Visitante"}</p>
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Publicar na Comunidade</p>
+              </div>
             </div>
             <div className="flex-1">
               {!isCreating ? (
