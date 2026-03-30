@@ -180,6 +180,7 @@ export const tasks = pgTable("tasks", {
   contactId: integer("contact_id").references(() => contacts.id),
   createdBy: integer("created_by").references(() => users.id).notNull(),
   dueDate: timestamp("due_date"),
+  color: text("color").notNull().default("default"), // default, blue, green, yellow, red, purple
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -43,7 +43,9 @@ import {
     Filter,
     GripVertical,
     MoreVertical,
-    Edit2
+    Edit2,
+    Maximize2,
+    Minimize2
 } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +62,15 @@ const COLUMNS = [
     { id: "venda_cancelada", icon: CheckCircle2, label: "Venda Cancelada", color: "text-slate-500", bg: "bg-slate-50/50", accent: "border-slate-300" },
 ];
 
+const CARD_COLORS: Record<string, { bg: string, border: string, label: string }> = {
+    default: { bg: "bg-white", border: "border-slate-200", label: "Branco (Padrão)" },
+    blue: { bg: "bg-blue-50/50", border: "border-blue-200", label: "Azul" },
+    emerald: { bg: "bg-emerald-50/50", border: "border-emerald-200", label: "Verde" },
+    amber: { bg: "bg-amber-50/50", border: "border-amber-200", label: "Amarelo" },
+    rose: { bg: "bg-rose-50/50", border: "border-rose-200", label: "Vermelho" },
+    purple: { bg: "bg-purple-50/50", border: "border-purple-200", label: "Roxo" }
+};
+
 export default function TasksPage() {
     const { toast } = useToast();
     const { user: currentUser } = useAuth();
@@ -68,6 +79,7 @@ export default function TasksPage() {
     const [filterUser, setFilterUser] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const { data: tasks, isLoading } = useQuery<Task[]>({
         queryKey: ["/api/tasks", { 
@@ -162,7 +174,7 @@ export default function TasksPage() {
     }
 
     return (
-        <div className="space-y-6 h-full flex flex-col">
+        <div className={`h-full flex flex-col ${isExpanded ? "fixed inset-0 z-50 bg-[#f1f5f9] p-8 overflow-hidden transition-all duration-300" : "space-y-6"}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                 <div>
                     <h2 className="text-3xl font-display font-bold text-slate-900 tracking-tight">Quadro de Planejamento</h2>
@@ -170,6 +182,15 @@ export default function TasksPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => setIsExpanded(!isExpanded)} 
+                        className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 h-10 px-4 rounded-xl shadow-sm"
+                    >
+                        {isExpanded ? <Minimize2 className="mr-2 h-4 w-4" /> : <Maximize2 className="mr-2 h-4 w-4" />}
+                        {isExpanded ? "Reduzir Tela" : "Expandir Quadro"}
+                    </Button>
+
                     {currentUser?.role === "admin" && (
                         <>
                             <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-4 py-2 text-sm shadow-sm">
@@ -251,7 +272,7 @@ export default function TasksPage() {
                                             {...provided.droppableProps}
                                             ref={provided.innerRef}
                                             className={cn(
-                                                "flex-1 space-y-3 p-1 transition-colors duration-200 rounded-xl overflow-y-auto max-h-[calc(100vh-280px)]",
+                                                `flex-1 space-y-3 p-1 transition-colors duration-200 rounded-xl overflow-y-auto ${isExpanded ? "max-h-[calc(100vh-160px)]" : "max-h-[calc(100vh-280px)]"}`,
                                                 snapshot.isDraggingOver ? "bg-slate-200/30" : ""
                                             )}
                                         >
@@ -307,12 +328,15 @@ function TaskCard({ task, users, deleteMutation, onEdit, isDragging }: any) {
         low: { bg: "bg-sky-50", text: "text-sky-600", dot: "bg-sky-500", label: "Baixa" }
     };
     const priority = priorityColors[task.priority] || priorityColors.medium;
+    const cardColor = CARD_COLORS[task.color || "default"] || CARD_COLORS.default;
 
     return (
         <div className={cn(
-            "group bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all duration-200 relative select-none",
-            isDragging ? "shadow-2xl ring-2 ring-primary/20 rotate-[2deg] z-50" : "hover:border-slate-300 hover:shadow-md"
+            "group p-4 rounded-xl border shadow-sm transition-all duration-200 relative select-none",
+            cardColor.bg, cardColor.border,
+            isDragging ? "shadow-2xl ring-2 ring-primary/20 rotate-[2deg] z-50" : "hover:shadow-md hover:-translate-y-0.5"
         )}>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#0F6570] to-[#1A3A4F] opacity-0 group-hover:opacity-100 transition-opacity rounded-t-xl" />
             <div className="flex justify-between items-start gap-2 mb-3">
                 <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full", priority.bg)}>
                     <div className={cn("w-1.5 h-1.5 rounded-full", priority.dot)} />
@@ -395,6 +419,7 @@ function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, de
             description: "",
             status: defaultStatus || "pendencia",
             priority: "medium",
+            color: "default",
             assignedTo: currentUser?.id,
         },
     });
@@ -412,6 +437,7 @@ function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, de
                     description: "",
                     status: defaultStatus || "pendencia",
                     priority: "medium",
+                    color: "default",
                     assignedTo: currentUser?.id,
                 });
             }
@@ -522,11 +548,12 @@ function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, de
                             />
                         </div>
 
+                        <div className="grid grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name="status"
                                 render={({ field }) => (
-                                    <FormItem className="col-span-2">
+                                    <FormItem>
                                         <FormLabel className="text-slate-700 font-bold text-sm">Status Atual</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
@@ -547,6 +574,38 @@ function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, de
                                     </FormItem>
                                 )}
                             />
+
+                            <FormField
+                                control={form.control}
+                                name="color"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-slate-700 font-bold text-sm">Cor do Cartão</FormLabel>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="rounded-xl border-slate-200 h-11 bg-slate-50/50">
+                                                    <SelectValue placeholder="Selecione a cor" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                                                {Object.entries(CARD_COLORS).map(([key, config]) => (
+                                                    <SelectItem key={key} value={key}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={cn("w-3 h-3 rounded-full border", config.bg, config.border)} />
+                                                            {config.label}
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
 
                             <Button
                                 type="submit"

@@ -50,6 +50,13 @@
       "when": 1774637731392,
       "tag": "0006_hard_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774894810937,
+      "tag": "0007_funny_guardsmen",
+      "breakpoints": true
     }
   ]
 }
