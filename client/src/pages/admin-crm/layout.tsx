@@ -20,8 +20,10 @@ import {
     KeyRound,
     MessageSquare,
     Camera,
-    Star
+    Star,
+    Menu
 } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import logo from "@assets/logo_monteiro_v2.png";
 import { Separator } from "@/components/ui/separator";
@@ -57,12 +59,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         );
     };
 
-    return (
-        <div className="flex h-screen bg-[#0a0c10] overflow-hidden font-sans selection:bg-amber-500/30">
-            {/* Professional Sidebar */}
-            <aside className="w-80 bg-[#0F6570] border-r border-white/5 flex flex-col shadow-2xl z-30">
-                {/* Logo & Brand */}
-                <div className="p-6 pb-2">
+    const sidebarContent = (
+        <>
+            {/* Logo & Brand */}
+            <div className="p-6 pb-2">
                     <Link href="/admin">
                         <div className="flex items-center gap-4 cursor-pointer group">
                             <div className="relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
@@ -186,6 +186,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     open={passwordDialogOpen}
                     onOpenChange={setPasswordDialogOpen}
                 />
+        </>
+    );
+
+    return (
+        <div className="flex flex-col lg:flex-row h-screen bg-[#0a0c10] overflow-hidden font-sans selection:bg-amber-500/30">
+            {/* Mobile Header */}
+            <header className="lg:hidden flex items-center justify-between bg-[#0F6570] p-4 shadow-md z-40 border-b border-white/5 shrink-0">
+                <div className="flex items-center gap-4">
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                                <Menu className="w-6 h-6" />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-80 p-0 bg-[#0F6570] border-r-0 flex flex-col [&>button]:hidden">
+                            {sidebarContent}
+                        </SheetContent>
+                    </Sheet>
+                    <Link href="/admin">
+                        {settings?.logoBase64 ? (
+                            <img src={settings.logoBase64} alt={settings.siteName} className="h-8 w-auto object-contain" />
+                        ) : (
+                            <span className="text-amber-400 font-bold text-sm tracking-widest uppercase">Monteiro CRM</span>
+                        )}
+                    </Link>
+                </div>
+            </header>
+
+            {/* Desktop Sidebar */}
+            <aside className="hidden lg:flex w-80 bg-[#0F6570] border-r border-white/5 flex-col shadow-2xl z-30 shrink-0">
+                {sidebarContent}
             </aside>
 
             {/* Main Workspace */}

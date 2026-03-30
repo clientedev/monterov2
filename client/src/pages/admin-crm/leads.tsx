@@ -131,7 +131,7 @@ export default function LeadsPage() {
                     <p className="text-muted-foreground mt-1">Gerencie seus negócios e acompanhe a conversão de leads.</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <Button 
                         variant="outline" 
                         onClick={() => setIsExpanded(!isExpanded)} 

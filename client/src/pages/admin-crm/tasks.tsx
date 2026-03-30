@@ -181,7 +181,7 @@ export default function TasksPage() {
                     <p className="text-slate-500 text-sm mt-1 font-medium">Gerencie o fluxo de trabalho da sua corretora em tempo real.</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <Button 
                         variant="outline" 
                         onClick={() => setIsExpanded(!isExpanded)} 
