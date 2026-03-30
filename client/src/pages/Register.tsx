@@ -52,7 +52,7 @@ export default function Register() {
             <div
                 className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 relative overflow-hidden"
                 style={{
-                    background: "linear-gradient(135deg, #0F172A 0%, #1E293B 60%, #0F172A 100%)",
+                    background: "linear-gradient(135deg, #0F6570 0%, #1A3A4F 60%, #0F6570 100%)",
                 }}
             >
                 {/* Gold accent lines */}
@@ -87,7 +87,7 @@ export default function Register() {
                     <div>
                         <h1 className="text-5xl font-black text-white leading-tight tracking-tight">
                             Faça parte<br />do nosso<br />
-                            <span className="font-black" style={{ color: "#D4AF37" }}>
+                            <span className="font-black" style={{ color: "#C45A4A" }}>
                                 time.
                             </span>
                         </h1>
@@ -106,7 +106,7 @@ export default function Register() {
                             <div key={feat} className="flex items-center gap-3">
                                 <div
                                     className="h-1.5 w-1.5 rounded-full flex-shrink-0"
-                                    style={{ background: "#D4AF37" }}
+                                    style={{ background: "#C45A4A" }}
                                 />
                                 <p className="text-slate-400 text-sm">{feat}</p>
                             </div>
@@ -244,7 +244,7 @@ export default function Register() {
                             type="submit"
                             className="w-full h-12 font-bold text-base rounded-xl shadow-lg transition-all active:scale-[0.98]"
                             style={{
-                                background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+                                background: "linear-gradient(135deg, #1A3A4F 0%, #0F6570 100%)",
                                 boxShadow: "0 4px 20px rgba(15,23,42,0.25)",
                             }}
                             disabled={registerMutation.isPending}

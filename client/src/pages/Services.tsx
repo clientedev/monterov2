@@ -14,7 +14,7 @@ export default function ServicesPage() {
     const style = {
         '--font-sans': settings?.fontSans || 'Inter',
         '--font-display': settings?.fontDisplay || 'Outfit',
-        '--primary': settings?.primaryColor || '#0f172a',
+        '--primary': settings?.primaryColor || '#0F6570',
     } as React.CSSProperties;
 
     return (

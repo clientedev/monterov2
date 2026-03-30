@@ -6,51 +6,47 @@
 @tailwind utilities;
 
 :root {
-  /* Premium Agency Theme */
+  /* Premium Agency Theme - Updated Palette */
 
   /* Typography */
   --font-sans: 'Inter', sans-serif;
   --font-display: 'Outfit', sans-serif;
 
-  /* Color Palette - Deep Corporate & Gold Accents */
-  --background: 210 40% 98%;
-  /* Soft Blue-White */
-  --foreground: 222 47% 11%;
-  /* Deep Navy/Black */
+  /* Color Palette */
+  --background: 196 20% 98%; /* Light tint */
+  --foreground: 204 50% 21%; /* Azul Segurança for depth/text */
 
-  --primary: 221 39% 11%;
-  /* Midnight Blue (Brand Base) */
-  --primary-foreground: 210 40% 98%;
+  --primary: 187 76% 25%; /* Verde Profundo (Main Background/Brand) */
+  --primary-foreground: 196 20% 98%;
 
-  --secondary: 48 100% 50%;
-  /* Gold (Accent) - adjusted for elegance below */
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 8 51% 53%; /* Terracota Vital (Highlight) */
+  --secondary-foreground: 196 20% 98%;
 
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
+  --muted: 196 18% 90%; /* Lighter Sereno for muted backgrounds */
+  --muted-foreground: 196 18% 40%; /* Darker Sereno for muted text */
 
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
+  --accent: 196 18% 57%; /* Sereno (Neutral/Support) */
+  --accent-foreground: 196 20% 98%;
 
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 8 51% 53%; /* Using Terracota for destructive to keep harmony */
+  --destructive-foreground: 196 20% 98%;
 
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221 39% 11%;
+  --border: 196 18% 85%; /* Soft Sereno border */
+  --input: 196 18% 85%;
+  --ring: 187 76% 25%; /* Verde Profundo */
 
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 204 50% 21%; /* Azul Segurança */
 
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: 204 50% 21%; /* Azul Segurança */
 
   --radius: 0.75rem;
   /* Slightly more rounded for modern feel */
 
-  /* Gold Gradient specific hooks */
-  --gold-start: #D4AF37;
-  --gold-end: #C5A028;
+  /* Gradient specific hooks */
+  --gold-start: #C45A4A; /* Replaced with Terracota */
+  --gold-end: #b64d3e; /* Darker Terracota */
 }
 
 @layer base {
@@ -76,8 +72,8 @@
 
 /* Dynamic Overrides */
 :root {
-  --primary-default: #0f172a;
-  --secondary-default: #fbbf24;
+  --primary-default: #0F6570; /* Verde Profundo */
+  --secondary-default: #C45A4A; /* Terracota Vital */
 }
 
 .bg-primary {
@@ -128,11 +124,11 @@
 
   .premium-gradient {
     @apply bg-gradient-to-r;
-    background-image: linear-gradient(to right, #0F172A, #1E293B);
+    background-image: linear-gradient(to right, #0F6570, #1A3A4F);
   }
 
   .text-gold {
-    @apply text-yellow-600;
+    @apply text-[#C45A4A]; /* Terracota Vital */
   }
 
   .hide-scrollbar {

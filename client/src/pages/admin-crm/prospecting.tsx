@@ -292,7 +292,7 @@ export default function ProspectingPage() {
 
                 {/* Alerts Panel */}
                 <div className="space-y-6">
-                    <Card className="premium-card border-none shadow-xl bg-[#0f172a] text-white">
+                    <Card className="premium-card border-none shadow-xl bg-[#0F6570] text-white">
                         <CardHeader className="border-b border-white/5">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">

@@ -216,15 +216,15 @@ export default function AdminDashboard() {
                                 <AreaChart data={leadFlowData}>
                                     <defs>
                                         <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#fbbf24" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="#C45A4A" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#C45A4A" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                     <XAxis dataKey="date" fontSize={10} tickLine={false} axisLine={false} />
                                     <YAxis fontSize={12} tickLine={false} axisLine={false} />
                                     <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
-                                    <Area type="monotone" dataKey="count" stroke="#fbbf24" fillOpacity={1} fill="url(#colorCount)" name="Novos Leads" />
+                                    <Area type="monotone" dataKey="count" stroke="#C45A4A" fillOpacity={1} fill="url(#colorCount)" name="Novos Leads" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </CardContent>

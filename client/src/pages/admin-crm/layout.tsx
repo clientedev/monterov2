@@ -60,7 +60,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
         <div className="flex h-screen bg-[#0a0c10] overflow-hidden font-sans selection:bg-amber-500/30">
             {/* Professional Sidebar */}
-            <aside className="w-80 bg-[#0f172a] border-r border-white/5 flex flex-col shadow-2xl z-30">
+            <aside className="w-80 bg-[#0F6570] border-r border-white/5 flex flex-col shadow-2xl z-30">
                 {/* Logo & Brand */}
                 <div className="p-6 pb-2">
                     <Link href="/admin">

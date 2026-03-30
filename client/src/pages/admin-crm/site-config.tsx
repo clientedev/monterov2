@@ -196,8 +196,8 @@ export default function SiteConfigPage() {
         resolver: zodResolver(insertSiteSettingsSchema),
         defaultValues: settings || {
             siteName: "Monteiro Corretora",
-            primaryColor: "#0f172a",
-            secondaryColor: "#fbbf24",
+            primaryColor: "#0F6570",
+            secondaryColor: "#C45A4A",
             fontSans: "Inter",
             fontDisplay: "Outfit",
             heroTitle: "Protegendo seu Futuro, Garantindo seu Legado",

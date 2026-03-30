@@ -38,7 +38,7 @@ export default function Login() {
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 relative overflow-hidden"
         style={{
-          background: "linear-gradient(135deg, #0F172A 0%, #1E293B 60%, #0F172A 100%)",
+          background: "linear-gradient(135deg, #0F6570 0%, #1A3A4F 60%, #0F6570 100%)",
         }}
       >
         {/* Gold accent lines */}
@@ -83,7 +83,7 @@ export default function Login() {
               Protegendo<br />o que<br />
               <span
                 className="font-black"
-                style={{ color: "#D4AF37" }}
+                style={{ color: "#C45A4A" }}
               >
                 mais importa.
               </span>
@@ -101,7 +101,7 @@ export default function Login() {
               { number: "98%", label: "Satisfação" },
             ].map((stat) => (
               <div key={stat.label} className="text-center p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <p className="text-2xl font-black" style={{ color: "#D4AF37" }}>{stat.number}</p>
+                <p className="text-2xl font-black" style={{ color: "#C45A4A" }}>{stat.number}</p>
                 <p className="text-slate-500 text-[10px] uppercase tracking-widest font-bold mt-0.5">{stat.label}</p>
               </div>
             ))}
@@ -204,7 +204,7 @@ export default function Login() {
               type="submit"
               className="w-full h-12 font-bold text-base rounded-xl shadow-lg transition-all active:scale-[0.98]"
               style={{
-                background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+                background: "linear-gradient(135deg, #1A3A4F 0%, #0F6570 100%)",
                 boxShadow: "0 4px 20px rgba(15,23,42,0.25)",
               }}
               disabled={loginMutation.isPending}
