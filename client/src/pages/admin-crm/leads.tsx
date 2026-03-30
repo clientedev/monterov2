@@ -30,7 +30,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search } from "lucide-react";
+import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
     AlertDialog,
@@ -59,6 +59,7 @@ export default function LeadsPage() {
     const [search, setSearch] = useState("");
     const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
     const [deleteLeadId, setDeleteLeadId] = useState<number | null>(null);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const { data: leads, isLoading: leadsLoading } = useQuery<Lead[]>({
         queryKey: ["/api/leads"],
@@ -123,7 +124,7 @@ export default function LeadsPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className={`space-y-6 ${isExpanded ? "fixed inset-0 z-50 bg-[#f1f5f9] p-8 overflow-hidden flex flex-col transition-all duration-300" : ""}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-display font-bold text-gray-900">Funil de Vendas</h2>
@@ -131,6 +132,15 @@ export default function LeadsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => setIsExpanded(!isExpanded)} 
+                        className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 h-10 px-4 rounded-xl shadow-sm"
+                    >
+                        {isExpanded ? <Minimize2 className="mr-2 h-4 w-4" /> : <Maximize2 className="mr-2 h-4 w-4" />}
+                        {isExpanded ? "Reduzir Tela" : "Expandir Quadro"}
+                    </Button>
+
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
@@ -177,9 +187,9 @@ export default function LeadsPage() {
                 </div>
             </div>
 
-            <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-elegant">
+            <div className={`flex gap-6 overflow-x-auto pb-6 scrollbar-elegant ${isExpanded ? "flex-1" : ""}`}>
                 {STATUSES.map((status) => (
-                    <div key={status.id} className="flex-shrink-0 w-80 flex flex-col h-[calc(100vh-280px)]">
+                    <div key={status.id} className={`flex-shrink-0 w-80 flex flex-col ${isExpanded ? "h-[calc(100vh-160px)]" : "h-[calc(100vh-280px)]"}`}>
                         <div className="flex items-center justify-between mb-4 px-2">
                             <div className="flex items-center gap-2">
                                 <div className={`h-2.5 w-2.5 rounded-full ${status.color}`} />
@@ -256,62 +266,68 @@ function LeadCard({
     const prevStatus = STATUSES[STATUSES.findIndex(s => s.id === lead.status) - 1]?.id;
 
     return (
-        <div className="group bg-white p-5 rounded-2xl border border-gray-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300 hover:shadow-[0_4px_20px_rgb(0,0,0,0.08)] hover:-translate-y-1 relative">
-            <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100"
-                    onClick={onEdit}
-                >
+        <div className="group bg-white p-5 rounded-xl border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-[#1A3A4F] opacity-0 group-hover:opacity-100 transition-opacity" />
+            
+            <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-gray-100">
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100" onClick={onEdit}>
                     <Edit2 className="h-3 w-3" />
                 </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 rounded-lg text-red-300 hover:text-red-600 hover:bg-red-50"
-                    onClick={onDelete}
-                >
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50" onClick={onDelete}>
                     <Trash2 className="h-3 w-3" />
                 </Button>
             </div>
 
-            <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                    <h4 className="font-bold text-gray-900 line-clamp-1 pr-14">{contact?.name || "Desconhecido"}</h4>
-                    <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{lead.source || "Direto"}</span>
-                </div>
-                <div className="text-secondary font-display font-black text-xs pt-1">
-                    {lead.value ? `R$ ${lead.value}` : "Sob consulta"}
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex-1 pr-12">
+                    <h4 className="font-bold text-gray-900 line-clamp-1">{contact?.name || "Desconhecido"}</h4>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-gray-100 text-gray-600 mt-1">
+                        {lead.source || "Direto"}
+                    </span>
                 </div>
             </div>
 
-            <p className="text-xs text-gray-500 mb-5 line-clamp-2 leading-relaxed italic">
-                "{lead.notes || "Sem observações adicionais..."}"
-            </p>
+            <div className="bg-slate-50 rounded-lg p-3 mb-4">
+                <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Valor Estimado:</span>
+                    <strong className="text-secondary font-display font-black text-sm text-right leading-none">
+                        {lead.value ? `R$ ${lead.value}` : "Sob consulta"}
+                    </strong>
+                </div>
+            </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                <div className="flex gap-1.5 overflow-hidden">
+            {lead.notes ? (
+                <p className="text-xs text-gray-500 mb-4 line-clamp-2 leading-relaxed italic border-l-2 border-primary/20 pl-2">
+                    "{lead.notes}"
+                </p>
+            ) : (
+                <div className="h-4"></div>
+            )}
+
+            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                <div className="flex gap-2">
                     {prevStatus && (
-                        <button
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 px-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
                             onClick={() => onMove(prevStatus)}
-                            className="h-7 w-7 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors"
                         >
-                            <ArrowRight className="h-3 w-3 text-gray-400 rotate-180" />
-                        </button>
+                            <ArrowRight className="h-4 w-4 rotate-180" />
+                        </Button>
                     )}
                 </div>
 
                 <div className="flex gap-2">
                     {nextStatus && (
                         <Button
-                            variant="secondary"
+                            variant="default"
                             size="sm"
-                            className="h-7 px-3 text-[10px] font-bold bg-primary/5 hover:bg-primary/10 text-primary border-none"
+                            className="h-8 px-4 text-[11px] font-bold bg-primary hover:bg-[#1A3A4F] text-white shadow-md shadow-primary/20 transition-all group-hover:shadow-lg"
                             onClick={() => onMove(nextStatus)}
                         >
                             Avançar
-                            <ArrowRight className="ml-1.5 h-3 w-3" />
+                            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                         </Button>
                     )}
                 </div>

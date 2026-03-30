@@ -92,7 +92,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                     {/* CRM Section */}
                     <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-                        <p className="text-[11px] uppercase text-slate-500 font-bold mb-4 px-2 tracking-[0.15em]">Gestão de Clientes</p>
+                        <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Gestão de Clientes</p>
                         <nav className="space-y-1">
                             <NavLink href="/admin" icon={LayoutDashboard} label="Visão Geral" />
                             <NavLink href="/admin/contacts" icon={Users} label="Base de Contatos" />
@@ -105,7 +105,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                     {/* Operational Section */}
                     <div className="animate-in fade-in slide-in-from-left-4 duration-1000">
-                        <p className="text-[11px] uppercase text-slate-500 font-bold mb-4 px-2 tracking-[0.15em]">Operacional</p>
+                        <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Operacional</p>
                         <nav className="space-y-1">
                             <NavLink href="/admin/tasks" icon={CheckSquare} label="Fluxo de Trabalho" />
                             {isAdmin && <NavLink href="/admin/users" icon={Users2} label="Controle de Acesso" />}
@@ -114,7 +114,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                     {/* Site & Content Section */}
                     <div className="animate-in fade-in slide-in-from-left-4 duration-700">
-                        <p className="text-[11px] uppercase text-slate-500 font-bold mb-4 px-2 tracking-[0.15em]">Conteúdo Presencial</p>
+                        <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Conteúdo Presencial</p>
                         <nav className="space-y-1">
                             <NavLink href="/admin/posts" icon={FileText} label="Blog Central" />
                             <NavLink href="/admin/comments" icon={MessageSquare} label="Moderar Comentários" />
@@ -125,7 +125,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                     {/* Bottom Settings Section */}
                     <div className="animate-in fade-in slide-in-from-left-4 duration-1000 mt-auto pt-6">
-                        <p className="text-[11px] uppercase text-slate-500 font-bold mb-4 px-2 tracking-[0.15em]">Sistema</p>
+                        <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Sistema</p>
                         <nav className="space-y-1">
                             {isAdmin && <NavLink href="/admin/site-config" icon={Settings} label="Configurações Web" />}
                         </nav>
