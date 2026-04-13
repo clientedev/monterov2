@@ -16,7 +16,7 @@
   --background: 196 20% 98%; /* Light tint */
   --foreground: 204 50% 21%; /* Azul Segurança for depth/text */
 
-  --primary: 187 76% 25%; /* Verde Profundo (Main Background/Brand) */
+  --primary: 6 50% 55%; /* Reddish Terracotta */
   --primary-foreground: 196 20% 98%;
 
   --secondary: 8 51% 53%; /* Terracota Vital (Highlight) */
@@ -33,7 +33,7 @@
 
   --border: 196 18% 85%; /* Soft Sereno border */
   --input: 196 18% 85%;
-  --ring: 187 76% 25%; /* Verde Profundo */
+  --ring: 6 50% 55%;
 
   --card: 0 0% 100%;
   --card-foreground: 204 50% 21%; /* Azul Segurança */
@@ -72,7 +72,7 @@
 
 /* Dynamic Overrides */
 :root {
-  --primary-default: #0F6570; /* Verde Profundo */
+  --primary-default: #c65f54; /* Reddish Terracotta */
   --secondary-default: #C45A4A; /* Terracota Vital */
 }
 
