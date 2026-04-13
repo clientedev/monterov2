@@ -12,14 +12,14 @@ export default function About() {
       <Navbar />
 
       {/* Hero Section */}
-      <div className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-slate-900 text-white">
+      <div className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-[#08454c] text-white">
         <div className="absolute inset-0">
           <img 
             src={settings?.aboutImageBase64 || "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=2000"} 
             alt="Hero Background" 
             className="w-full h-full object-cover opacity-20"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#08454c] via-[#08454c]/80 to-transparent" />
         </div>
         
         <div className="container px-4 mx-auto relative z-10">

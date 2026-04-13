@@ -25,7 +25,7 @@ export function ServiceCard({ service, index }: ServiceCardProps) {
         className="group relative bg-white rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer overflow-hidden h-full flex flex-col"
       >
         {/* Dark Header Area for the White Title */}
-        <div className="bg-slate-900 p-8 pb-10 relative overflow-hidden shrink-0">
+        <div className="bg-[#08454c] p-8 pb-10 relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-primary/20 mix-blend-overlay z-0" />
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/5 rounded-full blur-2xl" />
           

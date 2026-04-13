@@ -61,10 +61,10 @@ export default function ServiceDetail() {
             <Navbar />
 
             {/* Premium Header */}
-            <section className="pt-24 pb-20 bg-slate-900 text-white relative overflow-hidden">
+            <section className="pt-24 pb-20 bg-[#08454c] text-white relative overflow-hidden">
                 <div className="absolute inset-0 z-0">
                     <div className="absolute inset-0 bg-primary/20 mix-blend-overlay z-10" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent z-10" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#08454c] via-[#08454c]/60 to-transparent z-10" />
                 </div>
                 
                 <div className="container px-4 mx-auto relative z-20">
@@ -135,7 +135,7 @@ export default function ServiceDetail() {
                                 </ul>
                             </div>
 
-                            <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white overflow-hidden relative">
+                            <div className="bg-[#08454c] rounded-[2.5rem] p-8 md:p-12 text-white overflow-hidden relative">
                                 <Icon className="absolute -right-8 -bottom-8 w-48 h-48 text-white/5" />
                                 <h2 className="text-2xl font-display font-bold mb-4 relative z-10">Agende uma Consultoria</h2>
                                 <p className="text-slate-300 mb-8 max-w-md relative z-10">

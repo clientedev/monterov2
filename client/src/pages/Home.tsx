@@ -47,8 +47,8 @@ export default function Home() {
                       alt={slide.title}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-slate-900/60 mix-blend-multiply" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent" />
+                    <div className="absolute inset-0 bg-[#08454c]/60 mix-blend-multiply" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/90 via-[#08454c]/40 to-transparent" />
                   </div>
 
                   <div className="container relative z-10 px-4 md:px-6 mx-auto h-full flex flex-col justify-center">
@@ -89,8 +89,8 @@ export default function Home() {
                 alt="Modern Office"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-slate-900/60 mix-blend-multiply" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent" />
+              <div className="absolute inset-0 bg-[#08454c]/60 mix-blend-multiply" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/90 via-[#08454c]/40 to-transparent" />
             </div>
 
             <div className="container relative z-10 px-4 md:px-6 mx-auto pt-20">

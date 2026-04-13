@@ -22,9 +22,9 @@ export default function ServicesPage() {
             <Navbar />
 
             {/* Premium Hero Section */}
-            <section className="relative pt-24 pb-24 lg:pt-32 lg:pb-32 bg-slate-900 text-white overflow-hidden">
+            <section className="relative pt-24 pb-24 lg:pt-32 lg:pb-32 bg-[#08454c] text-white overflow-hidden">
                 <div className="absolute inset-0 z-0">
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/90 to-transparent z-10" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/90 to-transparent z-10" />
                     <img 
                       src="https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=2000" 
                       alt="Proteção" 
