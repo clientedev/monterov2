@@ -25,6 +25,9 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 
+// Serve attached_assets statically so images referenced by path work
+app.use("/attached_assets", express.static(resolve(process.cwd(), "attached_assets")));
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
