@@ -71,13 +71,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     <img
                                         src={settings.logoBase64}
                                         alt={settings.siteName}
-                                        className="h-20 w-auto object-contain"
+                                        className="h-28 w-auto object-contain"
                                     />
                                 ) : (
                                     <img
                                         src={logo}
                                         alt="Monteiro Seguros e Benefícios"
-                                        className="h-20 w-auto object-contain"
+                                        className="h-28 w-auto object-contain"
                                     />
                                 )}
                             </div>

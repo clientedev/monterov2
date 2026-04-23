@@ -24,13 +24,13 @@ export function Footer() {
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
-                  className="h-20 w-auto brightness-0 invert opacity-90 transition-opacity hover:opacity-100"
+                  className="h-28 w-auto brightness-0 invert opacity-90 transition-opacity hover:opacity-100"
                 />
               ) : (
                 <img
                   src={logo}
                   alt="Monteiro Seguros e Benefícios"
-                  className="h-20 w-auto brightness-0 invert opacity-90 transition-opacity hover:opacity-100"
+                  className="h-28 w-auto brightness-0 invert opacity-90 transition-opacity hover:opacity-100"
                 />
               )}
               <div className="flex flex-col border-l border-white/20 pl-4">
