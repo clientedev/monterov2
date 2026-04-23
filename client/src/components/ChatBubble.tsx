@@ -13,6 +13,7 @@ interface Message {
 }
 
 export function ChatBubble() {
+    // Chat component with Carol animated avatar support
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
