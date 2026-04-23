@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import carolAvatar from "@assets/carolzinha.png";
+import carolAnim from "@assets/carol_anim.mp4";
 
 interface Message {
     role: 'user' | 'assistant';
@@ -97,7 +98,10 @@ export function ChatBubble() {
             >
                 <div className="absolute inset-0 bg-white/10 animate-pulse rounded-full" />
                 <div className="flex items-center justify-center w-full h-full relative z-10 px-4">
-                    <MessageCircle className="h-8 w-8 text-white shrink-0 group-hover:scale-110 transition-transform" />
+                    <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-full border-2 border-white/40 shadow-inner bg-white">
+                         <img src={carolAvatar} className="h-full w-full object-cover group-hover:hidden transition-all duration-300" />
+                         <video src={carolAnim} autoPlay loop muted playsInline className="h-full w-full object-cover hidden group-hover:block" />
+                    </div>
                     <span className="text-white font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 group-hover:max-w-[200px] group-hover:opacity-100 group-hover:ml-3">
                         Converse com a Carol
                     </span>
