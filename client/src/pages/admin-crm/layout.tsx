@@ -109,7 +109,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Operacional</p>
                         <nav className="space-y-1">
                             <NavLink href="/admin/tasks" icon={CheckSquare} label="Fluxo de Trabalho" />
-                            <NavLink href="/admin/products" icon={Package} label="Catálogo de Produtos" />
                             {isAdmin && <NavLink href="/admin/users" icon={Users2} label="Controle de Acesso" />}
                         </nav>
                     </div>
