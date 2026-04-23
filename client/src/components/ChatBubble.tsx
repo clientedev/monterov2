@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import carolAvatar from "@assets/carolzinha.png";
 
 interface Message {
     role: 'user' | 'assistant';
@@ -110,8 +111,8 @@ export function ChatBubble() {
             <CardHeader className="bg-primary text-primary-foreground py-3 px-4 flex flex-row items-center justify-between shrink-0 cursor-pointer" onClick={() => setIsMinimized(!isMinimized)}>
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        <div className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center bg-white/10 shrink-0">
-                            <Bot className="h-6 w-6 text-white" />
+                        <div className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center bg-white shrink-0 overflow-hidden">
+                            <img src={carolAvatar} alt="Carol" className="w-full h-full object-cover scale-110" />
                         </div>
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-primary" />
                     </div>

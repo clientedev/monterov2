@@ -48,13 +48,19 @@ export function Navbar() {
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
-                  className="h-32 w-auto object-contain transition-transform duration-300 group-hover:scale-105 scale-110 origin-left"
+                  className={cn(
+                    "h-32 w-auto object-contain transition-transform duration-300 group-hover:scale-105 scale-110 origin-left",
+                    scrolled && "brightness-0"
+                  )}
                 />
               ) : (
                 <img
                   src={logo}
                   alt="Monteiro Seguros e Benefícios"
-                  className="h-32 w-auto object-contain transition-transform duration-300 group-hover:scale-105 scale-110 origin-left"
+                  className={cn(
+                    "h-32 w-auto object-contain transition-transform duration-300 group-hover:scale-105 scale-110 origin-left",
+                    scrolled && "brightness-0"
+                  )}
                 />
               )}
             </div>
