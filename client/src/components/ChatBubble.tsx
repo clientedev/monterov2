@@ -95,15 +95,16 @@ export function ChatBubble() {
         return (
             <Button
                 onClick={() => { setIsOpen(true); setIsMinimized(false); }}
-                className="fixed bottom-6 right-6 h-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300 z-50 flex items-center justify-center p-0 group overflow-hidden w-16 hover:w-64"
+                className="fixed bottom-6 right-6 h-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300 z-50 flex items-center justify-center p-0 group overflow-visible w-16 hover:w-64"
             >
                 <div className="absolute inset-0 bg-white/10 animate-pulse rounded-full" />
                 <div className="flex items-center justify-center w-full h-full relative z-10 px-4">
-                    <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-full border-2 border-white/40 shadow-inner bg-white">
-                         <img src={carolAvatar} className="h-full w-full object-cover group-hover:hidden transition-all duration-300" />
-                         <video src={carolAnim} autoPlay loop muted playsInline className="h-full w-full object-cover hidden group-hover:block" />
+                    <div className="h-14 w-14 shrink-0 relative transition-all duration-500 ease-out group-hover:-translate-y-8 group-hover:scale-150 drop-shadow-xl">
+                        <div className="absolute inset-0 bg-white rounded-full scale-90" />
+                        <img src={carolAvatar} className="relative z-10 h-full w-full object-cover rounded-full mix-blend-multiply transition-opacity duration-300 group-hover:opacity-0" />
+                        <video src={carolAnim} autoPlay loop muted playsInline className="absolute inset-0 z-20 h-full w-full object-cover rounded-full mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
-                    <span className="text-white font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 group-hover:max-w-[200px] group-hover:opacity-100 group-hover:ml-3">
+                    <span className="text-white font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 group-hover:max-w-[200px] group-hover:opacity-100 group-hover:ml-4">
                         Converse com a Carol
                     </span>
                 </div>
@@ -117,7 +118,7 @@ export function ChatBubble() {
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         <div className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center bg-white shrink-0 overflow-hidden">
-                            <img src={carolAvatar} alt="Carol" className="w-full h-full object-cover scale-110" />
+                            <video src={carolAnim} autoPlay loop muted playsInline className="w-full h-full object-cover scale-125 mix-blend-multiply" />
                         </div>
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-primary" />
                     </div>
