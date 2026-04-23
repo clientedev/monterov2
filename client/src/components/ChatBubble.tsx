@@ -95,10 +95,10 @@ export function ChatBubble() {
         return (
             <div className="fixed bottom-6 right-6 z-50 group">
                 {/* Pop-out Avatar */}
-                <div className="absolute bottom-2 left-2 w-12 h-12 z-20 pointer-events-none transition-all duration-500 ease-out group-hover:-translate-y-10 group-hover:scale-[2] origin-bottom">
+                <div className="absolute bottom-2 left-2 w-14 h-14 z-20 pointer-events-none transition-all duration-500 ease-out group-hover:-translate-y-12 group-hover:scale-[2.2] origin-bottom">
                     <img 
                         src={carolAvatar} 
-                        className="w-full h-full object-cover rounded-full mix-blend-multiply transition-opacity duration-300 group-hover:opacity-0" 
+                        className="w-full h-full object-contain mix-blend-multiply transition-opacity duration-300 group-hover:opacity-0 translate-y-1" 
                     />
                     <video 
                         src={carolAnim} 
@@ -106,7 +106,7 @@ export function ChatBubble() {
                         loop 
                         muted 
                         playsInline 
-                        className="absolute inset-0 w-full h-full object-cover rounded-full mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+                        className="absolute inset-0 w-full h-full object-contain mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
                     />
                 </div>
 
