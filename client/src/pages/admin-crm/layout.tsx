@@ -63,7 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const sidebarContent = (
         <>
             {/* Logo & Brand */}
-            <div className="p-6 pb-2">
+            <div className="p-3 pb-1">
                     <Link href="/admin">
                         <div className="flex items-center gap-4 cursor-pointer group">
                             <div className="relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
@@ -71,13 +71,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     <img
                                         src={settings.logoBase64}
                                         alt={settings.siteName}
-                                        className="h-20 w-auto object-contain"
+                                        className="h-32 w-auto object-contain"
                                     />
                                 ) : (
                                     <img
                                         src={logo}
                                         alt="Monteiro Seguros e Benefícios"
-                                        className="h-20 w-auto object-contain"
+                                        className="h-32 w-auto object-contain"
                                     />
                                 )}
                             </div>
