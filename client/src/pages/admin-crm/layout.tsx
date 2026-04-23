@@ -71,18 +71,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     <img
                                         src={settings.logoBase64}
                                         alt={settings.siteName}
-                                        className="h-16 w-auto object-contain"
+                                        className="h-20 w-auto object-contain"
                                     />
                                 ) : (
                                     <img
                                         src={logo}
                                         alt="Monteiro Seguros e Benefícios"
-                                        className="h-16 w-auto object-contain"
+                                        className="h-20 w-auto object-contain"
                                     />
                                 )}
                             </div>
                             <div className="flex flex-col border-l border-white/20 pl-4">
-                                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] leading-none">Seguros & Benefícios</span>
+                                <span className="text-[10px] font-bold text-[#C04D33] uppercase tracking-[0.2em] leading-none">Seguros & Benefícios</span>
                             </div>
                         </div>
                     </Link>
