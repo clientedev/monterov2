@@ -49,7 +49,7 @@ export function Navbar() {
                   src={settings.logoBase64}
                   alt={settings.siteName}
                   className={cn(
-                    "h-32 w-auto object-contain transition-transform duration-300 group-hover:scale-105",
+                    "h-24 w-auto object-contain transition-transform duration-300 group-hover:scale-110 scale-150 origin-left",
                     scrolled && "brightness-0"
                   )}
                 />
@@ -58,7 +58,7 @@ export function Navbar() {
                   src={logo}
                   alt="Monteiro Seguros e Benefícios"
                   className={cn(
-                    "h-32 w-auto object-contain transition-transform duration-300 group-hover:scale-105",
+                    "h-24 w-auto object-contain transition-transform duration-300 group-hover:scale-110 scale-150 origin-left",
                     scrolled && "brightness-0"
                   )}
                 />
