@@ -21,7 +21,8 @@ import {
     MessageSquare,
     Camera,
     Star,
-    Menu
+    Menu,
+    Package
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSiteSettings } from "@/hooks/use-site-settings";
