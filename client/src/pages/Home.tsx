@@ -138,10 +138,10 @@ export default function Home() {
           <div className="text-center max-w-2xl mx-auto mb-16">
             <span className="text-primary font-bold tracking-wider text-sm uppercase">Nossa Expertise</span>
             <h2 className="text-3xl md:text-5xl font-display font-bold mt-3 mb-6 text-slate-900 leading-tight">
-              {settings?.servicesTitle || "Soluções Completas em Seguros"}
+              {settings?.servicesTitle || "Soluções Completas em Proteção e Benefícios"}
             </h2>
             <p className="text-slate-500 text-lg">
-              {settings?.servicesSubtitle || "Planos de cobertura personalizados projetados para atender às suas necessidades específicas com máxima eficiência."}
+              {settings?.servicesSubtitle || "Mais do que comercializar seguros, atuamos como parceiros na construção de soluções que equilibram cuidado com pessoas, controle de custos e segurança financeira."}
             </p>
           </div>
 
@@ -204,10 +204,10 @@ export default function Home() {
             <div>
               <span className="text-primary font-bold tracking-wider text-sm uppercase">Por que nos escolher</span>
               <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-slate-900 leading-tight">
-                Um parceiro em quem você pode confiar seu futuro
+                Cuidar de pessoas é uma decisão estratégica
               </h2>
               <p className="text-slate-600 text-lg mb-8 leading-relaxed">
-                Não apenas vendemos apólices; construímos relacionamentos sólidos. Nossa equipe dedicada trabalha incansavelmente para garantir a melhor cobertura com transparência total.
+                Mais do que comercializar seguros, atuamos como parceiros na construção de soluções que equilibram cuidado com pessoas, controle de custos e segurança financeira, tanto no ambiente corporativo quanto na vida pessoal.
               </p>
 
               <ul className="space-y-5 mb-10">
@@ -240,6 +240,36 @@ export default function Home() {
                 </button>
               </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Partners / Logos Section */}
+      <section className="py-20 bg-white border-y border-slate-100">
+        <div className="container px-4 mx-auto">
+          <div className="text-center mb-12">
+            <span className="text-primary font-bold tracking-wider text-xs uppercase">Nossos Parceiros</span>
+            <h3 className="text-2xl font-display font-bold text-slate-800 mt-2">Trabalhamos com as melhores seguradoras</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 items-center opacity-60 grayscale hover:grayscale-0 transition-all">
+            {[
+              { name: "Azos", logo: "https://brandfetch.com/azos.com.br" },
+              { name: "Omint", logo: "https://www.omint.com.br/wp-content/themes/omint/assets/img/logo-omint.png" },
+              { name: "Porto Seguro", logo: "https://www.portoseguro.com.br/content/dam/portoseguro/logos/logo-porto.png" },
+              { name: "SulAmerica", logo: "https://www.sulamerica.com.br/img/logo-sulamerica.png" },
+              { name: "Bradesco Seguros", logo: "https://www.bradescoseguros.com.br/static_files/BradescoSeguros/img/logo-bradesco-seguros.png" },
+              { name: "Icatu", logo: "https://www.icatuseguros.com.br/img/logo-icatu.png" },
+              { name: "Petlove", logo: "https://www.petlove.com.br/static/petlove-logo.png" },
+              { name: "HDI", logo: "https://www.hdi.com.br/img/logo-hdi.png" },
+              { name: "Tokio Marine", logo: "https://www.tokiomarine.com.br/img/logo-tokio.png" },
+              { name: "Allianz", logo: "https://www.allianz.com.br/img/logo-allianz.png" },
+              { name: "Suhai", logo: "https://suhaiseguradora.com/img/logo-suhai.png" },
+              { name: "Ituran", logo: "https://www.ituran.com.br/img/logo-ituran.png" }
+            ].map((p, i) => (
+              <div key={i} className="flex justify-center p-4">
+                <span className="font-bold text-slate-400">{p.name}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>

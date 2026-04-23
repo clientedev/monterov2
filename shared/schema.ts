@@ -31,7 +31,7 @@ export const comments = pgTable("comments", {
 // Contact Inquiries
 export const inquiries = pgTable("inquiries", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id), // Optional: link to registered user
+  userId: integer("user_id").references(() => users.id),
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone"),
@@ -44,7 +44,7 @@ export const services = pgTable("services", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  icon: text("icon").notNull(), // Lucide icon name
+  icon: text("icon").notNull(),
 });
 
 // Users
@@ -54,11 +54,11 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role", { enum: ["admin", "employee", "client"] }).notNull().default("client"),
   name: text("name").notNull(),
-  avatar: text("avatar"), // Base64 or URL
+  avatar: text("avatar"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Contacts
+// Contacts — PF and PJ
 export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
   type: text("type", { enum: ["individual", "company"] }).notNull(),
@@ -67,18 +67,32 @@ export const contacts = pgTable("contacts", {
   phone: text("phone"),
   document: text("document"), // CPF or CNPJ
   address: text("address"),
+  // NEW: PJ-specific fields
+  responsibleName: text("responsible_name"), // Required for PJ — enforced via Zod superRefine
+  anniversaryDate: text("anniversary_date"),  // "DD/MM" format
+  maritalStatus: text("marital_status"),      // solteiro, casado, divorciado, viuvo
   assignedTo: integer("assigned_to").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Leads
+// Leads (Opportunities in the pipeline)
 export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
   contactId: integer("contact_id").references(() => contacts.id).notNull(),
-  status: text("status").notNull().default("new"), // new, qualified, proposal, negotiation, closed, lost
+  status: text("status").notNull().default("new"), // new, qualified, proposal, cancelled, implemented
   source: text("source"),
-  value: text("value"), // Stored as text to handle currency formatting or arbitrary values
+  product: text("product"), // NEW: selected product name
+  value: text("value"),
   notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Products (for lead dropdown)
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -88,7 +102,7 @@ export const interactions = pgTable("interactions", {
   leadId: integer("lead_id").references(() => leads.id),
   contactId: integer("contact_id").references(() => contacts.id).notNull(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  type: text("type").notNull(), // call, email, meeting, note
+  type: text("type").notNull(),
   description: text("description").notNull(),
   date: timestamp("date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -98,15 +112,15 @@ export const interactions = pgTable("interactions", {
 export const campaigns = pgTable("campaigns", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  platform: text("platform").notNull(), // google, facebook, instagram, email
-  status: text("status").notNull().default("active"), // active, paused, completed
+  platform: text("platform").notNull(),
+  status: text("status").notNull().default("active"),
   budget: text("budget"),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Marketing Stats (Daily/Weekly snapshots)
+// Marketing Stats
 export const marketingStats = pgTable("marketing_stats", {
   id: serial("id").primaryKey(),
   campaignId: integer("campaign_id").references(() => campaigns.id),
@@ -120,35 +134,30 @@ export const marketingStats = pgTable("marketing_stats", {
 // Site Settings
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
-  siteName: text("site_name").notNull().default("Monteiro Corretora"),
-  logoBase64: text("logo_base64"), // Direct image storage
+  siteName: text("site_name").notNull().default("Monteiro Seguros e Benefícios"),
+  logoBase64: text("logo_base64"),
   primaryColor: text("primary_color").notNull().default("#0f172a"),
   secondaryColor: text("secondary_color").notNull().default("#fbbf24"),
   fontSans: text("font_sans").notNull().default("Inter"),
   fontDisplay: text("font_display").notNull().default("Outfit"),
 
-  // Hero Content (Fallbacks)
-  heroTitle: text("hero_title").notNull().default("Protegendo seu Futuro,\nGarantindo seu Legado"),
-  heroSubtitle: text("hero_subtitle").notNull().default("Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna."),
+  heroTitle: text("hero_title").notNull().default("Proteção que Transforma,\nBenefícios que Cuidam"),
+  heroSubtitle: text("hero_subtitle").notNull().default("A Monteiro Seguros e Benefícios é especializada em consultoria estratégica em proteção e benefícios para empresas e famílias."),
 
-  // About Page
-  aboutTitle: text("about_title").notNull().default("Sobre a Monteiro Corretora"),
-  aboutContent: text("about_content").notNull().default("A Monteiro Corretora nasceu com a missão de tornar o seguro compreensível, acessível e verdadeiramente protetor para famílias e empresas em São Paulo.\n\nAo longo das últimas décadas, crescemos e nos tornamos uma das corretoras mais respeitadas da região. Nosso crescimento não mudou nossos valores fundamentais — tratar cada cliente com exclusividade e dedicação, garantindo a proteção do que é mais importante para você."),
+  aboutTitle: text("about_title").notNull().default("Sobre a Monteiro Seguros e Benefícios"),
+  aboutContent: text("about_content").notNull().default("A Monteiro Seguros e Benefícios é especializada em oferecer consultoria estratégica em proteção e benefícios para empresas e famílias.\n\nMais do que comercializar seguros, atuamos como parceiros na construção de soluções que equilibram cuidado com pessoas, controle de custos e segurança financeira, tanto no ambiente corporativo quanto na vida pessoal.\n\nPara empresas, desenvolvemos estratégias que fortalecem a retenção de talentos e organizam os benefícios de forma inteligente.\n\nPara pessoas e famílias, criamos proteções personalizadas que garantem tranquilidade em todas as fases da vida.\n\nNosso trabalho começa antes da contratação e continua no dia a dia, garantindo que cada decisão esteja sempre alinhada ao momento e às necessidades de quem atendemos."),
   aboutImageBase64: text("about_image_base64").default("https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600"),
 
-  // Section Titles
-  servicesTitle: text("services_title").notNull().default("Soluções Completas em Seguros"),
-  servicesSubtitle: text("services_subtitle").notNull().default("Planos de cobertura personalizados projetados para atender às suas necessidades específicas."),
+  servicesTitle: text("services_title").notNull().default("Soluções Completas em Proteção e Benefícios"),
+  servicesSubtitle: text("services_subtitle").notNull().default("Planos personalizados para cada momento da sua vida e do seu negócio."),
   blogTitle: text("blog_title").notNull().default("Blog e Novidades"),
-  blogSubtitle: text("blog_subtitle").notNull().default("Fique por dentro das novidades e dicas do mercado de seguros."),
+  blogSubtitle: text("blog_subtitle").notNull().default("Fique por dentro das novidades e dicas do mercado de seguros e benefícios."),
 
-  // Global Contact & Info
-  contactEmail: text("contact_email").notNull().default("contato@monteiro.com"),
+  contactEmail: text("contact_email").notNull().default("contato@monteiroseguros.com.br"),
   contactPhone: text("contact_phone").notNull().default("+55 (11) 9999-9999"),
-  address: text("address").notNull().default("Rua do Comércio, 123, São Paulo, SP"),
-  footerText: text("footer_text").notNull().default("Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios."),
+  address: text("address").notNull().default("São Paulo, SP"),
+  footerText: text("footer_text").notNull().default("Cuidar de pessoas é uma decisão estratégica. Benefícios não são custo. São estratégia."),
 
-  // Social Links
   facebookUrl: text("facebook_url"),
   instagramUrl: text("instagram_url"),
   twitterUrl: text("twitter_url"),
@@ -161,7 +170,7 @@ export const heroSlides = pgTable("hero_slides", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   subtitle: text("subtitle"),
-  imageBase64: text("image_base64").notNull(), // Direct image storage
+  imageBase64: text("image_base64").notNull(),
   buttonText: text("button_text").notNull().default("Cotação Gratuita"),
   buttonLink: text("button_link").notNull().default("/contact"),
   order: integer("order").notNull().default(0),
@@ -174,30 +183,29 @@ export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
-  status: text("status", { enum: ["pendencia", "revisao", "prospect", "cotacao_enviada", "implantacao", "fechado", "venda_perdida", "venda_cancelada"] }).notNull().default("pendencia"), // pendencia, revisao, prospect, cotacao_enviada, implantacao, fechado, venda_perdida, venda_cancelada
-  priority: text("priority").notNull().default("medium"), // low, medium, high
+  status: text("status", { enum: ["pendencia", "revisao", "prospect", "cotacao_enviada", "implantacao", "fechado", "venda_perdida", "venda_cancelada"] }).notNull().default("pendencia"),
+  priority: text("priority").notNull().default("medium"),
   assignedTo: integer("assigned_to").references(() => users.id).notNull(),
   contactId: integer("contact_id").references(() => contacts.id),
   createdBy: integer("created_by").references(() => users.id).notNull(),
   dueDate: timestamp("due_date"),
-  color: text("color").notNull().default("default"), // default, blue, green, yellow, red, purple
+  color: text("color").notNull().default("default"),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
 
 // Prospecting Checklists
 export const prospectingChecklists = pgTable("prospecting_checklists", {
   id: serial("id").primaryKey(),
   contactId: integer("contact_id").references(() => contacts.id).notNull(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  callOutcome: text("call_outcome").notNull(), // connected, busy, no_answer, wrong_number
-  interestLevel: text("interest_level").notNull(), // high, medium, low, none
+  callOutcome: text("call_outcome").notNull(),
+  interestLevel: text("interest_level").notNull(),
   notes: text("notes"),
-  checklistData: text("checklist_data"), // JSON string for flexible checklist items
+  checklistData: text("checklist_data"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Reviews Section
+// Reviews
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -207,20 +215,37 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Sessions for connect-pg-simple
+// Sessions
 export const sessions = pgTable("session", {
   sid: text("sid").primaryKey(),
   sess: json("sess").notNull(),
   expire: timestamp("expire", { precision: 6 }).notNull(),
 });
 
-// Schemas
+// ============================================================
+// INSERT SCHEMAS (Zod validation)
+// ============================================================
+
 export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true });
 export const insertInquirySchema = createInsertSchema(inquiries).omit({ id: true, createdAt: true });
 export const insertServiceSchema = createInsertSchema(services).omit({ id: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
-export const insertContactSchema = createInsertSchema(contacts).omit({ id: true, createdAt: true });
+
+// Contact schema with conditional validation: responsibleName required for PJ
+export const insertContactSchema = createInsertSchema(contacts)
+  .omit({ id: true, createdAt: true })
+  .superRefine((data, ctx) => {
+    if (data.type === "company" && (!data.responsibleName || data.responsibleName.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Nome do responsável é obrigatório para Pessoa Jurídica",
+        path: ["responsibleName"],
+      });
+    }
+  });
+
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
+export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertInteractionSchema = createInsertSchema(interactions).omit({ id: true, createdAt: true });
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({ id: true, createdAt: true });
 export const insertMarketingStatsSchema = createInsertSchema(marketingStats).omit({ id: true });
@@ -231,7 +256,10 @@ export const insertProspectingChecklistSchema = createInsertSchema(prospectingCh
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, isApproved: true });
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, isApproved: true, userId: true });
 
-// Types
+// ============================================================
+// TYPES
+// ============================================================
+
 export type Post = typeof posts.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Inquiry = typeof inquiries.$inferSelect;
@@ -244,6 +272,8 @@ export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Interaction = typeof interactions.$inferSelect;
 export type InsertInteraction = z.infer<typeof insertInteractionSchema>;
 export type Campaign = typeof campaigns.$inferSelect;

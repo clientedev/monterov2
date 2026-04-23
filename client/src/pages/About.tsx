@@ -6,6 +6,9 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 
 export default function About() {
   const { settings } = useSiteSettings();
+  const heroTitle = settings?.heroTitle || "Proteção que Transforma,\nBenefícios que Cuidam";
+  const heroSubtitle = settings?.heroSubtitle || "A Monteiro Seguros e Benefícios é especializada em oferecer consultoria estratégica em proteção e benefícios para empresas e famílias.";
+  const heroImageUrl = "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2400";
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-primary/20">
@@ -15,7 +18,7 @@ export default function About() {
       <div className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-[#08454c] text-white">
         <div className="absolute inset-0">
           <img 
-            src={settings?.aboutImageBase64 || "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=2000"} 
+            src={settings?.aboutImageBase64 || heroImageUrl} 
             alt="Hero Background" 
             className="w-full h-full object-cover opacity-20"
           />
@@ -33,7 +36,7 @@ export default function About() {
               Nossa Essência
             </div>
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6 text-white">
-              {settings?.aboutTitle || "Proteção que Evolui com Você"}
+              {settings?.aboutTitle || "Especialistas em Proteção e Benefícios"}
             </h1>
             <p className="text-xl md:text-2xl text-slate-300 max-w-2xl font-light leading-relaxed">
               {settings?.heroSubtitle || "Décadas de confiança, excelência e um compromisso inabalável com o futuro dos nossos clientes."}
@@ -56,19 +59,15 @@ export default function About() {
                 Construindo Relações de <span className="text-primary">Confiança</span>
               </h2>
               <div className="space-y-6 text-slate-600 text-lg leading-relaxed whitespace-pre-wrap">
-                {settings?.aboutContent || (
-                  <>
-                    <p>
-                      Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, a Monteiro Corretora é especialista em soluções de proteção e planejamento financeiro.
-                    </p>
-                    <p className="p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-slate-700 font-medium">
-                      "Nosso objetivo é oferecer sempre o seguro mais adequado ao seu perfil – pessoal ou empresarial – e às suas expectativas, com um atendimento personalizado, humano e qualificado."
-                    </p>
-                    <p>
-                      Nos preocupamos em oferecer aos segurados acompanhamento durante todas as etapas do processo, ou seja, durante a contratação e também no pós-venda, garantindo tranquilidade e segurança para você e sua família.
-                    </p>
-                  </>
-                )}
+                <p>
+                  A Monteiro Seguros e Benefícios é especializada em oferecer consultoria estratégica em proteção e benefícios para empresas e famílias.
+                </p>
+                <p className="p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-slate-700 font-medium">
+                  "Mais do que comercializar seguros, atuamos como parceiros na construção de soluções que equilibram cuidado com pessoas, controle de custos e segurança financeira, tanto no ambiente corporativo quanto na vida pessoal."
+                </p>
+                <p>
+                  Para empresas, desenvolvemos estratégias que fortalecem a retenção de talentos e organizam os benefícios de forma inteligente. Para pessoas e famílias, criamos proteções personalizadas que garantem tranquilidade em todas as fases da vida.
+                </p>
               </div>
             </motion.div>
 
@@ -99,40 +98,60 @@ export default function About() {
         </div>
       </div>
 
-      {/* Team Section */}
+      {/* Bio Section */}
+      <div className="py-24 bg-white">
+        <div className="container px-4 mx-auto">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              <div className="aspect-[3/4] rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10 border-8 border-slate-50">
+                <img 
+                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=1200" 
+                  alt="Carolina Monteiro" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="absolute -bottom-6 -right-6 w-64 h-64 bg-primary/10 rounded-full blur-3xl -z-0" />
+            </motion.div>
+            
+            <div className="space-y-8">
+              <div>
+                <span className="text-primary font-bold tracking-wider text-sm uppercase">Fundadora</span>
+                <h2 className="text-4xl font-display font-bold text-slate-900 mt-2">Carolina Monteiro</h2>
+              </div>
+              
+              <div className="space-y-4 text-slate-600 text-lg leading-relaxed">
+                <p className="font-bold text-slate-800">
+                  Carolina Monteiro é fundadora da Monteiro Seguros e Benefícios, com mais de 10 anos de experiência no mercado de seguros e benefícios.
+                </p>
+                <p>
+                  Antes de empreender, construiu sua carreira como executiva em multinacionais, o que trouxe uma visão estratégica de negócios, gestão e tomada de decisão — hoje aplicada diretamente no atendimento a empresas e clientes.
+                </p>
+                <p>
+                  Hoje, a Monteiro atua tanto no B2C quanto no B2B, mantendo como essência um atendimento humanizado, próximo e no modelo boutique. Mais do que intermediar seguros, Carolina posiciona a Monteiro como uma parceira estratégica.
+                </p>
+                <div className="pt-4">
+                   <p className="text-primary font-display font-bold text-2xl italic leading-tight">
+                     "Cuidar de pessoas é o que sustenta empresas e constrói segurança no longo prazo."
+                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Team Section Placeholder */}
       <div className="py-24 bg-slate-900 text-white">
         <div className="container px-4 mx-auto text-center max-w-5xl">
           <div className="inline-block px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-sm font-semibold tracking-wider uppercase mb-6 text-primary-300">
-            Nosso Time
+            Parceria Estratégica
           </div>
-          <h2 className="text-4xl md:text-5xl font-display font-bold mb-16">Pessoas Construindo um Futuro Seguro</h2>
-          
-          <div className="grid md:grid-cols-3 gap-10">
-            {[
-              { img: "/assets/team/team-1.png" },
-              { img: "/assets/team/team-2.jpg" },
-              { img: "/assets/team/team-3.jpg" }
-            ].map((member, i) => (
-              <motion.div 
-                key={i} 
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: i * 0.15 }}
-                className="group relative"
-              >
-                <div className="aspect-[4/5] rounded-3xl bg-slate-800 overflow-hidden mb-6 relative shadow-2xl border border-white/5">
-                  <div className="absolute inset-0 bg-primary/10 mix-blend-overlay group-hover:opacity-0 transition-opacity z-10 duration-500" />
-                  <img
-                    src={member.img}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
-                    alt={`Team Member ${i + 1}`}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent z-20" />
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          <h2 className="text-4xl md:text-5xl font-display font-bold mb-16">O trabalho não termina na venda — começa nela.</h2>
         </div>
       </div>
       <Footer />

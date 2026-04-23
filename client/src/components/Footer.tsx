@@ -29,7 +29,7 @@ export function Footer() {
               ) : (
                 <img
                   src={logo}
-                  alt="Monteiro Seguros & Benefícios"
+                  alt="Monteiro Seguros e Benefícios"
                   className="h-12 w-auto brightness-0 invert opacity-90 transition-opacity hover:opacity-100"
                 />
               )}
@@ -111,7 +111,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
-          <p>© {new Date().getFullYear()} {settings?.siteName || "Monteiro Corretora"}. Todos os direitos reservados.</p>
+          <p>© {new Date().getFullYear()} {settings?.siteName || "Monteiro Seguros e Benefícios"}. Todos os direitos reservados.</p>
           <div className="flex gap-6">
             <span className="cursor-pointer hover:text-white transition-colors">Política de Privacidade</span>
             <span className="cursor-pointer hover:text-white transition-colors">Termos de Serviço</span>

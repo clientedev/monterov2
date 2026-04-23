@@ -161,6 +161,9 @@ export default function ContactsPage() {
             phone: "",
             document: "",
             address: "",
+            responsibleName: "",
+            anniversaryDate: "",
+            maritalStatus: "",
         },
     });
 
@@ -352,6 +355,65 @@ export default function ContactsPage() {
                                             </FormItem>
                                         )}
                                     />
+
+                                    {clientType === "company" && (
+                                        <FormField
+                                            control={form.control}
+                                            name="responsibleName"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-gray-600 font-bold">Pessoa Responsável *</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="Nome do contato na empresa" className="rounded-xl h-11 border-primary/20" {...field} value={field.value || ""} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="anniversaryDate"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-gray-600 font-bold">Data Comemorativa (DD/MM)</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="Ex: 15/08" className="rounded-xl h-11" {...field} value={field.value || ""} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="maritalStatus"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-gray-600 font-bold">Estado Civil</FormLabel>
+                                                    <Select
+                                                        onValueChange={field.onChange}
+                                                        defaultValue={field.value || undefined}
+                                                        value={field.value || undefined}
+                                                    >
+                                                        <FormControl>
+                                                            <SelectTrigger className="rounded-xl h-11">
+                                                                <SelectValue placeholder="Selecione" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="solteiro">Solteiro(a)</SelectItem>
+                                                            <SelectItem value="casado">Casado(a)</SelectItem>
+                                                            <SelectItem value="divorciado">Divorciado(a)</SelectItem>
+                                                            <SelectItem value="viuvo">Viúvo(a)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormField
                                             control={form.control}
@@ -423,7 +485,7 @@ export default function ContactsPage() {
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="py-4 font-bold text-gray-600">Identificação</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Tipo</TableHead>
-                            <TableHead className="py-4 font-bold text-gray-600">Documento</TableHead>
+                            <TableHead className="py-4 font-bold text-gray-600">Responsável</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Email</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Telefone</TableHead>
                             <TableHead className="py-4 text-right font-bold text-gray-600">Ações</TableHead>
@@ -462,7 +524,16 @@ export default function ContactsPage() {
                                             {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-gray-600 font-medium py-4">{contact.document || "—"}</TableCell>
+                                    <TableCell className="text-gray-600 font-medium py-4">
+                                        {contact.type === 'company' ? (
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-slate-800">{contact.responsibleName || "Não inf."}</span>
+                                                <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Doc: {contact.document || "—"}</span>
+                                            </div>
+                                        ) : (
+                                            contact.document || "—"
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-gray-500 py-4">{contact.email || "—"}</TableCell>
                                     <TableCell className="text-gray-500 py-4">{contact.phone || "—"}</TableCell>
                                     <TableCell className="text-right py-4">

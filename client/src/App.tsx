@@ -38,6 +38,7 @@ import SiteConfigPage from "@/pages/admin-crm/site-config";
 import ReviewsPage from "@/pages/admin-crm/reviews";
 import ProspectingPage from "@/pages/admin-crm/prospecting";
 import CompanySearchPage from "@/pages/admin-crm/company-search";
+import ProductsPage from "@/pages/admin-crm/products";
 
 function ProtectedAdminRoute({ path, component: Component }: { path: string; component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
@@ -118,6 +119,7 @@ function Router() {
       <ProtectedAdminRoute path="/admin/reviews" component={ReviewsPage} />
       <ProtectedAdminRoute path="/admin/prospecting" component={ProspectingPage} />
       <ProtectedAdminRoute path="/admin/company-search" component={CompanySearchPage} />
+      <ProtectedAdminRoute path="/admin/products" component={ProductsPage} />
 
       <Route component={NotFound} />
     </Switch>

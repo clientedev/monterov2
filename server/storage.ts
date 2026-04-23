@@ -44,9 +44,12 @@ import {
   type InsertComment,
   reviews,
   type Review,
-  type InsertReview
+  type InsertReview,
+  products,
+  type Product,
+  type InsertProduct
 } from "@shared/schema";
-import { sql, and, desc, eq } from "drizzle-orm";
+import { sql, and, desc, eq, asc } from "drizzle-orm";
 
 export interface IStorage {
   // Posts
@@ -135,6 +138,13 @@ export interface IStorage {
   createReview(userId: number, review: InsertReview): Promise<Review>;
   approveReview(id: number): Promise<Review | undefined>;
   deleteReview(id: number): Promise<void>;
+
+  // Products
+  getProducts(activeOnly?: boolean): Promise<Product[]>;
+  getProduct(id: number): Promise<Product | undefined>;
+  createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product | undefined>;
+  deleteProduct(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -299,7 +309,7 @@ export class DatabaseStorage implements IStorage {
 
   // Contacts
   async getContacts(): Promise<Contact[]> {
-    return await db.select().from(contacts).orderBy(desc(contacts.createdAt));
+    return await db.select().from(contacts).orderBy(asc(contacts.name));
   }
 
   async getContact(id: number): Promise<Contact | undefined> {
@@ -531,6 +541,34 @@ export class DatabaseStorage implements IStorage {
   async deleteReview(id: number): Promise<void> {
     await db.delete(reviews).where(eq(reviews.id, id));
   }
+
+  // Products
+  async getProducts(activeOnly = false): Promise<Product[]> {
+    let query = db.select().from(products);
+    if (activeOnly) {
+      query = query.where(eq(products.isActive, true)) as any;
+    }
+    return await query.orderBy(asc(products.name));
+  }
+
+  async getProduct(id: number): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product;
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const [newProduct] = await db.insert(products).values(product).returning();
+    return newProduct;
+  }
+
+  async updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product | undefined> {
+    const [updated] = await db.update(products).set(product).where(eq(products.id, id)).returning();
+    return updated;
+  }
+
+  async deleteProduct(id: number): Promise<void> {
+    await db.delete(products).where(eq(products.id, id));
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -544,6 +582,7 @@ export class MemStorage implements IStorage {
   private campaigns: Campaign[] = [];
   private tasks: Task[] = [];
   private comments: Comment[] = [];
+  private productsData: Product[] = [];
 
   sessionStore: session.Store;
 
@@ -562,6 +601,7 @@ export class MemStorage implements IStorage {
     prospectingChecklists: 1,
     comments: 1,
     reviews: 1,
+    products: 1,
   };
 
   private siteSettingsData: SiteSettings | null = null;
@@ -649,6 +689,39 @@ export class MemStorage implements IStorage {
     if (postId) results = results.filter(c => c.postId === postId);
     if (approvedOnly) results = results.filter(c => c.isApproved);
     return results.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
+  // Products
+  async getProducts(activeOnly = false): Promise<Product[]> {
+    let results = activeOnly ? this.productsData.filter(p => p.isActive) : this.productsData;
+    return [...results].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getProduct(id: number): Promise<Product | undefined> {
+    return this.productsData.find(p => p.id === id);
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const id = this.currentId.products++;
+    const newProduct: Product = {
+      ...product,
+      id,
+      isActive: product.isActive ?? true,
+      createdAt: new Date(),
+    };
+    this.productsData.push(newProduct);
+    return newProduct;
+  }
+
+  async updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product | undefined> {
+    const index = this.productsData.findIndex(p => p.id === id);
+    if (index === -1) return undefined;
+    this.productsData[index] = { ...this.productsData[index], ...product };
+    return this.productsData[index];
+  }
+
+  async deleteProduct(id: number): Promise<void> {
+    this.productsData = this.productsData.filter(p => p.id !== id);
   }
 
   async approveComment(id: number): Promise<Comment | undefined> {
@@ -757,11 +830,7 @@ export class MemStorage implements IStorage {
 
   // Contacts
   async getContacts(): Promise<Contact[]> {
-    return [...this.contacts].sort((a, b) => {
-      const timeA = a.createdAt?.getTime() ?? 0;
-      const timeB = b.createdAt?.getTime() ?? 0;
-      return timeB - timeA;
-    });
+    return [...this.contacts].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async getContact(id: number): Promise<Contact | undefined> {

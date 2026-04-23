@@ -48,9 +48,8 @@ const STATUSES = [
     { id: "new", label: "Novo Lead", color: "bg-blue-500", light: "bg-blue-50" },
     { id: "qualified", label: "Qualificado", color: "bg-purple-500", light: "bg-purple-50" },
     { id: "proposal", label: "Proposta", color: "bg-yellow-500", light: "bg-yellow-50" },
-    { id: "negotiation", label: "Negociação", color: "bg-orange-500", light: "bg-orange-50" },
-    { id: "closed", label: "Fechado", color: "bg-green-500", light: "bg-green-50" },
-    { id: "lost", label: "Perdido", color: "bg-red-500", light: "bg-red-50" }
+    { id: "cancelled", label: "Cancelado", color: "bg-red-500", light: "bg-red-50" },
+    { id: "implemented", label: "Implantado", color: "bg-green-500", light: "bg-green-50" }
 ];
 
 export default function LeadsPage() {
@@ -262,8 +261,9 @@ function LeadCard({
     onEdit: () => void,
     onDelete: () => void
 }) {
-    const nextStatus = STATUSES[STATUSES.findIndex(s => s.id === lead.status) + 1]?.id;
-    const prevStatus = STATUSES[STATUSES.findIndex(s => s.id === lead.status) - 1]?.id;
+    const statusIndex = STATUSES.findIndex(s => s.id === lead.status);
+    const nextStatus = statusIndex !== -1 && statusIndex < STATUSES.length - 1 ? STATUSES[statusIndex + 1].id : null;
+    const prevStatus = statusIndex > 0 ? STATUSES[statusIndex - 1].id : null;
 
     return (
         <div className="group bg-white p-5 rounded-xl border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
@@ -281,10 +281,32 @@ function LeadCard({
             <div className="flex justify-between items-start mb-4">
                 <div className="flex-1 pr-12">
                     <h4 className="font-bold text-gray-900 line-clamp-1">{contact?.name || "Desconhecido"}</h4>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-gray-100 text-gray-600 mt-1">
-                        {lead.source || "Direto"}
-                    </span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-gray-100 text-gray-600">
+                            {lead.source || "Direto"}
+                        </span>
+                        {lead.product && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary">
+                                {lead.product}
+                            </span>
+                        )}
+                    </div>
                 </div>
+            </div>
+
+            <div className="mb-4">
+                <Select value={lead.status} onValueChange={onMove}>
+                    <SelectTrigger className="h-8 text-[11px] font-bold border-gray-100 bg-slate-50/50 hover:bg-slate-50 rounded-lg">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {STATUSES.map(s => (
+                            <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
+                                {s.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="bg-slate-50 rounded-lg p-3 mb-4">
@@ -343,14 +365,20 @@ function LeadForm({ contacts, onSubmit, isPending, initialData }: any) {
             ...initialData,
             value: initialData.value || "",
             source: initialData.source || "",
+            product: initialData.product || "",
             notes: initialData.notes || "",
         } : {
             contactId: 0,
             status: "new",
             source: "",
+            product: "",
             value: "",
             notes: "",
         },
+    });
+
+    const { data: products } = useQuery<any[]>({
+        queryKey: ["/api/products", { activeOnly: true }],
     });
 
     return (
@@ -401,18 +429,46 @@ function LeadForm({ contacts, onSubmit, isPending, initialData }: any) {
                     />
                     <FormField
                         control={form.control}
-                        name="value"
+                        name="product"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-gray-600 font-bold">Valor (R$)</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="0,00" className="rounded-xl h-11" {...field} value={field.value || ""} />
-                                </FormControl>
+                                <FormLabel className="text-gray-600 font-bold">Produto</FormLabel>
+                                <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value || ""}
+                                    value={field.value || ""}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger className="rounded-xl h-11">
+                                            <SelectValue placeholder="Selecione" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {products?.map((p: any) => (
+                                            <SelectItem key={p.id} value={p.name}>
+                                                {p.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
                 </div>
+                <FormField
+                    control={form.control}
+                    name="value"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-gray-600 font-bold">Valor (R$)</FormLabel>
+                            <FormControl>
+                                <Input placeholder="0,00" className="rounded-xl h-11" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
                 <FormField
                     control={form.control}

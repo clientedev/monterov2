@@ -12,18 +12,8 @@ import { sql } from "drizzle-orm";
 import {
   insertInquirySchema,
   insertContactSchema,
-  insertLeadSchema,
-  insertTaskSchema,
-  insertCampaignSchema,
-  insertUserSchema,
-  insertPostSchema,
-  insertServiceSchema,
-  insertHeroSlideSchema,
-  insertProspectingChecklistSchema,
-  insertCommentSchema,
-  insertInteractionSchema,
-  insertSiteSettingsSchema,
-  insertReviewSchema
+  insertReviewSchema,
+  insertProductSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -52,7 +42,7 @@ export async function registerRoutes(
         messages: [
           {
             role: "system",
-            content: "Você é a Carol, especialista da Monteiro Corretora (focada em planos de saúde e seguros de vida corporativos e familiares). Seja extremamente profissional, educada, amigável e MUITO concisa. Resolva dúvidas rapidamente."
+            content: "Você é a Carol, especialista da Monteiro Seguros e Benefícios (focada em planos de saúde e seguros de vida corporativos e familiares). Seja extremamente profissional, educada, amigável e MUITO concisa. Resolva dúvidas rapidamente."
           },
           ...messages
         ],
@@ -449,6 +439,41 @@ export async function registerRoutes(
       }
       throw err;
     }
+  });
+
+  // Products
+  app.get("/api/products", isTeam, async (req, res) => {
+    const activeOnly = req.query.activeOnly === "true";
+    const products = await storage.getProducts(activeOnly);
+    res.json(products);
+  });
+
+  app.post("/api/products", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const input = insertProductSchema.parse(req.body);
+      const product = await storage.createProduct(input);
+      res.status(201).json(product);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors });
+      }
+      throw err;
+    }
+  });
+
+  app.patch("/api/products/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const product = await storage.updateProduct(parseInt(req.params.id), req.body);
+      if (!product) return res.status(404).json({ message: "Product not found" });
+      res.json(product);
+    } catch (err) {
+      res.status(500).json({ message: "Error updating product" });
+    }
+  });
+
+  app.delete("/api/products/:id", isAuthenticated, isAdmin, async (req, res) => {
+    await storage.deleteProduct(parseInt(req.params.id));
+    res.sendStatus(204);
   });
 
   // Campaigns
