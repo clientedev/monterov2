@@ -24,18 +24,15 @@ export function Footer() {
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
-                  className="h-40 w-auto brightness-0 invert opacity-90 transition-opacity hover:opacity-100"
+                  className="h-20 w-auto brightness-0 invert opacity-90 transition-opacity hover:opacity-100"
                 />
               ) : (
                 <img
                   src={logo}
                   alt="Monteiro Seguros e Benefícios"
-                  className="h-40 w-auto brightness-0 invert opacity-90 transition-opacity hover:opacity-100"
+                  className="h-20 w-auto brightness-0 invert opacity-90 transition-opacity hover:opacity-100"
                 />
               )}
-              <div className="flex flex-col border-l border-white/20 pl-4">
-                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/80">Seguros & Benefícios</span>
-              </div>
             </div>
             <p className="text-slate-400 leading-relaxed text-sm">
               {settings?.footerText || "Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios. Confiança, integridade e excelência."}

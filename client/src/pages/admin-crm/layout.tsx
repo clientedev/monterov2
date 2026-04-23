@@ -65,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Logo & Brand */}
             <div className="p-4 pb-2 flex flex-col items-center justify-center border-b border-white/10 mb-6">
                     <Link href="/admin">
-                        <div className="flex items-center gap-4 cursor-pointer group">
+                        <div className="flex items-center justify-center cursor-pointer group w-full">
                             <div className="relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
                                 {settings?.logoBase64 ? (
                                     <img
@@ -80,9 +80,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         className="h-32 w-auto object-contain"
                                     />
                                 )}
-                            </div>
-                            <div className="flex flex-col border-l border-white/20 pl-4">
-                                <span className="text-[10px] font-bold text-[#C04D33] uppercase tracking-[0.2em] leading-none">Seguros & Benefícios</span>
                             </div>
                         </div>
                     </Link>
