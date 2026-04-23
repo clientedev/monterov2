@@ -63,7 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const sidebarContent = (
         <>
             {/* Logo & Brand */}
-            <div className="p-3 pb-1">
+            <div className="p-4 pb-2 flex flex-col items-center justify-center border-b border-white/10 mb-6">
                     <Link href="/admin">
                         <div className="flex items-center gap-4 cursor-pointer group">
                             <div className="relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
