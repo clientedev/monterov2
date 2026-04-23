@@ -94,16 +94,18 @@ export function ChatBubble() {
     if (!isOpen) {
         return (
             <div className="fixed bottom-6 right-6 z-50 group">
+                {/* Speech Bubble */}
+                <div className="absolute -top-20 right-0 bg-white text-primary px-4 py-2 rounded-2xl shadow-xl font-bold text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 pointer-events-none whitespace-nowrap border-2 border-primary/10 z-30">
+                    Fale comigo
+                    <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white rotate-45 border-r-2 border-b-2 border-primary/10" />
+                </div>
+
                 {/* Pop-out Avatar */}
                 <div className="absolute bottom-2 left-2 w-14 h-14 z-20 pointer-events-none transition-all duration-500 ease-out group-hover:-translate-y-12 group-hover:scale-[2.2] origin-bottom">
                     <div className="absolute inset-2 bg-white rounded-full" />
                     <img 
-                        src={carolAvatar} 
-                        className="relative z-10 w-full h-full object-contain mix-blend-multiply transition-opacity duration-300 group-hover:opacity-0 scale-125" 
-                    />
-                    <img 
                         src={carolAnim} 
-                        className="absolute inset-0 z-20 w-full h-full object-contain mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+                        className="relative z-20 w-full h-full object-contain mix-blend-multiply transition-transform duration-300" 
                     />
                 </div>
 
