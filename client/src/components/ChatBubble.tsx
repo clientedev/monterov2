@@ -96,22 +96,23 @@ export function ChatBubble() {
             <div className="fixed bottom-6 right-6 z-50 group">
                 {/* Pop-out Avatar */}
                 <div className="absolute bottom-2 left-2 w-14 h-14 z-20 pointer-events-none transition-all duration-500 ease-out group-hover:-translate-y-12 group-hover:scale-[2.2] origin-bottom">
-                        <img 
-                            src={carolAvatar} 
-                            className="w-full h-full object-contain mix-blend-multiply transition-opacity duration-300 group-hover:opacity-0 scale-125" 
-                        />
-                        <img 
-                            src={carolAnim} 
-                            className="absolute inset-0 w-full h-full object-contain mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
-                        />
+                    <div className="absolute inset-2 bg-white rounded-full" />
+                    <img 
+                        src={carolAvatar} 
+                        className="relative z-10 w-full h-full object-contain mix-blend-multiply transition-opacity duration-300 group-hover:opacity-0 scale-125" 
+                    />
+                    <img 
+                        src={carolAnim} 
+                        className="absolute inset-0 z-20 w-full h-full object-contain mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+                    />
                 </div>
 
                 <Button
                     onClick={() => { setIsOpen(true); setIsMinimized(false); }}
-                    className="h-16 rounded-full shadow-2xl bg-white hover:bg-slate-50 transition-all duration-300 flex items-center justify-center p-0 overflow-hidden w-16 hover:w-64 border-2 border-primary"
+                    className="h-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300 flex items-center justify-center p-0 overflow-hidden w-16 hover:w-64 border-2 border-white/20"
                 >
                     <div className="flex items-center justify-start w-full h-full relative z-10 pl-16 pr-4">
-                        <span className="text-primary font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 group-hover:max-w-[200px] group-hover:opacity-100">
+                        <span className="text-white font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 group-hover:max-w-[200px] group-hover:opacity-100">
                             Converse com a Carol
                         </span>
                     </div>
