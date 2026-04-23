@@ -51,6 +51,7 @@ export function Navbar() {
                   className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
+                <img
                   src={logo}
                   alt="Monteiro Seguros e Benefícios"
                   className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
