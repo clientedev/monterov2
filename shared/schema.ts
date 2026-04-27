@@ -1,4 +1,5 @@
 import { pgTable, text, serial, timestamp, boolean, integer, json } from "drizzle-orm/pg-core";
+// Build trigger: 2026-04-27 16:51
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
