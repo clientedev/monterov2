@@ -26,13 +26,15 @@ export default function Home() {
   const heroSubtitle = settings?.heroSubtitle || "Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna.";
   const heroImageUrl = "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2400";
 
+  const showCarousel = !loadingSettings && activeSlides.length > 0;
+
   return (
     <div className="min-h-screen font-sans bg-slate-50 text-slate-900 selection:bg-primary/20">
       <Navbar />
 
-      {/* Hero Section (Unchanged per request) */}
-      <section className="relative h-screen min-h-[600px] flex items-center overflow-hidden">
-        {activeSlides.length > 0 ? (
+      {/* Hero Section */}
+      <section className="relative h-screen min-h-[600px] flex items-center overflow-hidden bg-[#08454c]">
+        {showCarousel ? (
           <Carousel
             plugins={[plugin.current]}
             className="w-full h-full"
@@ -84,10 +86,12 @@ export default function Home() {
         ) : (
           <>
             <div className="absolute inset-0 z-0">
+              {/* Static background for loading or fallback */}
+              <div className="w-full h-full bg-[#08454c]" />
               <img
                 src={heroImageUrl}
                 alt="Modern Office"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover opacity-50"
               />
               <div className="absolute inset-0 bg-[#08454c]/60 mix-blend-multiply" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/90 via-[#08454c]/40 to-transparent" />
@@ -100,32 +104,36 @@ export default function Home() {
                 transition={{ duration: 0.8, ease: "easeOut" }}
                 className="max-w-3xl"
               >
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-6">
-                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  <span>#{settings?.siteName || "Corretora de Seguros"} em São Paulo</span>
-                </div>
+                {!loadingSettings && (
+                  <>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-6">
+                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                      <span>#{settings?.siteName || "Corretora de Seguros"} em São Paulo</span>
+                    </div>
 
-                <h1 className="text-5xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6 whitespace-pre-line">
-                  {heroTitle}
-                </h1>
+                    <h1 className="text-5xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6 whitespace-pre-line">
+                      {heroTitle}
+                    </h1>
 
-                <p className="text-lg md:text-xl text-slate-200 mb-10 max-w-xl leading-relaxed">
-                  {heroSubtitle}
-                </p>
+                    <p className="text-lg md:text-xl text-slate-200 mb-10 max-w-xl leading-relaxed">
+                      {heroSubtitle}
+                    </p>
 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Link href="/contact">
-                    <button className="px-8 py-4 rounded-full bg-primary text-white font-semibold text-lg hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-1 flex items-center justify-center gap-2">
-                      Cotação Gratuita
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
-                  </Link>
-                  <Link href="/about">
-                    <button className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm text-white border border-white/20 font-semibold text-lg hover:bg-white/20 transition-all hover:-translate-y-1">
-                      Saiba Mais
-                    </button>
-                  </Link>
-                </div>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <Link href="/contact">
+                        <button className="px-8 py-4 rounded-full bg-primary text-white font-semibold text-lg hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-1 flex items-center justify-center gap-2">
+                          Cotação Gratuita
+                          <ArrowRight className="w-5 h-5" />
+                        </button>
+                      </Link>
+                      <Link href="/about">
+                        <button className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm text-white border border-white/20 font-semibold text-lg hover:bg-white/20 transition-all hover:-translate-y-1">
+                          Saiba Mais
+                        </button>
+                      </Link>
+                    </div>
+                  </>
+                )}
               </motion.div>
             </div>
           </>
