@@ -84,6 +84,33 @@ export async function registerRoutes(
     res.status(403).json({ message: "Forbidden: Admin access required" });
   };
 
+  // Dynamic Image Server for OG Tags
+  app.get("/api/posts/:id/image", async (req, res) => {
+    try {
+      const post = await storage.getPost(parseInt(req.params.id));
+      if (!post || !post.coverImage) {
+        return res.redirect("/favicon.png");
+      }
+
+      if (post.coverImage.startsWith("data:")) {
+        const matches = post.coverImage.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (!matches || matches.length !== 3) {
+          return res.redirect("/favicon.png");
+        }
+        const type = matches[1];
+        const buffer = Buffer.from(matches[2], 'base64');
+        res.setHeader('Content-Type', type);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.send(buffer);
+      }
+      
+      // If it's already a URL
+      res.redirect(post.coverImage);
+    } catch (error) {
+      res.redirect("/favicon.png");
+    }
+  });
+
   // SEO / Blog Social Previews
   app.get("/blog/:slug", async (req, res, next) => {
     try {
@@ -91,10 +118,9 @@ export async function registerRoutes(
       const post = await storage.getPostBySlug(slug);
 
       if (!post) {
-        return next(); // Fall through to 404 handled by frontend
+        return next();
       }
 
-      // Read index.html
       const indexPath = process.env.NODE_ENV === "production"
         ? path.resolve(process.cwd(), "dist", "public", "index.html")
         : path.resolve(process.cwd(), "client", "index.html");
@@ -104,26 +130,28 @@ export async function registerRoutes(
       }
 
       let html = fs.readFileSync(indexPath, "utf8");
+      
+      // Use the dynamic image route for OG tags to support base64
+      const imageUrl = `${req.protocol}://${req.get('host')}/api/posts/${post.id}/image`;
+      const siteUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
-      // OG Tags to inject
       const ogTags = `
     <!-- Dynamic OG Tags -->
     <title>${post.title} | Monteiro Corretora</title>
     <meta name="description" content="${post.summary.replace(/"/g, '&quot;')}" />
     <meta property="og:title" content="${post.title}" />
     <meta property="og:description" content="${post.summary.replace(/"/g, '&quot;')}" />
-    <meta property="og:image" content="${post.coverImage}" />
-    <meta property="og:url" content="${req.protocol}://${req.get('host')}${req.originalUrl}" />
+    <meta property="og:image" content="${imageUrl}" />
+    <meta property="og:url" content="${siteUrl}" />
     <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Monteiro Seguros e Benefícios" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${post.title}" />
     <meta name="twitter:description" content="${post.summary.replace(/"/g, '&quot;')}" />
-    <meta name="twitter:image" content="${post.coverImage}" />
+    <meta name="twitter:image" content="${imageUrl}" />
       `.trim();
 
-      // Inject before </head>
       html = html.replace("</head>", `${ogTags}\n</head>`);
-
       res.setHeader("Content-Type", "text/html");
       return res.send(html);
     } catch (error) {
