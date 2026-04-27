@@ -226,7 +226,9 @@ export const sessions = pgTable("session", {
 // INSERT SCHEMAS (Zod validation)
 // ============================================================
 
-export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true });
+export const insertPostSchema = createInsertSchema(posts, {
+  publishedAt: z.coerce.date(),
+}).omit({ id: true, createdAt: true });
 export const insertInquirySchema = createInsertSchema(inquiries).omit({ id: true, createdAt: true });
 export const insertServiceSchema = createInsertSchema(services).omit({ id: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });

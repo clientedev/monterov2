@@ -223,6 +223,7 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
             coverImage: "",
             videoUrl: "",
             youtubeUrl: "",
+            publishedAt: new Date(),
         },
     });
 
@@ -232,6 +233,7 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                 ...initialData,
                 videoUrl: initialData.videoUrl || "",
                 youtubeUrl: initialData.youtubeUrl || "",
+                publishedAt: initialData.publishedAt ? new Date(initialData.publishedAt) : new Date(),
             });
         } else {
             form.reset({
@@ -242,6 +244,7 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                 coverImage: "",
                 videoUrl: "",
                 youtubeUrl: "",
+                publishedAt: new Date(),
             });
         }
     }, [initialData, form]);
