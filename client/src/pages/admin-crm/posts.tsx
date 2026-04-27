@@ -117,6 +117,11 @@ export default function PostsPage() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{editingPost ? "Editar Post" : "Novo Post"}</DialogTitle>
+                        <DialogDescription>
+                            {editingPost 
+                                ? "Altere as informações do post selecionado." 
+                                : "Preencha os campos abaixo para publicar um novo post no blog."}
+                        </DialogDescription>
                     </DialogHeader>
                     <PostForm
                         initialData={editingPost}

@@ -24,6 +24,7 @@ export async function comparePasswords(supplied: string, stored: string) {
 
 export function isAuthenticated(req: any, res: any, next: any) {
     if (req.isAuthenticated()) return next();
+    console.warn(`[AUTH] Unauthorized access attempt: ${req.method} ${req.path} - Session ID: ${req.sessionID}`);
     res.status(401).json({ message: "Unauthorized" });
 }
 

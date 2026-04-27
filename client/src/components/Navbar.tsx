@@ -43,13 +43,13 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         <Link href="/">
           <a className="flex items-center gap-10 group cursor-pointer">
-            <div className="relative h-16 md:h-20 flex items-center">
+            <div className="relative h-24 md:h-32 flex items-center">
               {settings?.logoBase64 ? (
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
                   className={cn(
-                    "h-16 md:h-20 w-auto object-contain transition-all duration-300 group-hover:scale-110 origin-left",
+                    "h-24 md:h-32 w-auto object-contain transition-all duration-300 group-hover:scale-110 origin-left",
                     scrolled && "brightness-0"
                   )}
                 />
