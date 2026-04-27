@@ -78,6 +78,13 @@ export default function PostsPage() {
             setOpen(false);
             setEditingPost(null);
         },
+        onError: (error: Error) => {
+            toast({
+                title: "Erro ao atualizar post",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
     });
 
     const deleteMutation = useMutation({

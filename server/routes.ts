@@ -205,9 +205,15 @@ export async function registerRoutes(
   });
 
   app.patch("/api/posts/:id", isAuthenticated, isAdmin, async (req, res) => {
-    const post = await storage.updatePost(parseInt(req.params.id), req.body);
-    if (!post) return res.status(404).json({ message: "Post not found" });
-    res.json(post);
+    try {
+      console.log(`[POSTS] Updating post ${req.params.id}... Payload size: ${JSON.stringify(req.body).length} bytes`);
+      const post = await storage.updatePost(parseInt(req.params.id), req.body);
+      if (!post) return res.status(404).json({ message: "Post not found" });
+      res.json(post);
+    } catch (error: any) {
+      console.error(`[POSTS] Update failed for post ${req.params.id}:`, error);
+      res.status(500).json({ message: error.message || "Internal server error" });
+    }
   });
 
   app.patch("/api/admin/posts/:id/approve", isAuthenticated, isAdmin, async (req, res) => {
@@ -217,10 +223,16 @@ export async function registerRoutes(
   });
 
   app.post("/api/posts", isAuthenticated, async (req, res) => {
-    const input = req.body;
-    const isApproved = (req.user as any).role === "admin";
-    const post = await storage.createPost({ ...input, isApproved });
-    res.status(201).json(post);
+    try {
+      const input = req.body;
+      console.log(`[POSTS] Creating new post... Payload size: ${JSON.stringify(input).length} bytes`);
+      const isApproved = (req.user as any).role === "admin";
+      const post = await storage.createPost({ ...input, isApproved });
+      res.status(201).json(post);
+    } catch (error: any) {
+      console.error("[POSTS] Creation failed:", error);
+      res.status(500).json({ message: error.message || "Internal server error" });
+    }
   });
 
   app.post("/api/posts/:id/like", async (req, res) => {
