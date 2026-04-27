@@ -16,7 +16,7 @@ import { ReviewsSection } from "@/components/ReviewsSection";
 export default function Home() {
   const { data: services, isLoading: loadingServices } = useServices();
   const { data: posts, isLoading: loadingPosts } = usePosts();
-  const { settings, slides } = useSiteSettings();
+  const { settings, slides, isLoading: loadingSettings } = useSiteSettings();
   const plugin = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
 
   const activeSlides = slides?.filter(s => s.isActive) || [];
