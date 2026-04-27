@@ -212,6 +212,7 @@ export default function PostsPage() {
 }
 
 function PostForm({ initialData, onSubmit, isSubmitting }: any) {
+    const { toast } = useToast();
     const form = useForm<InsertPost>({
         resolver: zodResolver(insertPostSchema),
         defaultValues: initialData || {
