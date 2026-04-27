@@ -87,7 +87,10 @@ export async function registerRoutes(
   // Dynamic Image Server for OG Tags
   app.get("/api/posts/:id/image", async (req, res) => {
     try {
-      const post = await storage.getPost(parseInt(req.params.id));
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).send("Invalid ID");
+      
+      const post = await storage.getPost(id);
       if (!post || !post.coverImage) {
         return res.redirect("/favicon.png");
       }
@@ -104,15 +107,19 @@ export async function registerRoutes(
         return res.send(buffer);
       }
       
-      // If it's already a URL
       res.redirect(post.coverImage);
     } catch (error) {
       res.redirect("/favicon.png");
     }
   });
 
-  // SEO / Blog Social Previews
+  // SEO / Blog Social Previews - ONLY match blog posts with slugs, NOT the blog list
   app.get("/blog/:slug", async (req, res, next) => {
+    // Skip if it's the blog list itself or a static asset
+    if (!req.params.slug || req.params.slug === "index.html") {
+      return next();
+    }
+
     try {
       const slug = req.params.slug;
       const post = await storage.getPostBySlug(slug);
@@ -121,17 +128,24 @@ export async function registerRoutes(
         return next();
       }
 
+      // More robust path resolution
       const indexPath = process.env.NODE_ENV === "production"
-        ? path.resolve(process.cwd(), "dist", "public", "index.html")
+        ? path.resolve(process.cwd(), "public", "index.html") // Railway build often puts it here
         : path.resolve(process.cwd(), "client", "index.html");
 
-      if (!fs.existsSync(indexPath)) {
+      // Fallback path if first fails
+      let finalPath = indexPath;
+      if (!fs.existsSync(finalPath) && process.env.NODE_ENV === "production") {
+        finalPath = path.resolve(process.cwd(), "dist", "public", "index.html");
+      }
+
+      if (!fs.existsSync(finalPath)) {
+        console.error(`[SEO] index.html not found at ${finalPath}`);
         return next();
       }
 
-      let html = fs.readFileSync(indexPath, "utf8");
+      let html = fs.readFileSync(finalPath, "utf8");
       
-      // Use the dynamic image route for OG tags to support base64
       const imageUrl = `${req.protocol}://${req.get('host')}/api/posts/${post.id}/image`;
       const siteUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
