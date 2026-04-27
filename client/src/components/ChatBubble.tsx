@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import carolAvatar from "@assets/carolzinha.png";
-import carolAnim from "@assets/carol_anim.gif";
+import carolVideo from "@assets/carol_anim.mp4";
 
 interface Message {
     role: 'user' | 'assistant';
@@ -103,9 +103,13 @@ export function ChatBubble() {
                 {/* Pop-out Avatar */}
                 <div className="absolute bottom-2 left-2 w-14 h-14 z-20 pointer-events-none transition-all duration-500 ease-out group-hover:-translate-y-12 group-hover:scale-[2.2] origin-bottom">
                     <div className="absolute inset-2 bg-white rounded-full" />
-                    <img 
-                        src={carolAnim} 
+                    <video 
+                        src={carolVideo} 
                         className="relative z-20 w-full h-full object-contain mix-blend-multiply transition-transform duration-300" 
+                        autoPlay 
+                        loop 
+                        muted 
+                        playsInline
                     />
                 </div>
 
@@ -129,7 +133,14 @@ export function ChatBubble() {
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         <div className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center bg-white shrink-0 overflow-hidden">
-                            <img src={carolAnim} className="w-full h-full object-cover scale-150 mix-blend-multiply" />
+                            <video 
+                                src={carolVideo} 
+                                className="w-full h-full object-cover scale-150 mix-blend-multiply" 
+                                autoPlay 
+                                loop 
+                                muted 
+                                playsInline
+                            />
                         </div>
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-primary" />
                     </div>
