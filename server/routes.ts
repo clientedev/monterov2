@@ -128,19 +128,29 @@ export async function registerRoutes(
         return next();
       }
 
-      // More robust path resolution
-      const indexPath = process.env.NODE_ENV === "production"
-        ? path.resolve(process.cwd(), "public", "index.html") // Railway build often puts it here
-        : path.resolve(process.cwd(), "client", "index.html");
-
-      // Fallback path if first fails
-      let finalPath = indexPath;
-      if (!fs.existsSync(finalPath) && process.env.NODE_ENV === "production") {
-        finalPath = path.resolve(process.cwd(), "dist", "public", "index.html");
+      // Strict path resolution for production vs development
+      let finalPath = "";
+      if (process.env.NODE_ENV === "production") {
+        // Try multiple common production paths
+        const paths = [
+          path.resolve(process.cwd(), "dist", "public", "index.html"),
+          path.resolve(process.cwd(), "public", "index.html"),
+          path.resolve(__dirname, "..", "dist", "public", "index.html"),
+          path.resolve(__dirname, "..", "public", "index.html"),
+        ];
+        
+        for (const p of paths) {
+          if (fs.existsSync(p)) {
+            finalPath = p;
+            break;
+          }
+        }
+      } else {
+        finalPath = path.resolve(process.cwd(), "client", "index.html");
       }
 
-      if (!fs.existsSync(finalPath)) {
-        console.error(`[SEO] index.html not found at ${finalPath}`);
+      if (!finalPath || !fs.existsSync(finalPath)) {
+        console.error(`[SEO] Critical Error: index.html not found. Checked multiple paths.`);
         return next();
       }
 
