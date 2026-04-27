@@ -246,9 +246,22 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
     }, [initialData, form]);
 
 
+    const onError = (errors: any) => {
+        console.error("Form Validation Errors:", errors);
+        const errorMessages = Object.entries(errors)
+            .map(([field, err]: [string, any]) => `${field}: ${err.message}`)
+            .join(", ");
+        
+        toast({
+            title: "Erro de validação",
+            description: `Por favor, verifique os campos: ${errorMessages}`,
+            variant: "destructive"
+        });
+    };
+
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
