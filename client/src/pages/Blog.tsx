@@ -4,7 +4,7 @@ import { usePosts } from "@/hooks/use-content";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Heart, MessageCircle, Share2, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import { Heart, MessageCircle, Share2, ShieldCheck, TrendingUp, Users, Image as ImageIcon } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
@@ -36,6 +36,14 @@ export default function Blog() {
 
   const createPostMutation = useMutation({
     mutationFn: async (text: string) => {
+      if (!mediaData.coverImage) {
+        toast({
+          title: "Imagem necessária",
+          description: "Por favor, selecione uma imagem de capa.",
+          variant: "destructive"
+        });
+        return;
+      }
       const payload = {
         title: text.substring(0, 30) + (text.length > 30 ? "..." : ""),
         slug: `post-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -143,13 +151,36 @@ export default function Blog() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <textarea
-                    value={postText}
-                    onChange={(e) => setPostText(e.target.value)}
-                    placeholder="Escreva sua publicação..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[100px] resize-none"
-                    autoFocus
-                  />
+                  <div className="relative">
+                    <textarea
+                      value={postText}
+                      onChange={(e) => setPostText(e.target.value)}
+                      placeholder="Escreva sua publicação... Use ![descrição](link) para imagens."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[120px] resize-none"
+                      autoFocus
+                    />
+                    <div className="absolute bottom-3 right-3">
+                      <label className="cursor-pointer bg-white shadow-sm border border-slate-200 hover:bg-slate-50 p-2 rounded-lg flex items-center gap-1.5 text-[10px] font-bold text-slate-600 transition-all">
+                        <ImageIcon className="w-3.5 h-3.5 text-primary" />
+                        <span>ANEXAR IMAGEM</span>
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const base64 = reader.result as string;
+                              setPostText(prev => prev + `\n![imagem](${base64})\n`);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
                   
                   {isCreating && (
                     <div className="space-y-4 mt-4 p-4 bg-slate-100/50 rounded-2xl border border-slate-100">
@@ -278,9 +309,12 @@ export default function Blog() {
                       </div>
                     ) : (
                       <img 
-                        src={post.coverImage} 
+                        src={post.coverImage || "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=800"} 
                         alt={post.title} 
                         className="w-full max-h-[400px] object-cover hover:scale-105 transition-transform duration-700"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=800";
+                        }}
                       />
                     )}
                   </div>

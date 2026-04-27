@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Trash2, Pencil, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
+import { Label } from "@/components/ui/label";
 import { ImageUpload } from "@/components/ImageUpload";
 import { VideoUpload } from "@/components/VideoUpload";
 
@@ -120,6 +121,14 @@ export default function PostsPage() {
                     <PostForm
                         initialData={editingPost}
                         onSubmit={(data: InsertPost) => {
+                            if (!data.coverImage) {
+                                toast({
+                                    title: "Imagem necessária",
+                                    description: "Por favor, selecione uma imagem de capa para o post.",
+                                    variant: "destructive"
+                                });
+                                return;
+                            }
                             if (editingPost) {
                                 updateMutation.mutate({ id: editingPost.id, data });
                             } else {
@@ -273,11 +282,35 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                     name="content"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Conteúdo</FormLabel>
+                            <div className="flex items-center justify-between">
+                                <FormLabel>Conteúdo</FormLabel>
+                                <div className="flex items-center gap-2">
+                                    <Label className="cursor-pointer text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded border border-slate-200 flex items-center gap-1 text-slate-600 transition-colors">
+                                        <ImageIcon className="w-3 h-3" />
+                                        Inserir Imagem
+                                        <input 
+                                            type="file" 
+                                            className="hidden" 
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => {
+                                                    const base64 = reader.result as string;
+                                                    const currentContent = form.getValues("content") || "";
+                                                    form.setValue("content", currentContent + `\n![imagem](${base64})\n`);
+                                                };
+                                                reader.readAsDataURL(file);
+                                            }}
+                                        />
+                                    </Label>
+                                </div>
+                            </div>
                             <FormControl>
                                 <Textarea
-                                    placeholder="Conteúdo do post..."
-                                    className="min-h-[200px]"
+                                    placeholder="Conteúdo do post... Use ![descrição](link) para imagens."
+                                    className="min-h-[200px] font-sans"
                                     {...field}
                                 />
                             </FormControl>

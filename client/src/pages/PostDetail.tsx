@@ -137,18 +137,27 @@ export default function PostDetail() {
             </h1>
           </header>
 
-          <div className="aspect-video rounded-2xl overflow-hidden mb-12 shadow-lg">
+          <div className="aspect-video rounded-2xl overflow-hidden mb-12 shadow-lg bg-slate-100">
             <img
-              src={post.coverImage}
+              src={post.coverImage || "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=1200"}
               alt={post.title}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=1200";
+              }}
             />
           </div>
 
           <div className="prose prose-lg prose-slate prose-headings:font-display prose-headings:font-bold prose-a:text-primary max-w-none">
-            <div className="whitespace-pre-line text-slate-600 leading-relaxed">
-              {post.content}
-            </div>
+            <div 
+              className="whitespace-pre-line text-slate-600 leading-relaxed"
+              dangerouslySetInnerHTML={{ 
+                __html: post.content.replace(
+                  /!\[(.*?)\]\((.*?)\)/g, 
+                  '<img src="$2" alt="$1" class="rounded-xl shadow-md my-8 w-full h-auto" />'
+                ) 
+              }}
+            />
           </div>
 
           {(post.videoUrl || post.youtubeUrl) && (

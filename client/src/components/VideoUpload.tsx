@@ -21,8 +21,8 @@ export function VideoUpload({ value, onChange, label, description }: VideoUpload
         if (!file) return;
 
         // Limit to 5MB for videos stored as base64 (still risky but better for small clips)
-        if (file.size > 5 * 1024 * 1024) {
-            alert("O vídeo deve ter no máximo 5MB. Para vídeos maiores, use o link do YouTube.");
+        if (file.size > 50 * 1024 * 1024) {
+            alert("O vídeo deve ter no máximo 50MB. Para vídeos maiores, use o link do YouTube.");
             return;
         }
 
