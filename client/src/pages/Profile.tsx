@@ -135,7 +135,7 @@ export default function ProfilePage() {
                                             <ImageUpload 
                                                 value={avatar} 
                                                 onChange={setAvatar} 
-                                                description="Escolha uma imagem de até 2MB. Recomenda-se o formato quadrado."
+                                                description="Escolha uma imagem de até 10MB. Recomenda-se o formato quadrado."
                                             />
                                         </div>
 

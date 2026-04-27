@@ -347,7 +347,7 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                                     <VideoUpload
                                         value={field.value}
                                         onChange={field.onChange}
-                                        description="Anexe um vídeo curto (Max. 5MB)."
+                                        description="Anexe um vídeo curto (Max. 50MB)."
                                     />
                                 </FormControl>
                                 <FormMessage />
