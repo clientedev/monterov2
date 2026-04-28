@@ -102,10 +102,9 @@ export function ChatBubble() {
 
                 {/* Pop-out Avatar */}
                 <div className="absolute bottom-2 left-2 w-14 h-14 z-20 pointer-events-none transition-all duration-500 ease-out group-hover:-translate-y-12 group-hover:scale-[2.2] origin-bottom">
-                    <div className="absolute inset-2 bg-white rounded-full" />
                     <img 
                         src={carolAnim} 
-                        className="relative z-20 w-full h-full object-contain mix-blend-multiply transition-transform duration-300" 
+                        className="relative z-20 w-full h-full object-contain transition-transform duration-300" 
                     />
                 </div>
 

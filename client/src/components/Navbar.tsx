@@ -42,14 +42,14 @@ export function Navbar() {
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         <Link href="/">
-          <a className="flex items-center gap-10 group cursor-pointer">
-            <div className="relative h-24 md:h-32 flex items-center">
+          <a className="flex items-center group cursor-pointer">
+            <div className="relative h-16 md:h-20 flex items-center">
               {settings?.logoBase64 ? (
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
                   className={cn(
-                    "h-24 md:h-32 w-auto object-contain transition-all duration-300 group-hover:scale-110 origin-left",
+                    "h-16 md:h-20 w-auto object-contain transition-all duration-300 group-hover:scale-105 origin-left",
                     scrolled && "brightness-0"
                   )}
                 />
@@ -58,17 +58,11 @@ export function Navbar() {
                   src={logo}
                   alt="Monteiro Seguros e Benefícios"
                   className={cn(
-                    "h-16 md:h-20 w-auto object-contain transition-all duration-300 group-hover:scale-110 origin-left",
+                    "h-16 md:h-20 w-auto object-contain transition-all duration-300 group-hover:scale-105 origin-left",
                     scrolled && "brightness-0"
                   )}
                 />
               )}
-            </div>
-            <div className={cn(
-              "hidden sm:flex items-center gap-3 transition-colors duration-300 border-l pl-4",
-              (scrolled || location !== "/") && location !== "/blog" ? "text-slate-500 border-slate-200" : "text-white/70 border-white/20"
-            )}>
-              <span className="text-[10px] font-bold tracking-[0.2em] uppercase leading-tight">Seguros & Benefícios</span>
             </div>
           </a>
         </Link>
