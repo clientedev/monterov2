@@ -993,10 +993,11 @@ export async function registerRoutes(
         const params = new URLSearchParams();
         if (uf) params.set("uf", uf);
         
-        if (cityId) {
+        // Reverting to using NAME for municipio as it was likely what worked before
+        if (municipio) {
+          params.set("municipio", municipio.toUpperCase().trim());
+        } else if (cityId) {
           params.set("municipio", cityId as string);
-        } else if (municipio) {
-          params.set("municipio", municipio.toUpperCase());
         }
         
         if (cnaeCode) params.set("cnae", cnaeCode);
@@ -1004,9 +1005,10 @@ export async function registerRoutes(
         else if (bairroFiltroInput) params.set("q", bairroFiltroInput.toUpperCase());
 
         const url = `https://publica.cnpj.ws/cnpjs?${params.toString()}`;
+        console.log(`[CompanySearch] Chamando CNPJ API: ${url}`);
         const apiRes = await fetch(url, {
           headers: { "Accept": "application/json", "User-Agent": "MonteiroSeguros/1.0" },
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(10000), // Increased timeout
         });
 
         if (apiRes.ok) {
@@ -1185,10 +1187,13 @@ export async function registerRoutes(
                   lng,
                 };
               });
-            // Apply filters to OSM results as well
-            results = applyFilters(results);
+            // Use the results directly or apply loose filtering
+            results = osmResults;
+            if (bairroFiltroInput) {
+                console.log(`[CompanySearch] Aplicando filtro de bairro sugerido no OSM: ${bairroFiltroInput}`);
+            }
             apiSuccess = true;
-            console.log(`[CompanySearch] OSM: ${results.length} negócios reais encontrados após filtros`);
+            console.log(`[CompanySearch] OSM: ${results.length} negócios reais encontrados`);
           }
         }
       } catch (e: any) {
