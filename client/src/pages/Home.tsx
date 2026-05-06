@@ -191,8 +191,8 @@ export default function Home() {
               <div className="relative rounded-[2.5rem] shadow-2xl z-10 overflow-hidden border border-white">
                 <div className="absolute inset-0 bg-primary/5 mix-blend-overlay z-10" />
                 <img
-                  src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600"
-                  alt="Reunião de Negócios"
+                  src="/equipe.jpg"
+                  alt="Equipe Monteiro"
                   className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-700"
                 />
               </div>

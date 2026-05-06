@@ -1064,7 +1064,7 @@ export class MemStorage implements IStorage {
         heroSubtitle: "Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna.",
         aboutTitle: "Sobre a Monteiro Corretora",
         aboutContent: "Fundada por Carlos Monteiro, a Monteiro Corretora começou com uma missão simples: tornar o seguro compreensível, acessível e verdadeiramente protetor para famílias e empresas em São Paulo.\n\nNas últimas três décadas, crescemos de um pequeno escritório familiar para uma das corretoras mais respeitadas da região. Nosso crescimento não mudou nossos valores fundamentais — ainda tratamos cada cliente como parte da família.",
-        aboutImageBase64: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600",
+        aboutImageBase64: "/equipe.jpg",
         servicesTitle: "Soluções Completas em Seguros",
         servicesSubtitle: "Planos de cobertura personalizados projetados para atender às suas necessidades específicas.",
         blogTitle: "Blog e Novidades",
