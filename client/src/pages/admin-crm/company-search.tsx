@@ -4,50 +4,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
     Building2,
-    MapPin,
     Search,
-    Filter,
     Plus,
     ChevronRight,
     Loader2,
     Target,
     Map as MapIcon,
     AlertCircle,
-    Check,
-    ChevronsUpDown,
     Phone,
     Mail,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export default function CompanySearchPage() {
     const { toast } = useToast();
-    const [stateId, setStateId] = useState<string>("");
-    const [stateName, setStateName] = useState<string>("");
-    const [cityId, setCityId] = useState<string>("");
-    const [cityName, setCityName] = useState<string>("");
-    const [neighborhood, setNeighborhood] = useState("");
-    const [cnae, setCnae] = useState("");
-    const [query, setQuery] = useState("");
     const [cnpjInput, setCnpjInput] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 20;
@@ -55,28 +30,7 @@ export default function CompanySearchPage() {
     const mapRef = useRef<HTMLDivElement>(null);
     const leafletMapRef = useRef<any>(null);
 
-    // IBGE API - States
-    const { data: states } = useQuery<any[]>({
-        queryKey: ["ibge-states"],
-        queryFn: () => fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome").then(r => r.json()),
-        staleTime: Infinity,
-    });
 
-    // IBGE API - Cities
-    const { data: cities, isLoading: isLoadingCities } = useQuery<any[]>({
-        queryKey: ["ibge-cities", stateId],
-        queryFn: () => fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${stateId}/municipios`).then(r => r.json()),
-        enabled: !!stateId,
-        staleTime: Infinity,
-    });
-
-    // IBGE API - Districts (Bairros equivalent)
-    const { data: districts, isLoading: isLoadingDistricts } = useQuery<any[]>({
-        queryKey: ["ibge-districts", cityId],
-        queryFn: () => fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios/${cityId}/distritos`).then(r => r.json()),
-        enabled: !!cityId,
-        staleTime: Infinity,
-    });
 
     // Search Results
     const { data: results, isLoading, error } = useQuery<any[]>({
@@ -137,7 +91,7 @@ export default function CompanySearchPage() {
         });
 
         // Geocode the searched location and add markers
-        const loc = neighborhood ? `${neighborhood}, ${cityName}, ${stateName}, Brasil` : `${cityName}, ${stateName}, Brasil`;
+        const loc = results?.[0]?.municipio ? `${results[0].municipio}, ${results[0].uf}, Brasil` : "Brasil";
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc)}&limit=1`)
             .then(r => r.json())
             .then(geoData => {
