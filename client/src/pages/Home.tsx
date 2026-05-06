@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { useServices, usePosts } from "@/hooks/use-content";
 import { useSiteSettings } from "@/hooks/use-site-settings";
@@ -34,7 +34,11 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative h-screen min-h-[600px] flex items-center overflow-hidden bg-[#08454c]">
-        {showCarousel ? (
+        {loadingSettings ? (
+          <div className="w-full h-full flex items-center justify-center bg-[#08454c]">
+            <Loader2 className="w-10 h-10 animate-spin text-white/50" />
+          </div>
+        ) : showCarousel ? (
           <Carousel
             plugins={[plugin.current]}
             className="w-full h-full"
@@ -104,36 +108,32 @@ export default function Home() {
                 transition={{ duration: 0.8, ease: "easeOut" }}
                 className="max-w-3xl"
               >
-                {!loadingSettings && (
-                  <>
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-6">
-                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      <span>#{settings?.siteName || "Corretora de Seguros"} em São Paulo</span>
-                    </div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-6">
+                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  <span>#{settings?.siteName || "Corretora de Seguros"} em São Paulo</span>
+                </div>
 
-                    <h1 className="text-5xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6 whitespace-pre-line">
-                      {heroTitle}
-                    </h1>
+                <h1 className="text-5xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6 whitespace-pre-line">
+                  {heroTitle}
+                </h1>
 
-                    <p className="text-lg md:text-xl text-slate-200 mb-10 max-w-xl leading-relaxed">
-                      {heroSubtitle}
-                    </p>
+                <p className="text-lg md:text-xl text-slate-200 mb-10 max-w-xl leading-relaxed">
+                  {heroSubtitle}
+                </p>
 
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <Link href="/contact">
-                        <button className="px-8 py-4 rounded-full bg-primary text-white font-semibold text-lg hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-1 flex items-center justify-center gap-2">
-                          Cotação Gratuita
-                          <ArrowRight className="w-5 h-5" />
-                        </button>
-                      </Link>
-                      <Link href="/about">
-                        <button className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm text-white border border-white/20 font-semibold text-lg hover:bg-white/20 transition-all hover:-translate-y-1">
-                          Saiba Mais
-                        </button>
-                      </Link>
-                    </div>
-                  </>
-                )}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Link href="/contact">
+                    <button className="px-8 py-4 rounded-full bg-primary text-white font-semibold text-lg hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-1 flex items-center justify-center gap-2">
+                      Cotação Gratuita
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </Link>
+                  <Link href="/about">
+                    <button className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm text-white border border-white/20 font-semibold text-lg hover:bg-white/20 transition-all hover:-translate-y-1">
+                      Saiba Mais
+                    </button>
+                  </Link>
+                </div>
               </motion.div>
             </div>
           </>
