@@ -261,7 +261,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="relative flex overflow-x-hidden">
+        <div className="relative flex overflow-x-hidden group">
           <motion.div
             animate={{
               x: ["0%", "-50%"],
@@ -270,42 +270,50 @@ export default function Home() {
               x: {
                 repeat: Infinity,
                 repeatType: "loop",
-                duration: 30,
+                duration: 40,
                 ease: "linear",
               },
             }}
-            className="flex whitespace-nowrap"
+            className="flex w-max whitespace-nowrap items-center"
           >
             {[
-              { name: "Icatu", logo: "/partners/icatu.jpg", link: "https://www.icatuseguros.com.br" },
-              { name: "Ituran", logo: "/partners/ituran.jpg", link: "https://www.ituran.com.br" },
+              { name: "Azos", logo: "/partners/azos.jpg", link: "https://www.azos.com.br" },
               { name: "Omint", logo: "/partners/omint.jpg", link: "https://www.omint.com.br" },
-              { name: "Petlove", logo: "/partners/pet.jpg", link: "https://www.petlove.com.br" },
               { name: "Porto Seguro", logo: "/partners/porto.jpg", link: "https://www.portoseguro.com.br" },
-              { name: "Suhai", logo: "/partners/suhai.jpg", link: "https://suhaiseguradora.com" },
-              { name: "SulAmérica", logo: "/partners/sul america.jpg", link: "https://www.sulamerica.com.br" },
+              { name: "SulAmérica", logo: "/partners/sulamerica.jpg", link: "https://www.sulamerica.com.br" },
+              { name: "Bradesco Seguros", logo: "/partners/bradescoseguros.jpg", link: "https://www.bradescoseguros.com.br" },
+              { name: "Icatu", logo: "/partners/icatu.jpg", link: "https://www.icatuseguros.com.br" },
+              { name: "Petlove", logo: "/partners/pet.jpg", link: "https://www.petlove.com.br" },
+              { name: "HDI", logo: "/partners/hdi.png", link: "https://www.hdi.com.br" },
               { name: "Tokio Marine", logo: "/partners/tokio.jpg", link: "https://www.tokiomarine.com.br" },
+              { name: "Allianz", logo: "/partners/alianz.png", link: "https://www.allianz.com.br" },
+              { name: "Suhai", logo: "/partners/suhai.jpg", link: "https://suhaiseguradora.com" },
+              { name: "Ituran", logo: "/partners/ituran.jpg", link: "https://www.ituran.com.br" },
               // Duplicate for seamless loop
-              { name: "Icatu", logo: "/partners/icatu.jpg", link: "https://www.icatuseguros.com.br" },
-              { name: "Ituran", logo: "/partners/ituran.jpg", link: "https://www.ituran.com.br" },
+              { name: "Azos", logo: "/partners/azos.jpg", link: "https://www.azos.com.br" },
               { name: "Omint", logo: "/partners/omint.jpg", link: "https://www.omint.com.br" },
-              { name: "Petlove", logo: "/partners/pet.jpg", link: "https://www.petlove.com.br" },
               { name: "Porto Seguro", logo: "/partners/porto.jpg", link: "https://www.portoseguro.com.br" },
-              { name: "Suhai", logo: "/partners/suhai.jpg", link: "https://suhaiseguradora.com" },
-              { name: "SulAmérica", logo: "/partners/sul america.jpg", link: "https://www.sulamerica.com.br" },
+              { name: "SulAmérica", logo: "/partners/sulamerica.jpg", link: "https://www.sulamerica.com.br" },
+              { name: "Bradesco Seguros", logo: "/partners/bradescoseguros.jpg", link: "https://www.bradescoseguros.com.br" },
+              { name: "Icatu", logo: "/partners/icatu.jpg", link: "https://www.icatuseguros.com.br" },
+              { name: "Petlove", logo: "/partners/pet.jpg", link: "https://www.petlove.com.br" },
+              { name: "HDI", logo: "/partners/hdi.png", link: "https://www.hdi.com.br" },
               { name: "Tokio Marine", logo: "/partners/tokio.jpg", link: "https://www.tokiomarine.com.br" },
+              { name: "Allianz", logo: "/partners/alianz.png", link: "https://www.allianz.com.br" },
+              { name: "Suhai", logo: "/partners/suhai.jpg", link: "https://suhaiseguradora.com" },
+              { name: "Ituran", logo: "/partners/ituran.jpg", link: "https://www.ituran.com.br" },
             ].map((p, i) => (
               <a
                 key={i}
                 href={p.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mx-12 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-60 hover:opacity-100"
+                className="mx-12 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-70 hover:opacity-100 mix-blend-multiply"
               >
                 <img
                   src={p.logo}
                   alt={p.name}
-                  className="h-12 md:h-16 w-auto object-contain"
+                  className="h-16 md:h-20 w-auto object-contain max-w-[150px]"
                 />
               </a>
             ))}
