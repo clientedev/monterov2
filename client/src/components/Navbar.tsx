@@ -43,13 +43,13 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         <Link href="/">
           <a className="flex items-center group cursor-pointer">
-            <div className="relative h-16 md:h-20 flex items-center">
+            <div className="relative h-16 md:h-20 flex items-center overflow-visible">
               {settings?.logoBase64 ? (
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
                   className={cn(
-                    "h-16 md:h-20 w-auto object-contain transition-all duration-300 origin-left scale-[1.3] md:scale-[1.5] group-hover:scale-[1.35] md:group-hover:scale-[1.55]",
+                    "h-20 md:h-24 w-auto object-contain transition-all duration-300 origin-left scale-[1.3] md:scale-[1.5] group-hover:scale-[1.35] md:group-hover:scale-[1.55]",
                     scrolled && "brightness-0"
                   )}
                 />
@@ -58,7 +58,7 @@ export function Navbar() {
                   src={logo}
                   alt="Monteiro Seguros e Benefícios"
                   className={cn(
-                    "h-16 md:h-20 w-auto object-contain transition-all duration-300 origin-left scale-[1.3] md:scale-[1.5] group-hover:scale-[1.35] md:group-hover:scale-[1.55]",
+                    "h-20 md:h-24 w-auto object-contain transition-all duration-300 origin-left scale-[1.3] md:scale-[1.5] group-hover:scale-[1.35] md:group-hover:scale-[1.55]",
                     scrolled && "brightness-0"
                   )}
                 />
