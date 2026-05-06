@@ -26,10 +26,13 @@ import {
     Image as ImageIcon,
     LayoutTemplate,
     Eye,
-    Smartphone
+    Smartphone,
+    Maximize,
+    Minimize
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { ImageUpload } from "@/components/ImageUpload";
+import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Dialog,
@@ -212,6 +215,8 @@ export default function SiteConfigPage() {
             contactPhone: "+55 (11) 9999-9999",
             address: "Rua do Comércio, 123, São Paulo, SP",
             footerText: "Oferecemos soluções premium em seguros personalizadas...",
+            logoScale: 150,
+            logoScaleMobile: 130,
         },
     });
 
@@ -310,6 +315,64 @@ export default function SiteConfigPage() {
                                             </FormItem>
                                         )}
                                     />
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                                        <FormField
+                                            control={siteForm.control}
+                                            name="logoScale"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <FormLabel className="text-sm font-bold text-slate-700">Tamanho da Logo (Desktop)</FormLabel>
+                                                        <span className="text-xs font-mono font-bold text-primary">{field.value}%</span>
+                                                    </div>
+                                                    <FormControl>
+                                                        <div className="flex items-center gap-4">
+                                                            <Minimize className="h-4 w-4 text-slate-400" />
+                                                            <Slider
+                                                                min={50}
+                                                                max={300}
+                                                                step={5}
+                                                                value={[field.value || 150]}
+                                                                onValueChange={(val) => field.onChange(val[0])}
+                                                                className="flex-1"
+                                                            />
+                                                            <Maximize className="h-4 w-4 text-slate-400" />
+                                                        </div>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <FormField
+                                            control={siteForm.control}
+                                            name="logoScaleMobile"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <FormLabel className="text-sm font-bold text-slate-700">Tamanho da Logo (Mobile)</FormLabel>
+                                                        <span className="text-xs font-mono font-bold text-primary">{field.value}%</span>
+                                                    </div>
+                                                    <FormControl>
+                                                        <div className="flex items-center gap-4">
+                                                            <Smartphone className="h-4 w-4 text-slate-400" />
+                                                            <Slider
+                                                                min={50}
+                                                                max={300}
+                                                                step={5}
+                                                                value={[field.value || 130]}
+                                                                onValueChange={(val) => field.onChange(val[0])}
+                                                                className="flex-1"
+                                                            />
+                                                            <Maximize className="h-4 w-4 text-slate-400" />
+                                                        </div>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>

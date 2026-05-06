@@ -48,8 +48,13 @@ export function Navbar() {
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
+                  style={{ 
+                    '--logo-scale': `${(settings.logoScale || 150) / 100}`,
+                    '--logo-scale-mobile': `${(settings.logoScaleMobile || 130) / 100}`
+                  } as React.CSSProperties}
                   className={cn(
-                    "h-20 md:h-24 w-auto object-contain transition-all duration-300 origin-left scale-[1.3] md:scale-[1.5] group-hover:scale-[1.35] md:group-hover:scale-[1.55]",
+                    "h-20 md:h-24 w-auto object-contain transition-all duration-300 origin-left",
+                    "scale-[var(--logo-scale-mobile)] md:scale-[var(--logo-scale)] group-hover:scale-[calc(var(--logo-scale-mobile)*1.05)] md:group-hover:scale-[calc(var(--logo-scale)*1.05)]",
                     scrolled && "brightness-0"
                   )}
                 />
@@ -57,8 +62,13 @@ export function Navbar() {
                 <img
                   src={logo}
                   alt="Monteiro Seguros e Benefícios"
+                  style={{ 
+                    '--logo-scale': `${(settings?.logoScale || 150) / 100}`,
+                    '--logo-scale-mobile': `${(settings?.logoScaleMobile || 130) / 100}`
+                  } as React.CSSProperties}
                   className={cn(
-                    "h-20 md:h-24 w-auto object-contain transition-all duration-300 origin-left scale-[1.3] md:scale-[1.5] group-hover:scale-[1.35] md:group-hover:scale-[1.55]",
+                    "h-20 md:h-24 w-auto object-contain transition-all duration-300 origin-left",
+                    "scale-[var(--logo-scale-mobile)] md:scale-[var(--logo-scale)] group-hover:scale-[calc(var(--logo-scale-mobile)*1.05)] md:group-hover:scale-[calc(var(--logo-scale)*1.05)]",
                     scrolled && "brightness-0"
                   )}
                 />

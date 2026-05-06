@@ -141,6 +141,8 @@ export const siteSettings = pgTable("site_settings", {
   secondaryColor: text("secondary_color").notNull().default("#fbbf24"),
   fontSans: text("font_sans").notNull().default("Inter"),
   fontDisplay: text("font_display").notNull().default("Outfit"),
+  logoScale: integer("logo_scale").notNull().default(150),
+  logoScaleMobile: integer("logo_scale_mobile").notNull().default(130),
 
   heroTitle: text("hero_title").notNull().default("Proteção que Transforma,\nBenefícios que Cuidam"),
   heroSubtitle: text("hero_subtitle").notNull().default("A Monteiro Seguros e Benefícios é especializada em consultoria estratégica em proteção e benefícios para empresas e famílias."),
@@ -253,7 +255,10 @@ export const insertInteractionSchema = createInsertSchema(interactions).omit({ i
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({ id: true, createdAt: true });
 export const insertMarketingStatsSchema = createInsertSchema(marketingStats).omit({ id: true });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true });
-export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({ id: true, updatedAt: true });
+export const insertSiteSettingsSchema = createInsertSchema(siteSettings, {
+  logoScale: z.coerce.number(),
+  logoScaleMobile: z.coerce.number(),
+}).omit({ id: true, updatedAt: true });
 export const insertHeroSlideSchema = createInsertSchema(heroSlides).omit({ id: true, createdAt: true });
 export const insertProspectingChecklistSchema = createInsertSchema(prospectingChecklists).omit({ id: true, createdAt: true });
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, isApproved: true });
