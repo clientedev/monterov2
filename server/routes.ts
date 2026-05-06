@@ -969,15 +969,15 @@ export async function registerRoutes(
       { terms: ["farmácias de manipulação", "manipulação", "homeopatia", "fitoterápico"], cnae: "4771702", label: "Farmácia Manipulação", cnaeDesc: "Comércio varejista de produtos farmacêuticos, com manipulação" },
     ];
 
-    // Detect niche from keyword
-    let detectedNiche = NICHE_MAP.find(n =>
-      n.terms.some(term => keyword.includes(term) || term.includes(keyword))
-    );
+    const cnaeClean = (cnae as string || "").replace(/\D/g, "");
+    
+    // Detect niche from CNAE or keyword
+    let detectedNiche = cnaeClean 
+      ? NICHE_MAP.find(n => n.cnae === cnaeClean)
+      : (keyword ? NICHE_MAP.find(n => n.terms.some(term => keyword.includes(term) || term.includes(keyword))) : undefined);
 
     // Explicit CNAE override
-    const cnaeCode = cnae
-      ? (cnae as string).replace(/\D/g, "")
-      : detectedNiche?.cnae || "";
+    const cnaeCode = cnaeClean || detectedNiche?.cnae || "";
 
     console.log(`[CompanySearch] UF=${uf} | Cidade=${municipio} | Bairro=${bairroFiltroInput} | CNAE=${cnaeCode} | Nicho=${detectedNiche?.label || "geral"} | Keyword="${keyword}"`);
 
@@ -1034,10 +1034,6 @@ export async function registerRoutes(
               email: est.email || c.email || "",
             };
           });
-
-          if (results.length > 0) {
-            apiSuccess = true;
-          }
         }
       } catch (e: any) {
         console.warn(`[CompanySearch] CNPJ API falhou: ${e.message}`);
@@ -1045,10 +1041,40 @@ export async function registerRoutes(
     }
 
     // -----------------------------------------------------------------------
-    // OSM Overpass fallback — fetch REAL businesses from OpenStreetMap
+    // Post-processing filter: Ensure results match the city and bairro filters strictly (case-insensitive)
     // -----------------------------------------------------------------------
-    if (!apiSuccess) {
-      console.warn(`[CompanySearch] CNPJ API sem resultado. Buscando negócios reais no OSM para: ${bairroFiltroInput || municipio}`);
+    const normalize = (str: string) => 
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+
+    const applyFilters = (items: any[]) => {
+      let filtered = items;
+      if (bairroFiltroInput && filtered.length > 0) {
+        const bSearch = normalize(bairroFiltroInput);
+        filtered = filtered.filter(c => {
+          const companyBairro = normalize(c.bairro || "");
+          return !companyBairro || companyBairro.includes(bSearch) || bSearch.includes(companyBairro);
+        });
+      }
+
+      if (municipio && filtered.length > 0) {
+        const mSearch = normalize(municipio);
+        filtered = filtered.filter(c => {
+          const companyCity = normalize(c.municipio || "");
+          return !companyCity || companyCity.includes(mSearch) || mSearch.includes(companyCity);
+        });
+      }
+      return filtered;
+    };
+
+    // Apply initial filters to CNPJ results
+    results = applyFilters(results);
+
+    // -----------------------------------------------------------------------
+    // OSM Overpass fallback — fetch REAL businesses from OpenStreetMap
+    // If CNPJ API failed OR returned nothing after filtering
+    // -----------------------------------------------------------------------
+    if (results.length === 0) {
+      console.warn(`[CompanySearch] Buscando no OSM (CNPJ API sem resultados para os filtros)...`);
 
       // Map niche keyword to OSM amenity/shop tags
       const OSM_TAG_MAP: Record<string, string[]> = {
@@ -1072,12 +1098,9 @@ export async function registerRoutes(
       const nicheLabel = detectedNiche?.label || "";
       let osmTags = OSM_TAG_MAP[nicheLabel] || ["amenity=yes", "shop=yes", "office=yes"];
 
-      // Build Overpass QL query — search within the neighborhood polygon in the city
-      const locationQuery = bairroFiltroInput
-        ? `"${bairroFiltroInput}" "${municipio || ""}" "${uf || ""}" Brazil`
-        : `"${municipio || targetCity}" "${uf || ""}" Brazil`;
+      // If we have a keyword but no niche, try to search by name as well
+      const keywordTag = keyword ? `node["name"~"${keyword}",i](area.searchArea);\nway["name"~"${keyword}",i](area.searchArea);` : "";
 
-      // Build tag union for Overpass
       const tagUnion = osmTags
         .map(tag => {
           const [k, v] = tag.split("=");
@@ -1085,7 +1108,7 @@ export async function registerRoutes(
             ? `node["${k}"](area.searchArea);\nway["${k}"](area.searchArea);`
             : `node["${k}"="${v}"](area.searchArea);\nway["${k}"="${v}"](area.searchArea);`;
         })
-        .join("\n");
+        .join("\n") + "\n" + keywordTag;
 
       const areaSearchName = municipio || targetCity || "São Paulo";
       const overpassQuery = `
@@ -1142,8 +1165,10 @@ out center 100;
                   lng,
                 };
               });
+            // Apply filters to OSM results as well
+            results = applyFilters(results);
             apiSuccess = true;
-            console.log(`[CompanySearch] OSM: ${results.length} negócios reais encontrados`);
+            console.log(`[CompanySearch] OSM: ${results.length} negócios reais encontrados após filtros`);
           }
         }
       } catch (e: any) {
@@ -1151,33 +1176,9 @@ out center 100;
       }
     }
 
-    // -----------------------------------------------------------------------
-    // Last resort: if both CNPJ API and OSM failed, return empty with a message
-    // -----------------------------------------------------------------------
-    if (!apiSuccess || results.length === 0) {
+    if (results.length === 0) {
       console.warn(`[CompanySearch] Nenhum dado real encontrado para: ${bairroFiltroInput || municipio}`);
-      // Return empty — the frontend will show "Nenhum resultado encontrado"
       return res.json([]);
-    }
-
-    // Post-processing filter: Ensure results match the city and bairro filters strictly (case-insensitive)
-    const normalize = (str: string) => 
-      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
-
-    if (bairroFiltroInput && results.length > 0) {
-      const bSearch = normalize(bairroFiltroInput);
-      results = results.filter(c => {
-        const companyBairro = normalize(c.bairro || "");
-        return !companyBairro || companyBairro.includes(bSearch) || bSearch.includes(companyBairro);
-      });
-    }
-
-    if (municipio && results.length > 0) {
-      const mSearch = normalize(municipio);
-      results = results.filter(c => {
-        const companyCity = normalize(c.municipio || "");
-        return !companyCity || companyCity.includes(mSearch) || mSearch.includes(companyCity);
-      });
     }
 
     console.log(`[CompanySearch] Retornando ${results.length} empresas reais | nicho=${detectedNiche?.label || "geral"} | bairro=${bairroFiltroInput || "todos"}`);
