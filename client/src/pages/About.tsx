@@ -110,7 +110,7 @@ export default function About() {
             >
               <div className="aspect-[3/4] rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10 border-8 border-slate-50">
                 <img 
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=1200" 
+                  src="/carol10.jpg" 
                   alt="Carolina Monteiro" 
                   className="w-full h-full object-cover"
                 />
