@@ -205,7 +205,7 @@ export default function CompanySearchPage() {
             toast({ title: "Campo Obrigatório", description: "Informe o Estado e a Cidade para melhores resultados.", variant: "destructive" });
             return;
         }
-        const url = `/api/proxy/companies/search?state=${encodeURIComponent(stateName)}&city=${encodeURIComponent(cityName)}&neighborhood=${encodeURIComponent(neighborhood)}&cnae=${encodeURIComponent(cnae)}&q=${encodeURIComponent(query)}`;
+        const url = `/api/proxy/companies/search?state=${encodeURIComponent(stateName)}&city=${encodeURIComponent(cityName)}&cityId=${cityId}&neighborhood=${encodeURIComponent(neighborhood)}&cnae=${encodeURIComponent(cnae)}&q=${encodeURIComponent(query)}`;
         setSearchUrl(url);
         setCurrentPage(1); // Reset to first page
     };

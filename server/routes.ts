@@ -922,7 +922,7 @@ export async function registerRoutes(
 
   // Company Search Proxy (Filtered by region and CNAE)
   app.get("/api/proxy/companies/search", isAuthenticated, async (req, res) => {
-    const { state, city, cnae, q, neighborhood } = req.query;
+    const { state, city, cnae, q, neighborhood, cityId } = req.query;
 
     if (!state && !q) {
       return res.status(400).json({ message: "Informe pelo menos o Estado." });
@@ -991,11 +991,16 @@ export async function registerRoutes(
       try {
         const params = new URLSearchParams();
         if (uf) params.set("uf", uf);
-        if (municipio) params.set("municipio", municipio.toUpperCase());
+        
+        // Use IBGE City ID if available, otherwise use name
+        if (cityId) {
+          params.set("municipio", cityId as string);
+        } else if (municipio) {
+          params.set("municipio", municipio.toUpperCase());
+        }
+        
         if (cnaeCode) params.set("cnae", cnaeCode);
-        // Use the keyword as the primary search term if provided
         if (keyword) params.set("q", keyword.toUpperCase());
-        // If no keyword but neighborhood is provided, we can try using neighborhood as 'q' for the API
         else if (bairroFiltroInput) params.set("q", bairroFiltroInput.toUpperCase());
 
         const url = `https://publica.cnpj.ws/cnpjs?${params.toString()}`;
@@ -1088,7 +1093,10 @@ export async function registerRoutes(
       const areaName = municipio || targetCity || "São Paulo";
       const overpassQuery = `
 [out:json][timeout:30];
-area[name="${areaName}"]->.searchArea;
+(
+  area[name="${areaName}"][admin_level=8];
+  area[name="${areaName}"][admin_level=4];
+)->.searchArea;
 (
 ${tagUnion}
 );
@@ -1159,19 +1167,21 @@ out center 50;
     }
 
     // Post-processing filter: Ensure results match the city and bairro filters strictly (case-insensitive)
+    const normalize = (str: string) => 
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+
     if (bairroFiltroInput && results.length > 0) {
-      const bSearch = bairroFiltroInput.toUpperCase().trim();
+      const bSearch = normalize(bairroFiltroInput);
       results = results.filter(c => {
-        const companyBairro = (c.bairro || "").toUpperCase().trim();
-        // Return true if the neighborhood matches or if the neighborhood data is missing (to avoid over-filtering)
+        const companyBairro = normalize(c.bairro || "");
         return !companyBairro || companyBairro.includes(bSearch) || bSearch.includes(companyBairro);
       });
     }
 
     if (municipio && results.length > 0) {
-      const mSearch = municipio.toUpperCase().trim();
+      const mSearch = normalize(municipio);
       results = results.filter(c => {
-        const companyCity = (c.municipio || "").toUpperCase().trim();
+        const companyCity = normalize(c.municipio || "");
         return !companyCity || companyCity.includes(mSearch) || mSearch.includes(companyCity);
       });
     }
