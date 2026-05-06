@@ -93,20 +93,26 @@ export default function CompanySearchPage() {
         });
 
         // Geocode the searched location and add markers
-        const loc = results?.[0]?.municipio ? `${results[0].municipio}, ${results[0].uf}, Brasil` : "Brasil";
+        // If we have a specific result, try to geocode its full address for better accuracy
+        const company = results[0];
+        const loc = company 
+            ? `${company.logradouro || ''} ${company.numero || ''}, ${company.bairro || ''}, ${company.municipio || ''}, ${company.uf || ''}, Brasil`
+            : "Brasil";
+
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc)}&limit=1`)
             .then(r => r.json())
             .then(geoData => {
                 if (geoData?.[0]) {
                     const lat = parseFloat(geoData[0].lat);
                     const lng = parseFloat(geoData[0].lon);
-                    map.flyTo([lat, lng], neighborhood ? 14 : 12, { duration: 1.5 });
+                    map.flyTo([lat, lng], 15, { duration: 1.5 });
 
                     results.forEach((company, idx) => {
-                        // Spread markers around center point for demo
-                        const offset = (idx - results.length / 2) * 0.003;
-                        const latPos = lat + offset + (Math.random() - 0.5) * 0.002;
-                        const lngPos = lng + offset * 0.8 + (Math.random() - 0.5) * 0.002;
+                        // Use exact position if geocoded successfully for the first one, 
+                        // or add small random offset for others if many (though it's usually 1 now)
+                        const offset = idx === 0 ? 0 : (idx - results.length / 2) * 0.003;
+                        const latPos = lat + offset;
+                        const lngPos = lng + offset * 0.8;
 
                         // Store these coordinates on the object for handleFocusMarker
                         company.lat = latPos;
