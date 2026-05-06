@@ -986,7 +986,10 @@ export async function registerRoutes(
         if (uf) params.set("uf", uf);
         if (municipio) params.set("municipio", municipio.toUpperCase());
         if (cnaeCode) params.set("cnae", cnaeCode);
-        if (bairroFiltroInput) params.set("q", bairroFiltroInput.toUpperCase());
+        // Use the keyword as the primary search term if provided
+        if (keyword) params.set("q", keyword.toUpperCase());
+        // If no keyword but neighborhood is provided, we can try using neighborhood as 'q' for the API
+        else if (bairroFiltroInput) params.set("q", bairroFiltroInput.toUpperCase());
 
         const url = `https://publica.cnpj.ws/cnpjs?${params.toString()}`;
         const apiRes = await fetch(url, {
@@ -1076,11 +1079,9 @@ export async function registerRoutes(
         .join("\n");
 
       const areaName = municipio || targetCity || "São Paulo";
-      const bairroName = bairroFiltroInput || "";
       const overpassQuery = `
 [out:json][timeout:30];
 area[name="${areaName}"]->.searchArea;
-${bairroName ? `area[name="${bairroName}"](area.searchArea)->.searchArea;` : ""}
 (
 ${tagUnion}
 );
@@ -1153,16 +1154,19 @@ out center 50;
     // Post-processing filter: Ensure results match the city and bairro filters strictly (case-insensitive)
     if (bairroFiltroInput && results.length > 0) {
       const bSearch = bairroFiltroInput.toUpperCase().trim();
-      results = results.filter(c =>
-        (c.bairro || "").toUpperCase().trim().includes(bSearch)
-      );
+      results = results.filter(c => {
+        const companyBairro = (c.bairro || "").toUpperCase().trim();
+        // Return true if the neighborhood matches or if the neighborhood data is missing (to avoid over-filtering)
+        return !companyBairro || companyBairro.includes(bSearch) || bSearch.includes(companyBairro);
+      });
     }
 
     if (municipio && results.length > 0) {
       const mSearch = municipio.toUpperCase().trim();
-      results = results.filter(c =>
-        !c.municipio || (c.municipio || "").toUpperCase().trim().includes(mSearch)
-      );
+      results = results.filter(c => {
+        const companyCity = (c.municipio || "").toUpperCase().trim();
+        return !companyCity || companyCity.includes(mSearch) || mSearch.includes(companyCity);
+      });
     }
 
     console.log(`[CompanySearch] Retornando ${results.length} empresas reais | nicho=${detectedNiche?.label || "geral"} | bairro=${bairroFiltroInput || "todos"}`);
