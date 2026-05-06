@@ -200,17 +200,6 @@ export default function CompanySearchPage() {
         },
     });
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!stateName || !cityName) {
-            toast({ title: "Campo Obrigatório", description: "Informe o Estado e a Cidade para melhores resultados.", variant: "destructive" });
-            return;
-        }
-        const url = `/api/proxy/companies/search?state=${encodeURIComponent(stateName)}&city=${encodeURIComponent(cityName)}&cityId=${cityId}&neighborhood=${encodeURIComponent(neighborhood)}&cnae=${encodeURIComponent(cnae)}&q=${encodeURIComponent(query)}`;
-        setSearchUrl(url);
-        setCurrentPage(1); // Reset to first page
-    };
-
     const handleCnpjSearch = async () => {
         const cleanCnpj = cnpjInput.replace(/\D/g, "");
         if (cleanCnpj.length !== 14) {
@@ -249,7 +238,7 @@ export default function CompanySearchPage() {
                         Prospecção Inteligente
                     </h2>
                     <p className="text-slate-500 mt-2 font-medium">
-                        Varredura de empresas ativas por bairro e setor de atividade.
+                        Consulta instantânea de empresas ativas na base da Receita Federal.
                     </p>
                 </div>
                 <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 shadow-lg shadow-amber-500/20 flex items-center justify-center">
@@ -276,6 +265,7 @@ export default function CompanySearchPage() {
                                     Busca Direta por CNPJ
                                 </div>
                                 <div className="space-y-2">
+                                    <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">Digite o CNPJ</Label>
                                     <Input
                                         placeholder="00.000.000/0000-00"
                                         value={cnpjInput}
@@ -288,170 +278,17 @@ export default function CompanySearchPage() {
                                         className="w-full bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20"
                                     >
                                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-                                        Consultar CNPJ
+                                        Consultar Empresa
                                     </Button>
                                 </div>
                             </div>
 
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-slate-200" />
+                            {error && (
+                                <div className="flex items-center gap-2 text-red-500 text-xs font-medium bg-red-50 p-2 rounded-lg">
+                                    <AlertCircle className="h-4 w-4 shrink-0" />
+                                    Falha ao buscar. Verifique o CNPJ ou o servidor.
                                 </div>
-                                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-tighter">
-                                    <span className="bg-white px-2 text-slate-400">Ou busque por localidade</span>
-                                </div>
-                            </div>
-
-                            <form onSubmit={handleSearch} className="space-y-4">
-                                {/* Estado */}
-                                <div className="space-y-1.5">
-                                    <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">Estado *</Label>
-                                    <Select
-                                        value={stateId}
-                                        onValueChange={(val) => {
-                                            const s = states?.find(x => x.id.toString() === val);
-                                            setStateId(val);
-                                            setStateName(s?.sigla || "");
-                                            setCityId("");
-                                            setCityName("");
-                                            setNeighborhood("");
-                                        }}
-                                    >
-                                        <SelectTrigger className="bg-slate-50 border-slate-200 h-10">
-                                            <SelectValue placeholder="Selecione o Estado" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {states?.map(s => (
-                                                <SelectItem key={s.id} value={s.id.toString()}>{s.nome} ({s.sigla})</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Cidade - Autocomplete */}
-                                <div className="space-y-1.5">
-                                    <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">Cidade</Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn("w-full justify-between bg-slate-50 border-slate-200 h-10", !cityName && "text-muted-foreground")}
-                                                disabled={!stateId || isLoadingCities}
-                                            >
-                                                {cityName || (isLoadingCities ? "Carregando..." : "Selecione a cidade")}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0 shadow-2xl border-slate-200">
-                                            <Command>
-                                                <CommandInput placeholder="Buscar cidade..." />
-                                                <CommandList>
-                                                    <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {cities?.map((city) => (
-                                                            <CommandItem
-                                                                key={city.id}
-                                                                value={city.nome}
-                                                                onSelect={() => {
-                                                                    setCityId(city.id.toString());
-                                                                    setCityName(city.nome);
-                                                                    setNeighborhood("");
-                                                                }}
-                                                            >
-                                                                <Check className={cn("mr-2 h-4 w-4", cityName === city.nome ? "opacity-100" : "opacity-0")} />
-                                                                {city.nome}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-
-                                {/* Bairro - Autocomplete */}
-                                <div className="space-y-1.5">
-                                    <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">Bairro</Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn("w-full justify-between bg-slate-50 border-slate-200 h-10 ring-2 ring-amber-100", !neighborhood && "text-muted-foreground")}
-                                                disabled={!cityId || isLoadingDistricts}
-                                            >
-                                                {neighborhood || (isLoadingDistricts ? "Carregando..." : "Selecione o bairro")}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0 shadow-2xl border-slate-200">
-                                            <Command>
-                                                <CommandInput placeholder="Buscar bairro..." />
-                                                <CommandList>
-                                                    <CommandEmpty>Nenhum bairro encontrado.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {districts?.map((d) => (
-                                                            <CommandItem
-                                                                key={d.id}
-                                                                value={d.nome}
-                                                                onSelect={() => {
-                                                                    setNeighborhood(d.nome);
-                                                                }}
-                                                            >
-                                                                <Check className={cn("mr-2 h-4 w-4", neighborhood === d.nome ? "opacity-100" : "opacity-0")} />
-                                                                {d.nome}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">CNAE (Setor)</Label>
-                                    <Input
-                                        placeholder="Ex: 6512, 4511, 4530..."
-                                        className="bg-slate-50 border-slate-200 h-10"
-                                        value={cnae}
-                                        onChange={(e) => setCnae(e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">Palavra-chave</Label>
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                                        <Input
-                                            placeholder="Nome da empresa..."
-                                            className="pl-9 bg-slate-50 border-slate-200 h-10"
-                                            value={query}
-                                            onChange={(e) => setQuery(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                <Button
-                                    type="submit"
-                                    className="w-full h-11 font-bold tracking-wide bg-slate-900 hover:bg-slate-800 text-white shadow-lg"
-                                    disabled={isLoading}
-                                >
-                                    {isLoading ? (
-                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Varrendo...</>
-                                    ) : (
-                                        <><Search className="mr-2 h-4 w-4" /> Iniciar Varredura</>
-                                    )}
-                                </Button>
-
-                                {error && (
-                                    <div className="flex items-center gap-2 text-red-500 text-xs font-medium bg-red-50 p-2 rounded-lg">
-                                        <AlertCircle className="h-4 w-4 shrink-0" />
-                                        Falha ao buscar. Verifique o servidor.
-                                    </div>
-                                )}
-                            </form>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
