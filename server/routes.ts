@@ -998,20 +998,27 @@ export async function registerRoutes(
           const data = await apiRes.json();
           const raw = Array.isArray(data) ? data : (data.data || data.companies || []);
 
-          results = raw.map((c: any) => ({
-            razao_social: c.razao_social || c.nome || "",
-            nome_fantasia: c.nome_fantasia || "",
-            cnpj: c.cnpj || "",
-            logradouro: c.logradouro || c.endereco?.logradouro || "",
-            numero: c.numero || c.endereco?.numero || "",
-            bairro: c.bairro || c.endereco?.bairro || "",
-            municipio: c.municipio || c.endereco?.municipio || targetCity,
-            uf: c.uf || c.endereco?.uf || targetUf,
-            cep: c.cep || c.endereco?.cep || "",
-            cnae_principal_descricao: c.cnae_fiscal_descricao || c.atividade_principal?.[0]?.text || detectedNiche?.cnaeDesc || "",
-            ddd_telefone_1: c.ddd_telefone_1 || c.telefone || "",
-            email: c.email || "",
-          }));
+          results = raw.map((c: any) => {
+            const est = c.estabelecimento || {};
+            const ender = est.logradouro ? est : (c.endereco || {});
+            const cityData = ender.cidade || {};
+            const stateData = ender.estado || {};
+
+            return {
+              razao_social: c.razao_social || c.nome || est.nome_fantasia || "",
+              nome_fantasia: est.nome_fantasia || c.nome_fantasia || "",
+              cnpj: c.cnpj || est.cnpj || "",
+              logradouro: ender.logradouro || c.logradouro || "",
+              numero: ender.numero || c.numero || "",
+              bairro: ender.bairro || c.bairro || "",
+              municipio: cityData.nome || ender.municipio || c.municipio || targetCity,
+              uf: stateData.sigla || ender.uf || c.uf || targetUf,
+              cep: ender.cep || c.cep || "",
+              cnae_principal_descricao: c.cnae_fiscal_descricao || est.atividade_principal?.classe_descricao || c.atividade_principal?.[0]?.text || detectedNiche?.cnaeDesc || "",
+              ddd_telefone_1: est.ddd1 && est.telefone1 ? `(${est.ddd1}) ${est.telefone1}` : (c.ddd_telefone_1 || c.telefone || est.telefone || ""),
+              email: est.email || c.email || "",
+            };
+          });
 
           if (results.length > 0) {
             apiSuccess = true;
@@ -1055,8 +1062,8 @@ export async function registerRoutes(
 
       // Build Overpass QL query — search within the neighborhood polygon in the city
       const locationQuery = bairroFiltroInput
-        ? `"${bairroFiltroInput}" "${municipio || ""}" Brazil`
-        : `"${municipio || targetCity}" Brazil`;
+        ? `"${bairroFiltroInput}" "${municipio || ""}" "${uf || ""}" Brazil`
+        : `"${municipio || targetCity}" "${uf || ""}" Brazil`;
 
       // Build tag union for Overpass
       const tagUnion = osmTags
@@ -1068,10 +1075,12 @@ export async function registerRoutes(
         })
         .join("\n");
 
-      const areaName = bairroFiltroInput || municipio || "São Paulo";
+      const areaName = municipio || targetCity || "São Paulo";
+      const bairroName = bairroFiltroInput || "";
       const overpassQuery = `
 [out:json][timeout:30];
 area[name="${areaName}"]->.searchArea;
+${bairroName ? `area[name="${bairroName}"](area.searchArea)->.searchArea;` : ""}
 (
 ${tagUnion}
 );

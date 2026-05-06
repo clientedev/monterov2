@@ -20,6 +20,8 @@ import {
     AlertCircle,
     Check,
     ChevronsUpDown,
+    Phone,
+    Mail,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -505,6 +507,20 @@ export default function CompanySearchPage() {
                                                     {[company.logradouro, company.numero, company.bairro, company.municipio]
                                                         .filter(Boolean).join(', ')}
                                                 </span>
+                                            </div>
+                                            <div className="flex flex-col gap-1.5 pt-1">
+                                                {company.ddd_telefone_1 && (
+                                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium">
+                                                        <Phone className="h-3 w-3 text-amber-500" />
+                                                        {company.ddd_telefone_1}
+                                                    </div>
+                                                )}
+                                                {company.email && (
+                                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium truncate">
+                                                        <Mail className="h-3 w-3 text-amber-500" />
+                                                        {company.email}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex flex-wrap gap-1">
                                                 {company.cnae_principal_descricao && (
