@@ -1040,6 +1040,29 @@ export async function registerRoutes(
       }
     }
 
+    // Helper to resolve city to OSM area ID using Nominatim
+    const resolveOsmArea = async (city: string, state: string) => {
+      try {
+        const q = `${city}, ${state}, Brazil`;
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`, {
+          headers: { "User-Agent": "MonteiroSeguros/1.0" },
+          signal: AbortSignal.timeout(5000)
+        });
+        const data: any = await res.json();
+        if (data && data[0]) {
+          // Overpass area ID is 3600000000 + osm_id for relations, or 2400000000 + osm_id for ways
+          const osmId = data[0].osm_id;
+          const type = data[0].osm_type;
+          if (type === "relation") return 3600000000 + osmId;
+          if (type === "way") return 2400000000 + osmId;
+        }
+      } catch (e) {
+        console.error(`[CompanySearch] Nominatim failed:`, e);
+      }
+      return null;
+    };
+
+
     // -----------------------------------------------------------------------
     // Post-processing filter: Ensure results match the city and bairro filters strictly (case-insensitive)
     // -----------------------------------------------------------------------
@@ -1078,21 +1101,21 @@ export async function registerRoutes(
 
       // Map niche keyword to OSM amenity/shop tags
       const OSM_TAG_MAP: Record<string, string[]> = {
-        "Alimentação": ["amenity=restaurant", "amenity=cafe", "amenity=fast_food", "amenity=food_court", "amenity=bar", "shop=bakery"],
-        "Academia/Fitness": ["leisure=fitness_centre", "leisure=sports_centre", "leisure=gym"],
-        "Saúde": ["amenity=clinic", "amenity=doctors", "amenity=hospital", "healthcare=yes"],
-        "Advocacia": ["office=lawyer"],
-        "Contabilidade": ["office=accountant", "office=financial"],
-        "Automotivo": ["shop=car_repair", "amenity=car_wash", "shop=tyres", "shop=car"],
-        "Beleza": ["shop=hairdresser", "shop=beauty", "amenity=beauty_salon"],
-        "Pet Shop": ["shop=pet", "amenity=veterinary"],
-        "Imóveis": ["office=estate_agent"],
-        "Seguros": ["office=insurance"],
-        "Tecnologia": ["office=it", "office=software"],
-        "Marketing": ["office=advertising_agency", "office=marketing"],
-        "Construção": ["office=construction", "craft=construction"],
-        "Logística": ["amenity=courier", "shop=shipping"],
-        "Farmácia Manipulação": ["amenity=pharmacy", "healthcare=pharmacy"],
+        "Alimentação": ["amenity=restaurant", "amenity=cafe", "amenity=fast_food", "amenity=food_court", "amenity=bar", "shop=bakery", "amenity=pub"],
+        "Academia/Fitness": ["leisure=fitness_centre", "leisure=sports_centre", "leisure=gym", "leisure=stadium"],
+        "Saúde": ["amenity=clinic", "amenity=doctors", "amenity=hospital", "healthcare=yes", "amenity=dentist"],
+        "Advocacia": ["office=lawyer", "office=yes"],
+        "Contabilidade": ["office=accountant", "office=financial", "office=yes"],
+        "Automotivo": ["shop=car_repair", "amenity=car_wash", "shop=tyres", "shop=car", "shop=car_parts"],
+        "Beleza": ["shop=hairdresser", "shop=beauty", "amenity=beauty_salon", "shop=cosmetics"],
+        "Pet Shop": ["shop=pet", "amenity=veterinary", "shop=pet_grooming"],
+        "Imóveis": ["office=estate_agent", "office=yes"],
+        "Seguros": ["office=insurance", "office=yes"],
+        "Tecnologia": ["office=it", "office=software", "office=yes"],
+        "Marketing": ["office=advertising_agency", "office=marketing", "office=yes"],
+        "Construção": ["office=construction", "craft=construction", "shop=hardware"],
+        "Logística": ["amenity=courier", "shop=shipping", "office=logistics"],
+        "Farmácia Manipulação": ["amenity=pharmacy", "healthcare=pharmacy", "shop=chemist"],
       };
 
       const nicheLabel = detectedNiche?.label || "";
@@ -1111,18 +1134,15 @@ export async function registerRoutes(
         .join("\n") + "\n" + keywordTag;
 
       const areaSearchName = municipio || targetCity || "São Paulo";
-      const overpassQuery = `
-[out:json][timeout:30];
-area["name"~"${areaSearchName}",i][admin_level~"8|4"]->.searchArea;
-(
-${tagUnion}
-);
-out center 100;
-`.trim();
+      const areaId = await resolveOsmArea(areaSearchName, targetUf);
+
+      const overpassQuery = areaId 
+        ? `[out:json][timeout:30];area(${areaId})->.searchArea;(${tagUnion});out center 100;`
+        : `[out:json][timeout:30];area["name"~"${areaSearchName}",i][admin_level~"8|4"]->.searchArea;(${tagUnion});out center 100;`;
 
       try {
         const overpassUrl = "https://overpass-api.de/api/interpreter";
-        console.log(`[CompanySearch] Overpass query para area: ${areaSearchName}`);
+        console.log(`[CompanySearch] Overpass query (areaId: ${areaId || "detecting..."}) para: ${areaSearchName}`);
 
         const osmRes = await fetch(overpassUrl, {
           method: "POST",
