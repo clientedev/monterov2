@@ -985,14 +985,14 @@ export async function registerRoutes(
     let apiSuccess = false;
 
     // -----------------------------------------------------------------------
-    // Strategy: publica.cnpj.ws — search by UF + municipio + CNAE
+    // Strategy: publica.cnpj.ws — Note: Search by filters is a Premium feature.
+    // If it fails with 404/403, we rely on the OSM fallback.
     // -----------------------------------------------------------------------
-    if (cnaeCode || municipio) {
+    if (cnaeCode || municipio || keyword) {
       try {
         const params = new URLSearchParams();
         if (uf) params.set("uf", uf);
         
-        // Use IBGE City ID if available, otherwise use name
         if (cityId) {
           params.set("municipio", cityId as string);
         } else if (municipio) {
@@ -1006,7 +1006,7 @@ export async function registerRoutes(
         const url = `https://publica.cnpj.ws/cnpjs?${params.toString()}`;
         const apiRes = await fetch(url, {
           headers: { "Accept": "application/json", "User-Agent": "MonteiroSeguros/1.0" },
-          signal: AbortSignal.timeout(7000),
+          signal: AbortSignal.timeout(5000),
         });
 
         if (apiRes.ok) {
@@ -1037,13 +1037,10 @@ export async function registerRoutes(
 
           if (results.length > 0) {
             apiSuccess = true;
-            console.log(`[CompanySearch] API retornou ${results.length} empresas reais`);
           }
-        } else {
-          console.warn(`[CompanySearch] API HTTP ${apiRes.status}`);
         }
       } catch (e: any) {
-        console.warn(`[CompanySearch] API falhou: ${e.message}`);
+        console.warn(`[CompanySearch] CNPJ API falhou: ${e.message}`);
       }
     }
 
@@ -1090,22 +1087,19 @@ export async function registerRoutes(
         })
         .join("\n");
 
-      const areaName = municipio || targetCity || "São Paulo";
+      const areaSearchName = municipio || targetCity || "São Paulo";
       const overpassQuery = `
 [out:json][timeout:30];
-(
-  area[name="${areaName}"][admin_level=8];
-  area[name="${areaName}"][admin_level=4];
-)->.searchArea;
+area["name"~"${areaSearchName}",i][admin_level~"8|4"]->.searchArea;
 (
 ${tagUnion}
 );
-out center 50;
+out center 100;
 `.trim();
 
       try {
         const overpassUrl = "https://overpass-api.de/api/interpreter";
-        console.log(`[CompanySearch] Overpass query para: ${areaName}`);
+        console.log(`[CompanySearch] Overpass query para area: ${areaSearchName}`);
 
         const osmRes = await fetch(overpassUrl, {
           method: "POST",
