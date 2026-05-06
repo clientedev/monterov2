@@ -253,32 +253,63 @@ export default function Home() {
       </section>
 
       {/* Partners / Logos Section */}
-      <section className="py-20 bg-white border-y border-slate-100">
-        <div className="container px-4 mx-auto">
-          <div className="text-center mb-12">
+      <section className="py-20 bg-white border-y border-slate-100 overflow-hidden">
+        <div className="container px-4 mx-auto mb-12">
+          <div className="text-center">
             <span className="text-primary font-bold tracking-wider text-xs uppercase">Nossos Parceiros</span>
             <h3 className="text-2xl font-display font-bold text-slate-800 mt-2">Trabalhamos com as melhores seguradoras</h3>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 items-center opacity-60 grayscale hover:grayscale-0 transition-all">
+        </div>
+
+        <div className="relative flex overflow-x-hidden">
+          <motion.div
+            animate={{
+              x: ["0%", "-50%"],
+            }}
+            transition={{
+              x: {
+                repeat: Infinity,
+                repeatType: "loop",
+                duration: 30,
+                ease: "linear",
+              },
+            }}
+            className="flex whitespace-nowrap"
+          >
             {[
-              { name: "Azos", logo: "https://brandfetch.com/azos.com.br" },
-              { name: "Omint", logo: "https://www.omint.com.br/wp-content/themes/omint/assets/img/logo-omint.png" },
-              { name: "Porto Seguro", logo: "https://www.portoseguro.com.br/content/dam/portoseguro/logos/logo-porto.png" },
-              { name: "SulAmerica", logo: "https://www.sulamerica.com.br/img/logo-sulamerica.png" },
-              { name: "Bradesco Seguros", logo: "https://www.bradescoseguros.com.br/static_files/BradescoSeguros/img/logo-bradesco-seguros.png" },
-              { name: "Icatu", logo: "https://www.icatuseguros.com.br/img/logo-icatu.png" },
-              { name: "Petlove", logo: "https://www.petlove.com.br/static/petlove-logo.png" },
-              { name: "HDI", logo: "https://www.hdi.com.br/img/logo-hdi.png" },
-              { name: "Tokio Marine", logo: "https://www.tokiomarine.com.br/img/logo-tokio.png" },
-              { name: "Allianz", logo: "https://www.allianz.com.br/img/logo-allianz.png" },
-              { name: "Suhai", logo: "https://suhaiseguradora.com/img/logo-suhai.png" },
-              { name: "Ituran", logo: "https://www.ituran.com.br/img/logo-ituran.png" }
+              { name: "Icatu", logo: "/partners/icatu.jpg", link: "https://www.icatuseguros.com.br" },
+              { name: "Ituran", logo: "/partners/ituran.jpg", link: "https://www.ituran.com.br" },
+              { name: "Omint", logo: "/partners/omint.jpg", link: "https://www.omint.com.br" },
+              { name: "Petlove", logo: "/partners/pet.jpg", link: "https://www.petlove.com.br" },
+              { name: "Porto Seguro", logo: "/partners/porto.jpg", link: "https://www.portoseguro.com.br" },
+              { name: "Suhai", logo: "/partners/suhai.jpg", link: "https://suhaiseguradora.com" },
+              { name: "SulAmérica", logo: "/partners/sul america.jpg", link: "https://www.sulamerica.com.br" },
+              { name: "Tokio Marine", logo: "/partners/tokio.jpg", link: "https://www.tokiomarine.com.br" },
+              // Duplicate for seamless loop
+              { name: "Icatu", logo: "/partners/icatu.jpg", link: "https://www.icatuseguros.com.br" },
+              { name: "Ituran", logo: "/partners/ituran.jpg", link: "https://www.ituran.com.br" },
+              { name: "Omint", logo: "/partners/omint.jpg", link: "https://www.omint.com.br" },
+              { name: "Petlove", logo: "/partners/pet.jpg", link: "https://www.petlove.com.br" },
+              { name: "Porto Seguro", logo: "/partners/porto.jpg", link: "https://www.portoseguro.com.br" },
+              { name: "Suhai", logo: "/partners/suhai.jpg", link: "https://suhaiseguradora.com" },
+              { name: "SulAmérica", logo: "/partners/sul america.jpg", link: "https://www.sulamerica.com.br" },
+              { name: "Tokio Marine", logo: "/partners/tokio.jpg", link: "https://www.tokiomarine.com.br" },
             ].map((p, i) => (
-              <div key={i} className="flex justify-center p-4">
-                <span className="font-bold text-slate-400">{p.name}</span>
-              </div>
+              <a
+                key={i}
+                href={p.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mx-12 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-60 hover:opacity-100"
+              >
+                <img
+                  src={p.logo}
+                  alt={p.name}
+                  className="h-12 md:h-16 w-auto object-contain"
+                />
+              </a>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
