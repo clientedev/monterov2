@@ -13,7 +13,14 @@ import {
   insertInquirySchema,
   insertContactSchema,
   insertReviewSchema,
-  insertProductSchema
+  insertProductSchema,
+  insertCommentSchema,
+  insertLeadSchema,
+  insertInteractionSchema,
+  insertCampaignSchema,
+  insertTaskSchema,
+  insertSiteSettingsSchema,
+  insertHeroSlideSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -1208,6 +1215,7 @@ out center 50;
       summary: "Descubra a importância de ter seu veículo protegido e evite dores de cabeça.",
       content: "Ter um seguro auto é essencial para quem busca tranquilidade no trânsito...",
       coverImage: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1000",
+      publishedAt: new Date(),
     });
     await storage.createPost({
       title: "Dicas para economizar no seguro",
@@ -1215,6 +1223,7 @@ out center 50;
       summary: "Saiba como reduzir o valor do seu seguro sem perder coberturas importantes.",
       content: "Muitas pessoas não sabem, mas pequenas atitudes podem diminuir o valor do seguro...",
       coverImage: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1000",
+      publishedAt: new Date(),
     });
   }
 

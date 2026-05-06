@@ -54,6 +54,7 @@ import { sql, and, desc, eq, asc } from "drizzle-orm";
 export interface IStorage {
   // Posts
   getPosts(approvedOnly?: boolean): Promise<Post[]>;
+  getPost(id: number): Promise<Post | undefined>;
   getPostBySlug(slug: string): Promise<Post | undefined>;
   createPost(post: InsertPost): Promise<Post>;
   updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined>;
@@ -165,6 +166,11 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(posts.isApproved, true)) as any;
     }
     return await query.orderBy(desc(posts.publishedAt));
+  }
+
+  async getPost(id: number): Promise<Post | undefined> {
+    const [post] = await db.select().from(posts).where(eq(posts.id, id));
+    return post;
   }
 
   async getPostBySlug(slug: string): Promise<Post | undefined> {
@@ -622,6 +628,10 @@ export class MemStorage implements IStorage {
       const timeB = b.publishedAt?.getTime() ?? 0;
       return timeB - timeA;
     });
+  }
+
+  async getPost(id: number): Promise<Post | undefined> {
+    return this.posts.find((p) => p.id === id);
   }
 
   async getPostBySlug(slug: string): Promise<Post | undefined> {
