@@ -920,6 +920,51 @@ export async function registerRoutes(
     }
   });
 
+  // Direct CNPJ Lookup Proxy
+  app.get("/api/proxy/companies/:cnpj", isAuthenticated, async (req, res) => {
+    const cnpj = req.params.cnpj.replace(/\D/g, "");
+    if (cnpj.length !== 14) {
+      return res.status(400).json({ message: "CNPJ inválido" });
+    }
+
+    try {
+      const url = `https://publica.cnpj.ws/cnpj/${cnpj}`;
+      const apiRes = await fetch(url, {
+        headers: { "Accept": "application/json", "User-Agent": "MonteiroSeguros/1.0" },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!apiRes.ok) {
+        return res.status(apiRes.status).json({ message: "Empresa não encontrada ou erro na API" });
+      }
+
+      const data: any = await apiRes.json();
+      const est = data.estabelecimento || {};
+      const ender = est.logradouro ? est : (data.endereco || {});
+      const cityData = ender.cidade || {};
+      const stateData = ender.estado || {};
+
+      const formatted = {
+        razao_social: data.razao_social || data.nome || est.nome_fantasia || "",
+        nome_fantasia: est.nome_fantasia || data.nome_fantasia || "",
+        cnpj: data.cnpj || est.cnpj || cnpj,
+        logradouro: ender.logradouro || data.logradouro || "",
+        numero: ender.numero || data.numero || "",
+        bairro: ender.bairro || data.bairro || "",
+        municipio: cityData.nome || ender.municipio || data.municipio || "",
+        uf: stateData.sigla || ender.uf || data.uf || "",
+        cep: ender.cep || data.cep || "",
+        cnae_principal_descricao: data.cnae_fiscal_descricao || est.atividade_principal?.classe_descricao || data.atividade_principal?.[0]?.text || "",
+        ddd_telefone_1: est.ddd1 && est.telefone1 ? `(${est.ddd1}) ${est.telefone1}` : (data.ddd_telefone_1 || data.telefone || est.telefone || ""),
+        email: est.email || data.email || "",
+      };
+
+      res.json([formatted]); // Return as array for compatibility with the frontend table
+    } catch (e: any) {
+      res.status(500).json({ message: `Erro ao buscar CNPJ: ${e.message}` });
+    }
+  });
+
   // Company Search Proxy (Filtered by region and CNAE)
   app.get("/api/proxy/companies/search", isAuthenticated, async (req, res) => {
     const { state, city, cnae, q, neighborhood, cityId } = req.query;

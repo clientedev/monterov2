@@ -48,6 +48,7 @@ export default function CompanySearchPage() {
     const [neighborhood, setNeighborhood] = useState("");
     const [cnae, setCnae] = useState("");
     const [query, setQuery] = useState("");
+    const [cnpjInput, setCnpjInput] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 20;
     const [searchUrl, setSearchUrl] = useState<string | null>(null);
@@ -210,6 +211,17 @@ export default function CompanySearchPage() {
         setCurrentPage(1); // Reset to first page
     };
 
+    const handleCnpjSearch = async () => {
+        const cleanCnpj = cnpjInput.replace(/\D/g, "");
+        if (cleanCnpj.length !== 14) {
+            toast({ title: "CNPJ Inválido", description: "O CNPJ deve conter 14 dígitos.", variant: "destructive" });
+            return;
+        }
+        const url = `/api/proxy/companies/${cleanCnpj}`;
+        setSearchUrl(url);
+        setCurrentPage(1);
+    };
+
     const handleFocusMarker = (company: any) => {
         if (!leafletMapRef.current || !company.lat) return;
         const { map } = leafletMapRef.current;
@@ -256,7 +268,40 @@ export default function CompanySearchPage() {
                                 <CardTitle className="text-base text-slate-900">Filtros</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-6">
+                            {/* Busca Direta por CNPJ */}
+                            <div className="p-4 bg-amber-50 rounded-lg border border-amber-100 space-y-4">
+                                <div className="flex items-center gap-2 text-sm font-bold text-amber-900">
+                                    <Target className="w-4 h-4 text-amber-500" />
+                                    Busca Direta por CNPJ
+                                </div>
+                                <div className="space-y-2">
+                                    <Input
+                                        placeholder="00.000.000/0000-00"
+                                        value={cnpjInput}
+                                        onChange={(e) => setCnpjInput(e.target.value)}
+                                        className="bg-white border-amber-200 focus-visible:ring-amber-500"
+                                    />
+                                    <Button 
+                                        onClick={handleCnpjSearch} 
+                                        disabled={isLoading}
+                                        className="w-full bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20"
+                                    >
+                                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+                                        Consultar CNPJ
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-slate-200" />
+                                </div>
+                                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-tighter">
+                                    <span className="bg-white px-2 text-slate-400">Ou busque por localidade</span>
+                                </div>
+                            </div>
+
                             <form onSubmit={handleSearch} className="space-y-4">
                                 {/* Estado */}
                                 <div className="space-y-1.5">
