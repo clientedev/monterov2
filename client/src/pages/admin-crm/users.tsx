@@ -39,7 +39,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Shield, User as UserIcon, UserPlus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Shield, User as UserIcon, UserPlus, Trash2, Eye, EyeOff, KeyRound } from "lucide-react";
 import { format } from "date-fns";
 
 export default function UsersPage() {
@@ -53,6 +53,11 @@ export default function UsersPage() {
     const [newPassword, setNewPassword] = useState("");
     const [newRole, setNewRole] = useState<"admin" | "employee" | "client">("client");
     const [showNewPassword, setShowNewPassword] = useState(false);
+
+    // Reset password state
+    const [resetTargetUser, setResetTargetUser] = useState<User | null>(null);
+    const [resetPassword, setResetPassword] = useState("");
+    const [showResetPassword, setShowResetPassword] = useState(false);
 
     // Delete confirm state
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -131,6 +136,28 @@ export default function UsersPage() {
                 variant: "destructive",
             });
             setDeleteTargetId(null);
+        },
+    });
+
+    const resetPasswordMutation = useMutation({
+        mutationFn: async ({ id, newPassword }: { id: number; newPassword: string }) => {
+            const res = await apiRequest("PATCH", `/api/admin/users/${id}/password`, { newPassword });
+            if (!res.ok) {
+                const body = await res.json();
+                throw new Error(body.message || "Erro ao alterar senha");
+            }
+        },
+        onSuccess: () => {
+            toast({ title: "Senha alterada com sucesso" });
+            setResetTargetUser(null);
+            setResetPassword("");
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Erro ao alterar senha",
+                description: error.message,
+                variant: "destructive",
+            });
         },
     });
 
@@ -241,18 +268,30 @@ export default function UsersPage() {
                                 <TableCell className="text-muted-foreground text-sm">
                                     {user.createdAt ? format(new Date(user.createdAt), "dd/MM/yyyy") : "—"}
                                 </TableCell>
-                                {isAdmin && (
+                                 {isAdmin && (
                                     <TableCell>
-                                        {user.id !== currentUser?.id && (
+                                        <div className="flex items-center gap-1">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                                                onClick={() => setDeleteTargetId(user.id)}
+                                                className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50"
+                                                onClick={() => setResetTargetUser(user)}
+                                                title="Redefinir Senha"
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                <KeyRound className="h-4 w-4" />
                                             </Button>
-                                        )}
+                                            {user.id !== currentUser?.id && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                                    onClick={() => setDeleteTargetId(user.id)}
+                                                    title="Excluir Usuário"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </div>
                                     </TableCell>
                                 )}
                             </TableRow>
@@ -375,6 +414,52 @@ export default function UsersPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Reset Password Dialog */}
+            <Dialog open={resetTargetUser !== null} onOpenChange={(open) => !open && setResetTargetUser(null)}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">Redefinir Senha</DialogTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Alterando a senha de <span className="font-bold text-foreground">{resetTargetUser?.name || resetTargetUser?.username}</span>
+                        </p>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                            <Label className="font-semibold text-sm">Nova Senha</Label>
+                            <div className="relative">
+                                <Input
+                                    type={showResetPassword ? "text" : "password"}
+                                    value={resetPassword}
+                                    onChange={(e) => setResetPassword(e.target.value)}
+                                    placeholder="Mínimo 6 caracteres"
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowResetPassword(!showResetPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                    {showResetPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                                </button>
+                            </div>
+                        </div>
+                        <DialogFooter className="pt-2">
+                            <Button variant="outline" onClick={() => setResetTargetUser(null)}>
+                                Cancelar
+                            </Button>
+                            <Button 
+                                onClick={() => resetTargetUser && resetPasswordMutation.mutate({ id: resetTargetUser.id, newPassword: resetPassword })} 
+                                disabled={resetPasswordMutation.isPending || resetPassword.length < 6}
+                                className="gap-2"
+                            >
+                                {resetPasswordMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Salvar Nova Senha
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

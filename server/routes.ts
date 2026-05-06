@@ -610,6 +610,21 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/admin/users/:id/password", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { newPassword } = req.body;
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: "Nova senha deve ter pelo menos 6 caracteres" });
+      }
+      const hashedPassword = await hashPassword(newPassword);
+      const user = await storage.updateUserPassword(parseInt(req.params.id), hashedPassword);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+      res.sendStatus(200);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao alterar senha do usuário" });
+    }
+  });
+
   app.post("/api/user/change-password", isAuthenticated, async (req, res) => {
     try {
       const { currentPassword, newPassword } = req.body;
