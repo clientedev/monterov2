@@ -47,17 +47,17 @@ export function ImageUpload({ value, onChange, label, description }: ImageUpload
             {description && <p className="text-xs text-muted-foreground">{description}</p>}
 
             <div className={cn(
-                "relative group flex flex-col items-center justify-center w-full min-h-[160px] p-6 border-2 border-dashed rounded-xl transition-all duration-300",
+                "relative group flex flex-col items-center justify-center w-full transition-all duration-300 rounded-xl",
                 preview
-                    ? "border-primary/20 bg-primary/5"
-                    : "border-gray-200 bg-gray-50 hover:border-primary/30 hover:bg-primary/5"
+                    ? "border border-primary/20 bg-primary/5 p-3 min-h-[110px]"
+                    : "border-2 border-dashed border-gray-200 bg-gray-50 hover:border-primary/30 hover:bg-primary/5 p-6 min-h-[160px]"
             )}>
                 {preview ? (
                     <div className="relative w-full h-full flex flex-col items-center">
                         <img
                             src={preview}
                             alt="Preview"
-                            className="max-h-[200px] rounded-lg object-contain shadow-sm mb-4"
+                            className="max-h-[100px] rounded-lg object-contain shadow-sm mb-2"
                         />
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-medium text-primary flex items-center gap-1">

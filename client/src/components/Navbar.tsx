@@ -77,10 +77,10 @@ export function Navbar() {
             </div>
             
             {/* Terracota brand subtitle */}
-            <span className="text-[#c65f54]/40 font-light text-sm sm:text-base md:text-xl select-none ml-1.5 sm:ml-2">
+            <span className="text-[#c65f54]/40 font-light text-sm sm:text-base md:text-xl select-none -ml-0.5 sm:-ml-1 md:-ml-2 mr-1 sm:mr-1.5">
               |
             </span>
-            <span className="text-[#c65f54] font-display font-semibold tracking-wider text-xs sm:text-sm md:text-base whitespace-nowrap select-none ml-1.5 sm:ml-2 uppercase">
+            <span className="text-[#c65f54] font-display font-semibold tracking-wider text-[10px] sm:text-xs md:text-sm lg:text-base whitespace-nowrap select-none uppercase">
               Seguros e Benefícios
             </span>
           </a>
