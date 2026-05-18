@@ -77,7 +77,7 @@ export function Navbar() {
             </div>
             
             {/* Terracota brand subtitle */}
-            <span className="text-[#c65f54]/40 font-light text-sm sm:text-base md:text-xl select-none -ml-0.5 sm:-ml-1 md:-ml-2 mr-1 sm:mr-1.5">
+            <span className="text-[#c65f54]/40 font-light text-sm sm:text-base md:text-xl select-none -ml-5 sm:-ml-10 md:-ml-14 mr-1.5 sm:mr-2">
               |
             </span>
             <span className="text-[#c65f54] font-display font-semibold tracking-wider text-[10px] sm:text-xs md:text-sm lg:text-base whitespace-nowrap select-none uppercase">
