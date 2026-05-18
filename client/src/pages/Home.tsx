@@ -16,22 +16,37 @@ export default function Home() {
   const { data: services, isLoading: loadingServices } = useServices();
   const { data: posts, isLoading: loadingPosts } = usePosts();
   const { settings, slides, isLoadingSettings: loadingSettings } = useSiteSettings();
-  const plugin = useRef(Autoplay({ delay: 5500, stopOnInteraction: true }));
+  const plugin = useRef(Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true }));
 
-  const activeSlides = slides?.filter(s => s.isActive) || [];
+  const defaultSlides = [
+    {
+      id: 1,
+      title: "Planos de Saúde Individuais & Familiares",
+      subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
+      imageBase64: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
+      buttonText: "Cotação Individual",
+      buttonLink: "/contact",
+    },
+    {
+      id: 2,
+      title: "Benefícios Corporativos Sob Medida",
+      subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
+      imageBase64: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
+      buttonText: "Cotação Corporativa",
+      buttonLink: "/contact",
+    },
+    {
+      id: 3,
+      title: "Planos de Saúde Premium & Reembolso",
+      subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
+      imageBase64: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
+      buttonText: "Planos Premium",
+      buttonLink: "/contact",
+    }
+  ];
 
-  // Brand color guidelines
-  // Terracota Vital — #c65f54
-  // Verde Profundo — #08454c
-  // Azul Segurança — #163b52
-  // Sereno — #809ba6
-  // Areia Suave — #eae4da
-
-  const heroTitle = settings?.heroTitle || "Protegendo seu Futuro,\nGarantindo seu Legado";
-  const heroSubtitle = settings?.heroSubtitle || "Experimente a tranquilidade de uma cobertura premium. Combinamos atendimento boutique e proximidade com as seguradoras líderes do mundo.";
-  const heroImageUrl = "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000";
-
-  const showCarousel = !loadingSettings && activeSlides.length > 0;
+  const dbActiveSlides = slides?.filter(s => s.isActive) || [];
+  const displaySlides = dbActiveSlides.length > 0 ? dbActiveSlides : defaultSlides;
 
   // Sanitize phone for dynamic WhatsApp links
   const whatsappNumber = settings?.contactPhone 
@@ -53,14 +68,14 @@ export default function Home() {
           <div className="w-full h-full flex items-center justify-center min-h-[500px]">
             <Loader2 className="w-10 h-10 animate-spin text-white/40" />
           </div>
-        ) : showCarousel ? (
+        ) : (
           <Carousel
             plugins={[plugin.current]}
             className="w-full h-full relative z-10"
             opts={{ loop: true }}
           >
             <CarouselContent className="h-full">
-              {activeSlides.map((slide) => (
+              {displaySlides.map((slide) => (
                 <CarouselItem key={slide.id} className="relative min-h-[85vh] lg:min-h-[90vh] flex items-center">
                   {/* Full-bleed absolute background image */}
                   <div className="absolute inset-0 z-0">
@@ -114,59 +129,6 @@ export default function Home() {
               ))}
             </CarouselContent>
           </Carousel>
-        ) : (
-          <div className="w-full relative z-10 min-h-[85vh] lg:min-h-[90vh] flex items-center">
-            {/* Full-bleed absolute background image for fallback */}
-            <div className="absolute inset-0 z-0">
-              <img
-                src={heroImageUrl}
-                alt="Corporate Meeting Room"
-                className="w-full h-full object-cover opacity-60"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/70 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/60 via-transparent to-transparent" />
-            </div>
-
-            <div className="container px-4 md:px-6 mx-auto relative z-10 py-12">
-              <div className="max-w-3xl space-y-8 text-left">
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8 }}
-                  className="space-y-6"
-                >
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-xs font-semibold uppercase tracking-wider">
-                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                    <span>Atendimento Boutique em São Paulo</span>
-                  </div>
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight whitespace-pre-line">
-                    {heroTitle}
-                  </h1>
-                  <p className="text-base sm:text-lg md:text-xl text-slate-200 font-light max-w-xl leading-relaxed">
-                    {heroSubtitle}
-                  </p>
-                  
-                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                    <Link href="/contact">
-                      <button className="px-8 py-4 rounded-full bg-[#c65f54] text-white font-bold text-lg hover:bg-[#c65f54]/95 transition-all hover:shadow-lg hover:shadow-[#c65f54]/25 hover:-translate-y-0.5 flex items-center justify-center gap-3 group">
-                        Consultoria Exclusiva
-                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                      </button>
-                    </Link>
-                    <a 
-                      href={`https://wa.me/${whatsappNumber}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-8 py-4 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-white font-bold text-lg hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3"
-                    >
-                      <MessageSquare className="w-5 h-5 text-[#25D366] fill-[#25D366]" />
-                      <span>WhatsApp</span>
-                    </a>
-                  </div>
-                </motion.div>
-              </div>
-            </div>
-          </div>
         )}
       </section>
 

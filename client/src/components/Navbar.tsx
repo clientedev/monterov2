@@ -75,6 +75,14 @@ export function Navbar() {
                 />
               )}
             </div>
+            
+            {/* Terracota brand subtitle */}
+            <span className="text-[#c65f54]/40 font-light text-sm sm:text-base md:text-xl select-none ml-3 sm:ml-4">
+              |
+            </span>
+            <span className="text-[#c65f54] font-display font-semibold tracking-wider text-xs sm:text-sm md:text-base whitespace-nowrap select-none ml-2 sm:ml-3 uppercase">
+              Seguros e Benefícios
+            </span>
           </a>
         </Link>
  
