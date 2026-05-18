@@ -67,10 +67,10 @@ export default function Home() {
                     <img
                       src={slide.imageBase64}
                       alt={slide.title}
-                      className="w-full h-full object-cover opacity-25 mix-blend-luminosity"
+                      className="w-full h-full object-cover opacity-60"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/85 to-transparent" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/90 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/70 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/60 via-transparent to-transparent" />
                   </div>
 
                   <div className="container px-4 md:px-6 mx-auto relative z-10 py-12">
@@ -121,10 +121,10 @@ export default function Home() {
               <img
                 src={heroImageUrl}
                 alt="Corporate Meeting Room"
-                className="w-full h-full object-cover opacity-25 mix-blend-luminosity"
+                className="w-full h-full object-cover opacity-60"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/85 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/90 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/70 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/60 via-transparent to-transparent" />
             </div>
 
             <div className="container px-4 md:px-6 mx-auto relative z-10 py-12">
@@ -286,6 +286,162 @@ export default function Home() {
                 </Link>
               </div>
             </div>
+          </div>
+        </div>
+          </section>
+
+      {/* Seção A: Qualidade de Vida e Prevenção Ativa */}
+      <section className="py-28 bg-white relative overflow-hidden">
+        {/* Soft decorative glow */}
+        <div className="absolute left-0 top-0 w-[400px] h-[400px] bg-[#809ba6]/5 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="container px-4 md:px-6 mx-auto relative z-10">
+          <div className="grid lg:grid-cols-12 gap-16 items-center">
+            {/* Left Column: Copywriting */}
+            <div className="lg:col-span-6 space-y-8">
+              <div>
+                <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Bem-Estar & Prevenção</span>
+                <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-[#163b52] leading-tight">
+                  Sua saúde e vitalidade integradas em um só lugar
+                </h2>
+                <p className="text-slate-600 text-lg font-light leading-relaxed">
+                  Acreditamos que um plano de saúde moderno não deve apenas tratar a doença, mas sim ser a base estrutural para a sua qualidade de vida diária. Promovemos acesso a redes assistenciais preventivas, telemedicina especializada e concierges dedicados para a sua máxima tranquilidade.
+                </p>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div className="bg-[#f5f2eb]/50 p-6 rounded-3xl border border-slate-100/50">
+                  <div className="w-10 h-10 rounded-2xl bg-[#c65f54]/10 flex items-center justify-center text-[#c65f54] mb-4">
+                    <Heart className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-[#163b52] text-lg mb-2">Medicina Preventiva</h4>
+                  <p className="text-slate-500 text-sm font-light leading-relaxed">Foco em check-ups proativos e monitoramento contínuo da sua saúde geral.</p>
+                </div>
+
+                <div className="bg-[#f5f2eb]/50 p-6 rounded-3xl border border-slate-100/50">
+                  <div className="w-10 h-10 rounded-2xl bg-[#08454c]/10 flex items-center justify-center text-[#08454c] mb-4">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-[#163b52] text-lg mb-2">Qualidade de Vida</h4>
+                  <p className="text-slate-500 text-sm font-light leading-relaxed">Incentivo a rotinas equilibradas, saúde mental qualificada e longevidade.</p>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Link href="/contact">
+                  <button className="px-8 py-4 rounded-full bg-[#08454c] text-white font-bold hover:bg-[#08454c]/95 transition-all hover:shadow-lg hover:shadow-[#08454c]/20 flex items-center gap-3 group">
+                    Planejar Minha Saúde
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Right Column: High Quality Image */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="lg:col-span-6 relative"
+            >
+              <div className="relative rounded-[3rem] overflow-hidden shadow-2xl aspect-[4/3] md:aspect-[16/10] border-8 border-slate-50">
+                <img
+                  src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=1200"
+                  alt="Estilo de vida ativo e saudável ao ar livre"
+                  className="w-full h-full object-cover scale-102 hover:scale-100 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#163b52]/30 via-transparent to-transparent pointer-events-none" />
+              </div>
+              {/* Trust Badge */}
+              <div className="absolute -bottom-6 -left-6 bg-white border border-slate-100 p-5 rounded-3xl shadow-xl z-20 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Acreditação Técnica</p>
+                  <p className="text-base font-bold text-[#163b52]">ANS Nível A</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Seção B: Nossos Pilares de Cuidado */}
+      <section className="py-28 bg-[#f5f2eb]/70 relative overflow-hidden border-t border-slate-100/50">
+        <div className="absolute right-[-10%] bottom-0 w-[500px] h-[500px] bg-[#c65f54]/3 rounded-full blur-[120px] pointer-events-none" />
+        
+        <div className="container px-4 md:px-6 mx-auto relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-20">
+            <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Pilares de Cuidado</span>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-[#163b52] leading-tight">
+              Soluções integradas para cada momento da sua vida
+            </h2>
+            <p className="text-slate-500 text-lg font-light leading-relaxed">
+              Trabalhamos em estreita parceria com as principais operadoras de saúde do país para oferecer coberturas sob medida que unem excelência clínica, reembolso ágil e conforto executivo.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: "Proteção Familiar Completa",
+                desc: "Garanta atendimento hospitalar premium e pronto-socorro nos centros de referência médica nacionais para as pessoas mais importantes da sua vida.",
+                img: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=800",
+                badge: "Familiar"
+              },
+              {
+                title: "Benefícios Corporativos & PME",
+                desc: "Planos empresariais estratégicos com coparticipação inteligente, reduzindo a sinistralidade e agregando valor para atrair e reter talentos chave.",
+                img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800",
+                badge: "Corporativo"
+              },
+              {
+                title: "Planos de Saúde Premium",
+                desc: "Acesso direto a hospitais renomados (Albert Einstein, Sírio-Libanês), reembolso diferenciado de consultas particulares e serviços de concierge.",
+                img: "https://images.unsplash.com/photo-1579684389782-64d84b5e901a?auto=format&fit=crop&q=80&w=800",
+                badge: "Premium"
+              }
+            ].map((pillar, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1, duration: 0.6 }}
+                className="group bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between"
+              >
+                <div className="relative h-64 overflow-hidden bg-slate-100">
+                  <img
+                    src={pillar.img}
+                    alt={pillar.title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute top-6 left-6 px-4 py-1.5 rounded-full bg-white/95 backdrop-blur-sm text-[#08454c] text-xs font-bold uppercase tracking-wider shadow-sm">
+                    {pillar.badge}
+                  </div>
+                </div>
+                <div className="p-8 flex-1 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <h3 className="text-xl font-bold font-display text-[#163b52] group-hover:text-[#08454c] transition-colors">
+                      {pillar.title}
+                    </h3>
+                    <p className="text-slate-500 text-sm font-light leading-relaxed">
+                      {pillar.desc}
+                    </p>
+                  </div>
+                  <div className="pt-6 mt-6 border-t border-slate-50">
+                    <Link href="/contact">
+                      <a className="inline-flex items-center gap-2 text-sm font-bold text-[#c65f54] hover:text-[#c65f54]/85 transition-colors uppercase tracking-wider">
+                        Solicitar Cotação
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </a>
+                    </Link>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
