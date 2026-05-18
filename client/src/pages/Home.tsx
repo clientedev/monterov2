@@ -29,7 +29,7 @@ export default function Home() {
 
   const heroTitle = settings?.heroTitle || "Protegendo seu Futuro,\nGarantindo seu Legado";
   const heroSubtitle = settings?.heroSubtitle || "Experimente a tranquilidade de uma cobertura premium. Combinamos atendimento boutique e proximidade com as seguradoras líderes do mundo.";
-  const heroImageUrl = "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&q=80&w=2000";
+  const heroImageUrl = "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000";
 
   const showCarousel = !loadingSettings && activeSlides.length > 0;
 

@@ -488,7 +488,46 @@ export class DatabaseStorage implements IStorage {
 
   // Hero Slides
   async getHeroSlides(): Promise<HeroSlide[]> {
-    return await db.select().from(heroSlides).orderBy(heroSlides.order);
+    const existing = await db.select().from(heroSlides).orderBy(heroSlides.order);
+    if (existing.length === 0) {
+      const defaultSlides = [
+        {
+          title: "Planos de Saúde Individuais & Familiares",
+          subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
+          imageBase64: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
+          buttonText: "Cotação Individual",
+          buttonLink: "/contact",
+          order: 0,
+          isActive: true,
+        },
+        {
+          title: "Benefícios Corporativos Sob Medida",
+          subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
+          imageBase64: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
+          buttonText: "Cotação Corporativa",
+          buttonLink: "/contact",
+          order: 1,
+          isActive: true,
+        },
+        {
+          title: "Planos de Saúde Premium & Reembolso",
+          subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
+          imageBase64: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
+          buttonText: "Planos Premium",
+          buttonLink: "/contact",
+          order: 2,
+          isActive: true,
+        }
+      ];
+      
+      const seeded: HeroSlide[] = [];
+      for (const item of defaultSlides) {
+        const [newSlide] = await db.insert(heroSlides).values(item).returning();
+        seeded.push(newSlide);
+      }
+      return seeded;
+    }
+    return existing;
   }
 
   async createHeroSlide(slide: InsertHeroSlide): Promise<HeroSlide> {
@@ -1093,6 +1132,44 @@ export class MemStorage implements IStorage {
 
   // Hero Slides
   async getHeroSlides(): Promise<HeroSlide[]> {
+    if (this.heroSlidesData.length === 0) {
+      const defaultSlides = [
+        {
+          id: this.currentId.heroSlides++,
+          title: "Planos de Saúde Individuais & Familiares",
+          subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
+          imageBase64: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
+          buttonText: "Cotação Individual",
+          buttonLink: "/contact",
+          order: 0,
+          isActive: true,
+          createdAt: new Date(),
+        },
+        {
+          id: this.currentId.heroSlides++,
+          title: "Benefícios Corporativos Sob Medida",
+          subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
+          imageBase64: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
+          buttonText: "Cotação Corporativa",
+          buttonLink: "/contact",
+          order: 1,
+          isActive: true,
+          createdAt: new Date(),
+        },
+        {
+          id: this.currentId.heroSlides++,
+          title: "Planos de Saúde Premium & Reembolso",
+          subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
+          imageBase64: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
+          buttonText: "Planos Premium",
+          buttonLink: "/contact",
+          order: 2,
+          isActive: true,
+          createdAt: new Date(),
+        }
+      ];
+      this.heroSlidesData = defaultSlides;
+    }
     return [...this.heroSlidesData].sort((a, b) => a.order - b.order);
   }
 

@@ -39,7 +39,7 @@ export function Navbar() {
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out py-3 md:py-4",
         showScrolledNavbar
-          ? "bg-[#eae4da]/90 backdrop-blur-lg shadow-[0_4px_30px_rgba(8,69,76,0.03)] border-b border-[#809ba6]/20 py-2 md:py-3"
+          ? "bg-[#163b52]/95 backdrop-blur-lg shadow-[0_4px_30px_rgba(8,69,76,0.1)] border-b border-[#809ba6]/15 py-2 md:py-3"
           : "bg-transparent"
       )}
     >
@@ -52,8 +52,8 @@ export function Navbar() {
                   src={settings.logoBase64}
                   alt={settings.siteName}
                   style={{ 
-                    '--logo-scale': `${(settings.logoScale || 150) / 100}`,
-                    '--logo-scale-mobile': `${(settings.logoScaleMobile || 130) / 100}`
+                     '--logo-scale': `${(settings.logoScale || 150) / 100}`,
+                     '--logo-scale-mobile': `${(settings.logoScaleMobile || 130) / 100}`
                   } as React.CSSProperties}
                   className={cn(
                     "h-16 md:h-20 w-auto object-contain transition-all duration-500 origin-left",
@@ -65,20 +65,19 @@ export function Navbar() {
                   src={logo}
                   alt="Monteiro Seguros e Benefícios"
                   style={{ 
-                    '--logo-scale': `${(settings?.logoScale || 150) / 100}`,
-                    '--logo-scale-mobile': `${(settings?.logoScaleMobile || 130) / 100}`
+                     '--logo-scale': `${(settings?.logoScale || 150) / 100}`,
+                     '--logo-scale-mobile': `${(settings?.logoScaleMobile || 130) / 100}`
                   } as React.CSSProperties}
                   className={cn(
                     "h-16 md:h-20 w-auto object-contain transition-all duration-500 origin-left",
-                    "scale-[var(--logo-scale-mobile)] md:scale-[var(--logo-scale)] group-hover:scale-[calc(var(--logo-scale-mobile)*1.03)] md:group-hover:scale-[calc(var(--logo-scale)*1.03)]",
-                    showScrolledNavbar && "brightness-0"
+                    "scale-[var(--logo-scale-mobile)] md:scale-[var(--logo-scale)] group-hover:scale-[calc(var(--logo-scale-mobile)*1.03)] md:group-hover:scale-[calc(var(--logo-scale)*1.03)]"
                   )}
                 />
               )}
             </div>
           </a>
         </Link>
-
+ 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => {
@@ -89,17 +88,9 @@ export function Navbar() {
                   className={cn(
                     "text-sm font-semibold tracking-wide transition-all duration-300 relative py-1 cursor-pointer",
                     "after:content-[''] after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:transition-all after:duration-300",
-                    showScrolledNavbar
-                      ? cn(
-                          isActive 
-                            ? "text-[#c65f54] after:w-full after:bg-[#c65f54]" 
-                            : "text-[#163b52]/80 hover:text-[#c65f54] after:w-0 hover:after:w-full after:bg-[#c65f54]"
-                        )
-                      : cn(
-                          isActive 
-                            ? "text-white after:w-full after:bg-white" 
-                            : "text-white/80 hover:text-white after:w-0 hover:after:w-full after:bg-white"
-                        )
+                    isActive 
+                      ? "text-[#c65f54] after:w-full after:bg-[#c65f54]" 
+                      : "text-white/85 hover:text-[#c65f54] after:w-0 hover:after:w-full after:bg-[#c65f54]"
                   )}
                 >
                   {link.name}
@@ -112,10 +103,7 @@ export function Navbar() {
               <div className="flex items-center gap-4">
                 <Link href="/profile">
                   <a className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-2xl transition-all duration-300 group/avatar border",
-                    showScrolledNavbar
-                      ? "bg-[#eae4da] hover:bg-[#eae4da]/50 border-[#809ba6]/20" 
-                      : "bg-white/10 hover:bg-white/25 border-white/10 backdrop-blur-md text-white"
+                    "flex items-center gap-2 px-3 py-1.5 rounded-2xl transition-all duration-300 group/avatar border border-white/10 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white"
                   )} title="Meu Perfil">
                     {user.avatar ? (
                       <img src={user.avatar} alt={user.name} className="h-6 w-6 rounded-full object-cover group-hover/avatar:opacity-85 transition-opacity" />
@@ -128,10 +116,7 @@ export function Navbar() {
                 </Link>
                 <Link href={user.role === "client" ? "/dashboard" : "/admin"}>
                   <a className={cn(
-                    "text-sm font-bold flex items-center gap-2 px-4 py-2.5 rounded-2xl transition-all duration-300 shadow-sm",
-                    showScrolledNavbar 
-                      ? "bg-[#08454c] text-white hover:bg-[#08454c]/90" 
-                      : "bg-white text-[#08454c] hover:bg-white/90"
+                    "text-sm font-bold flex items-center gap-2 px-4 py-2.5 rounded-2xl transition-all duration-300 shadow-sm bg-[#c65f54] text-white hover:bg-[#c65f54]/90"
                   )}>
                     <LayoutDashboard className="h-4 w-4" />
                     <span className="hidden lg:inline">
@@ -143,10 +128,7 @@ export function Navbar() {
                   onClick={() => logoutMutation.mutate()}
                   disabled={logoutMutation.isPending}
                   className={cn(
-                    "p-2.5 rounded-2xl transition-all duration-300 border",
-                    showScrolledNavbar 
-                      ? "text-[#163b52]/60 hover:text-red-500 hover:bg-red-50/50 border-transparent" 
-                      : "text-white/60 hover:text-white hover:bg-white/10 border-transparent"
+                    "p-2.5 rounded-2xl transition-all duration-300 border border-transparent text-white/60 hover:text-red-400 hover:bg-white/10"
                   )}
                   title="Sair"
                 >
@@ -157,8 +139,7 @@ export function Navbar() {
               <>
                 <Link href="/login">
                   <a className={cn(
-                    "text-sm font-bold cursor-pointer transition-colors duration-300",
-                    showScrolledNavbar ? "text-[#163b52] hover:text-[#c65f54]" : "text-white hover:text-white/80"
+                    "text-sm font-bold cursor-pointer transition-colors duration-300 text-white hover:text-[#c65f54]"
                   )}>
                     Entrar
                   </a>
@@ -177,14 +158,11 @@ export function Navbar() {
             )}
           </div>
         </nav>
-
+ 
         {/* Mobile Menu Button */}
         <button
           className={cn(
-            "md:hidden p-2.5 rounded-2xl transition-colors duration-300 border",
-            showScrolledNavbar
-              ? "bg-[#eae4da]/80 border-[#809ba6]/20 text-[#163b52] hover:bg-[#eae4da]"
-              : "bg-white/10 border-white/10 text-white hover:bg-white/20"
+            "md:hidden p-2.5 rounded-2xl transition-colors duration-300 border bg-white/10 border-white/10 text-white hover:bg-white/20"
           )}
           onClick={() => setIsOpen(!isOpen)}
         >
