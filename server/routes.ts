@@ -164,8 +164,17 @@ export async function registerRoutes(
 
       let html = fs.readFileSync(finalPath, "utf8");
       
-      const imageUrl = `${req.protocol}://${req.get('host')}/api/posts/${post.id}/image`;
-      const siteUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.get('host');
+      const imageUrl = `${protocol}://${host}/api/posts/${post.id}/image`;
+      const siteUrl = `${protocol}://${host}${req.originalUrl}`;
+
+      // Strip existing static title and meta tags to avoid duplication and conflicts in scrapers
+      html = html.replace(/<title>.*?<\/title>/gi, "");
+      html = html.replace(/<meta\s+name="description"\s+content=".*?"\s*\/?>/gi, "");
+      html = html.replace(/<meta\s+property="og:[^"]+"\s+content=".*?"\s*\/?>/gi, "");
+      html = html.replace(/<meta\s+property="twitter:[^"]+"\s+content=".*?"\s*\/?>/gi, "");
+      html = html.replace(/<meta\s+name="twitter:[^"]+"\s+content=".*?"\s*\/?>/gi, "");
 
       const ogTags = `
     <!-- Dynamic OG Tags -->
