@@ -46,7 +46,7 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         <Link href="/">
           <a className="flex items-center group cursor-pointer">
-            <div className="relative h-12 md:h-16 flex items-center overflow-visible">
+            <div className="relative h-12 md:h-16 flex items-center overflow-visible translate-y-[2px] md:translate-y-[3px]">
               {settings?.logoBase64 ? (
                 <img
                   src={settings.logoBase64}
@@ -77,10 +77,10 @@ export function Navbar() {
             </div>
             
             {/* Terracota brand subtitle */}
-            <span className="text-[#c65f54]/40 font-light text-sm sm:text-base md:text-xl select-none ml-3 sm:ml-4">
+            <span className="text-[#c65f54]/40 font-light text-sm sm:text-base md:text-xl select-none ml-1.5 sm:ml-2">
               |
             </span>
-            <span className="text-[#c65f54] font-display font-semibold tracking-wider text-xs sm:text-sm md:text-base whitespace-nowrap select-none ml-2 sm:ml-3 uppercase">
+            <span className="text-[#c65f54] font-display font-semibold tracking-wider text-xs sm:text-sm md:text-base whitespace-nowrap select-none ml-1.5 sm:ml-2 uppercase">
               Seguros e Benefícios
             </span>
           </a>
