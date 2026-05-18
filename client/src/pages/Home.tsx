@@ -1,22 +1,21 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, CheckCircle2, Star, Loader2, MessageSquare, ShieldCheck, Zap, Heart, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { useServices, usePosts } from "@/hooks/use-content";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { ServiceCard } from "@/components/ServiceCard";
 import { format } from "date-fns";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import Autoplay from "embla-carousel-autoplay";
-import { useRef } from "react";
+import { useState, useEffect } from "react";
 import { ReviewsSection } from "@/components/ReviewsSection";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   const { data: services, isLoading: loadingServices } = useServices();
   const { data: posts, isLoading: loadingPosts } = usePosts();
   const { settings, slides, isLoadingSettings: loadingSettings } = useSiteSettings();
-  const plugin = useRef(Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true }));
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
   const defaultSlides = [
     {
@@ -48,6 +47,15 @@ export default function Home() {
   const dbActiveSlides = slides?.filter(s => s.isActive) || [];
   const displaySlides = dbActiveSlides.length > 0 ? dbActiveSlides : defaultSlides;
 
+  // Auto-play interval for smooth cross-fade dissolve transition
+  useEffect(() => {
+    if (displaySlides.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlideIndex((prev) => (prev + 1) % displaySlides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [displaySlides.length]);
+
   // Sanitize phone for dynamic WhatsApp links
   const whatsappNumber = settings?.contactPhone 
     ? settings.contactPhone.replace(/\D/g, '') 
@@ -69,66 +77,89 @@ export default function Home() {
             <Loader2 className="w-10 h-10 animate-spin text-white/40" />
           </div>
         ) : (
-          <Carousel
-            plugins={[plugin.current]}
-            className="w-full h-full relative z-10"
-            opts={{ loop: true }}
-          >
-            <CarouselContent className="h-full">
-              {displaySlides.map((slide) => (
-                <CarouselItem key={slide.id} className="relative min-h-[85vh] lg:min-h-[90vh] flex items-center">
-                  {/* Full-bleed absolute background image */}
-                  <div className="absolute inset-0 z-0">
-                    <img
-                      src={slide.imageBase64}
-                      alt={slide.title}
-                      className="w-full h-full object-cover opacity-60"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/70 to-transparent" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/60 via-transparent to-transparent" />
-                  </div>
-
-                  <div className="container px-4 md:px-6 mx-auto relative z-10 py-12">
-                    <div className="max-w-3xl space-y-8 text-left">
-                      <motion.div
-                        key={slide.id}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8 }}
-                        className="space-y-6"
-                      >
-                        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight">
-                          {slide.title}
-                        </h1>
-                        {slide.subtitle && (
-                          <p className="text-base sm:text-lg md:text-xl text-slate-200 font-light max-w-xl leading-relaxed">
-                            {slide.subtitle}
-                          </p>
-                        )}
-                        <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                          <Link href={slide.buttonLink || "/contact"}>
-                            <button className="px-8 py-4 rounded-full bg-[#c65f54] text-white font-bold text-lg hover:bg-[#c65f54]/95 transition-all hover:shadow-lg hover:shadow-[#c65f54]/25 hover:-translate-y-0.5 flex items-center justify-center gap-3 group">
-                              {slide.buttonText || "Consultoria Premium"}
-                              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                            </button>
-                          </Link>
-                          <a 
-                            href={`https://wa.me/${whatsappNumber}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-8 py-4 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-white font-bold text-lg hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3"
-                          >
-                            <MessageSquare className="w-5 h-5 text-[#25D366] fill-[#25D366]" />
-                            <span>WhatsApp</span>
-                          </a>
-                        </div>
-                      </motion.div>
+          <div className="w-full h-full relative z-10 min-h-[85vh] lg:min-h-[90vh] flex items-center">
+            <AnimatePresence mode="wait">
+              {displaySlides.map((slide, idx) => (
+                idx === currentSlideIndex && (
+                  <motion.div
+                    key={slide.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 1.2, ease: "easeInOut" }}
+                    className="absolute inset-0 w-full h-full flex items-center"
+                  >
+                    {/* Full-bleed absolute background image */}
+                    <div className="absolute inset-0 z-0">
+                      <img
+                        src={slide.imageBase64}
+                        alt={slide.title}
+                        className="w-full h-full object-cover opacity-60"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/70 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/60 via-transparent to-transparent" />
                     </div>
-                  </div>
-                </CarouselItem>
+
+                    <div className="container px-4 md:px-6 mx-auto relative z-10 py-12">
+                      <div className="max-w-3xl space-y-8 text-left">
+                        <motion.div
+                          initial={{ opacity: 0, y: 30 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.8 }}
+                          className="space-y-6"
+                        >
+                          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight">
+                            {slide.title}
+                          </h1>
+                          {slide.subtitle && (
+                            <p className="text-base sm:text-lg md:text-xl text-slate-200 font-light max-w-xl leading-relaxed">
+                              {slide.subtitle}
+                            </p>
+                          )}
+                          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                            <Link href={slide.buttonLink || "/contact"}>
+                              <button className="px-8 py-4 rounded-full bg-[#c65f54] text-white font-bold text-lg hover:bg-[#c65f54]/95 transition-all hover:shadow-lg hover:shadow-[#c65f54]/25 hover:-translate-y-0.5 flex items-center justify-center gap-3 group">
+                                {slide.buttonText || "Consultoria Premium"}
+                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                              </button>
+                            </Link>
+                            <a 
+                              href={`https://wa.me/${whatsappNumber}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-8 py-4 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-white font-bold text-lg hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3"
+                            >
+                              <MessageSquare className="w-5 h-5 text-[#25D366] fill-[#25D366]" />
+                              <span>WhatsApp</span>
+                            </a>
+                          </div>
+                        </motion.div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )
               ))}
-            </CarouselContent>
-          </Carousel>
+            </AnimatePresence>
+
+            {/* Dots indicators for slide control */}
+            {displaySlides.length > 1 && (
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex gap-3">
+                {displaySlides.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentSlideIndex(idx)}
+                    className={cn(
+                      "w-3 h-3 rounded-full transition-all duration-300",
+                      idx === currentSlideIndex 
+                        ? "bg-[#c65f54] w-8" 
+                        : "bg-white/30 hover:bg-white/50"
+                    )}
+                    aria-label={`Ir para slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </section>
 
