@@ -20,7 +20,8 @@ import {
   insertCampaignSchema,
   insertTaskSchema,
   insertSiteSettingsSchema,
-  insertHeroSlideSchema
+  insertHeroSlideSchema,
+  insertPostSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -214,11 +215,15 @@ export async function registerRoutes(
   app.patch("/api/posts/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       console.log(`[POSTS] Updating post ${req.params.id}... Payload size: ${JSON.stringify(req.body).length} bytes`);
-      const post = await storage.updatePost(parseInt(req.params.id), req.body);
+      const input = insertPostSchema.partial().parse(req.body);
+      const post = await storage.updatePost(parseInt(req.params.id), input);
       if (!post) return res.status(404).json({ message: "Post not found" });
       res.json(post);
     } catch (error: any) {
       console.error(`[POSTS] Update failed for post ${req.params.id}:`, error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
       res.status(500).json({ message: error.message || "Internal server error" });
     }
   });
@@ -231,13 +236,16 @@ export async function registerRoutes(
 
   app.post("/api/posts", isAuthenticated, async (req, res) => {
     try {
-      const input = req.body;
+      const input = insertPostSchema.parse(req.body);
       console.log(`[POSTS] Creating new post... Payload size: ${JSON.stringify(input).length} bytes`);
       const isApproved = (req.user as any).role === "admin";
       const post = await storage.createPost({ ...input, isApproved });
       res.status(201).json(post);
     } catch (error: any) {
       console.error("[POSTS] Creation failed:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
       res.status(500).json({ message: error.message || "Internal server error" });
     }
   });
