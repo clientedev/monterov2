@@ -40,13 +40,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen font-sans bg-[#eae4da] text-[#163b52] selection:bg-[#c65f54]/20 overflow-x-hidden">
-      <Navbar />
-
-      {/* Hero Section */}
-      <section className="relative min-h-[90vh] lg:min-h-screen flex items-center pt-24 pb-16 overflow-hidden bg-gradient-to-br from-[#08454c] via-[#08454c] to-[#163b52] text-white">
+            {/* Hero Section */}
+      <section className="relative min-h-[95vh] lg:min-h-screen flex items-center pt-24 pb-16 overflow-hidden bg-[#08454c] text-white">
         {/* Dynamic Blurry Glow Orbs */}
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/15 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#809ba6]/15 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#809ba6]/10 rounded-full blur-[140px] pointer-events-none" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
 
         {loadingSettings ? (
@@ -61,9 +59,20 @@ export default function Home() {
           >
             <CarouselContent className="h-full">
               {activeSlides.map((slide) => (
-                <CarouselItem key={slide.id} className="relative">
-                  <div className="container px-4 md:px-6 mx-auto grid lg:grid-cols-12 gap-12 items-center py-8">
-                    <div className="lg:col-span-7 space-y-8 text-left">
+                <CarouselItem key={slide.id} className="relative min-h-[85vh] lg:min-h-[90vh] flex items-center">
+                  {/* Full-bleed absolute background image */}
+                  <div className="absolute inset-0 z-0">
+                    <img
+                      src={slide.imageBase64}
+                      alt={slide.title}
+                      className="w-full h-full object-cover opacity-25 mix-blend-luminosity"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/85 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/90 via-transparent to-transparent" />
+                  </div>
+
+                  <div className="container px-4 md:px-6 mx-auto relative z-10 py-12">
+                    <div className="max-w-3xl space-y-8 text-left">
                       <motion.div
                         key={slide.id}
                         initial={{ opacity: 0, y: 30 }}
@@ -102,105 +111,62 @@ export default function Home() {
                         </div>
                       </motion.div>
                     </div>
-                    
-                    <div className="lg:col-span-5 hidden lg:block">
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 1 }}
-                        className="relative"
-                      >
-                        <div className="aspect-[4/5] rounded-[3rem] overflow-hidden border-8 border-white/5 shadow-2xl relative">
-                          <img
-                            src={slide.imageBase64}
-                            alt={slide.title}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/80 via-transparent to-transparent" />
-                        </div>
-                        <div className="absolute -bottom-6 -left-6 bg-white/10 backdrop-blur-xl border border-white/15 p-6 rounded-3xl shadow-2xl flex items-center gap-4 text-white">
-                          <div className="w-12 h-12 rounded-2xl bg-[#c65f54] flex items-center justify-center">
-                            <ShieldCheck className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">Segurança Ativa</p>
-                            <p className="text-lg font-bold">100% Protegido</p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    </div>
                   </div>
                 </CarouselItem>
               ))}
             </CarouselContent>
           </Carousel>
         ) : (
-          <div className="container px-4 md:px-6 mx-auto grid lg:grid-cols-12 gap-12 items-center relative z-10">
-            <div className="lg:col-span-7 space-y-8 text-left">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8 }}
-                className="space-y-6"
-              >
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-xs font-semibold uppercase tracking-wider">
-                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  <span>Atendimento Boutique em São Paulo</span>
-                </div>
-                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight whitespace-pre-line">
-                  {heroTitle}
-                </h1>
-                <p className="text-base sm:text-lg md:text-xl text-slate-200 font-light max-w-xl leading-relaxed">
-                  {heroSubtitle}
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                  <Link href="/contact">
-                    <button className="px-8 py-4 rounded-full bg-[#c65f54] text-white font-bold text-lg hover:bg-[#c65f54]/95 transition-all hover:shadow-lg hover:shadow-[#c65f54]/25 hover:-translate-y-0.5 flex items-center justify-center gap-3 group">
-                      Consultoria Exclusiva
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                  </Link>
-                  <a 
-                    href={`https://wa.me/${whatsappNumber}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-8 py-4 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-white font-bold text-lg hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3"
-                  >
-                    <MessageSquare className="w-5 h-5 text-[#25D366] fill-[#25D366]" />
-                    <span>WhatsApp</span>
-                  </a>
-                </div>
-              </motion.div>
+          <div className="w-full relative z-10 min-h-[85vh] lg:min-h-[90vh] flex items-center">
+            {/* Full-bleed absolute background image for fallback */}
+            <div className="absolute inset-0 z-0">
+              <img
+                src={heroImageUrl}
+                alt="Corporate Meeting Room"
+                className="w-full h-full object-cover opacity-25 mix-blend-luminosity"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/85 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/90 via-transparent to-transparent" />
             </div>
-            
-            <div className="lg:col-span-5 hidden lg:block">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1 }}
-                className="relative"
-              >
-                <div className="aspect-[4/5] rounded-[3.5rem] overflow-hidden border-8 border-white/5 shadow-2xl relative">
-                  <img
-                    src={heroImageUrl}
-                    alt="Corporate Meeting Room"
-                    className="w-full h-full object-cover opacity-90"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/90 via-[#08454c]/10 to-transparent" />
-                </div>
-                
-                {/* Floating Metric Card */}
-                <div className="absolute -bottom-6 -left-6 bg-white/10 backdrop-blur-xl border border-white/15 p-6 rounded-3xl shadow-2xl flex items-center gap-4 text-white">
-                  <div className="w-12 h-12 rounded-2xl bg-[#c65f54] flex items-center justify-center">
-                    <ShieldCheck className="w-6 h-6 text-white" />
+
+            <div className="container px-4 md:px-6 mx-auto relative z-10 py-12">
+              <div className="max-w-3xl space-y-8 text-left">
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="space-y-6"
+                >
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-xs font-semibold uppercase tracking-wider">
+                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                    <span>Atendimento Boutique em São Paulo</span>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">Credibilidade</p>
-                    <p className="text-lg font-bold">100% Personalizado</p>
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight whitespace-pre-line">
+                    {heroTitle}
+                  </h1>
+                  <p className="text-base sm:text-lg md:text-xl text-slate-200 font-light max-w-xl leading-relaxed">
+                    {heroSubtitle}
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <Link href="/contact">
+                      <button className="px-8 py-4 rounded-full bg-[#c65f54] text-white font-bold text-lg hover:bg-[#c65f54]/95 transition-all hover:shadow-lg hover:shadow-[#c65f54]/25 hover:-translate-y-0.5 flex items-center justify-center gap-3 group">
+                        Consultoria Exclusiva
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </Link>
+                    <a 
+                      href={`https://wa.me/${whatsappNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-8 py-4 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-white font-bold text-lg hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3"
+                    >
+                      <MessageSquare className="w-5 h-5 text-[#25D366] fill-[#25D366]" />
+                      <span>WhatsApp</span>
+                    </a>
                   </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              </div>
             </div>
           </div>
         )}
