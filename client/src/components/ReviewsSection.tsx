@@ -31,21 +31,22 @@ export function ReviewsSection() {
   };
 
   return (
-    <section className="py-24 bg-slate-50 overflow-hidden">
+    <section className="py-24 bg-[#eae4da] overflow-hidden border-t border-[#809ba6]/10">
       <div className="container px-4 mx-auto">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
           <div className="max-w-2xl">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-slate-900 mb-4">
+            <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Depoimentos</span>
+            <h2 className="text-3xl md:text-5xl font-display font-bold text-[#163b52] mt-2 mb-4 leading-tight">
               O que nossos clientes dizem
             </h2>
-            <p className="text-slate-600 text-lg">
-              Sua tranquilidade é nossa maior prioridade. Veja as experiências de quem já conta com a Monteiro Corretora.
+            <p className="text-slate-600 text-lg font-light leading-relaxed">
+              Sua tranquilidade é nossa maior prioridade. Veja as experiências reais de quem já conta com a nossa consultoria boutique.
             </p>
           </div>
           
           {!user && (
-            <Button variant="outline" className="rounded-full border-slate-200" asChild>
-              <a href="/login">Entre para avaliar</a>
+            <Button variant="outline" className="rounded-full border-[#809ba6]/30 text-[#163b52] hover:bg-[#f5f2eb]/50 bg-white" asChild>
+              <a href="/login" className="font-bold">Deixe sua Avaliação</a>
             </Button>
           )}
         </div>
@@ -54,8 +55,8 @@ export function ReviewsSection() {
           {/* Reviews List */}
           <div className="lg:col-span-2 space-y-6">
             {isLoadingReviews ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <div className="flex justify-center py-20 bg-white rounded-[2rem] border border-slate-100">
+                <Loader2 className="w-8 h-8 animate-spin text-[#08454c]" />
               </div>
             ) : reviews && reviews.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -66,33 +67,35 @@ export function ReviewsSection() {
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
-                      transition={{ delay: index * 0.1 }}
+                      transition={{ delay: index * 0.08 }}
+                      className="h-full"
                     >
-                      <Card className="border-none shadow-sm bg-white hover:shadow-md transition-shadow h-full">
-                        <CardContent className="p-8 flex flex-col h-full">
-                          <div className="flex gap-1 mb-4">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"
-                                }`}
-                              />
-                            ))}
+                      <Card className="border border-slate-100/50 shadow-[0_8px_30px_rgba(8,69,76,0.025)] bg-white hover:shadow-[0_20px_50px_rgba(8,69,76,0.065)] hover:-translate-y-1 transition-all duration-500 rounded-[2rem] h-full overflow-hidden">
+                        <CardContent className="p-8 flex flex-col justify-between h-full">
+                          <div>
+                            <div className="flex gap-1 mb-6">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`w-4.5 h-4.5 ${
+                                    i < review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            
+                            <Quote className="w-8 h-8 text-[#c65f54]/10 mb-4" />
+                            <p className="text-slate-600 italic font-light leading-relaxed flex-grow mb-8 text-sm">
+                              "{review.comment}"
+                            </p>
                           </div>
                           
-                          <Quote className="w-8 h-8 text-primary/10 mb-2" />
-                          <p className="text-slate-700 italic flex-grow mb-6">
-                            "{review.comment}"
-                          </p>
-                          
-                          <div className="flex items-center gap-3 pt-6 border-t border-slate-50">
-                            <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary font-bold">
-                              {/* If we had the user's name in the review response, we'd use it here */}
-                              U
+                          <div className="flex items-center gap-3 pt-6 border-t border-slate-50 mt-auto">
+                            <div className="w-10 h-10 rounded-2xl bg-[#08454c]/5 border border-[#08454c]/10 flex items-center justify-center text-[#08454c] font-bold text-sm">
+                              {review.userId ? String(review.userId).slice(0, 1).toUpperCase() : "C"}
                             </div>
-                            <div className="text-sm">
-                              <p className="font-semibold text-slate-900">Cliente Verificado</p>
+                            <div className="text-xs">
+                              <p className="font-bold text-[#163b52]">Cliente Verificado</p>
                               <p className="text-slate-400">
                                 {review.createdAt && format(new Date(review.createdAt), "MMMM 'de' yyyy", { locale: ptBR })}
                               </p>
@@ -105,26 +108,26 @@ export function ReviewsSection() {
                 </AnimatePresence>
               </div>
             ) : (
-              <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm">
-                <MessageSquare className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                <p className="text-slate-500">Ainda não há avaliações. Seja o primeiro a avaliar!</p>
+              <div className="bg-white rounded-[2rem] p-16 text-center border border-slate-100 shadow-[0_8px_30px_rgba(8,69,76,0.02)]">
+                <MessageSquare className="w-12 h-12 text-[#809ba6]/30 mx-auto mb-4" />
+                <p className="text-slate-500 font-medium">Nenhuma avaliação publicada até o momento. Seja o primeiro a avaliar!</p>
               </div>
             )}
           </div>
 
           {/* Submission Form */}
           <div className="lg:col-span-1">
-            <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-24">
+            <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-[0_12px_40px_rgba(8,69,76,0.035)] sticky top-28">
               {user ? (
                 <>
-                  <h3 className="text-xl font-display font-bold text-slate-900 mb-6 flex items-center gap-2">
+                  <h3 className="text-xl font-display font-bold text-[#163b52] mb-6 flex items-center gap-2">
                     <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
                     Deixe sua avaliação
                   </h3>
                   
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-3">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
                         Sua nota
                       </label>
                       <div className="flex gap-2">
@@ -132,13 +135,13 @@ export function ReviewsSection() {
                           <button
                             key={star}
                             type="button"
-                            className="transition-transform active:scale-95"
+                            className="transition-transform active:scale-90"
                             onClick={() => setRating(star)}
                             onMouseEnter={() => setHoverRating(star)}
                             onMouseLeave={() => setHoverRating(0)}
                           >
                             <Star
-                              className={`w-8 h-8 transition-colors ${
+                              className={`w-8 h-8 transition-colors duration-200 ${
                                 (hoverRating || rating) >= star
                                   ? "fill-amber-400 text-amber-400"
                                   : "text-slate-200"
@@ -150,12 +153,12 @@ export function ReviewsSection() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-3">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
                         Seu comentário
                       </label>
                       <Textarea
-                        placeholder="Conte-nos como foi sua experiência..."
-                        className="resize-none min-h-[120px] bg-slate-50 border-slate-100 focus:border-primary focus:ring-primary rounded-xl"
+                        placeholder="Conte-nos como foi sua experiência com nossos serviços..."
+                        className="resize-none min-h-[130px] bg-slate-50/50 border border-slate-100 focus:border-[#08454c] focus:ring-[#08454c] rounded-2xl p-4 text-sm leading-relaxed"
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                         required
@@ -164,7 +167,7 @@ export function ReviewsSection() {
                     
                     <Button 
                       type="submit" 
-                      className="w-full h-12 rounded-xl text-lg font-medium transition-all hover:shadow-lg"
+                      className="w-full h-13 rounded-2xl bg-[#c65f54] text-white hover:bg-[#c65f54]/95 hover:shadow-lg hover:shadow-[#c65f54]/25 transition-all duration-300 font-bold"
                       disabled={createReview.isPending}
                     >
                       {createReview.isPending ? (
@@ -174,28 +177,28 @@ export function ReviewsSection() {
                         </>
                       ) : (
                         <>
-                          <Send className="w-5 h-5 mr-2" />
+                          <Send className="w-4 h-4 mr-2" />
                           Enviar Avaliação
                         </>
                       )}
                     </Button>
                     
-                    <p className="text-xs text-center text-slate-400 italic">
-                      Sua avaliação será enviada para moderação antes de ser publicada.
+                    <p className="text-[11px] text-center text-slate-400 italic">
+                      Sua avaliação passará por moderação antes de ser veiculada publicamente.
                     </p>
                   </form>
                 </>
               ) : (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Star className="w-8 h-8 text-slate-300" />
+                  <div className="w-16 h-16 bg-[#08454c]/5 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <Star className="w-8 h-8 text-[#08454c]/40" />
                   </div>
-                  <h3 className="text-xl font-display font-bold text-slate-900 mb-2">Compartilhe sua opinião</h3>
-                  <p className="text-slate-500 mb-8">
-                    Faça login para poder avaliar nossos serviços e ajudar outras pessoas.
+                  <h3 className="text-xl font-display font-bold text-[#163b52] mb-3">Compartilhe sua opinião</h3>
+                  <p className="text-slate-500 text-sm leading-relaxed mb-8 font-light">
+                    Faça login na sua conta para avaliar nossos serviços e contribuir para a nossa comunidade.
                   </p>
-                  <Button className="w-full rounded-xl" asChild>
-                    <a href="/login">Fazer Login</a>
+                  <Button className="w-full h-13 rounded-2xl bg-[#08454c] text-white hover:bg-[#08454c]/95 font-bold shadow-md shadow-[#08454c]/10" asChild>
+                    <a href="/login">Acessar Minha Conta</a>
                   </Button>
                 </div>
               )}

@@ -458,6 +458,8 @@ export class DatabaseStorage implements IStorage {
       // Seed default settings if none exist
       const [newSettings] = await db.insert(siteSettings).values({
         siteName: "Monteiro Corretora",
+        primaryColor: "#08454c",
+        secondaryColor: "#c65f54",
         heroTitle: "Protegendo seu Futuro,\nGarantindo seu Legado",
         heroSubtitle: "Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna.",
         aboutTitle: "Sobre a Monteiro Corretora",
@@ -1056,8 +1058,8 @@ export class MemStorage implements IStorage {
         id: this.currentId.siteSettings++,
         siteName: "Monteiro Corretora",
         logoBase64: null,
-        primaryColor: "#0f172a",
-        secondaryColor: "#fbbf24",
+        primaryColor: "#08454c",
+        secondaryColor: "#c65f54",
         fontSans: "Inter",
         fontDisplay: "Outfit",
         heroTitle: "Protegendo seu Futuro, Garantindo seu Legado",

@@ -6,47 +6,46 @@
 @tailwind utilities;
 
 :root {
-  /* Premium Agency Theme - Updated Palette */
+  /* Premium Agency Theme - Modern Color Palette */
 
   /* Typography */
   --font-sans: 'Inter', sans-serif;
   --font-display: 'Outfit', sans-serif;
 
-  /* Color Palette */
-  --background: 196 20% 98%; /* Light tint */
-  --foreground: 204 50% 21%; /* Azul Segurança for depth/text */
+  /* Color Palette based on requested brand colors */
+  --background: 36 21% 89%; /* Areia Suave (#eae4da) */
+  --foreground: 203 58% 20%; /* Azul Segurança (#163b52) */
 
-  --primary: 6 50% 55%; /* Reddish Terracotta */
-  --primary-foreground: 196 20% 98%;
+  --primary: 186 81% 16%; /* Verde Profundo (#08454c) */
+  --primary-foreground: 36 21% 95%; /* Light Areia tint */
 
-  --secondary: 8 51% 53%; /* Terracota Vital (Highlight) */
-  --secondary-foreground: 196 20% 98%;
+  --secondary: 6 51% 55%; /* Terracota Vital (#c65f54) */
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 196 18% 90%; /* Lighter Sereno for muted backgrounds */
-  --muted-foreground: 196 18% 40%; /* Darker Sereno for muted text */
+  --muted: 197 18% 82%; /* Light Sereno for muted elements */
+  --muted-foreground: 197 18% 40%; /* Sereno (#809ba6) */
 
-  --accent: 196 18% 57%; /* Sereno (Neutral/Support) */
-  --accent-foreground: 196 20% 98%;
+  --accent: 197 18% 58%; /* Sereno (#809ba6) */
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 8 51% 53%; /* Using Terracota for destructive to keep harmony */
-  --destructive-foreground: 196 20% 98%;
+  --destructive: 6 51% 55%; /* Keep Terracota style for errors */
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 196 18% 85%; /* Soft Sereno border */
-  --input: 196 18% 85%;
-  --ring: 6 50% 55%;
+  --border: 197 18% 75%; /* Soft Sereno border */
+  --input: 197 18% 80%;
+  --ring: 186 81% 16%;
 
-  --card: 0 0% 100%;
-  --card-foreground: 204 50% 21%; /* Azul Segurança */
+  --card: 0 0% 100%; /* Pure white cards for high-contrast on sand */
+  --card-foreground: 203 58% 20%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 204 50% 21%; /* Azul Segurança */
+  --popover-foreground: 203 58% 20%;
 
-  --radius: 0.75rem;
-  /* Slightly more rounded for modern feel */
+  --radius: 1.25rem; /* Larger, softer roundness for modern cards */
 
   /* Gradient specific hooks */
-  --gold-start: #C45A4A; /* Replaced with Terracota */
-  --gold-end: #b64d3e; /* Darker Terracota */
+  --brand-gradient-start: #08454c; /* Verde Profundo */
+  --brand-gradient-end: #163b52; /* Azul Segurança */
 }
 
 @layer base {
@@ -66,14 +65,14 @@
   h5,
   h6 {
     font-family: var(--font-display);
-    @apply font-bold tracking-tight text-foreground;
+    @apply font-bold tracking-tight text-[#163b52];
   }
 }
 
 /* Dynamic Overrides */
 :root {
-  --primary-default: #c65f54; /* Reddish Terracotta */
-  --secondary-default: #C45A4A; /* Terracota Vital */
+  --primary-default: #08454c; /* Verde Profundo */
+  --secondary-default: #c65f54; /* Terracota Vital */
 }
 
 .bg-primary {
@@ -110,25 +109,25 @@
   }
 
   .glass-sidebar {
-    @apply bg-primary/95 backdrop-blur-xl border-r border-white/10 text-white;
+    @apply bg-[#08454c]/95 backdrop-blur-xl border-r border-white/10 text-white;
   }
 
   .premium-card {
-    @apply bg-white rounded-xl border border-gray-100 transition-all duration-300;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+    @apply bg-white rounded-3xl border border-slate-100 transition-all duration-500;
+    box-shadow: 0 10px 40px rgba(8, 69, 76, 0.03);
   }
 
   .premium-card:hover {
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    @apply -translate-y-1.5;
+    box-shadow: 0 20px 50px rgba(8, 69, 76, 0.08);
   }
 
   .premium-gradient {
-    @apply bg-gradient-to-r;
-    background-image: linear-gradient(to right, #0F6570, #1A3A4F);
+    background-image: linear-gradient(135deg, #08454c, #163b52);
   }
 
   .text-gold {
-    @apply text-[#C45A4A]; /* Terracota Vital */
+    @apply text-[#c65f54]; /* Terracota Vital */
   }
 
   .hide-scrollbar {
