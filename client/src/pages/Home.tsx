@@ -40,7 +40,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen font-sans bg-[#eae4da] text-[#163b52] selection:bg-[#c65f54]/20 overflow-x-hidden">
-            {/* Hero Section */}
+      <Navbar />
+
+      {/* Hero Section */}
       <section className="relative min-h-[95vh] lg:min-h-screen flex items-center pt-24 pb-16 overflow-hidden bg-[#08454c] text-white">
         {/* Dynamic Blurry Glow Orbs */}
         <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none" />
@@ -80,10 +82,6 @@ export default function Home() {
                         transition={{ duration: 0.8 }}
                         className="space-y-6"
                       >
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-xs font-semibold uppercase tracking-wider">
-                          <Sparkles className="w-4.5 h-4.5 text-[#c65f54]" />
-                          <span>Monteiro Private</span>
-                        </div>
                         <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight">
                           {slide.title}
                         </h1>
