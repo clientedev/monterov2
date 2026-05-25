@@ -162,6 +162,7 @@ export default function ContactsPage() {
             document: "",
             address: "",
             responsibleName: "",
+            responsibleId: undefined,
             anniversaryDate: "",
             maritalStatus: "",
         },
@@ -357,19 +358,52 @@ export default function ContactsPage() {
                                     />
 
                                     {clientType === "company" && (
-                                        <FormField
-                                            control={form.control}
-                                            name="responsibleName"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-gray-600 font-bold">Pessoa Responsável *</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Nome do contato na empresa" className="rounded-xl h-11 border-primary/20" {...field} value={field.value || ""} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                        <>
+                                            <FormField
+                                                control={form.control}
+                                                name="responsibleId"
+                                                render={({ field }) => {
+                                                    const individualContacts = contacts?.filter(c => c.type === 'individual') || [];
+                                                    return (
+                                                        <FormItem>
+                                                            <FormLabel className="text-gray-600 font-bold">Pessoa Responsável (Selecione dos Contatos) *</FormLabel>
+                                                            <Select
+                                                                onValueChange={(val) => {
+                                                                    const id = parseInt(val);
+                                                                    field.onChange(id);
+                                                                    const selectedCont = individualContacts.find(c => c.id === id);
+                                                                    if (selectedCont) {
+                                                                        form.setValue("responsibleName", selectedCont.name);
+                                                                    }
+                                                                }}
+                                                                value={field.value?.toString() || ""}
+                                                            >
+                                                                <FormControl>
+                                                                    <SelectTrigger className="rounded-xl h-11 border-primary/20">
+                                                                        <SelectValue placeholder="Selecione um contato individual" />
+                                                                    </SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent>
+                                                                    {individualContacts.map((c) => (
+                                                                        <SelectItem key={c.id} value={c.id.toString()}>
+                                                                            {c.name} {c.phone ? `(${c.phone})` : ""}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    );
+                                                }}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="responsibleName"
+                                                render={({ field }) => (
+                                                    <input type="hidden" {...field} value={field.value || ""} />
+                                                )}
+                                            />
+                                        </>
                                     )}
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -527,7 +561,14 @@ export default function ContactsPage() {
                                     <TableCell className="text-gray-600 font-medium py-4">
                                         {contact.type === 'company' ? (
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-slate-800">{contact.responsibleName || "Não inf."}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="font-bold text-slate-800">{contact.responsibleName || "Não inf."}</span>
+                                                    {contact.responsibleId && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
+                                                            Vinculado
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Doc: {contact.document || "—"}</span>
                                             </div>
                                         ) : (

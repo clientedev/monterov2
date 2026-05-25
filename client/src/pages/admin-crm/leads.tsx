@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Lead, Contact, InsertLead, insertLeadSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -43,22 +43,53 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Edit2, Trash2 } from "lucide-react";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { useSiteSettings } from "@/hooks/use-site-settings";
+import { cn } from "@/lib/utils";
 
-const STATUSES = [
-    { id: "new", label: "Novo Lead", color: "bg-blue-500", light: "bg-blue-50" },
-    { id: "qualified", label: "Qualificado", color: "bg-purple-500", light: "bg-purple-50" },
-    { id: "proposal", label: "Proposta", color: "bg-yellow-500", light: "bg-yellow-50" },
-    { id: "cancelled", label: "Cancelado", color: "bg-red-500", light: "bg-red-50" },
-    { id: "implemented", label: "Implantado", color: "bg-green-500", light: "bg-green-50" }
+const DEFAULT_LEAD_COLUMNS = [
+    { id: "new", label: "Novo Lead", color: "text-blue-500", bg: "bg-blue-50/50", accent: "border-blue-300" },
+    { id: "qualified", label: "Qualificado", color: "text-purple-500", bg: "bg-purple-50/50", accent: "border-purple-300" },
+    { id: "proposal", label: "Proposta", color: "text-amber-500", bg: "bg-amber-50/50", accent: "border-amber-300" },
+    { id: "cancelled", label: "Cancelado", color: "text-rose-500", bg: "bg-rose-50/50", accent: "border-rose-300" },
+    { id: "implemented", label: "Implantado", color: "text-emerald-500", bg: "bg-emerald-50/50", accent: "border-emerald-300" }
+];
+
+const COLOR_OPTIONS = [
+    { value: "slate", label: "Cinza", color: "text-slate-500", bg: "bg-slate-50/50", accent: "border-slate-300" },
+    { value: "blue", label: "Azul", color: "text-blue-500", bg: "bg-blue-50/50", accent: "border-blue-300" },
+    { value: "indigo", label: "Indigo", color: "text-indigo-500", bg: "bg-indigo-50/50", accent: "border-indigo-300" },
+    { value: "amber", label: "Amarelo", color: "text-amber-500", bg: "bg-amber-50/50", accent: "border-amber-300" },
+    { value: "orange", label: "Laranja", color: "text-orange-500", bg: "bg-orange-50/50", accent: "border-orange-300" },
+    { value: "emerald", label: "Verde", color: "text-emerald-500", bg: "bg-emerald-50/50", accent: "border-emerald-300" },
+    { value: "rose", label: "Vermelho", color: "text-rose-500", bg: "bg-rose-50/50", accent: "border-rose-300" }
 ];
 
 export default function LeadsPage() {
     const { toast } = useToast();
+    const { settings, updateSettings } = useSiteSettings();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
     const [deleteLeadId, setDeleteLeadId] = useState<number | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
+
+    // Dynamic Columns State
+    const [columnDialogOpen, setColumnDialogOpen] = useState(false);
+    const [editingColumn, setEditingColumn] = useState<any>(null);
+    const [newColLabel, setNewColLabel] = useState("");
+    const [newColColor, setNewColColor] = useState("blue");
+
+    const columns = useMemo(() => {
+        if (settings?.leadColumns) {
+            try {
+                return JSON.parse(settings.leadColumns);
+            } catch (e) {
+                return DEFAULT_LEAD_COLUMNS;
+            }
+        }
+        return DEFAULT_LEAD_COLUMNS;
+    }, [settings?.leadColumns]);
 
     const { data: leads, isLoading: leadsLoading } = useQuery<Lead[]>({
         queryKey: ["/api/leads"],
@@ -113,6 +144,90 @@ export default function LeadsPage() {
             setDeleteLeadId(null);
         },
     });
+
+    const handleSaveColumn = async () => {
+        if (!newColLabel.trim()) {
+            toast({ title: "Nome da coluna é obrigatório", variant: "destructive" });
+            return;
+        }
+
+        const colorConfig = COLOR_OPTIONS.find(c => c.value === newColColor) || COLOR_OPTIONS[0];
+        let updatedColumns = [...columns];
+
+        if (editingColumn) {
+            updatedColumns = updatedColumns.map(col => col.id === editingColumn.id ? {
+                ...col,
+                label: newColLabel,
+                color: colorConfig.color,
+                bg: colorConfig.bg,
+                accent: colorConfig.accent
+            } : col);
+            toast({ title: "Coluna atualizada!" });
+        } else {
+            const newId = newColLabel.toLowerCase().replace(/[^a-z0-9]/g, "_") + "_" + Date.now();
+            updatedColumns.push({
+                id: newId,
+                label: newColLabel,
+                color: colorConfig.color,
+                bg: colorConfig.bg,
+                accent: colorConfig.accent
+            });
+            toast({ title: "Coluna criada!" });
+        }
+
+        await updateSettings({ leadColumns: JSON.stringify(updatedColumns) });
+        setColumnDialogOpen(false);
+        setEditingColumn(null);
+        setNewColLabel("");
+    };
+
+    const handleDeleteColumn = async (columnId: string) => {
+        if (columns.length <= 1) {
+            toast({ title: "Você precisa manter pelo menos uma coluna!", variant: "destructive" });
+            return;
+        }
+        if (!confirm("Tem certeza que deseja excluir esta coluna? Todos os leads nela serão movidos para a primeira coluna.")) {
+            return;
+        }
+
+        const columnLeads = leads?.filter(l => l.status === columnId) || [];
+        const firstColId = columns.find((c: any) => c.id !== columnId)?.id || "new";
+
+        for (const l of columnLeads) {
+            await apiRequest("PATCH", `/api/leads/${l.id}/status`, { status: firstColId });
+        }
+
+        const updatedColumns = columns.filter((c: any) => c.id !== columnId);
+        await updateSettings({ leadColumns: JSON.stringify(updatedColumns) });
+        queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+        toast({ title: "Coluna excluída com sucesso!" });
+    };
+
+    const onDragEnd = (result: DropResult) => {
+        const { destination, source, draggableId, type } = result;
+
+        if (!destination) return;
+
+        if (
+            destination.droppableId === source.droppableId &&
+            destination.index === source.index
+        ) {
+            return;
+        }
+
+        if (type === "column") {
+            const reordered = Array.from(columns);
+            const [removed] = reordered.splice(source.index, 1);
+            reordered.splice(destination.index, 0, removed);
+            updateSettings({ leadColumns: JSON.stringify(reordered) });
+            return;
+        }
+
+        const leadId = parseInt(draggableId);
+        const newStatus = destination.droppableId;
+
+        updateStatusMutation.mutate({ id: leadId, status: newStatus });
+    };
 
     if (leadsLoading) {
         return (
@@ -171,6 +286,7 @@ export default function LeadsPage() {
                             </DialogHeader>
                             <LeadForm
                                 contacts={contacts || []}
+                                columns={columns}
                                 initialData={editingLeadId ? leads?.find(l => l.id === editingLeadId) : undefined}
                                 onSubmit={(data: InsertLead) => {
                                     if (editingLeadId) {
@@ -186,39 +302,177 @@ export default function LeadsPage() {
                 </div>
             </div>
 
-            <div className={`flex gap-6 overflow-x-auto pb-6 scrollbar-elegant ${isExpanded ? "flex-1" : ""}`}>
-                {STATUSES.map((status) => (
-                    <div key={status.id} className={`flex-shrink-0 w-80 flex flex-col ${isExpanded ? "h-[calc(100vh-160px)]" : "h-[calc(100vh-280px)]"}`}>
-                        <div className="flex items-center justify-between mb-4 px-2">
-                            <div className="flex items-center gap-2">
-                                <div className={`h-2.5 w-2.5 rounded-full ${status.color}`} />
-                                <h3 className="font-display font-bold text-gray-800 tracking-tight">{status.label}</h3>
-                            </div>
-                            <Badge variant="secondary" className="bg-gray-200 text-gray-600 border-none font-bold">
-                                {leads?.filter(l => l.status === status.id).length || 0}
-                            </Badge>
+            {/* Custom Column Dialog */}
+            <Dialog open={columnDialogOpen} onOpenChange={setColumnDialogOpen}>
+                <DialogContent className="sm:max-w-[400px] rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold font-display">
+                            {editingColumn ? "Editar Coluna" : "Adicionar Nova Coluna"}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-600">Nome da Coluna</label>
+                            <Input
+                                placeholder="Ex: Negociação, Emissão..."
+                                value={newColLabel}
+                                onChange={(e) => setNewColLabel(e.target.value)}
+                                className="rounded-xl h-11"
+                            />
                         </div>
-
-                        <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin">
-                            {leads?.filter(l => l.status === status.id && (
-                                search === "" ||
-                                contacts?.find(c => c.id === l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
-                            )).map(lead => (
-                                <LeadCard
-                                    key={lead.id}
-                                    lead={lead}
-                                    contact={contacts?.find(c => c.id === lead.contactId)}
-                                    onMove={(newStatus) => updateStatusMutation.mutate({ id: lead.id, status: newStatus })}
-                                    onEdit={() => {
-                                        setEditingLeadId(lead.id);
-                                        setOpen(true);
-                                    }}
-                                    onDelete={() => setDeleteLeadId(lead.id)}
-                                />
-                            ))}
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-600">Cor do Destaque</label>
+                            <Select value={newColColor} onValueChange={setNewColColor}>
+                                <SelectTrigger className="rounded-xl h-11">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {COLOR_OPTIONS.map(opt => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            <div className="flex items-center gap-2">
+                                                <div className={cn("w-3 h-3 rounded-full", opt.bg, opt.accent, "border")} />
+                                                {opt.label}
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
+                        <Button onClick={handleSaveColumn} className="w-full h-11 rounded-xl font-bold mt-4 shadow-lg shadow-primary/20">
+                            Salvar Coluna
+                        </Button>
                     </div>
-                ))}
+                </DialogContent>
+            </Dialog>
+
+            <div className={`flex-1 overflow-x-auto pb-6 scrollbar-elegant ${isExpanded ? "flex-1" : ""}`}>
+                <DragDropContext onDragEnd={onDragEnd}>
+                    <Droppable droppableId="board" type="column" direction="horizontal">
+                        {(provided) => (
+                            <div 
+                                {...provided.droppableProps}
+                                ref={provided.innerRef}
+                                className="flex gap-6 h-full min-w-[900px]"
+                            >
+                                {columns.map((column: any, index: number) => (
+                                    <Draggable key={column.id} draggableId={column.id} index={index}>
+                                        {(columnProvided, columnSnapshot) => (
+                                            <div
+                                                ref={columnProvided.innerRef}
+                                                {...columnProvided.draggableProps}
+                                                className={cn(
+                                                    "flex-shrink-0 w-80 flex flex-col relative bg-slate-100/40 rounded-2xl border border-slate-200/60 p-3 h-full",
+                                                    columnSnapshot.isDragging ? "shadow-2xl ring-2 ring-primary/10 rotate-[1deg]" : "",
+                                                    isExpanded ? "h-[calc(100vh-160px)]" : "h-[calc(100vh-280px)]"
+                                                )}
+                                            >
+                                                {/* Column Header */}
+                                                <div 
+                                                    {...columnProvided.dragHandleProps}
+                                                    className="flex items-center justify-between mb-4 px-2 cursor-grab active:cursor-grabbing"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={cn("h-2.5 w-2.5 rounded-full", column.color?.replace("text-", "bg-") || "bg-blue-500")} />
+                                                        <h3 className="font-display font-bold text-gray-800 tracking-tight">{column.label}</h3>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingColumn(column);
+                                                                setNewColLabel(column.label);
+                                                                const matchColor = COLOR_OPTIONS.find(o => o.color === column.color)?.value || "blue";
+                                                                setNewColColor(matchColor);
+                                                                setColumnDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <Edit2 className="h-3 w-3" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteColumn(column.id);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <Droppable droppableId={column.id}>
+                                                    {(provided, snapshot) => (
+                                                        <div
+                                                            {...provided.droppableProps}
+                                                            ref={provided.innerRef}
+                                                            className={cn(
+                                                                "flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin rounded-xl p-1",
+                                                                snapshot.isDraggingOver ? "bg-slate-200/30" : ""
+                                                            )}
+                                                        >
+                                                            {leads?.filter(l => l.status === column.id && (
+                                                                search === "" ||
+                                                                contacts?.find(c => c.id === l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
+                                                            )).map((lead, index) => (
+                                                                <Draggable key={lead.id} draggableId={lead.id.toString()} index={index}>
+                                                                    {(provided, snapshot) => (
+                                                                        <div
+                                                                            ref={provided.innerRef}
+                                                                            {...provided.draggableProps}
+                                                                            {...provided.dragHandleProps}
+                                                                            style={{
+                                                                                ...provided.draggableProps.style,
+                                                                                cursor: snapshot.isDragging ? 'grabbing' : 'grab'
+                                                                            }}
+                                                                        >
+                                                                            <LeadCard
+                                                                                lead={lead}
+                                                                                contact={contacts?.find(c => c.id === lead.contactId)}
+                                                                                columns={columns}
+                                                                                onMove={(newStatus) => updateStatusMutation.mutate({ id: lead.id, status: newStatus })}
+                                                                                onEdit={() => {
+                                                                                    setEditingLeadId(lead.id);
+                                                                                    setOpen(true);
+                                                                                }}
+                                                                                onDelete={() => setDeleteLeadId(lead.id)}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </Draggable>
+                                                            ))}
+                                                            {provided.placeholder}
+                                                        </div>
+                                                    )}
+                                                </Droppable>
+                                            </div>
+                                        )}
+                                    </Draggable>
+                                ))}
+                                {provided.placeholder}
+
+                                <div className="w-80 shrink-0">
+                                    <button
+                                        onClick={() => {
+                                            setEditingColumn(null);
+                                            setNewColLabel("");
+                                            setNewColColor("blue");
+                                            setColumnDialogOpen(true);
+                                        }}
+                                        className="w-full h-14 rounded-2xl border-2 border-dashed border-slate-300 hover:border-slate-400 hover:bg-white text-slate-400 hover:text-slate-600 transition-all font-bold text-sm flex items-center justify-center gap-2 group shadow-sm"
+                                    >
+                                        <Plus className="h-5 w-5 transition-transform group-hover:scale-125" />
+                                        Nova Coluna
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </Droppable>
+                </DragDropContext>
             </div>
 
             <AlertDialog open={!!deleteLeadId} onOpenChange={(open) => !open && setDeleteLeadId(null)}>
@@ -251,19 +505,21 @@ export default function LeadsPage() {
 function LeadCard({
     lead,
     contact,
+    columns,
     onMove,
     onEdit,
     onDelete
 }: {
     lead: Lead,
     contact?: Contact,
+    columns: any[],
     onMove: (s: string) => void,
     onEdit: () => void,
     onDelete: () => void
 }) {
-    const statusIndex = STATUSES.findIndex(s => s.id === lead.status);
-    const nextStatus = statusIndex !== -1 && statusIndex < STATUSES.length - 1 ? STATUSES[statusIndex + 1].id : null;
-    const prevStatus = statusIndex > 0 ? STATUSES[statusIndex - 1].id : null;
+    const statusIndex = columns.findIndex(s => s.id === lead.status);
+    const nextStatus = statusIndex !== -1 && statusIndex < columns.length - 1 ? columns[statusIndex + 1].id : null;
+    const prevStatus = statusIndex > 0 ? columns[statusIndex - 1].id : null;
 
     return (
         <div className="group bg-white p-5 rounded-xl border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
@@ -300,7 +556,7 @@ function LeadCard({
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        {STATUSES.map(s => (
+                        {columns.map(s => (
                             <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
                                 {s.label}
                             </SelectItem>
@@ -358,7 +614,7 @@ function LeadCard({
     );
 }
 
-function LeadForm({ contacts, onSubmit, isPending, initialData }: any) {
+function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) {
     const form = useForm<InsertLead>({
         resolver: zodResolver(insertLeadSchema),
         defaultValues: initialData ? {
@@ -369,7 +625,7 @@ function LeadForm({ contacts, onSubmit, isPending, initialData }: any) {
             notes: initialData.notes || "",
         } : {
             contactId: 0,
-            status: "new",
+            status: columns[0]?.id || "new",
             source: "",
             product: "",
             value: "",

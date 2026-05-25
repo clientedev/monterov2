@@ -57,7 +57,8 @@ export default function ServicesPage() {
                 title: "Erro ao criar serviço",
                 description: error.message,
                 variant: "destructive",
-            });
+                defaultStatus: 0
+            } as any);
         },
     });
 
@@ -70,6 +71,28 @@ export default function ServicesPage() {
             toast({ title: "Serviço excluído" });
         },
     });
+
+    const handleMove = async (index: number, direction: 'up' | 'down') => {
+        if (!services) return;
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= services.length) return;
+
+        const currentService = services[index];
+        const neighborService = services[targetIndex];
+
+        // Ensure order exists as a number
+        const currentOrder = currentService.order ?? 0;
+        const neighborOrder = neighborService.order ?? 0;
+
+        const newCurrentOrder = neighborOrder === currentOrder ? neighborOrder + (direction === 'up' ? -1 : 1) : neighborOrder;
+        const newNeighborOrder = currentOrder;
+
+        await apiRequest("PATCH", `/api/services/${currentService.id}`, { order: newCurrentOrder });
+        await apiRequest("PATCH", `/api/services/${neighborService.id}`, { order: newNeighborOrder });
+
+        queryClient.invalidateQueries({ queryKey: ["/api/services"] });
+        toast({ title: "Ordem de exibição atualizada!" });
+    };
 
     if (isLoading) {
         return (
@@ -90,6 +113,7 @@ export default function ServicesPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>Posição</TableHead>
                             <TableHead>Ícone</TableHead>
                             <TableHead>Título</TableHead>
                             <TableHead>Descrição</TableHead>
@@ -99,16 +123,37 @@ export default function ServicesPage() {
                     <TableBody>
                         {services?.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
+                                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
                                     Nenhum serviço encontrado.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            services?.map((service) => {
-                                // Dynamic icon rendering
+                            services?.map((service, index) => {
                                 const IconComponent = (Icons as any)[service.icon] || Icons.HelpCircle;
                                 return (
                                     <TableRow key={service.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+                                                    disabled={index === 0}
+                                                    onClick={() => handleMove(index, 'up')}
+                                                >
+                                                    <Icons.ArrowUp className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+                                                    disabled={index === (services?.length || 0) - 1}
+                                                    onClick={() => handleMove(index, 'down')}
+                                                >
+                                                    <Icons.ArrowDown className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
                                         <TableCell>
                                             <div className="p-2 bg-primary/10 rounded-md w-fit">
                                                 <IconComponent className="h-5 w-5 text-primary" />

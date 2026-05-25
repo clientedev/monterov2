@@ -71,6 +71,7 @@ export interface IStorage {
   // Services
   getServices(): Promise<Service[]>;
   createService(service: InsertService): Promise<Service>;
+  updateService(id: number, service: Partial<InsertService>): Promise<Service | undefined>;
   deleteService(id: number): Promise<void>;
 
   // Inquiries
@@ -245,12 +246,17 @@ export class DatabaseStorage implements IStorage {
 
   // Services
   async getServices(): Promise<Service[]> {
-    return await db.select().from(services);
+    return await db.select().from(services).orderBy(asc(services.order));
   }
 
   async createService(service: InsertService): Promise<Service> {
     const [newService] = await db.insert(services).values(service).returning();
     return newService;
+  }
+
+  async updateService(id: number, service: Partial<InsertService>): Promise<Service | undefined> {
+    const [updated] = await db.update(services).set(service).where(eq(services.id, id)).returning();
+    return updated;
   }
 
   async deleteService(id: number): Promise<void> {
@@ -789,14 +795,21 @@ export class MemStorage implements IStorage {
 
   // Services
   async getServices(): Promise<Service[]> {
-    return this.services;
+    return [...this.services].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
   async createService(service: InsertService): Promise<Service> {
     const id = this.currentId.services++;
-    const newService: Service = { ...service, id };
+    const newService: Service = { ...service, id, order: service.order ?? 0 };
     this.services.push(newService);
     return newService;
+  }
+
+  async updateService(id: number, service: Partial<InsertService>): Promise<Service | undefined> {
+    const index = this.services.findIndex(s => s.id === id);
+    if (index === -1) return undefined;
+    this.services[index] = { ...this.services[index], ...service };
+    return this.services[index];
   }
 
   async deleteService(id: number): Promise<void> {

@@ -39,9 +39,14 @@ export function Navbar() {
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out py-3 md:py-4",
         showScrolledNavbar
-          ? "bg-[#163b52]/95 backdrop-blur-lg shadow-[0_4px_30px_rgba(8,69,76,0.1)] border-b border-[#809ba6]/15 py-2 md:py-3"
+          ? "backdrop-blur-lg shadow-[0_4px_30px_rgba(8,69,76,0.1)] border-b border-[#809ba6]/15 py-2 md:py-3"
           : "bg-transparent"
       )}
+      style={{
+        backgroundColor: showScrolledNavbar 
+          ? "rgba(8, 69, 76, 0.95)" 
+          : "transparent"
+      }}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         <Link href="/">

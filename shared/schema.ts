@@ -46,6 +46,7 @@ export const services = pgTable("services", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   icon: text("icon").notNull(),
+  order: integer("order").notNull().default(0),
 });
 
 // Users
@@ -70,6 +71,7 @@ export const contacts = pgTable("contacts", {
   address: text("address"),
   // NEW: PJ-specific fields
   responsibleName: text("responsible_name"), // Required for PJ — enforced via Zod superRefine
+  responsibleId: integer("responsible_id"),
   anniversaryDate: text("anniversary_date"),  // "DD/MM" format
   maritalStatus: text("marital_status"),      // solteiro, casado, divorciado, viuvo
   assignedTo: integer("assigned_to").references(() => users.id),
@@ -165,6 +167,8 @@ export const siteSettings = pgTable("site_settings", {
   instagramUrl: text("instagram_url"),
   twitterUrl: text("twitter_url"),
   linkedinUrl: text("linkedin_url"),
+  taskColumns: text("task_columns"),
+  leadColumns: text("lead_columns"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -186,7 +190,7 @@ export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
-  status: text("status", { enum: ["pendencia", "revisao", "prospect", "cotacao_enviada", "implantacao", "fechado", "venda_perdida", "venda_cancelada"] }).notNull().default("pendencia"),
+  status: text("status").notNull().default("pendencia"),
   priority: text("priority").notNull().default("medium"),
   assignedTo: integer("assigned_to").references(() => users.id).notNull(),
   contactId: integer("contact_id").references(() => contacts.id),

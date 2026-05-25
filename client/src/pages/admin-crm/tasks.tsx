@@ -51,15 +51,28 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const COLUMNS = [
-    { id: "pendencia", label: "Pendência", icon: Clock, color: "text-slate-400", bg: "bg-slate-100/50", accent: "border-slate-300" },
-    { id: "revisao", icon: MoreVertical, label: "Revisão", color: "text-blue-500", bg: "bg-blue-50/50", accent: "border-blue-300" },
-    { id: "prospect", icon: Plus, label: "Prospect", color: "text-indigo-500", bg: "bg-indigo-50/50", accent: "border-indigo-300" },
-    { id: "cotacao_enviada", icon: Filter, label: "Cotação enviada", color: "text-amber-500", bg: "bg-amber-50/50", accent: "border-amber-300" },
-    { id: "implantacao", icon: AlertCircle, label: "Implantação", color: "text-orange-500", bg: "bg-orange-50/50", accent: "border-orange-300" },
-    { id: "fechado", icon: CheckCircle2, label: "Fechado", color: "text-emerald-500", bg: "bg-emerald-50/50", accent: "border-emerald-300" },
-    { id: "venda_perdida", icon: Trash2, label: "Venda Perdida", color: "text-rose-500", bg: "bg-rose-50/50", accent: "border-rose-300" },
-    { id: "venda_cancelada", icon: CheckCircle2, label: "Venda Cancelada", color: "text-slate-500", bg: "bg-slate-50/50", accent: "border-slate-300" },
+import { useSiteSettings } from "@/hooks/use-site-settings";
+import * as LucideIcons from "lucide-react";
+
+const DEFAULT_TASK_COLUMNS = [
+    { id: "pendencia", label: "Pendência", icon: "Clock", color: "text-slate-400", bg: "bg-slate-100/50", accent: "border-slate-300" },
+    { id: "revisao", label: "Revisão", icon: "MoreVertical", color: "text-blue-500", bg: "bg-blue-50/50", accent: "border-blue-300" },
+    { id: "prospect", label: "Prospect", icon: "Plus", color: "text-indigo-500", bg: "bg-indigo-50/50", accent: "border-indigo-300" },
+    { id: "cotacao_enviada", label: "Cotação enviada", icon: "Filter", color: "text-amber-500", bg: "bg-amber-50/50", accent: "border-amber-300" },
+    { id: "implantacao", label: "Implantação", icon: "AlertCircle", color: "text-orange-500", bg: "bg-orange-50/50", accent: "border-orange-300" },
+    { id: "fechado", label: "Fechado", icon: "CheckCircle2", color: "text-emerald-500", bg: "bg-emerald-50/50", accent: "border-emerald-300" },
+    { id: "venda_perdida", label: "Venda Perdida", icon: "Trash2", color: "text-rose-500", bg: "bg-rose-50/50", accent: "border-rose-300" },
+    { id: "venda_cancelada", label: "Venda Cancelada", icon: "CheckCircle2", color: "text-slate-500", bg: "bg-slate-50/50", accent: "border-slate-300" },
+];
+
+const COLOR_OPTIONS = [
+    { value: "slate", label: "Cinza", color: "text-slate-500", bg: "bg-slate-50/50", accent: "border-slate-300" },
+    { value: "blue", label: "Azul", color: "text-blue-500", bg: "bg-blue-50/50", accent: "border-blue-300" },
+    { value: "indigo", label: "Indigo", color: "text-indigo-500", bg: "bg-indigo-50/50", accent: "border-indigo-300" },
+    { value: "amber", label: "Amarelo", color: "text-amber-500", bg: "bg-amber-50/50", accent: "border-amber-300" },
+    { value: "orange", label: "Laranja", color: "text-orange-500", bg: "bg-orange-50/50", accent: "border-orange-300" },
+    { value: "emerald", label: "Verde", color: "text-emerald-500", bg: "bg-emerald-50/50", accent: "border-emerald-300" },
+    { value: "rose", label: "Vermelho", color: "text-rose-500", bg: "bg-rose-50/50", accent: "border-rose-300" }
 ];
 
 const CARD_COLORS: Record<string, { bg: string, border: string, label: string }> = {
@@ -71,15 +84,37 @@ const CARD_COLORS: Record<string, { bg: string, border: string, label: string }>
     purple: { bg: "bg-purple-50/50", border: "border-purple-200", label: "Roxo" }
 };
 
+function getIcon(name: string) {
+    return (LucideIcons as any)[name] || LucideIcons.HelpCircle;
+}
+
 export default function TasksPage() {
     const { toast } = useToast();
     const { user: currentUser } = useAuth();
+    const { settings, updateSettings } = useSiteSettings();
     const [open, setOpen] = useState(false);
     const [quickAddStatus, setQuickAddStatus] = useState<string | null>(null);
     const [filterUser, setFilterUser] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
+
+    // Dynamic Columns State
+    const [columnDialogOpen, setColumnDialogOpen] = useState(false);
+    const [editingColumn, setEditingColumn] = useState<any>(null);
+    const [newColLabel, setNewColLabel] = useState("");
+    const [newColColor, setNewColColor] = useState("blue");
+
+    const columns = useMemo(() => {
+        if (settings?.taskColumns) {
+            try {
+                return JSON.parse(settings.taskColumns);
+            } catch (e) {
+                return DEFAULT_TASK_COLUMNS;
+            }
+        }
+        return DEFAULT_TASK_COLUMNS;
+    }, [settings?.taskColumns]);
 
     const { data: tasks, isLoading } = useQuery<Task[]>({
         queryKey: ["/api/tasks", { 
@@ -147,8 +182,67 @@ export default function TasksPage() {
         },
     });
 
+    const handleSaveColumn = async () => {
+        if (!newColLabel.trim()) {
+            toast({ title: "Nome da coluna é obrigatório", variant: "destructive" });
+            return;
+        }
+
+        const colorConfig = COLOR_OPTIONS.find(c => c.value === newColColor) || COLOR_OPTIONS[0];
+        let updatedColumns = [...columns];
+
+        if (editingColumn) {
+            updatedColumns = updatedColumns.map(col => col.id === editingColumn.id ? {
+                ...col,
+                label: newColLabel,
+                color: colorConfig.color,
+                bg: colorConfig.bg,
+                accent: colorConfig.accent
+            } : col);
+            toast({ title: "Coluna atualizada!" });
+        } else {
+            const newId = newColLabel.toLowerCase().replace(/[^a-z0-9]/g, "_") + "_" + Date.now();
+            updatedColumns.push({
+                id: newId,
+                label: newColLabel,
+                icon: "Clock",
+                color: colorConfig.color,
+                bg: colorConfig.bg,
+                accent: colorConfig.accent
+            });
+            toast({ title: "Coluna criada!" });
+        }
+
+        await updateSettings({ taskColumns: JSON.stringify(updatedColumns) });
+        setColumnDialogOpen(false);
+        setEditingColumn(null);
+        setNewColLabel("");
+    };
+
+    const handleDeleteColumn = async (columnId: string) => {
+        if (columns.length <= 1) {
+            toast({ title: "Você precisa manter pelo menos uma coluna!", variant: "destructive" });
+            return;
+        }
+        if (!confirm("Tem certeza que deseja excluir esta coluna? Todas as tarefas nela serão movidas para a primeira coluna.")) {
+            return;
+        }
+
+        const columnTasks = tasks?.filter(t => t.status === columnId) || [];
+        const firstColId = columns.find((c: any) => c.id !== columnId)?.id || "pendencia";
+
+        for (const t of columnTasks) {
+            await apiRequest("PATCH", `/api/tasks/${t.id}/status`, { status: firstColId });
+        }
+
+        const updatedColumns = columns.filter((c: any) => c.id !== columnId);
+        await updateSettings({ taskColumns: JSON.stringify(updatedColumns) });
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+        toast({ title: "Coluna excluída com sucesso!" });
+    };
+
     const onDragEnd = (result: DropResult) => {
-        const { destination, source, draggableId } = result;
+        const { destination, source, draggableId, type } = result;
 
         if (!destination) return;
 
@@ -156,6 +250,14 @@ export default function TasksPage() {
             destination.droppableId === source.droppableId &&
             destination.index === source.index
         ) {
+            return;
+        }
+
+        if (type === "column") {
+            const reordered = Array.from(columns);
+            const [removed] = reordered.splice(source.index, 1);
+            reordered.splice(destination.index, 0, removed);
+            updateSettings({ taskColumns: JSON.stringify(reordered) });
             return;
         }
 
@@ -216,7 +318,7 @@ export default function TasksPage() {
                                     onChange={(e) => setFilterStatus(e.target.value)}
                                 >
                                     <option value="all">Todos Status</option>
-                                    {COLUMNS.map(col => (
+                                    {columns.map((col: any) => (
                                         <option key={col.id} value={col.id}>{col.label}</option>
                                     ))}
                                 </select>
@@ -233,6 +335,7 @@ export default function TasksPage() {
                                 setEditingTaskId(null);
                             }
                         }}
+                        columns={columns}
                         users={users || []}
                         currentUser={currentUser}
                         onSubmit={(data: InsertTask) => {
@@ -249,71 +352,181 @@ export default function TasksPage() {
                 </div>
             </div>
 
+            {/* Custom Column Dialog */}
+            <Dialog open={columnDialogOpen} onOpenChange={setColumnDialogOpen}>
+                <DialogContent className="sm:max-w-[400px] rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold font-display">
+                            {editingColumn ? "Editar Coluna" : "Adicionar Nova Coluna"}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-600">Nome da Coluna</label>
+                            <Input
+                                placeholder="Ex: Negociação, Emissão..."
+                                value={newColLabel}
+                                onChange={(e) => setNewColLabel(e.target.value)}
+                                className="rounded-xl h-11"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-600">Cor do Destaque</label>
+                            <Select value={newColColor} onValueChange={setNewColColor}>
+                                <SelectTrigger className="rounded-xl h-11">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {COLOR_OPTIONS.map(opt => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            <div className="flex items-center gap-2">
+                                                <div className={cn("w-3 h-3 rounded-full", opt.bg, opt.accent, "border")} />
+                                                {opt.label}
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button onClick={handleSaveColumn} className="w-full h-11 rounded-xl font-bold mt-4 shadow-lg shadow-primary/20">
+                            Salvar Coluna
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             <div className="flex-1 overflow-x-auto pb-6">
                 <DragDropContext onDragEnd={onDragEnd}>
-                    <div className="flex gap-6 h-full min-w-[900px]">
-                        {COLUMNS.map((column) => (
-                            <div key={column.id} className="flex flex-col w-[320px] bg-slate-100/40 rounded-2xl border border-slate-200/60 p-3 h-full">
-                                <div className="flex items-center justify-between mb-4 px-2">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className={cn("p-1.5 rounded-lg bg-white shadow-sm border border-slate-100", column.color)}>
-                                            <column.icon className="h-4 w-4" />
-                                        </div>
-                                        <h3 className="font-display font-bold text-slate-700 tracking-tight text-sm uppercase">{column.label}</h3>
-                                    </div>
-                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-200/50 text-slate-500">
-                                        {tasks?.filter(t => t.status === column.id).length || 0}
-                                    </span>
-                                </div>
-
-                                <Droppable droppableId={column.id}>
-                                    {(provided, snapshot) => (
-                                        <div
-                                            {...provided.droppableProps}
-                                            ref={provided.innerRef}
-                                            className={cn(
-                                                `flex-1 space-y-3 p-1 transition-colors duration-200 rounded-xl overflow-y-auto ${isExpanded ? "max-h-[calc(100vh-160px)]" : "max-h-[calc(100vh-280px)]"}`,
-                                                snapshot.isDraggingOver ? "bg-slate-200/30" : ""
-                                            )}
-                                        >
-                                            {tasks?.filter(t => t.status === column.id).map((task, index) => (
-                                                <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
-                                                    {(provided, snapshot) => (
-                                                        <div
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            {...provided.dragHandleProps}
-                                                            style={{
-                                                                ...provided.draggableProps.style,
-                                                                cursor: snapshot.isDragging ? 'grabbing' : 'grab'
+                    <Droppable droppableId="board" type="column" direction="horizontal">
+                        {(provided) => (
+                            <div 
+                                {...provided.droppableProps}
+                                ref={provided.innerRef}
+                                className="flex gap-6 h-full min-w-[900px]"
+                            >
+                                {columns.map((column: any, index: number) => (
+                                    <Draggable key={column.id} draggableId={column.id} index={index}>
+                                        {(columnProvided, columnSnapshot) => (
+                                            <div
+                                                ref={columnProvided.innerRef}
+                                                {...columnProvided.draggableProps}
+                                                className={cn(
+                                                    "flex flex-col w-[320px] bg-slate-100/40 rounded-2xl border border-slate-200/60 p-3 h-full shrink-0 relative",
+                                                    columnSnapshot.isDragging ? "shadow-2xl ring-2 ring-primary/10 rotate-[1deg]" : ""
+                                                )}
+                                            >
+                                                {/* Column Header */}
+                                                <div 
+                                                    {...columnProvided.dragHandleProps}
+                                                    className="flex items-center justify-between mb-4 px-2 cursor-grab active:cursor-grabbing"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className={cn("p-1.5 rounded-lg bg-white shadow-sm border border-slate-100", column.color)}>
+                                                            {(() => {
+                                                                const Icon = getIcon(column.icon);
+                                                                return <Icon className="h-4 w-4" />;
+                                                            })()}
+                                                        </div>
+                                                        <h3 className="font-display font-bold text-slate-700 tracking-tight text-sm uppercase">{column.label}</h3>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingColumn(column);
+                                                                setNewColLabel(column.label);
+                                                                const matchColor = COLOR_OPTIONS.find(o => o.color === column.color)?.value || "blue";
+                                                                setNewColColor(matchColor);
+                                                                setColumnDialogOpen(true);
                                                             }}
                                                         >
-                                                            <TaskCard
-                                                                task={task}
-                                                                users={users || []}
-                                                                deleteMutation={deleteMutation}
-                                                                onEdit={() => setEditingTaskId(task.id)}
-                                                                isDragging={snapshot.isDragging}
-                                                            />
+                                                            <Edit2 className="h-3 w-3" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteColumn(column.id);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <Droppable droppableId={column.id}>
+                                                    {(provided, snapshot) => (
+                                                        <div
+                                                            {...provided.droppableProps}
+                                                            ref={provided.innerRef}
+                                                            className={cn(
+                                                                `flex-1 space-y-3 p-1 transition-colors duration-200 rounded-xl overflow-y-auto ${isExpanded ? "max-h-[calc(100vh-160px)]" : "max-h-[calc(100vh-280px)]"}`,
+                                                                snapshot.isDraggingOver ? "bg-slate-200/30" : ""
+                                                            )}
+                                                        >
+                                                            {tasks?.filter(t => t.status === column.id).map((task, index) => (
+                                                                <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
+                                                                    {(provided, snapshot) => (
+                                                                        <div
+                                                                            ref={provided.innerRef}
+                                                                            {...provided.draggableProps}
+                                                                            {...provided.dragHandleProps}
+                                                                            style={{
+                                                                                ...provided.draggableProps.style,
+                                                                                cursor: snapshot.isDragging ? 'grabbing' : 'grab'
+                                                                            }}
+                                                                        >
+                                                                            <TaskCard
+                                                                                task={task}
+                                                                                users={users || []}
+                                                                                deleteMutation={deleteMutation}
+                                                                                onEdit={() => setEditingTaskId(task.id)}
+                                                                                isDragging={snapshot.isDragging}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </Draggable>
+                                                            ))}
+                                                            {provided.placeholder}
                                                         </div>
                                                     )}
-                                                </Draggable>
-                                            ))}
-                                            {provided.placeholder}
-                                        </div>
-                                    )}
-                                </Droppable>
+                                                </Droppable>
 
-                                <button
-                                    onClick={() => setQuickAddStatus(column.id)}
-                                    className="mt-3 w-full py-2.5 rounded-xl border border-dashed border-slate-300 hover:border-slate-400 hover:bg-white text-slate-400 hover:text-slate-600 transition-all text-xs font-bold flex items-center justify-center gap-2 group"
-                                >
-                                    <Plus className="h-3.5 w-3.5 transition-transform group-hover:scale-125" />
-                                    Adicionar Cartão
-                                </button>
+                                                <button
+                                                    onClick={() => setQuickAddStatus(column.id)}
+                                                    className="mt-3 w-full py-2.5 rounded-xl border border-dashed border-slate-300 hover:border-slate-400 hover:bg-white text-slate-400 hover:text-slate-600 transition-all text-xs font-bold flex items-center justify-center gap-2 group"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5 transition-transform group-hover:scale-125" />
+                                                    Adicionar Cartão
+                                                </button>
+                                            </div>
+                                        )}
+                                    </Draggable>
+                                ))}
+                                {provided.placeholder}
+
+                                <div className="w-[320px] shrink-0">
+                                    <button
+                                        onClick={() => {
+                                            setEditingColumn(null);
+                                            setNewColLabel("");
+                                            setNewColColor("blue");
+                                            setColumnDialogOpen(true);
+                                        }}
+                                        className="w-full h-14 rounded-2xl border-2 border-dashed border-slate-300 hover:border-slate-400 hover:bg-white text-slate-400 hover:text-slate-600 transition-all font-bold text-sm flex items-center justify-center gap-2 group shadow-sm"
+                                    >
+                                        <Plus className="h-5 w-5 transition-transform group-hover:scale-125" />
+                                        Nova Coluna
+                                    </button>
+                                </div>
                             </div>
-                        ))}
-                    </div>
+                        )}
+                    </Droppable>
                 </DragDropContext>
             </div>
         </div>
@@ -406,7 +619,7 @@ function TaskCard({ task, users, deleteMutation, onEdit, isDragging }: any) {
     );
 }
 
-function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, defaultStatus, initialData }: any) {
+function TaskDialog({ open, setOpen, columns, users, currentUser, onSubmit, isPending, defaultStatus, initialData }: any) {
     const clientTaskSchema = insertTaskSchema.omit({ createdBy: true });
 
     const form = useForm<any>({
@@ -565,7 +778,7 @@ function TaskDialog({ open, setOpen, users, currentUser, onSubmit, isPending, de
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent className="rounded-xl border-slate-200 shadow-xl">
-                                                {COLUMNS.map(col => (
+                                                {columns?.map((col: any) => (
                                                     <SelectItem key={col.id} value={col.id}>{col.label}</SelectItem>
                                                 ))}
                                             </SelectContent>
