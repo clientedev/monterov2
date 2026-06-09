@@ -30,23 +30,7 @@ export function ThemeInjector() {
             if (settings.logoBase64) {
                 const head = document.head || document.getElementsByTagName('head')[0];
 
-                // Remove all existing favicons to avoid conflicts
-                const existingIcons = document.querySelectorAll("link[rel*='icon']");
-                existingIcons.forEach(icon => head.removeChild(icon));
-
-                // Create and add the new favicon
-                const newIcon = document.createElement('link');
-                newIcon.type = 'image/x-icon';
-                newIcon.rel = 'shortcut icon';
-                newIcon.href = settings.logoBase64;
-                head.appendChild(newIcon);
-
-                // Add a secondary standard 'icon' rel for broader compatibility
-                const standardIcon = document.createElement('link');
-                standardIcon.type = 'image/png';
-                standardIcon.rel = 'icon';
-                standardIcon.href = settings.logoBase64;
-                head.appendChild(standardIcon);
+                // Favicon handling removed to keep static favicon unchanged
             }
         }
     }, [settings]);
