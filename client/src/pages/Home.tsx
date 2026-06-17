@@ -393,7 +393,7 @@ export default function Home() {
               {
                 title: "Planos de Saúde Premium",
                 desc: "Acesso direto a hospitais renomados (Albert Einstein, Sírio-Libanês), reembolso diferenciado de consultas particulares e serviços de concierge.",
-                img: "https://images.unsplash.com/photo-1579684389782-64d84b5e901a?auto=format&fit=crop&q=80&w=800",
+                img: "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&q=80&w=800",
                 badge: "Premium"
               }
             ].map((pillar, index) => (
