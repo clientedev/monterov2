@@ -12,7 +12,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
-import About from "@/pages/About";
+import Sobre from "@/pages/Sobre";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/PostDetail";
 import Contact from "@/pages/Contact";
@@ -91,7 +91,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
-      <Route path="/about" component={About} />
+      <Route path="/sobre" component={Sobre} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/services" component={PublicServicesPage} />

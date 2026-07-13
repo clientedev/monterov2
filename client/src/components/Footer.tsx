@@ -75,7 +75,7 @@ export function Footer() {
               Empresa
             </h4>
             <ul className="space-y-4 text-sm text-slate-300">
-              <li><Link href="/about" className="hover:text-[#c65f54] hover:translate-x-1 transition-all duration-300 inline-block">Sobre Nós</Link></li>
+              <li><Link href="/sobre" className="hover:text-[#c65f54] hover:translate-x-1 transition-all duration-300 inline-block">Sobre Nós</Link></li>
               <li><Link href="/#services" className="hover:text-[#c65f54] hover:translate-x-1 transition-all duration-300 inline-block">Nossos Serviços</Link></li>
               <li><Link href="/blog" className="hover:text-[#c65f54] hover:translate-x-1 transition-all duration-300 inline-block">Notícias</Link></li>
               <li><Link href="/contact" className="hover:text-[#c65f54] hover:translate-x-1 transition-all duration-300 inline-block">Contato</Link></li>

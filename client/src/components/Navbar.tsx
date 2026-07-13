@@ -24,11 +24,11 @@ export function Navbar() {
   const navLinks = [
     { name: "Início", href: "/" },
     { name: "Serviços", href: "/services" },
-    { name: "Sobre", href: "/about" },
+    { name: "Sobre", href: "/sobre" },
     { name: "Blog", href: "/blog" },
     { name: "Contato", href: "/contact" },
   ];
-  const darkHeroPaths = ["/", "/about", "/services", "/blog"];
+  const darkHeroPaths = ["/", "/sobre", "/services", "/blog"];
   const isDarkHeroPage = darkHeroPaths.includes(location) || location.startsWith("/blog/") || location.startsWith("/services/");
   const showScrolledNavbar = scrolled || !isDarkHeroPage;
 

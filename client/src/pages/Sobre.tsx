@@ -5,13 +5,13 @@ import { Award, Zap, Heart, ShieldCheck, Sparkles, MessageSquare, ArrowRight } f
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { Link } from "wouter";
 
-export default function About() {
+export default function Sobre() {
   const { settings } = useSiteSettings();
   const heroImageUrl = "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2400";
 
   // Sanitize phone for dynamic WhatsApp links
   const whatsappNumber = settings?.contactPhone 
-    ? settings.contactPhone.replace(/\D/g, '') 
+    ? settings.contactPhone.replace(/\\D/g, '') 
     : "5511999999999";
 
   return (
@@ -33,7 +33,7 @@ export default function About() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#08454c] via-[#08454c]/85 to-transparent" />
         </div>
-        
+
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
@@ -57,7 +57,7 @@ export default function About() {
 
       {/* Main Content Area - Overlapping */}
       <div className="container px-4 md:px-6 mx-auto relative z-20 -mt-16 mb-28">
-        <div className="bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-[0_24px_60px_rgba(8,69,76,0.04)] p-8 md:p-16 lg:p-24 border border-slate-100/50">
+        <div className="bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-[0_4px_20px_rgba(8,69,76,0.04)] p-8 md:p-16 lg:p-24 border border-slate-100/50">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             {/* Story Column */}
             <motion.div
@@ -86,12 +86,10 @@ export default function About() {
 
             {/* Core Values Column */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 lg:mt-6">
-              {[
-                { icon: Zap, title: "Agilidade Boutique", desc: "Suporte resolutivo, respostas imediatas e canais sem robôs ou esperas." },
+              {[{ icon: Zap, title: "Agilidade Boutique", desc: "Suporte resolutivo, respostas imediatas e canais sem robôs ou esperas." },
                 { icon: Heart, title: "Cuidado Humano", desc: "Acolhimento autêntico e assessoria próxima durante toda a vigência da apólice." },
                 { icon: ShieldCheck, title: "Proteção Blindada", desc: "Desenho exato de coberturas sem brechas técnicas, ajustado à sua realidade." },
-                { icon: Award, title: "Qualificação Executiva", desc: "Consultoria com visão estratégica de negócios e gestão de riscos avançada." }
-              ].map((item, i) => (
+                { icon: Award, title: "Qualificação Executiva", desc: "Consultoria com visão estratégica de negócios e gestão de riscos avançada." }].map((item, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
@@ -142,7 +140,7 @@ export default function About() {
               <div className="space-y-2">
                 <span className="text-[#c65f54] font-bold tracking-wider text-xs uppercase tracking-widest">Fundação Monteiro</span>
                 <h2 className="text-4xl md:text-5xl font-display font-bold text-[#163b52] leading-tight">Carolina Monteiro</h2>
-                <p className="text-sm font-semibold uppercase text-slate-400 tracking-wider">Diretora Executiva & Consultora Estratégica</p>
+                <p className="text-sm font-semibold uppercase text-slate-400 tracking-wider">Diretora Executiva &amp; Consultora Estratégica</p>
               </div>
               
               <div className="space-y-6 text-slate-600 text-base md:text-lg font-light leading-relaxed">

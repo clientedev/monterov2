@@ -271,7 +271,7 @@ export default function Home() {
               </ul>
 
               <div className="pt-4">
-                <Link href="/about">
+                <Link href="/sobre">
                   <button className="text-[#163b52] bg-white border border-[#809ba6]/30 px-8 py-3.5 rounded-full font-bold hover:bg-slate-50 hover:border-[#809ba6]/50 transition-all duration-300 flex items-center gap-3 group shadow-sm">
                     Conheça Nossa Essência
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
