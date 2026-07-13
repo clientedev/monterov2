@@ -633,16 +633,15 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
         },
     });
 
-    const { data: products } = useQuery<any[]>({
-        queryKey: ["/api/products", { activeOnly: true }],
-        queryFn: async ({ queryKey }) => {
-            const [_url, params] = queryKey as any;
-            let url = "/api/products";
-            if (params?.activeOnly) url += `?activeOnly=true`;
-            const res = await fetch(url, { credentials: "include" });
+    const { data: products, isLoading: productsLoading } = useQuery<any[]>({
+        queryKey: ["/api/products-active"],
+        queryFn: async () => {
+            const res = await fetch("/api/products?activeOnly=true", { credentials: "include" });
             if (!res.ok) throw new Error("Erro ao carregar produtos");
             return res.json();
-        }
+        },
+        staleTime: 0,
+        retry: 2,
     });
 
     return (
@@ -723,10 +722,18 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                                 >
                                     <FormControl>
                                         <SelectTrigger className="rounded-xl h-11">
-                                            <SelectValue placeholder="Selecione" />
+                                            <SelectValue placeholder={productsLoading ? "Carregando..." : "Selecione"} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
+                                        {productsLoading && (
+                                            <div className="flex items-center justify-center py-4 text-sm text-slate-500">
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando produtos...
+                                            </div>
+                                        )}
+                                        {!productsLoading && (!products || products.length === 0) && (
+                                            <div className="py-3 px-3 text-sm text-slate-400 text-center">Nenhum produto cadastrado</div>
+                                        )}
                                         {products?.map((p: any) => (
                                             <SelectItem key={p.id} value={p.name}>
                                                 {p.name}
