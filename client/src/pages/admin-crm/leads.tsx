@@ -633,11 +633,11 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
         },
     });
 
-    const { data: products, isLoading: productsLoading } = useQuery<any[]>({
-        queryKey: ["/api/products-active"],
+    const { data: services, isLoading: servicesLoading } = useQuery<any[]>({
+        queryKey: ["/api/services"],
         queryFn: async () => {
-            const res = await fetch("/api/products?activeOnly=true", { credentials: "include" });
-            if (!res.ok) throw new Error("Erro ao carregar produtos");
+            const res = await fetch("/api/services", { credentials: "include" });
+            if (!res.ok) throw new Error("Erro ao carregar serviços");
             return res.json();
         },
         staleTime: 0,
@@ -722,21 +722,21 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                                 >
                                     <FormControl>
                                         <SelectTrigger className="rounded-xl h-11">
-                                            <SelectValue placeholder={productsLoading ? "Carregando..." : "Selecione"} />
+                                            <SelectValue placeholder={servicesLoading ? "Carregando..." : "Selecione"} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        {productsLoading && (
+                                        {servicesLoading && (
                                             <div className="flex items-center justify-center py-4 text-sm text-slate-500">
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando produtos...
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando serviços...
                                             </div>
                                         )}
-                                        {!productsLoading && (!products || products.length === 0) && (
-                                            <div className="py-3 px-3 text-sm text-slate-400 text-center">Nenhum produto cadastrado</div>
+                                        {!servicesLoading && (!services || services.length === 0) && (
+                                            <div className="py-3 px-3 text-sm text-slate-400 text-center">Nenhum serviço cadastrado</div>
                                         )}
-                                        {products?.map((p: any) => (
-                                            <SelectItem key={p.id} value={p.name}>
-                                                {p.name}
+                                        {services?.map((s: any) => (
+                                            <SelectItem key={s.id} value={s.title}>
+                                                {s.title}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
