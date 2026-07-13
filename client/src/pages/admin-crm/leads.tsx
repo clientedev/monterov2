@@ -635,6 +635,14 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
 
     const { data: products } = useQuery<any[]>({
         queryKey: ["/api/products", { activeOnly: true }],
+        queryFn: async ({ queryKey }) => {
+            const [_url, params] = queryKey as any;
+            let url = "/api/products";
+            if (params?.activeOnly) url += `?activeOnly=true`;
+            const res = await fetch(url, { credentials: "include" });
+            if (!res.ok) throw new Error("Erro ao carregar produtos");
+            return res.json();
+        }
     });
 
     return (
@@ -676,9 +684,28 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-gray-600 font-bold">Origem</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Ex: Ads, Indicação" className="rounded-xl h-11" {...field} value={field.value || ""} />
-                                </FormControl>
+                                <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value || ""}
+                                    value={field.value || ""}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger className="rounded-xl h-11">
+                                            <SelectValue placeholder="Selecione a origem" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="Indicação">Indicação</SelectItem>
+                                        <SelectItem value="Carteira">Carteira</SelectItem>
+                                        <SelectItem value="BNI">BNI</SelectItem>
+                                        <SelectItem value="MA">MA</SelectItem>
+                                        <SelectItem value="GWM">GWM</SelectItem>
+                                        <SelectItem value="Redes Sociais">Redes Sociais</SelectItem>
+                                        {field.value && !["Indicação", "Carteira", "BNI", "MA", "GWM", "Redes Sociais"].includes(field.value) && (
+                                            <SelectItem value={field.value}>{field.value}</SelectItem>
+                                        )}
+                                    </SelectContent>
+                                </Select>
                                 <FormMessage />
                             </FormItem>
                         )}
