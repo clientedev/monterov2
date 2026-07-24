@@ -1444,8 +1444,6 @@ export async function registerRoutes(
                   lng,
                 };
               });
-            // Use the results directly or apply loose filtering
-            results = osmResults;
             if (bairroFiltroInput) {
                 console.log(`[CompanySearch] Aplicando filtro de bairro sugerido no OSM: ${bairroFiltroInput}`);
             }
