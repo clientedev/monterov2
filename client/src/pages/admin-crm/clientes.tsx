@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,23 +18,46 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, FileText } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, Download, Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import { useLocation } from "wouter";
+import * as XLSX from "xlsx";
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+
+interface ParsedClient {
+    nome: string;
+    cpfCnpj?: string;
+    dataNascimento?: string;
+    telefone?: string;
+    whatsapp?: string;
+    email?: string;
+    endereco?: string;
+    cidade?: string;
+    estado?: string;
+    observacoes?: string;
+    tags?: string;
+}
 
 export default function ClientesPage() {
     const { toast } = useToast();
     const { user } = useAuth();
     const [, setLocation] = useLocation();
     const isAdmin = user?.role === "admin";
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [search, setSearch] = useState("");
     const [showForm, setShowForm] = useState(false);
     const [editTarget, setEditTarget] = useState<Cliente | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
+
+    // Import Excel state
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [previewClients, setPreviewClients] = useState<ParsedClient[]>([]);
+    const [importing, setImporting] = useState(false);
+    const [importProgress, setImportProgress] = useState(0);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -112,6 +135,142 @@ export default function ClientesPage() {
         onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
     });
 
+    // Excel Download Template
+    const handleDownloadTemplate = () => {
+        const templateData = [
+            {
+                "Nome": "João Silva",
+                "CPF_CNPJ": "123.456.789-00",
+                "Data_Nascimento": "15/05/1985",
+                "Telefone": "(11) 99999-1111",
+                "WhatsApp": "(11) 99999-1111",
+                "Email": "joao@email.com",
+                "Endereco": "Rua das Flores, 123",
+                "Cidade": "São Paulo",
+                "Estado": "SP",
+                "Observacoes": "Cliente VIP de Seguro Auto",
+                "Tags": "VIP, Auto"
+            },
+            {
+                "Nome": "Maria Santos Oliveira",
+                "CPF_CNPJ": "98.765.432/0001-10",
+                "Data_Nascimento": "20/10/1990",
+                "Telefone": "(11) 98888-2222",
+                "WhatsApp": "(11) 98888-2222",
+                "Email": "maria@empresa.com.br",
+                "Endereco": "Av Paulista, 1000",
+                "Cidade": "São Paulo",
+                "Estado": "SP",
+                "Observacoes": "Empresa com plano de saúde coletivo",
+                "Tags": "PJ, Saúde, Empresarial"
+            }
+        ];
+
+        const worksheet = XLSX.utils.json_to_sheet(templateData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Modelo Clientes");
+
+        // Format column widths
+        worksheet["!cols"] = [
+            { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 18 },
+            { wch: 18 }, { wch: 25 }, { wch: 30 }, { wch: 18 },
+            { wch: 8 }, { wch: 35 }, { wch: 20 }
+        ];
+
+        XLSX.writeFile(workbook, "modelo_importacao_clientes.xlsx");
+        toast({ title: "Modelo baixado!", description: "Preencha a planilha e envie através do botão 'Subir Excel'." });
+    };
+
+    // Excel File Upload & Parse
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: "binary" });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const rawData = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+
+                if (rawData.length === 0) {
+                    toast({ title: "Arquivo vazio", description: "A planilha selecionada não contém linhas.", variant: "destructive" });
+                    return;
+                }
+
+                // Map fields from Portuguese column headers
+                const parsed: ParsedClient[] = rawData.map((row) => {
+                    const findVal = (...keys: string[]) => {
+                        for (const k of keys) {
+                            const foundKey = Object.keys(row).find(rowKey => rowKey.trim().toLowerCase() === k.toLowerCase());
+                            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+                                return String(row[foundKey]).trim();
+                            }
+                        }
+                        return "";
+                    };
+
+                    return {
+                        nome: findVal("nome", "nome completo", "cliente", "razao social"),
+                        cpfCnpj: findVal("cpf_cnpj", "cpf/cnpj", "cpf", "cnpj", "documento"),
+                        dataNascimento: findVal("data_nascimento", "data de nascimento", "nascimento", "data nasc"),
+                        telefone: findVal("telefone", "tel", "celular", "fone"),
+                        whatsapp: findVal("whatsapp", "whats", "zap"),
+                        email: findVal("email", "e-mail", "correio"),
+                        endereco: findVal("endereco", "endereço", "logradouro", "rua"),
+                        cidade: findVal("cidade", "municipio"),
+                        estado: findVal("estado", "uf"),
+                        observacoes: findVal("observacoes", "observações", "obs", "notas"),
+                        tags: findVal("tags", "categoria", "tag"),
+                    };
+                }).filter(c => c.nome.length > 0);
+
+                if (parsed.length === 0) {
+                    toast({ title: "Coluna 'Nome' não encontrada", description: "Certifique-se de que a planilha possui a coluna 'Nome'.", variant: "destructive" });
+                    return;
+                }
+
+                setPreviewClients(parsed);
+                setShowImportModal(true);
+            } catch (err: any) {
+                toast({ title: "Erro ao ler arquivo", description: err.message, variant: "destructive" });
+            }
+        };
+        reader.readAsBinaryString(file);
+        // Reset file input
+        e.target.value = "";
+    };
+
+    // Execute Import
+    const runImport = async () => {
+        setImporting(true);
+        setImportProgress(0);
+        let successCount = 0;
+
+        for (let i = 0; i < previewClients.length; i++) {
+            const c = previewClients[i];
+            try {
+                await apiRequest("POST", "/api/clientes", c);
+                successCount++;
+            } catch (e) {
+                console.error(`Erro ao importar ${c.nome}:`, e);
+            }
+            setImportProgress(Math.round(((i + 1) / previewClients.length) * 100));
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["/api/clientes"] });
+        setImporting(false);
+        setShowImportModal(false);
+        setPreviewClients([]);
+
+        toast({
+            title: "Importação concluída!",
+            description: `${successCount} de ${previewClients.length} clientes foram cadastrados com sucesso.`,
+        });
+    };
+
     const filtered = clientes?.filter(c => {
         const q = search.toLowerCase();
         return !q || c.nome.toLowerCase().includes(q) || (c.cpfCnpj || "").includes(q) || (c.email || "").toLowerCase().includes(q);
@@ -125,14 +284,23 @@ export default function ClientesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-display font-bold text-gray-900">Clientes</h2>
                     <p className="text-muted-foreground mt-1">Base de clientes de seguros — {clientes?.length || 0} cadastrado(s).</p>
                 </div>
-                <Button onClick={openCreate} className="gap-2 font-semibold">
-                    <Plus className="h-4 w-4" /> Novo Cliente
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50" onClick={handleDownloadTemplate}>
+                        <Download className="h-4 w-4" /> Baixar Modelo Excel
+                    </Button>
+                    <Button variant="outline" className="gap-2 border-[#0F6570] text-[#0F6570] hover:bg-[#0F6570]/10" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="h-4 w-4" /> Subir Excel
+                    </Button>
+                    <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileChange} />
+                    <Button onClick={openCreate} className="gap-2 font-semibold">
+                        <Plus className="h-4 w-4" /> Novo Cliente
+                    </Button>
+                </div>
             </div>
 
             {/* Search */}
@@ -143,10 +311,10 @@ export default function ClientesPage() {
 
             {/* Cards Grid */}
             {filtered.length === 0 ? (
-                <div className="text-center py-20 text-muted-foreground">
+                <div className="text-center py-20 text-muted-foreground bg-white rounded-xl border border-dashed">
                     <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
                     <p className="text-lg font-medium">Nenhum cliente encontrado.</p>
-                    <p className="text-sm mt-1">Clique em "Novo Cliente" para começar.</p>
+                    <p className="text-sm mt-1">Clique em "Novo Cliente" ou "Subir Excel" para cadastrar clientes.</p>
                 </div>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -214,6 +382,68 @@ export default function ClientesPage() {
                     ))}
                 </div>
             )}
+
+            {/* Excel Import Preview Dialog */}
+            <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-emerald-700">
+                            <FileSpreadsheet className="h-5 w-5" /> Importar Clientes via Excel ({previewClients.length} encontrados)
+                        </DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-2">
+                        <p className="text-sm text-muted-foreground">
+                            Confira os dados extraídos da planilha antes de confirmar a importação:
+                        </p>
+
+                        <div className="max-h-60 overflow-y-auto rounded-lg border">
+                            <Table>
+                                <TableHeader className="bg-gray-50 sticky top-0">
+                                    <TableRow>
+                                        <TableHead>Nome</TableHead>
+                                        <TableHead>CPF/CNPJ</TableHead>
+                                        <TableHead>Telefone</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Cidade/UF</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {previewClients.map((c, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell className="font-semibold">{c.nome}</TableCell>
+                                            <TableCell className="font-mono text-xs">{c.cpfCnpj || "—"}</TableCell>
+                                            <TableCell className="text-xs">{c.telefone || "—"}</TableCell>
+                                            <TableCell className="text-xs">{c.email || "—"}</TableCell>
+                                            <TableCell className="text-xs">{[c.cidade, c.estado].filter(Boolean).join("/") || "—"}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {importing && (
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs font-semibold text-gray-700">
+                                    <span>Cadastrando clientes...</span>
+                                    <span>{importProgress}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                    <div className="bg-[#0F6570] h-2 transition-all duration-300" style={{ width: `${importProgress}%` }} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowImportModal(false)} disabled={importing}>Cancelar</Button>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2" onClick={runImport} disabled={importing}>
+                            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                            Confirmar Importação de {previewClients.length} Clientes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Create / Edit Dialog */}
             <Dialog open={showForm} onOpenChange={setShowForm}>
