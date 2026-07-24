@@ -73,6 +73,58 @@ app.use((req, res, next) => {
   await migrate(db, { migrationsFolder: migrationsPath });
   log("migrations completed");
   
+  // Auto-sync insurance tables on server startup (guarantees PostgreSQL on Railway has all required tables)
+  try {
+    const { pool } = await import("./db");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS clientes (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        cpf_cnpj TEXT,
+        data_nascimento TEXT,
+        telefone TEXT,
+        whatsapp TEXT,
+        email TEXT,
+        endereco TEXT,
+        cidade TEXT,
+        estado TEXT,
+        observacoes TEXT,
+        tags TEXT,
+        responsavel_comercial_id INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS seguradoras (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS produtos_seguro (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS apolices (
+        id SERIAL PRIMARY KEY,
+        cliente_id INTEGER NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+        produto_id INTEGER REFERENCES produtos_seguro(id),
+        seguradora_id INTEGER REFERENCES seguradoras(id),
+        numero_apolice TEXT,
+        status TEXT NOT NULL DEFAULT 'ativa',
+        inicio_vigencia TIMESTAMP,
+        fim_vigencia TIMESTAMP,
+        premio TEXT,
+        valor_segurado TEXT,
+        comissao TEXT,
+        corretor_id INTEGER REFERENCES users(id),
+        observacoes TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    log("Insurance tables verified/created in database");
+  } catch (err) {
+    log(`Insurance tables check failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+  }
+
   // Force cleanup of "Carlos" from database on startup
   try {
     const { siteSettings } = await import("@shared/schema");

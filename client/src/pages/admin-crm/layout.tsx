@@ -22,7 +22,10 @@ import {
     Camera,
     Star,
     Menu,
-    Package
+    Package,
+    ShieldCheck,
+    Building2,
+    Shield
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSiteSettings } from "@/hooks/use-site-settings";
@@ -98,6 +101,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <NavLink href="/admin/interactions" icon={Megaphone} label="Régua de Contato" />
                             <NavLink href="/admin/prospecting" icon={PhoneCall} label="Prospecção" />
                             <NavLink href="/admin/company-search" icon={Search} label="Busca de Empresas" />
+                        </nav>
+                    </div>
+
+                    {/* Insurance Module Section */}
+                    <div className="animate-in fade-in slide-in-from-left-4 duration-600">
+                        <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Carteira de Seguros</p>
+                        <nav className="space-y-1">
+                            <NavLink href="/admin/seguros" icon={ShieldCheck} label="Dashboard Seguros" />
+                            <NavLink href="/admin/clientes" icon={Users} label="Clientes de Seguro" />
+                            <NavLink href="/admin/apolices" icon={FileText} label="Apólices" />
+                            <NavLink href="/admin/seguradoras" icon={Building2} label="Seguradoras" />
                         </nav>
                     </div>
 

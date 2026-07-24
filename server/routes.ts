@@ -6,7 +6,7 @@ import fs from "fs";
 import { api } from "@shared/routes";
 import Groq from "groq-sdk";
 import { z } from "zod";
-import { setupAuth, hashPassword, isAuthenticated } from "./auth";
+import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import {
@@ -21,7 +21,11 @@ import {
   insertTaskSchema,
   insertSiteSettingsSchema,
   insertHeroSlideSchema,
-  insertPostSchema
+  insertPostSchema,
+  insertClienteSchema,
+  insertSeguradoraSchema,
+  insertProdutoSeguroSchema,
+  insertApoliceSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -645,8 +649,8 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Nova senha deve ter pelo menos 6 caracteres" });
       }
       const hashedPassword = await hashPassword(newPassword);
-      const user = await storage.updateUserPassword(parseInt(req.params.id), hashedPassword);
-      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+      const updatedUser = await storage.updateUserPassword(parseInt(req.params.id), hashedPassword);
+      if (!updatedUser) return res.status(404).json({ message: "Usuário não encontrado" });
       res.sendStatus(200);
     } catch (err) {
       res.status(500).json({ message: "Erro ao alterar senha do usuário" });
@@ -658,7 +662,6 @@ export async function registerRoutes(
       const { currentPassword, newPassword } = req.body;
       const user = req.user as any;
 
-      const { comparePasswords } = await import("./auth");
       const isValid = await comparePasswords(currentPassword, user.password);
 
       if (!isValid) {
@@ -684,7 +687,180 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  // ============================================================
+  // INSURANCE MODULE ROUTES
+  // ============================================================
+
+  // Dashboard de Seguros
+  app.get("/api/seguros/dashboard", isTeam, async (req, res) => {
+    try {
+      const stats = await storage.getDashboardSeguros();
+      res.json(stats);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Clientes de Seguro
+  app.get("/api/clientes", isTeam, async (req, res) => {
+    const result = await storage.getClientes();
+    res.json(result);
+  });
+
+  app.get("/api/clientes/:id", isTeam, async (req, res) => {
+    const cliente = await storage.getCliente(parseInt(req.params.id));
+    if (!cliente) return res.status(404).json({ message: "Cliente não encontrado" });
+    res.json(cliente);
+  });
+
+  app.post("/api/clientes", isTeam, async (req, res) => {
+    try {
+      const input = insertClienteSchema.parse(req.body);
+      const cliente = await storage.createCliente(input);
+      res.status(201).json(cliente);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors });
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/clientes/:id", isTeam, async (req, res) => {
+    try {
+      const input = insertClienteSchema.partial().parse(req.body);
+      const cliente = await storage.updateCliente(parseInt(req.params.id), input);
+      if (!cliente) return res.status(404).json({ message: "Cliente não encontrado" });
+      res.json(cliente);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors });
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/clientes/:id", isAuthenticated, isAdmin, async (req, res) => {
+    await storage.deleteCliente(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
+  // Apólices
+  app.get("/api/apolices", isTeam, async (req, res) => {
+    const clienteId = req.query.clienteId ? parseInt(req.query.clienteId as string) : undefined;
+    const filters = {
+      produtoId: req.query.produtoId ? parseInt(req.query.produtoId as string) : undefined,
+      seguradoraId: req.query.seguradoraId ? parseInt(req.query.seguradoraId as string) : undefined,
+      corretorId: req.query.corretorId ? parseInt(req.query.corretorId as string) : undefined,
+      status: req.query.status as string | undefined,
+    };
+    const result = await storage.getApolices(clienteId, filters);
+    res.json(result);
+  });
+
+  app.get("/api/clientes/:id/apolices", isTeam, async (req, res) => {
+    const result = await storage.getApolices(parseInt(req.params.id));
+    res.json(result);
+  });
+
+  app.get("/api/apolices/:id", isTeam, async (req, res) => {
+    const apolice = await storage.getApolice(parseInt(req.params.id));
+    if (!apolice) return res.status(404).json({ message: "Apólice não encontrada" });
+    res.json(apolice);
+  });
+
+  app.post("/api/apolices", isTeam, async (req, res) => {
+    try {
+      const input = insertApoliceSchema.parse(req.body);
+      const apolice = await storage.createApolice(input);
+      res.status(201).json(apolice);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors });
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/apolices/:id", isTeam, async (req, res) => {
+    try {
+      const input = insertApoliceSchema.partial().parse(req.body);
+      const apolice = await storage.updateApolice(parseInt(req.params.id), input);
+      if (!apolice) return res.status(404).json({ message: "Apólice não encontrada" });
+      res.json(apolice);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors });
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/apolices/:id", isAuthenticated, isAdmin, async (req, res) => {
+    await storage.deleteApolice(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
+  // Seguradoras
+  app.get("/api/seguradoras", isTeam, async (req, res) => {
+    const result = await storage.getSeguradoras();
+    res.json(result);
+  });
+
+  app.post("/api/seguradoras", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const input = insertSeguradoraSchema.parse(req.body);
+      const seg = await storage.createSeguradora(input);
+      res.status(201).json(seg);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors });
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/seguradoras/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const input = insertSeguradoraSchema.partial().parse(req.body);
+      const seg = await storage.updateSeguradora(parseInt(req.params.id), input);
+      if (!seg) return res.status(404).json({ message: "Seguradora não encontrada" });
+      res.json(seg);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/seguradoras/:id", isAuthenticated, isAdmin, async (req, res) => {
+    await storage.deleteSeguradora(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
+  // Produtos de Seguro
+  app.get("/api/produtos-seguro", isTeam, async (req, res) => {
+    const result = await storage.getProdutosSeguro();
+    res.json(result);
+  });
+
+  app.post("/api/produtos-seguro", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const input = insertProdutoSeguroSchema.parse(req.body);
+      const produto = await storage.createProdutoSeguro(input);
+      res.status(201).json(produto);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors });
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/produtos-seguro/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const input = insertProdutoSeguroSchema.partial().parse(req.body);
+      const produto = await storage.updateProdutoSeguro(parseInt(req.params.id), input);
+      if (!produto) return res.status(404).json({ message: "Produto não encontrado" });
+      res.json(produto);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/produtos-seguro/:id", isAuthenticated, isAdmin, async (req, res) => {
+    await storage.deleteProdutoSeguro(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
   // Tasks
+
   app.get("/api/tasks", isTeam, async (req, res) => {
     const user = req.user as any;
     let assignedTo = req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined;
@@ -1349,6 +1525,15 @@ export async function registerRoutes(
       name: "Admin User",
       role: "admin",
     });
+  }
+
+  // Seed Produtos de Seguro
+  const existingProdutos = await storage.getProdutosSeguro();
+  if (existingProdutos.length === 0) {
+    const defaultProdutos = ["Auto", "Vida", "Saúde", "Residencial", "Empresarial", "Previdência", "Viagem", "Agrícola"];
+    for (const nome of defaultProdutos) {
+      await storage.createProdutoSeguro({ nome });
+    }
   }
 
   app.patch("/api/user/profile", isAuthenticated, async (req, res) => {

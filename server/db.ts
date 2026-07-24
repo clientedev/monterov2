@@ -12,8 +12,12 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: (process.env.DATABASE_URL.includes('railway.net') || process.env.DATABASE_URL.includes('rlwy.net'))
+  ssl: !process.env.DATABASE_URL.includes("localhost") && !process.env.DATABASE_URL.includes("127.0.0.1")
     ? { rejectUnauthorized: false }
-    : false
+    : false,
+  keepAlive: true,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 export const db = drizzle(pool, { schema });

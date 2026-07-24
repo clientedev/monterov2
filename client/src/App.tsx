@@ -39,6 +39,13 @@ import ReviewsPage from "@/pages/admin-crm/reviews";
 import ProspectingPage from "@/pages/admin-crm/prospecting";
 import CompanySearchPage from "@/pages/admin-crm/company-search";
 
+// Insurance Module Pages
+import DashboardSegurosPage from "@/pages/admin-crm/dashboard-seguros";
+import ClientesPage from "@/pages/admin-crm/clientes";
+import ClienteDetalhePage from "@/pages/admin-crm/cliente-detalhe";
+import ApolicesPage from "@/pages/admin-crm/apolices";
+import SeguradorasPage from "@/pages/admin-crm/seguradoras";
+
 function ProtectedAdminRoute({ path, component: Component }: { path: string; component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
 
@@ -118,6 +125,13 @@ function Router() {
       <ProtectedAdminRoute path="/admin/reviews" component={ReviewsPage} />
       <ProtectedAdminRoute path="/admin/prospecting" component={ProspectingPage} />
       <ProtectedAdminRoute path="/admin/company-search" component={CompanySearchPage} />
+
+      {/* Insurance Module Routes */}
+      <ProtectedAdminRoute path="/admin/seguros" component={DashboardSegurosPage} />
+      <ProtectedAdminRoute path="/admin/clientes" component={ClientesPage} />
+      <ProtectedAdminRoute path="/admin/clientes/:id" component={ClienteDetalhePage} />
+      <ProtectedAdminRoute path="/admin/apolices" component={ApolicesPage} />
+      <ProtectedAdminRoute path="/admin/seguradoras" component={SeguradorasPage} />
 
       <Route component={NotFound} />
     </Switch>

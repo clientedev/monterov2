@@ -12,6 +12,10 @@ import {
   interactions,
   campaigns,
   tasks,
+  clientes,
+  seguradoras,
+  produtosSeguro,
+  apolices,
   type Post,
   type InsertPost,
   type Service,
@@ -47,7 +51,15 @@ import {
   type InsertReview,
   products,
   type Product,
-  type InsertProduct
+  type InsertProduct,
+  type Cliente,
+  type InsertCliente,
+  type Seguradora,
+  type InsertSeguradora,
+  type ProdutoSeguro,
+  type InsertProdutoSeguro,
+  type Apolice,
+  type InsertApolice,
 } from "@shared/schema";
 import { sql, and, desc, eq, asc } from "drizzle-orm";
 
@@ -86,7 +98,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
-  updateUserPassword(id: number, hashedPassword: string): Promise<void>;
+  updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined>;
   updateUserProfile(id: number, data: { name?: string; avatar?: string }): Promise<User | undefined>;
   deleteUser(id: number): Promise<void>;
 
@@ -147,6 +159,50 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<void>;
+
+  // Insurance Module — Clientes
+  getClientes(): Promise<Cliente[]>;
+  getCliente(id: number): Promise<Cliente | undefined>;
+  createCliente(cliente: InsertCliente): Promise<Cliente>;
+  updateCliente(id: number, cliente: Partial<InsertCliente>): Promise<Cliente | undefined>;
+  deleteCliente(id: number): Promise<void>;
+
+  // Insurance Module — Seguradoras
+  getSeguradoras(): Promise<Seguradora[]>;
+  createSeguradora(seguradora: InsertSeguradora): Promise<Seguradora>;
+  updateSeguradora(id: number, seguradora: Partial<InsertSeguradora>): Promise<Seguradora | undefined>;
+  deleteSeguradora(id: number): Promise<void>;
+
+  // Insurance Module — Produtos de Seguro
+  getProdutosSeguro(): Promise<ProdutoSeguro[]>;
+  createProdutoSeguro(produto: InsertProdutoSeguro): Promise<ProdutoSeguro>;
+  updateProdutoSeguro(id: number, produto: Partial<InsertProdutoSeguro>): Promise<ProdutoSeguro | undefined>;
+  deleteProdutoSeguro(id: number): Promise<void>;
+
+  // Insurance Module — Apólices
+  getApolices(clienteId?: number, filters?: {
+    produtoId?: number;
+    seguradoraId?: number;
+    corretorId?: number;
+    status?: string;
+    vencimentoAte?: Date;
+    vencimentoDe?: Date;
+  }): Promise<Apolice[]>;
+  getApolice(id: number): Promise<Apolice | undefined>;
+  createApolice(apolice: InsertApolice): Promise<Apolice>;
+  updateApolice(id: number, apolice: Partial<InsertApolice>): Promise<Apolice | undefined>;
+  deleteApolice(id: number): Promise<void>;
+  getDashboardSeguros(): Promise<{
+    totalAtivas: number;
+    totalClientes: number;
+    totalVencidas: number;
+    vencendo30: number;
+    vencendo60: number;
+    valorTotal: string;
+    renovacaoMes: number;
+    porSeguradora: { nome: string; total: number }[];
+    porProduto: { nome: string; total: number }[];
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -302,8 +358,13 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
 
-  async updateUserPassword(id: number, hashedPassword: string): Promise<void> {
-    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id));
+  async updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
   }
 
   async updateUserProfile(id: number, data: { name?: string; avatar?: string }): Promise<User | undefined> {
@@ -622,6 +683,194 @@ export class DatabaseStorage implements IStorage {
   async deleteProduct(id: number): Promise<void> {
     await db.delete(products).where(eq(products.id, id));
   }
+
+  // ============================================================
+  // INSURANCE MODULE — CLIENTES
+  // ============================================================
+
+  async getClientes(): Promise<Cliente[]> {
+    return await db.select().from(clientes).orderBy(asc(clientes.nome));
+  }
+
+  async getCliente(id: number): Promise<Cliente | undefined> {
+    const [cliente] = await db.select().from(clientes).where(eq(clientes.id, id));
+    return cliente;
+  }
+
+  async createCliente(cliente: InsertCliente): Promise<Cliente> {
+    const [newCliente] = await db.insert(clientes).values(cliente).returning();
+    return newCliente;
+  }
+
+  async updateCliente(id: number, cliente: Partial<InsertCliente>): Promise<Cliente | undefined> {
+    const [updated] = await db.update(clientes).set(cliente).where(eq(clientes.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCliente(id: number): Promise<void> {
+    await db.delete(clientes).where(eq(clientes.id, id));
+  }
+
+  // ============================================================
+  // INSURANCE MODULE — SEGURADORAS
+  // ============================================================
+
+  async getSeguradoras(): Promise<Seguradora[]> {
+    return await db.select().from(seguradoras).orderBy(asc(seguradoras.nome));
+  }
+
+  async createSeguradora(seguradora: InsertSeguradora): Promise<Seguradora> {
+    const [newSeg] = await db.insert(seguradoras).values(seguradora).returning();
+    return newSeg;
+  }
+
+  async updateSeguradora(id: number, seguradora: Partial<InsertSeguradora>): Promise<Seguradora | undefined> {
+    const [updated] = await db.update(seguradoras).set(seguradora).where(eq(seguradoras.id, id)).returning();
+    return updated;
+  }
+
+  async deleteSeguradora(id: number): Promise<void> {
+    await db.delete(seguradoras).where(eq(seguradoras.id, id));
+  }
+
+  // ============================================================
+  // INSURANCE MODULE — PRODUTOS DE SEGURO
+  // ============================================================
+
+  async getProdutosSeguro(): Promise<ProdutoSeguro[]> {
+    return await db.select().from(produtosSeguro).orderBy(asc(produtosSeguro.nome));
+  }
+
+  async createProdutoSeguro(produto: InsertProdutoSeguro): Promise<ProdutoSeguro> {
+    const [newProduto] = await db.insert(produtosSeguro).values(produto).returning();
+    return newProduto;
+  }
+
+  async updateProdutoSeguro(id: number, produto: Partial<InsertProdutoSeguro>): Promise<ProdutoSeguro | undefined> {
+    const [updated] = await db.update(produtosSeguro).set(produto).where(eq(produtosSeguro.id, id)).returning();
+    return updated;
+  }
+
+  async deleteProdutoSeguro(id: number): Promise<void> {
+    await db.delete(produtosSeguro).where(eq(produtosSeguro.id, id));
+  }
+
+  // ============================================================
+  // INSURANCE MODULE — APÓLICES
+  // ============================================================
+
+  async getApolices(clienteId?: number, filters?: {
+    produtoId?: number;
+    seguradoraId?: number;
+    corretorId?: number;
+    status?: string;
+    vencimentoAte?: Date;
+    vencimentoDe?: Date;
+  }): Promise<Apolice[]> {
+    const conditions: any[] = [];
+    if (clienteId) conditions.push(eq(apolices.clienteId, clienteId));
+    if (filters?.produtoId) conditions.push(eq(apolices.produtoId, filters.produtoId));
+    if (filters?.seguradoraId) conditions.push(eq(apolices.seguradoraId, filters.seguradoraId));
+    if (filters?.corretorId) conditions.push(eq(apolices.corretorId, filters.corretorId));
+    if (filters?.status) conditions.push(eq(apolices.status, filters.status as any));
+
+    let query = db.select().from(apolices);
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    return await query.orderBy(desc(apolices.createdAt));
+  }
+
+  async getApolice(id: number): Promise<Apolice | undefined> {
+    const [apolice] = await db.select().from(apolices).where(eq(apolices.id, id));
+    return apolice;
+  }
+
+  async createApolice(apolice: InsertApolice): Promise<Apolice> {
+    const [newApolice] = await db.insert(apolices).values(apolice).returning();
+    return newApolice;
+  }
+
+  async updateApolice(id: number, apolice: Partial<InsertApolice>): Promise<Apolice | undefined> {
+    const [updated] = await db.update(apolices).set(apolice).where(eq(apolices.id, id)).returning();
+    return updated;
+  }
+
+  async deleteApolice(id: number): Promise<void> {
+    await db.delete(apolices).where(eq(apolices.id, id));
+  }
+
+  async getDashboardSeguros(): Promise<{
+    totalAtivas: number;
+    totalClientes: number;
+    totalVencidas: number;
+    vencendo30: number;
+    vencendo60: number;
+    valorTotal: string;
+    renovacaoMes: number;
+    porSeguradora: { nome: string; total: number }[];
+    porProduto: { nome: string; total: number }[];
+  }> {
+    const now = new Date();
+    const in30 = new Date(now); in30.setDate(in30.getDate() + 30);
+    const in60 = new Date(now); in60.setDate(in60.getDate() + 60);
+    const mesInicio = new Date(now.getFullYear(), now.getMonth(), 1);
+    const mesFim = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const allApolices = await db.select().from(apolices);
+    const allClientes = await db.select().from(clientes);
+    const allSeguradoras = await db.select().from(seguradoras);
+    const allProdutos = await db.select().from(produtosSeguro);
+
+    const ativas = allApolices.filter(a => a.status === "ativa");
+    const vencidas = allApolices.filter(a => a.status === "vencida");
+
+    const vencendo30 = ativas.filter(a => {
+      if (!a.fimVigencia) return false;
+      const fim = new Date(a.fimVigencia);
+      return fim >= now && fim <= in30;
+    });
+
+    const vencendo60 = ativas.filter(a => {
+      if (!a.fimVigencia) return false;
+      const fim = new Date(a.fimVigencia);
+      return fim >= now && fim <= in60;
+    });
+
+    const renovacaoMes = allApolices.filter(a => {
+      if (!a.fimVigencia) return false;
+      const fim = new Date(a.fimVigencia);
+      return fim >= mesInicio && fim <= mesFim;
+    });
+
+    const valorTotal = ativas.reduce((acc, a) => {
+      return acc + (parseFloat(a.premio || "0") || 0);
+    }, 0).toFixed(2);
+
+    // By seguradora
+    const porSeguradora = allSeguradoras.map(s => ({
+      nome: s.nome,
+      total: allApolices.filter(a => a.seguradoraId === s.id).length,
+    })).filter(s => s.total > 0);
+
+    // By produto
+    const porProduto = allProdutos.map(p => ({
+      nome: p.nome,
+      total: allApolices.filter(a => a.produtoId === p.id).length,
+    })).filter(p => p.total > 0);
+
+    return {
+      totalAtivas: ativas.length,
+      totalClientes: allClientes.length,
+      totalVencidas: vencidas.length,
+      vencendo30: vencendo30.length,
+      vencendo60: vencendo60.length,
+      valorTotal,
+      renovacaoMes: renovacaoMes.length,
+      porSeguradora,
+      porProduto,
+    };
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -872,11 +1121,12 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async updateUserPassword(id: number, hashedPassword: string): Promise<void> {
+  async updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined> {
     const user = this.users.find((u) => u.id === id);
     if (user) {
       user.password = hashedPassword;
     }
+    return user;
   }
 
   async updateUserProfile(id: number, data: { name?: string; avatar?: string }): Promise<User | undefined> {
@@ -1258,6 +1508,29 @@ export class MemStorage implements IStorage {
 
   async deleteReview(id: number): Promise<void> {
     this.reviewsData = this.reviewsData.filter(r => r.id !== id);
+  }
+
+  // Insurance stubs (MemStorage not used in production)
+  async getClientes(): Promise<Cliente[]> { return []; }
+  async getCliente(id: number): Promise<Cliente | undefined> { return undefined; }
+  async createCliente(c: InsertCliente): Promise<Cliente> { throw new Error("Not implemented"); }
+  async updateCliente(id: number, c: Partial<InsertCliente>): Promise<Cliente | undefined> { return undefined; }
+  async deleteCliente(id: number): Promise<void> {}
+  async getSeguradoras(): Promise<Seguradora[]> { return []; }
+  async createSeguradora(s: InsertSeguradora): Promise<Seguradora> { throw new Error("Not implemented"); }
+  async updateSeguradora(id: number, s: Partial<InsertSeguradora>): Promise<Seguradora | undefined> { return undefined; }
+  async deleteSeguradora(id: number): Promise<void> {}
+  async getProdutosSeguro(): Promise<ProdutoSeguro[]> { return []; }
+  async createProdutoSeguro(p: InsertProdutoSeguro): Promise<ProdutoSeguro> { throw new Error("Not implemented"); }
+  async updateProdutoSeguro(id: number, p: Partial<InsertProdutoSeguro>): Promise<ProdutoSeguro | undefined> { return undefined; }
+  async deleteProdutoSeguro(id: number): Promise<void> {}
+  async getApolices(): Promise<Apolice[]> { return []; }
+  async getApolice(id: number): Promise<Apolice | undefined> { return undefined; }
+  async createApolice(a: InsertApolice): Promise<Apolice> { throw new Error("Not implemented"); }
+  async updateApolice(id: number, a: Partial<InsertApolice>): Promise<Apolice | undefined> { return undefined; }
+  async deleteApolice(id: number): Promise<void> {}
+  async getDashboardSeguros() {
+    return { totalAtivas: 0, totalClientes: 0, totalVencidas: 0, vencendo30: 0, vencendo60: 0, valorTotal: "0.00", renovacaoMes: 0, porSeguradora: [], porProduto: [] };
   }
 }
 

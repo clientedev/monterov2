@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, integer, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, integer, json, numeric } from "drizzle-orm/pg-core";
 // Build trigger: 2026-04-27 16:51
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -230,6 +230,60 @@ export const sessions = pgTable("session", {
 });
 
 // ============================================================
+// INSURANCE MODULE
+// ============================================================
+
+// Clientes de Seguro (separado do CRM de contatos/leads)
+export const clientes = pgTable("clientes", {
+  id: serial("id").primaryKey(),
+  nome: text("nome").notNull(),
+  cpfCnpj: text("cpf_cnpj"),
+  dataNascimento: text("data_nascimento"),
+  telefone: text("telefone"),
+  whatsapp: text("whatsapp"),
+  email: text("email"),
+  endereco: text("endereco"),
+  cidade: text("cidade"),
+  estado: text("estado"),
+  observacoes: text("observacoes"),
+  tags: text("tags"),
+  responsavelComercialId: integer("responsavel_comercial_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Seguradoras
+export const seguradoras = pgTable("seguradoras", {
+  id: serial("id").primaryKey(),
+  nome: text("nome").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Produtos de Seguro (Auto, Vida, Saúde, Residencial, etc.)
+export const produtosSeguro = pgTable("produtos_seguro", {
+  id: serial("id").primaryKey(),
+  nome: text("nome").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Apólices
+export const apolices = pgTable("apolices", {
+  id: serial("id").primaryKey(),
+  clienteId: integer("cliente_id").references(() => clientes.id, { onDelete: "cascade" }).notNull(),
+  produtoId: integer("produto_id").references(() => produtosSeguro.id),
+  seguradoraId: integer("seguradora_id").references(() => seguradoras.id),
+  numeroApolice: text("numero_apolice"),
+  status: text("status", { enum: ["ativa", "vencida", "cancelada", "pendente"] }).notNull().default("ativa"),
+  inicioVigencia: timestamp("inicio_vigencia"),
+  fimVigencia: timestamp("fim_vigencia"),
+  premio: text("premio"),
+  valorSegurado: text("valor_segurado"),
+  comissao: text("comissao"),
+  corretorId: integer("corretor_id").references(() => users.id),
+  observacoes: text("observacoes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ============================================================
 // INSERT SCHEMAS (Zod validation)
 // ============================================================
 
@@ -268,6 +322,15 @@ export const insertProspectingChecklistSchema = createInsertSchema(prospectingCh
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, isApproved: true });
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, isApproved: true, userId: true });
 
+// Insurance Module Schemas
+export const insertClienteSchema = createInsertSchema(clientes).omit({ id: true, createdAt: true });
+export const insertSeguradoraSchema = createInsertSchema(seguradoras).omit({ id: true, createdAt: true });
+export const insertProdutoSeguroSchema = createInsertSchema(produtosSeguro).omit({ id: true, createdAt: true });
+export const insertApoliceSchema = createInsertSchema(apolices, {
+  inicioVigencia: z.coerce.date().optional(),
+  fimVigencia: z.coerce.date().optional(),
+}).omit({ id: true, createdAt: true });
+
 // ============================================================
 // TYPES
 // ============================================================
@@ -304,3 +367,13 @@ export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
+
+// Insurance Module Types
+export type Cliente = typeof clientes.$inferSelect;
+export type InsertCliente = z.infer<typeof insertClienteSchema>;
+export type Seguradora = typeof seguradoras.$inferSelect;
+export type InsertSeguradora = z.infer<typeof insertSeguradoraSchema>;
+export type ProdutoSeguro = typeof produtosSeguro.$inferSelect;
+export type InsertProdutoSeguro = z.infer<typeof insertProdutoSeguroSchema>;
+export type Apolice = typeof apolices.$inferSelect;
+export type InsertApolice = z.infer<typeof insertApoliceSchema>;
