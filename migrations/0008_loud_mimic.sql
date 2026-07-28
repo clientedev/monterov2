@@ -1,4 +1,4 @@
-CREATE TABLE "apolices" (
+CREATE TABLE IF NOT EXISTS "apolices" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"cliente_id" integer NOT NULL,
 	"produto_id" integer,
@@ -15,7 +15,7 @@ CREATE TABLE "apolices" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "clientes" (
+CREATE TABLE IF NOT EXISTS "clientes" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"nome" text NOT NULL,
 	"cpf_cnpj" text,
@@ -32,7 +32,7 @@ CREATE TABLE "clientes" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "products" (
+CREATE TABLE IF NOT EXISTS "products" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"description" text,
@@ -40,13 +40,13 @@ CREATE TABLE "products" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "produtos_seguro" (
+CREATE TABLE IF NOT EXISTS "produtos_seguro" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"nome" text NOT NULL,
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "seguradoras" (
+CREATE TABLE IF NOT EXISTS "seguradoras" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"nome" text NOT NULL,
 	"created_at" timestamp DEFAULT now()
@@ -74,20 +74,25 @@ ALTER TABLE "site_settings" ALTER COLUMN "blog_subtitle" SET DEFAULT 'Fique por 
 ALTER TABLE "site_settings" ALTER COLUMN "contact_email" SET DEFAULT 'contato@monteiroseguros.com.br';--> statement-breakpoint
 ALTER TABLE "site_settings" ALTER COLUMN "address" SET DEFAULT 'São Paulo, SP';--> statement-breakpoint
 ALTER TABLE "site_settings" ALTER COLUMN "footer_text" SET DEFAULT 'Cuidar de pessoas é uma decisão estratégica. Benefícios não são custo. São estratégia.';--> statement-breakpoint
-ALTER TABLE "contacts" ADD COLUMN "responsible_name" text;--> statement-breakpoint
-ALTER TABLE "contacts" ADD COLUMN "responsible_id" integer;--> statement-breakpoint
-ALTER TABLE "contacts" ADD COLUMN "anniversary_date" text;--> statement-breakpoint
-ALTER TABLE "contacts" ADD COLUMN "marital_status" text;--> statement-breakpoint
-ALTER TABLE "leads" ADD COLUMN "product" text;--> statement-breakpoint
-ALTER TABLE "services" ADD COLUMN "order" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
-ALTER TABLE "site_settings" ADD COLUMN "logo_scale" integer DEFAULT 150 NOT NULL;--> statement-breakpoint
-ALTER TABLE "site_settings" ADD COLUMN "logo_scale_mobile" integer DEFAULT 130 NOT NULL;--> statement-breakpoint
-ALTER TABLE "site_settings" ADD COLUMN "task_columns" text;--> statement-breakpoint
-ALTER TABLE "site_settings" ADD COLUMN "lead_columns" text;--> statement-breakpoint
+ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "responsible_name" text;--> statement-breakpoint
+ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "responsible_id" integer;--> statement-breakpoint
+ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "anniversary_date" text;--> statement-breakpoint
+ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "marital_status" text;--> statement-breakpoint
+ALTER TABLE "leads" ADD COLUMN IF NOT EXISTS "product" text;--> statement-breakpoint
+ALTER TABLE "services" ADD COLUMN IF NOT EXISTS "order" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "site_settings" ADD COLUMN IF NOT EXISTS "logo_scale" integer DEFAULT 150 NOT NULL;--> statement-breakpoint
+ALTER TABLE "site_settings" ADD COLUMN IF NOT EXISTS "logo_scale_mobile" integer DEFAULT 130 NOT NULL;--> statement-breakpoint
+ALTER TABLE "site_settings" ADD COLUMN IF NOT EXISTS "task_columns" text;--> statement-breakpoint
+ALTER TABLE "site_settings" ADD COLUMN IF NOT EXISTS "lead_columns" text;--> statement-breakpoint
+ALTER TABLE "apolices" DROP CONSTRAINT IF EXISTS "apolices_cliente_id_clientes_id_fk";--> statement-breakpoint
 ALTER TABLE "apolices" ADD CONSTRAINT "apolices_cliente_id_clientes_id_fk" FOREIGN KEY ("cliente_id") REFERENCES "public"."clientes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "apolices" DROP CONSTRAINT IF EXISTS "apolices_produto_id_produtos_seguro_id_fk";--> statement-breakpoint
 ALTER TABLE "apolices" ADD CONSTRAINT "apolices_produto_id_produtos_seguro_id_fk" FOREIGN KEY ("produto_id") REFERENCES "public"."produtos_seguro"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "apolices" DROP CONSTRAINT IF EXISTS "apolices_seguradora_id_seguradoras_id_fk";--> statement-breakpoint
 ALTER TABLE "apolices" ADD CONSTRAINT "apolices_seguradora_id_seguradoras_id_fk" FOREIGN KEY ("seguradora_id") REFERENCES "public"."seguradoras"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "apolices" DROP CONSTRAINT IF EXISTS "apolices_corretor_id_users_id_fk";--> statement-breakpoint
 ALTER TABLE "apolices" ADD CONSTRAINT "apolices_corretor_id_users_id_fk" FOREIGN KEY ("corretor_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "clientes" DROP CONSTRAINT IF EXISTS "clientes_responsavel_comercial_id_users_id_fk";--> statement-breakpoint
 ALTER TABLE "clientes" ADD CONSTRAINT "clientes_responsavel_comercial_id_users_id_fk" FOREIGN KEY ("responsavel_comercial_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "posts" ADD COLUMN IF NOT EXISTS "likes" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE "posts" ADD COLUMN IF NOT EXISTS "is_approved" boolean DEFAULT false NOT NULL;
