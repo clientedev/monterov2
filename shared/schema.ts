@@ -288,7 +288,7 @@ export const apolices = pgTable("apolices", {
 // ============================================================
 
 export const insertPostSchema = createInsertSchema(posts, {
-  publishedAt: z.coerce.date(),
+  publishedAt: z.coerce.date().optional(),
 }).omit({ id: true, createdAt: true });
 export const insertInquirySchema = createInsertSchema(inquiries).omit({ id: true, createdAt: true });
 export const insertServiceSchema = createInsertSchema(services).omit({ id: true });
