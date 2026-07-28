@@ -66,12 +66,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  log("running migrations...");
-  const { migrate } = await import("drizzle-orm/node-postgres/migrator");
+  log("skipping file-based migrations — using raw SQL guards instead");
   const { db } = await import("./db");
-  const migrationsPath = resolve(process.cwd(), "migrations");
-  await migrate(db, { migrationsFolder: migrationsPath });
-  log("migrations completed");
   
   // Auto-sync insurance tables on server startup (guarantees PostgreSQL on Railway has all required tables)
   try {
@@ -119,8 +115,13 @@ app.use((req, res, next) => {
         observacoes TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       );
+      -- Ensure blog post columns exist (added in later schema revisions)
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS likes integer DEFAULT 0 NOT NULL;
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_approved boolean DEFAULT false NOT NULL;
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_url text;
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS youtube_url text;
     `);
-    log("Insurance tables verified/created in database");
+    log("Database tables and columns verified/created");
   } catch (err) {
     log(`Insurance tables check failed: ${err instanceof Error ? err.message : String(err)}`, "error");
   }
