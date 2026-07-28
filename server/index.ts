@@ -69,62 +69,69 @@ app.use((req, res, next) => {
   log("skipping file-based migrations — using raw SQL guards instead");
   const { db } = await import("./db");
   
-  // Auto-sync insurance tables on server startup (guarantees PostgreSQL on Railway has all required tables)
-  try {
-    const { pool } = await import("./db");
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS clientes (
-        id SERIAL PRIMARY KEY,
-        nome TEXT NOT NULL,
-        cpf_cnpj TEXT,
-        data_nascimento TEXT,
-        telefone TEXT,
-        whatsapp TEXT,
-        email TEXT,
-        endereco TEXT,
-        cidade TEXT,
-        estado TEXT,
-        observacoes TEXT,
-        tags TEXT,
-        responsavel_comercial_id INTEGER REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS seguradoras (
-        id SERIAL PRIMARY KEY,
-        nome TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS produtos_seguro (
-        id SERIAL PRIMARY KEY,
-        nome TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS apolices (
-        id SERIAL PRIMARY KEY,
-        cliente_id INTEGER NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
-        produto_id INTEGER REFERENCES produtos_seguro(id),
-        seguradora_id INTEGER REFERENCES seguradoras(id),
-        numero_apolice TEXT,
-        status TEXT NOT NULL DEFAULT 'ativa',
-        inicio_vigencia TIMESTAMP,
-        fim_vigencia TIMESTAMP,
-        premio TEXT,
-        valor_segurado TEXT,
-        comissao TEXT,
-        corretor_id INTEGER REFERENCES users(id),
-        observacoes TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      -- Ensure blog post columns exist (added in later schema revisions)
-      ALTER TABLE posts ADD COLUMN IF NOT EXISTS likes integer DEFAULT 0 NOT NULL;
-      ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_approved boolean DEFAULT false NOT NULL;
-      ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_url text;
-      ALTER TABLE posts ADD COLUMN IF NOT EXISTS youtube_url text;
-    `);
-    log("Database tables and columns verified/created");
-  } catch (err) {
-    log(`Insurance tables check failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+  // Auto-sync all required tables and columns on startup using individual queries
+  // (pg driver does not support multi-statement strings reliably)
+  const { pool } = await import("./db");
+
+  const startupQueries = [
+    // Insurance tables
+    `CREATE TABLE IF NOT EXISTS clientes (
+      id SERIAL PRIMARY KEY,
+      nome TEXT NOT NULL,
+      cpf_cnpj TEXT,
+      data_nascimento TEXT,
+      telefone TEXT,
+      whatsapp TEXT,
+      email TEXT,
+      endereco TEXT,
+      cidade TEXT,
+      estado TEXT,
+      observacoes TEXT,
+      tags TEXT,
+      responsavel_comercial_id INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS seguradoras (
+      id SERIAL PRIMARY KEY,
+      nome TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS produtos_seguro (
+      id SERIAL PRIMARY KEY,
+      nome TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS apolices (
+      id SERIAL PRIMARY KEY,
+      cliente_id INTEGER NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+      produto_id INTEGER REFERENCES produtos_seguro(id),
+      seguradora_id INTEGER REFERENCES seguradoras(id),
+      numero_apolice TEXT,
+      status TEXT NOT NULL DEFAULT 'ativa',
+      inicio_vigencia TIMESTAMP,
+      fim_vigencia TIMESTAMP,
+      premio TEXT,
+      valor_segurado TEXT,
+      comissao TEXT,
+      corretor_id INTEGER REFERENCES users(id),
+      observacoes TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    // Blog posts — ensure all schema columns exist
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS likes integer DEFAULT 0 NOT NULL`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_approved boolean DEFAULT false NOT NULL`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_url text`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS youtube_url text`,
+  ];
+
+  for (const sql of startupQueries) {
+    try {
+      await pool.query(sql);
+    } catch (err) {
+      log(`Startup SQL warning (non-fatal): ${err instanceof Error ? err.message : String(err)}`, "warn");
+    }
   }
+  log("Database startup sync completed");
 
   // Force cleanup of "Carlos" from database on startup
   try {
