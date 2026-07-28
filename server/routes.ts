@@ -205,6 +205,21 @@ export async function registerRoutes(
     }
   });
 
+  // Diagnostic endpoint — shows actual columns of posts table in live DB
+  app.get("/api/debug/posts-columns", async (req, res) => {
+    try {
+      const result = await db.execute(
+        sql`SELECT column_name, data_type, is_nullable, column_default
+            FROM information_schema.columns
+            WHERE table_name = 'posts'
+            ORDER BY ordinal_position`
+      );
+      res.json({ columns: result.rows });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Posts
   app.get(api.posts.list.path, async (req, res) => {
     const isAdminUser = req.isAuthenticated() && (req.user as any).role === "admin";
@@ -251,6 +266,7 @@ export async function registerRoutes(
     try {
       const input = insertPostSchema.parse(req.body);
       console.log(`[POSTS] Creating new post... Payload size: ${JSON.stringify(input).length} bytes`);
+      console.log(`[POSTS] Input keys: ${Object.keys(input).join(', ')}`);
       const isApproved = (req.user as any).role === "admin";
       const post = await storage.createPost({ ...input, isApproved });
       res.status(201).json(post);
@@ -259,7 +275,10 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors });
       }
-      res.status(500).json({ message: error.message || "Internal server error" });
+      // Include the underlying DB cause in the response for easier debugging
+      const cause = error?.cause?.message || error?.cause?.detail || "";
+      const fullMessage = cause ? `${error.message} | Causa: ${cause}` : (error.message || "Internal server error");
+      res.status(500).json({ message: fullMessage });
     }
   });
 
