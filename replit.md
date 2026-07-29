@@ -8,6 +8,20 @@ This is a modern insurance broker website for "Monteiro Corretora," a São Paulo
 
 Preferred communication style: Simple, everyday language.
 
+## How to Run
+
+```bash
+npm install
+npm run dev
+```
+
+The app starts on port 5000. The `npm run dev` script uses `node_modules/.bin/tsx server/index.ts` (tsx must be referenced via node_modules path, not global).
+
+Database schema is auto-synced on startup. To push schema changes manually:
+```bash
+npm run db:push
+```
+
 ## System Architecture
 
 ### Frontend Architecture
@@ -53,10 +67,14 @@ Preferred communication style: Simple, everyday language.
 4. Storage layer (`server/storage.ts`) uses Drizzle ORM to interact with PostgreSQL
 
 ### Database Schema
-Three main tables:
-- **posts**: Blog posts with title, slug, content, summary, and cover image
-- **services**: Insurance services with title, description, and icon name
-- **inquiries**: Contact form submissions with name, email, phone, and message
+Key tables:
+- **contacts**: CRM contacts (PF and PJ) with anniversaryDate for commemorative dates and age display
+- **clientes**: Insurance clients linked to contacts base for pre-filling
+- **leads**: Sales opportunities in pipeline
+- **apolices**: Insurance policies
+- **posts**: Blog posts
+- **services**: Insurance services
+- **inquiries**: Contact form submissions
 
 ### Build System
 - **Development**: Vite dev server with HMR, proxied through Express
@@ -66,22 +84,9 @@ Three main tables:
 ## External Dependencies
 
 ### Database
-- **PostgreSQL**: Primary database, connection via `DATABASE_URL` environment variable
-- **Drizzle ORM**: Type-safe database queries and schema management
+- **PostgreSQL**: Primary database, connection via `DATABASE_URL` environment variable (auto-configured by Replit)
 
-### Frontend Libraries
-- **Radix UI**: Accessible component primitives (dialog, dropdown, tabs, etc.)
-- **TanStack React Query**: Server state management and caching
-- **Framer Motion**: Animation library for page transitions
-- **date-fns**: Date formatting for blog posts
-- **Lucide React**: Icon library
-
-### Development Tools
-- **Vite**: Frontend build tool with React plugin
-- **esbuild**: Server bundling for production
-- **Drizzle Kit**: Database schema management and migrations
-
-### Replit-Specific
-- `@replit/vite-plugin-runtime-error-modal`: Development error overlay
-- `@replit/vite-plugin-cartographer`: Development tooling (dev only)
-- `@replit/vite-plugin-dev-banner`: Development banner (dev only)
+### Environment Variables
+- `DATABASE_URL` — PostgreSQL connection string (provided by Replit)
+- `SESSION_SECRET` — Express session secret (set in Replit Secrets)
+- `PORT` — Server port (defaults to 5000)
