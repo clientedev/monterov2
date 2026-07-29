@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -418,21 +419,26 @@ export default function ClienteDetalhePage() {
                             </div>
                             <div>
                                 <Label>Produto *</Label>
-                                <Select value={apoliceForm.produtoId} onValueChange={v => setField("produtoId", v)}>
-                                    <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {produtos?.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.nome}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                    options={(produtos ?? []).map(p => ({ value: String(p.id), label: p.nome }))}
+                                    value={apoliceForm.produtoId}
+                                    onValueChange={v => setField("produtoId", v)}
+                                    placeholder="Selecionar produto..."
+                                    searchPlaceholder="Pesquisar produto..."
+                                    triggerClassName="h-10 rounded-md"
+                                />
                             </div>
                             <div>
                                 <Label>Seguradora</Label>
-                                <Select value={apoliceForm.seguradoraId} onValueChange={v => setField("seguradoraId", v)}>
-                                    <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {seguradoras?.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                    options={(seguradoras ?? []).map(s => ({ value: String(s.id), label: s.nome }))}
+                                    value={apoliceForm.seguradoraId}
+                                    onValueChange={v => setField("seguradoraId", v)}
+                                    placeholder="Selecionar seguradora..."
+                                    searchPlaceholder="Pesquisar seguradora..."
+                                    triggerClassName="h-10 rounded-md"
+                                    clearable
+                                />
                             </div>
                             <div>
                                 <Label>Início da Vigência</Label>
@@ -456,12 +462,15 @@ export default function ClienteDetalhePage() {
                             </div>
                             <div>
                                 <Label>Corretor Responsável</Label>
-                                <Select value={apoliceForm.corretorId} onValueChange={v => setField("corretorId", v)}>
-                                    <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {users?.map(u => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                    options={(users ?? []).map(u => ({ value: String(u.id), label: u.name }))}
+                                    value={apoliceForm.corretorId}
+                                    onValueChange={v => setField("corretorId", v)}
+                                    placeholder="Selecionar corretor..."
+                                    searchPlaceholder="Pesquisar corretor..."
+                                    triggerClassName="h-10 rounded-md"
+                                    clearable
+                                />
                             </div>
                             <div className="col-span-2">
                                 <Label>Observações</Label>

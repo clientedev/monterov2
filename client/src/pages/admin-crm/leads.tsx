@@ -30,6 +30,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -653,24 +654,20 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel className="text-gray-600 font-bold">Contato / Cliente</FormLabel>
-                            <Select
-                                onValueChange={(val) => field.onChange(parseInt(val))}
-                                defaultValue={field.value.toString()}
-                                disabled={!!initialData}
-                            >
-                                <FormControl>
-                                    <SelectTrigger className="rounded-xl h-11">
-                                        <SelectValue placeholder="Selecione um contato" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {contacts.map((c: any) => (
-                                        <SelectItem key={c.id} value={c.id.toString()}>
-                                            {c.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <FormControl>
+                                <SearchableSelect
+                                    options={contacts.map((c: any) => ({
+                                        value: String(c.id),
+                                        label: c.name,
+                                        sublabel: c.phone ?? undefined,
+                                    }))}
+                                    value={field.value ? String(field.value) : ""}
+                                    onValueChange={(val) => val && field.onChange(parseInt(val))}
+                                    placeholder="Selecione ou pesquise um contato..."
+                                    searchPlaceholder="Pesquisar pelo nome ou telefone..."
+                                    disabled={!!initialData}
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}

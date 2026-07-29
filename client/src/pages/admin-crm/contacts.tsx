@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Contact, InsertContact, insertContactSchema } from "@shared/schema";
+import { Contact, InsertContact, insertContactSchema, Lead } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -37,7 +37,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Users, Building, User } from "lucide-react";
+import { Loader2, Plus, Users, Building, User, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ContactProfile } from "@/components/ContactProfile";
 import * as XLSX from "xlsx";
@@ -52,6 +52,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Edit2, FileDown, FileSpreadsheet, Trash2 } from "lucide-react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 export default function ContactsPage() {
     const { toast } = useToast();
@@ -64,9 +65,35 @@ export default function ContactsPage() {
     const [isEditing, setIsEditing] = useState<number | null>(null);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
+    // ── "Adicionar responsável" mini-dialog state ────────────────────────────
+    const [addResponsibleOpen, setAddResponsibleOpen] = useState(false);
+    const [newResponsibleName, setNewResponsibleName] = useState("");
+    const [newResponsiblePhone, setNewResponsiblePhone] = useState("");
+    const [newResponsibleEmail, setNewResponsibleEmail] = useState("");
+    const [isSavingResponsible, setIsSavingResponsible] = useState(false);
+
     const { data: contacts, isLoading } = useQuery<Contact[]>({
         queryKey: ["/api/contacts"],
     });
+
+    const { data: allLeads } = useQuery<Lead[]>({
+        queryKey: ["/api/leads"],
+    });
+
+    // Map contactId → unique product names from their leads
+    const productsByContact = useMemo(() => {
+        const map = new Map<number, string[]>();
+        if (!allLeads) return map;
+        for (const lead of allLeads) {
+            if (!lead.product) continue;
+            const existing = map.get(lead.contactId) ?? [];
+            if (!existing.includes(lead.product)) {
+                existing.push(lead.product);
+                map.set(lead.contactId, existing);
+            }
+        }
+        return map;
+    }, [allLeads]);
 
     const updateMutation = useMutation({
         mutationFn: async (data: Partial<InsertContact>) => {
@@ -231,6 +258,41 @@ export default function ContactsPage() {
         }
     };
 
+    // ── "Adicionar responsável" quick-create handler ──────────────────────────
+    const handleAddResponsible = async () => {
+        if (!newResponsibleName.trim()) {
+            toast({ title: "Nome é obrigatório", variant: "destructive" });
+            return;
+        }
+        setIsSavingResponsible(true);
+        try {
+            const res = await apiRequest("POST", "/api/contacts", {
+                type: "individual",
+                name: newResponsibleName.trim(),
+                phone: newResponsiblePhone.trim() || null,
+                email: newResponsibleEmail.trim() || null,
+            });
+            if (!res.ok) throw new Error((await res.json()).message || "Erro");
+            const newContact: Contact = await res.json();
+
+            await queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+
+            // Auto-select the newly created responsible
+            form.setValue("responsibleId", newContact.id);
+            form.setValue("responsibleName", newContact.name);
+
+            toast({ title: `✅ Responsável "${newContact.name}" adicionado e selecionado!` });
+            setAddResponsibleOpen(false);
+            setNewResponsibleName("");
+            setNewResponsiblePhone("");
+            setNewResponsibleEmail("");
+        } catch (error: any) {
+            toast({ title: "Erro ao criar responsável", description: error.message, variant: "destructive" });
+        } finally {
+            setIsSavingResponsible(false);
+        }
+    };
+
     const clientType = form.watch("type");
 
     if (isLoading) {
@@ -241,6 +303,15 @@ export default function ContactsPage() {
         );
     }
 
+    // Build options for SearchableSelect (individual contacts only, for responsível)
+    const individualContactOptions = (contacts ?? [])
+        .filter((c) => c.type === "individual")
+        .map((c) => ({
+            value: String(c.id),
+            label: c.name,
+            sublabel: c.phone ?? undefined,
+        }));
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -250,7 +321,7 @@ export default function ContactsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Dialog open={open} onOpenChange={setOpen}>
+                    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setIsEditing(null); form.reset(); } }}>
                         <DialogTrigger asChild>
                             <Button className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-11 px-6 font-bold">
                                 <Plus className="mr-2 h-4 w-4" />
@@ -272,6 +343,7 @@ export default function ContactsPage() {
                                                 <Select
                                                     onValueChange={field.onChange}
                                                     defaultValue={field.value}
+                                                    value={field.value}
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger className="rounded-xl h-11">
@@ -359,42 +431,48 @@ export default function ContactsPage() {
 
                                     {clientType === "company" && (
                                         <>
+                                            {/* ── Responsável com busca + botão de adição rápida ── */}
                                             <FormField
                                                 control={form.control}
                                                 name="responsibleId"
-                                                render={({ field }) => {
-                                                    const individualContacts = contacts?.filter(c => c.type === 'individual') || [];
-                                                    return (
-                                                        <FormItem>
-                                                            <FormLabel className="text-gray-600 font-bold">Pessoa Responsável (Selecione dos Contatos) *</FormLabel>
-                                                            <Select
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <div className="flex items-center justify-between">
+                                                            <FormLabel className="text-gray-600 font-bold">
+                                                                Pessoa Responsável *
+                                                            </FormLabel>
+                                                            {/* ── Botão "Adicionar responsável" ── */}
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-7 px-2 text-primary hover:bg-primary/5 text-xs font-bold gap-1"
+                                                                onClick={() => setAddResponsibleOpen(true)}
+                                                            >
+                                                                <UserPlus className="h-3.5 w-3.5" />
+                                                                Adicionar responsável
+                                                            </Button>
+                                                        </div>
+                                                        <FormControl>
+                                                            <SearchableSelect
+                                                                options={individualContactOptions}
+                                                                value={field.value?.toString() ?? ""}
                                                                 onValueChange={(val) => {
+                                                                    if (!val) return;
                                                                     const id = parseInt(val);
                                                                     field.onChange(id);
-                                                                    const selectedCont = individualContacts.find(c => c.id === id);
-                                                                    if (selectedCont) {
-                                                                        form.setValue("responsibleName", selectedCont.name);
-                                                                    }
+                                                                    const selected = contacts?.find(c => c.id === id);
+                                                                    if (selected) form.setValue("responsibleName", selected.name);
                                                                 }}
-                                                                value={field.value?.toString() || ""}
-                                                            >
-                                                                <FormControl>
-                                                                    <SelectTrigger className="rounded-xl h-11 border-primary/20">
-                                                                        <SelectValue placeholder="Selecione um contato individual" />
-                                                                    </SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent>
-                                                                    {individualContacts.map((c) => (
-                                                                        <SelectItem key={c.id} value={c.id.toString()}>
-                                                                            {c.name} {c.phone ? `(${c.phone})` : ""}
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    );
-                                                }}
+                                                                placeholder="Selecione ou pesquise um contato..."
+                                                                searchPlaceholder="Pesquisar pelo nome ou telefone..."
+                                                                triggerClassName="border-primary/20"
+                                                                clearable
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
                                             />
                                             <FormField
                                                 control={form.control}
@@ -513,12 +591,13 @@ export default function ContactsPage() {
                 </div>
             </div>
 
+            {/* ── Contacts Table ──────────────────────────────────────────────── */}
             <div className="rounded-2xl border bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                 <Table>
                     <TableHeader className="bg-gray-50/80">
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="py-4 font-bold text-gray-600">Identificação</TableHead>
-                            <TableHead className="py-4 font-bold text-gray-600">Tipo</TableHead>
+                            <TableHead className="py-4 font-bold text-gray-600">Produtos / Tipo</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Responsável</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Email</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Telefone</TableHead>
@@ -536,95 +615,177 @@ export default function ContactsPage() {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            contacts?.map((contact) => (
-                                <TableRow key={contact.id} className="hover:bg-gray-50/50 transition-colors group">
-                                    <TableCell className="font-bold text-gray-900 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-bold
-                                                ${contact.type === 'individual' ? 'bg-primary/80' : 'bg-secondary/80'}
-                                            `}>
-                                                {contact.name.charAt(0).toUpperCase()}
+                            contacts?.map((contact) => {
+                                const products = productsByContact.get(contact.id) ?? [];
+                                return (
+                                    <TableRow key={contact.id} className="hover:bg-gray-50/50 transition-colors group">
+                                        <TableCell className="font-bold text-gray-900 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-bold
+                                                    ${contact.type === 'individual' ? 'bg-primary/80' : 'bg-secondary/80'}
+                                                `}>
+                                                    {contact.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                {contact.name}
                                             </div>
-                                            {contact.name}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="py-4">
-                                        <Badge variant="outline" className={`rounded-lg py-1 px-3 border-none flex items-center w-fit gap-1.5 font-bold text-[10px] uppercase tracking-wider
-                                            ${contact.type === 'individual'
-                                                ? 'bg-blue-50 text-blue-600'
-                                                : 'bg-indigo-50 text-indigo-600'}
-                                        `}>
-                                            {contact.type === 'individual' ? <User className="h-3 w-3" /> : <Building className="h-3 w-3" />}
-                                            {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-gray-600 font-medium py-4">
-                                        {contact.type === 'company' ? (
-                                            <div className="flex flex-col">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="font-bold text-slate-800">{contact.responsibleName || "Não inf."}</span>
-                                                    {contact.responsibleId && (
-                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
-                                                            Vinculado
-                                                        </span>
+                                        </TableCell>
+
+                                        {/* ── Products / type column ─────────────────────────────── */}
+                                        <TableCell className="py-4">
+                                            {products.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {products.slice(0, 3).map((prod) => (
+                                                        <Badge
+                                                            key={prod}
+                                                            variant="outline"
+                                                            className="rounded-lg py-0.5 px-2.5 border-none bg-primary/10 text-primary font-bold text-[10px] uppercase tracking-wider"
+                                                        >
+                                                            {prod}
+                                                        </Badge>
+                                                    ))}
+                                                    {products.length > 3 && (
+                                                        <Badge variant="outline" className="rounded-lg py-0.5 px-2 border border-dashed text-[10px] text-gray-400">
+                                                            +{products.length - 3}
+                                                        </Badge>
                                                     )}
                                                 </div>
-                                                <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Doc: {contact.document || "—"}</span>
+                                            ) : (
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`rounded-lg py-1 px-3 border-none flex items-center w-fit gap-1.5 font-bold text-[10px] uppercase tracking-wider
+                                                        ${contact.type === 'individual'
+                                                            ? 'bg-blue-50 text-blue-600'
+                                                            : 'bg-indigo-50 text-indigo-600'}
+                                                    `}
+                                                >
+                                                    {contact.type === 'individual' ? <User className="h-3 w-3" /> : <Building className="h-3 w-3" />}
+                                                    {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+
+                                        <TableCell className="text-gray-600 font-medium py-4">
+                                            {contact.type === 'company' ? (
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-bold text-slate-800">{contact.responsibleName || "Não inf."}</span>
+                                                        {contact.responsibleId && (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
+                                                                Vinculado
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Doc: {contact.document || "—"}</span>
+                                                </div>
+                                            ) : (
+                                                contact.document || "—"
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-gray-500 py-4">{contact.email || "—"}</TableCell>
+                                        <TableCell className="text-gray-500 py-4">{contact.phone || "—"}</TableCell>
+                                        <TableCell className="text-right py-4">
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg p-2"
+                                                    onClick={() => {
+                                                        form.reset(contact);
+                                                        setIsEditing(contact.id);
+                                                        setOpen(true);
+                                                    }}
+                                                >
+                                                    <Edit2 className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="font-bold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2"
+                                                    onClick={() => setDeleteTargetId(contact.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="font-bold text-primary hover:bg-primary/5 rounded-lg"
+                                                    onClick={() => {
+                                                        setSelectedContactId(contact.id);
+                                                        setProfileOpen(true);
+                                                    }}
+                                                >
+                                                    Ver Perfil
+                                                </Button>
                                             </div>
-                                        ) : (
-                                            contact.document || "—"
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-gray-500 py-4">{contact.email || "—"}</TableCell>
-                                    <TableCell className="text-gray-500 py-4">{contact.phone || "—"}</TableCell>
-                                    <TableCell className="text-right py-4">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg p-2"
-                                                onClick={() => {
-                                                    form.reset(contact);
-                                                    setIsEditing(contact.id);
-                                                    setOpen(true);
-                                                }}
-                                            >
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="font-bold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2"
-                                                onClick={() => setDeleteTargetId(contact.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="font-bold text-primary hover:bg-primary/5 rounded-lg"
-                                                onClick={() => {
-                                                    setSelectedContactId(contact.id);
-                                                    setProfileOpen(true);
-                                                }}
-                                            >
-                                                Ver Perfil
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
                         )}
                     </TableBody>
                 </Table>
             </div>
+
             <ContactProfile
                 contactId={selectedContactId}
                 open={profileOpen}
                 onOpenChange={setProfileOpen}
             />
 
-            {/* Import Dialog */}
+            {/* ── "Adicionar responsável" mini-dialog ────────────────────────── */}
+            <Dialog open={addResponsibleOpen} onOpenChange={setAddResponsibleOpen}>
+                <DialogContent className="sm:max-w-[380px] rounded-2xl border-none shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-display font-bold flex items-center gap-2">
+                            <UserPlus className="h-5 w-5 text-primary" />
+                            Novo Responsável
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 pt-2">
+                        <p className="text-sm text-muted-foreground">
+                            Cadastre rapidamente o responsável. Ele será adicionado à base de contatos e selecionado automaticamente.
+                        </p>
+                        <div className="space-y-1">
+                            <label className="text-sm font-bold text-gray-700">Nome *</label>
+                            <Input
+                                placeholder="Nome completo"
+                                className="rounded-xl h-11"
+                                value={newResponsibleName}
+                                onChange={(e) => setNewResponsibleName(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-sm font-bold text-gray-700">Telefone</label>
+                            <Input
+                                placeholder="(11) 99999-9999"
+                                className="rounded-xl h-11"
+                                value={newResponsiblePhone}
+                                onChange={(e) => setNewResponsiblePhone(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-sm font-bold text-gray-700">Email</label>
+                            <Input
+                                type="email"
+                                placeholder="email@exemplo.com"
+                                className="rounded-xl h-11"
+                                value={newResponsibleEmail}
+                                onChange={(e) => setNewResponsibleEmail(e.target.value)}
+                            />
+                        </div>
+                        <Button
+                            className="w-full h-11 rounded-xl font-bold mt-2 shadow-lg shadow-primary/20"
+                            onClick={handleAddResponsible}
+                            disabled={isSavingResponsible}
+                        >
+                            {isSavingResponsible ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                            Salvar e Selecionar
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Import Dialog ───────────────────────────────────────────────── */}
             <Dialog open={showImport} onOpenChange={setShowImport}>
                 <DialogContent className="sm:max-w-[600px] rounded-3xl">
                     <DialogHeader>
@@ -696,7 +857,7 @@ export default function ContactsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation */}
+            {/* ── Delete Confirmation ─────────────────────────────────────────── */}
             <AlertDialog open={deleteTargetId !== null} onOpenChange={() => setDeleteTargetId(null)}>
                 <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
                     <AlertDialogHeader>

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -500,12 +501,14 @@ export default function ClientesPage() {
                             </div>
                             <div className="col-span-2">
                                 <Label>Responsável Comercial</Label>
-                                <Select value={formData.responsavelComercialId} onValueChange={v => setField("responsavelComercialId", v)}>
-                                    <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {users?.map(u => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                    options={(users ?? []).map(u => ({ value: String(u.id), label: u.name }))}
+                                    value={formData.responsavelComercialId}
+                                    onValueChange={v => setField("responsavelComercialId", v)}
+                                    placeholder="Selecionar responsável..."
+                                    searchPlaceholder="Pesquisar por nome..."
+                                    clearable
+                                />
                             </div>
                             <div className="col-span-2">
                                 <Label>Observações</Label>

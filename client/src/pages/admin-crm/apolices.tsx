@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -130,33 +131,45 @@ export default function ApolicesPage() {
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div>
                         <Label className="text-xs">Cliente</Label>
-                        <Select value={filterCliente} onValueChange={setFilterCliente}>
-                            <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todos os clientes</SelectItem>
-                                {clientes?.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                            options={[
+                                { value: "all", label: "Todos os clientes" },
+                                ...(clientes ?? []).map(c => ({ value: String(c.id), label: c.nome })),
+                            ]}
+                            value={filterCliente}
+                            onValueChange={setFilterCliente}
+                            placeholder="Todos"
+                            searchPlaceholder="Pesquisar cliente..."
+                            triggerClassName="h-9 text-xs rounded-md"
+                        />
                     </div>
                     <div>
                         <Label className="text-xs">Produto</Label>
-                        <Select value={filterProduto} onValueChange={setFilterProduto}>
-                            <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todos os produtos</SelectItem>
-                                {produtos?.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.nome}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                            options={[
+                                { value: "all", label: "Todos os produtos" },
+                                ...(produtos ?? []).map(p => ({ value: String(p.id), label: p.nome })),
+                            ]}
+                            value={filterProduto}
+                            onValueChange={setFilterProduto}
+                            placeholder="Todos"
+                            searchPlaceholder="Pesquisar produto..."
+                            triggerClassName="h-9 text-xs rounded-md"
+                        />
                     </div>
                     <div>
                         <Label className="text-xs">Seguradora</Label>
-                        <Select value={filterSeguradora} onValueChange={setFilterSeguradora}>
-                            <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todas" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todas seguradoras</SelectItem>
-                                {seguradoras?.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                            options={[
+                                { value: "all", label: "Todas seguradoras" },
+                                ...(seguradoras ?? []).map(s => ({ value: String(s.id), label: s.nome })),
+                            ]}
+                            value={filterSeguradora}
+                            onValueChange={setFilterSeguradora}
+                            placeholder="Todas"
+                            searchPlaceholder="Pesquisar seguradora..."
+                            triggerClassName="h-9 text-xs rounded-md"
+                        />
                     </div>
                     <div>
                         <Label className="text-xs">Status</Label>
@@ -173,13 +186,17 @@ export default function ApolicesPage() {
                     </div>
                     <div>
                         <Label className="text-xs">Corretor</Label>
-                        <Select value={filterCorretor} onValueChange={setFilterCorretor}>
-                            <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todos corretores</SelectItem>
-                                {users?.map(u => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                            options={[
+                                { value: "all", label: "Todos corretores" },
+                                ...(users ?? []).map(u => ({ value: String(u.id), label: u.name })),
+                            ]}
+                            value={filterCorretor}
+                            onValueChange={setFilterCorretor}
+                            placeholder="Todos"
+                            searchPlaceholder="Pesquisar corretor..."
+                            triggerClassName="h-9 text-xs rounded-md"
+                        />
                     </div>
                 </div>
             </div>
