@@ -1,6 +1,19 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Contact, InsertContact, insertContactSchema, Lead } from "@shared/schema";
+import { Contact, InsertContact, insertContactSchema, Lead, Product } from "@shared/schema";
+
+// Calculate age from "DD/MM/AAAA" string
+function calcAge(dateStr: string | null | undefined): number | null {
+    if (!dateStr) return null;
+    const parts = dateStr.split("/");
+    if (parts.length !== 3) return null;
+    const [day, month, year] = parts.map(Number);
+    if (!year || year < 1900 || year > new Date().getFullYear()) return null;
+    const today = new Date();
+    let age = today.getFullYear() - year;
+    if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
+    return age >= 0 ? age : null;
+}
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -192,8 +205,11 @@ export default function ContactsPage() {
             responsibleId: undefined,
             anniversaryDate: "",
             maritalStatus: "",
+            productType: "",
         },
     });
+
+    const watchedAnniversary = form.watch("anniversaryDate");
 
     const createMutation = useMutation({
         mutationFn: async (data: InsertContact) => {
@@ -488,15 +504,23 @@ export default function ContactsPage() {
                                         <FormField
                                             control={form.control}
                                             name="anniversaryDate"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-gray-600 font-bold">Data Comemorativa (DD/MM)</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Ex: 15/08" className="rounded-xl h-11" {...field} value={field.value || ""} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
+                                            render={({ field }) => {
+                                                const age = calcAge(watchedAnniversary);
+                                                return (
+                                                    <FormItem>
+                                                        <FormLabel className="text-gray-600 font-bold">Data Comemorativa (DD/MM/AAAA)</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Ex: 15/08/1990" className="rounded-xl h-11" {...field} value={field.value || ""} />
+                                                        </FormControl>
+                                                        {age !== null && (
+                                                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                                                                🎂 {age} anos
+                                                            </span>
+                                                        )}
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                );
+                                            }}
                                         />
                                         <FormField
                                             control={form.control}
@@ -526,6 +550,19 @@ export default function ContactsPage() {
                                             )}
                                         />
                                     </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="productType"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-600 font-bold">Tipo de Produto <span className="text-xs font-normal text-muted-foreground">(separados por vírgula)</span></FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Ex: Auto, Saúde, Vida" className="rounded-xl h-11" {...field} value={field.value || ""} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormField
                                             control={form.control}
@@ -632,36 +669,44 @@ export default function ContactsPage() {
 
                                         {/* ── Products / type column ─────────────────────────────── */}
                                         <TableCell className="py-4">
-                                            {products.length > 0 ? (
-                                                <div className="flex flex-wrap gap-1">
-                                                    {products.slice(0, 3).map((prod) => (
-                                                        <Badge
-                                                            key={prod}
-                                                            variant="outline"
-                                                            className="rounded-lg py-0.5 px-2.5 border-none bg-primary/10 text-primary font-bold text-[10px] uppercase tracking-wider"
-                                                        >
-                                                            {prod}
+                                            <div className="flex flex-wrap gap-1">
+                                                {products.length > 0 ? (
+                                                    <>
+                                                        {products.slice(0, 3).map((prod) => (
+                                                            <Badge key={prod} variant="outline"
+                                                                className="rounded-lg py-0.5 px-2.5 border-none bg-primary/10 text-primary font-bold text-[10px] uppercase tracking-wider">
+                                                                {prod}
+                                                            </Badge>
+                                                        ))}
+                                                        {products.length > 3 && (
+                                                            <Badge variant="outline" className="rounded-lg py-0.5 px-2 border border-dashed text-[10px] text-gray-400">
+                                                                +{products.length - 3}
+                                                            </Badge>
+                                                        )}
+                                                    </>
+                                                ) : contact.productType ? (
+                                                    contact.productType.split(",").map(pt => pt.trim()).filter(Boolean).map(pt => (
+                                                        <Badge key={pt} variant="outline"
+                                                            className="rounded-lg py-0.5 px-2.5 border-none bg-amber-50 text-amber-700 font-bold text-[10px] uppercase tracking-wider">
+                                                            {pt}
                                                         </Badge>
-                                                    ))}
-                                                    {products.length > 3 && (
-                                                        <Badge variant="outline" className="rounded-lg py-0.5 px-2 border border-dashed text-[10px] text-gray-400">
-                                                            +{products.length - 3}
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <Badge
-                                                    variant="outline"
-                                                    className={`rounded-lg py-1 px-3 border-none flex items-center w-fit gap-1.5 font-bold text-[10px] uppercase tracking-wider
-                                                        ${contact.type === 'individual'
-                                                            ? 'bg-blue-50 text-blue-600'
-                                                            : 'bg-indigo-50 text-indigo-600'}
-                                                    `}
-                                                >
-                                                    {contact.type === 'individual' ? <User className="h-3 w-3" /> : <Building className="h-3 w-3" />}
-                                                    {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
-                                                </Badge>
-                                            )}
+                                                    ))
+                                                ) : (
+                                                    <Badge variant="outline"
+                                                        className={`rounded-lg py-1 px-3 border-none flex items-center w-fit gap-1.5 font-bold text-[10px] uppercase tracking-wider
+                                                            ${contact.type === 'individual' ? 'bg-blue-50 text-blue-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                        {contact.type === 'individual' ? <User className="h-3 w-3" /> : <Building className="h-3 w-3" />}
+                                                        {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
+                                                    </Badge>
+                                                )}
+                                                {/* Age badge */}
+                                                {(() => { const age = calcAge(contact.anniversaryDate); return age !== null ? (
+                                                    <Badge variant="outline"
+                                                        className="rounded-lg py-0.5 px-2 border-none bg-rose-50 text-rose-600 font-bold text-[10px]">
+                                                        🎂 {age} anos
+                                                    </Badge>
+                                                ) : null; })()}
+                                            </div>
                                         </TableCell>
 
                                         <TableCell className="text-gray-600 font-medium py-4">

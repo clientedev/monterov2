@@ -72,8 +72,9 @@ export const contacts = pgTable("contacts", {
   // NEW: PJ-specific fields
   responsibleName: text("responsible_name"), // Required for PJ — enforced via Zod superRefine
   responsibleId: integer("responsible_id"),
-  anniversaryDate: text("anniversary_date"),  // "DD/MM" format
+  anniversaryDate: text("anniversary_date"),  // "DD/MM/AAAA" format
   maritalStatus: text("marital_status"),      // solteiro, casado, divorciado, viuvo
+  productType: text("product_type"),          // e.g. "Auto, Saúde"
   assignedTo: integer("assigned_to").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });

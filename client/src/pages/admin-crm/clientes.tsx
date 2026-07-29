@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Cliente, User } from "@shared/schema";
+import { Cliente, User, Contact } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +54,9 @@ export default function ClientesPage() {
     const [editTarget, setEditTarget] = useState<Cliente | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
 
+    // Import from contacts base state
+    const [selectedContactImport, setSelectedContactImport] = useState("");
+
     // Import Excel state
     const [showImportModal, setShowImportModal] = useState(false);
     const [previewClients, setPreviewClients] = useState<ParsedClient[]>([]);
@@ -75,10 +78,15 @@ export default function ClientesPage() {
         queryKey: ["/api/users"],
     });
 
+    const { data: contacts } = useQuery<Contact[]>({
+        queryKey: ["/api/contacts"],
+    });
+
     const openCreate = () => {
         setEditTarget(null);
         setFormData({ nome: "", cpfCnpj: "", dataNascimento: "", telefone: "", whatsapp: "", email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "", responsavelComercialId: "" });
         setShowForm(true);
+        setSelectedContactImport("");
     };
 
     const openEdit = (c: Cliente) => {
@@ -454,6 +462,37 @@ export default function ClientesPage() {
                     </DialogHeader>
                     <form onSubmit={e => { e.preventDefault(); saveMutation.mutate(); }}>
                         <div className="grid grid-cols-2 gap-4 py-2">
+                            {!editTarget && (
+                                <div className="col-span-2 bg-slate-50 rounded-xl p-3 border border-dashed border-slate-200">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Puxar da Base de Contatos (opcional)</Label>
+                                    <SearchableSelect
+                                        options={(contacts ?? []).map(c => ({
+                                            value: String(c.id),
+                                            label: c.name,
+                                            sublabel: [c.phone, c.email].filter(Boolean).join(" · ") || undefined,
+                                        }))}
+                                        value={selectedContactImport}
+                                        onValueChange={(val) => {
+                                            setSelectedContactImport(val);
+                                            if (!val) return;
+                                            const c = contacts?.find(x => String(x.id) === val);
+                                            if (!c) return;
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                nome: c.name || prev.nome,
+                                                cpfCnpj: c.document || prev.cpfCnpj,
+                                                telefone: c.phone || prev.telefone,
+                                                whatsapp: c.phone || prev.whatsapp,
+                                                email: c.email || prev.email,
+                                                endereco: c.address || prev.endereco,
+                                            }));
+                                        }}
+                                        placeholder="Buscar contato para pré-preencher..."
+                                        searchPlaceholder="Pesquisar por nome ou telefone..."
+                                        clearable
+                                    />
+                                </div>
+                            )}
                             <div className="col-span-2">
                                 <Label>Nome *</Label>
                                 <Input value={formData.nome} onChange={e => setField("nome", e.target.value)} placeholder="Nome completo" required />

@@ -341,6 +341,7 @@ app.use((req, res, next) => {
     `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS responsible_id INTEGER`,
     `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS anniversary_date TEXT`,
     `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS marital_status TEXT`,
+    `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS product_type TEXT`,
     // leads
     `ALTER TABLE leads ADD COLUMN IF NOT EXISTS product TEXT`,
     // inquiries
