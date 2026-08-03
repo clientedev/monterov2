@@ -844,7 +844,14 @@ export class DatabaseStorage implements IStorage {
     });
 
     const valorTotal = ativas.reduce((acc, a) => {
-      return acc + (parseFloat(a.premio || "0") || 0);
+      let valStr = (a.premio || "").replace(/[^\d.,]/g, "").trim();
+      if (valStr.includes(",") && valStr.includes(".")) {
+        valStr = valStr.replace(/\./g, "").replace(",", ".");
+      } else if (valStr.includes(",")) {
+        valStr = valStr.replace(",", ".");
+      }
+      const val = parseFloat(valStr) || 0;
+      return acc + val;
     }, 0).toFixed(2);
 
     // By seguradora

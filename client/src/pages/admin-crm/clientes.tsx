@@ -22,7 +22,7 @@ import {
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, Download, Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, Download, Upload, FileSpreadsheet, CheckCircle2, User as UserIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
 
@@ -40,6 +40,25 @@ interface ParsedClient {
     estado?: string;
     observacoes?: string;
     tags?: string;
+    nomeRepresentante?: string;
+    telefoneRepresentante?: string;
+    emailRepresentante?: string;
+    idProposta?: string;
+    idApolice?: string;
+    numeroApolice?: string;
+    pdfApolice?: string;
+    cobertura?: string;
+    premio?: string;
+    dataEmissao?: string;
+    inicioVigencia?: string;
+    statusApolice?: string;
+    numeroProposta?: string;
+    seguradora?: string;
+    fimVigencia?: string;
+    linkFatura?: string;
+    formaPagamento?: string;
+    mesAtraso?: string;
+    faturasAberto?: string;
 }
 
 export default function ClientesPage() {
@@ -68,6 +87,7 @@ export default function ClientesPage() {
         nome: "", cpfCnpj: "", dataNascimento: "", telefone: "", whatsapp: "",
         email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "",
         responsavelComercialId: "" as string,
+        nomeRepresentante: "", telefoneRepresentante: "", emailRepresentante: "",
     });
 
     const { data: clientes, isLoading } = useQuery<Cliente[]>({
@@ -84,12 +104,12 @@ export default function ClientesPage() {
 
     const openCreate = () => {
         setEditTarget(null);
-        setFormData({ nome: "", cpfCnpj: "", dataNascimento: "", telefone: "", whatsapp: "", email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "", responsavelComercialId: "" });
+        setFormData({ nome: "", cpfCnpj: "", dataNascimento: "", telefone: "", whatsapp: "", email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "", responsavelComercialId: "", nomeRepresentante: "", telefoneRepresentante: "", emailRepresentante: "" });
         setShowForm(true);
         setSelectedContactImport("");
     };
 
-    const openEdit = (c: Cliente) => {
+    const openEdit = (c: Cliente & { nomeRepresentante?: string; telefoneRepresentante?: string; emailRepresentante?: string }) => {
         setEditTarget(c);
         setFormData({
             nome: c.nome || "",
@@ -104,6 +124,9 @@ export default function ClientesPage() {
             observacoes: c.observacoes || "",
             tags: c.tags || "",
             responsavelComercialId: c.responsavelComercialId ? String(c.responsavelComercialId) : "",
+            nomeRepresentante: c.nomeRepresentante || "",
+            telefoneRepresentante: c.telefoneRepresentante || "",
+            emailRepresentante: c.emailRepresentante || "",
         });
         setShowForm(true);
     };
@@ -148,42 +171,43 @@ export default function ClientesPage() {
     const handleDownloadTemplate = () => {
         const templateData = [
             {
-                "Nome": "João Silva",
-                "CPF_CNPJ": "123.456.789-00",
-                "Data_Nascimento": "15/05/1985",
-                "Telefone": "(11) 99999-1111",
-                "WhatsApp": "(11) 99999-1111",
-                "Email": "joao@email.com",
-                "Endereco": "Rua das Flores, 123",
-                "Cidade": "São Paulo",
-                "Estado": "SP",
-                "Observacoes": "Cliente VIP de Seguro Auto",
-                "Tags": "VIP, Auto"
-            },
-            {
-                "Nome": "Maria Santos Oliveira",
-                "CPF_CNPJ": "98.765.432/0001-10",
-                "Data_Nascimento": "20/10/1990",
-                "Telefone": "(11) 98888-2222",
-                "WhatsApp": "(11) 98888-2222",
-                "Email": "maria@empresa.com.br",
-                "Endereco": "Av Paulista, 1000",
-                "Cidade": "São Paulo",
-                "Estado": "SP",
-                "Observacoes": "Empresa com plano de saúde coletivo",
-                "Tags": "PJ, Saúde, Empresarial"
+                "Nome do cliente": "João Silva",
+                "CPF do cliente": "123.456.789-00",
+                "Telefone do cliente": "(11) 99999-1111",
+                "Nome do representante": "Renato Silva",
+                "Telefone do representante": "(11) 99999-2222",
+                "Email do representante": "renato@representante.com",
+                "ID da proposta": "PROP-99238",
+                "ID da apólice": "AP-881273",
+                "Número da apólice": "12345678",
+                "PDF da apólice": "https://exemplo.com/apolice_joao.pdf",
+                "Cobertura": "Completa Auto",
+                "Premio": "1500.00",
+                "Data de emissão": "15/05/2026",
+                "Data Início": "20/05/2026",
+                "Status da apólice": "ativa",
+                "Nº da Proposta": "PROP-99238",
+                "Seguradora": "Porto Seguro",
+                "Data de vencimento": "20/05/2027",
+                "Link da fatura": "https://exemplo.com/fatura_joao.pdf",
+                "Forma de pagamento": "Boleto",
+                "Mês em atraso": "",
+                "Número de faturas em aberto": "0"
             }
         ];
 
         const worksheet = XLSX.utils.json_to_sheet(templateData);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Modelo Clientes");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Modelo Importacao");
 
-        // Format column widths
+        // Format column widths for all 22 columns
         worksheet["!cols"] = [
-            { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 18 },
-            { wch: 18 }, { wch: 25 }, { wch: 30 }, { wch: 18 },
-            { wch: 8 }, { wch: 35 }, { wch: 20 }
+            { wch: 25 }, { wch: 20 }, { wch: 18 }, { wch: 22 },
+            { wch: 22 }, { wch: 25 }, { wch: 18 }, { wch: 18 },
+            { wch: 18 }, { wch: 30 }, { wch: 20 }, { wch: 12 },
+            { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 18 },
+            { wch: 20 }, { wch: 18 }, { wch: 30 }, { wch: 18 },
+            { wch: 15 }, { wch: 25 }
         ];
 
         XLSX.writeFile(workbook, "modelo_importacao_clientes.xlsx");
@@ -222,10 +246,10 @@ export default function ClientesPage() {
                     };
 
                     return {
-                        nome: findVal("nome", "nome completo", "cliente", "razao social"),
-                        cpfCnpj: findVal("cpf_cnpj", "cpf/cnpj", "cpf", "cnpj", "documento"),
+                        nome: findVal("nome do cliente", "nome completo", "nome", "cliente", "razao social"),
+                        cpfCnpj: findVal("cpf do cliente", "cpf_cnpj", "cpf/cnpj", "cpf", "cnpj", "documento"),
                         dataNascimento: findVal("data_nascimento", "data de nascimento", "nascimento", "data nasc"),
-                        telefone: findVal("telefone", "tel", "celular", "fone"),
+                        telefone: findVal("telefone do cliente", "telefone", "tel", "celular", "fone"),
                         whatsapp: findVal("whatsapp", "whats", "zap"),
                         email: findVal("email", "e-mail", "correio"),
                         endereco: findVal("endereco", "endereço", "logradouro", "rua"),
@@ -233,11 +257,30 @@ export default function ClientesPage() {
                         estado: findVal("estado", "uf"),
                         observacoes: findVal("observacoes", "observações", "obs", "notas"),
                         tags: findVal("tags", "categoria", "tag"),
+                        nomeRepresentante: findVal("nome do representante", "representante", "nome do responsavel", "nome do r"),
+                        telefoneRepresentante: findVal("telefone do representante", "telefone do responsavel", "telefone c", "telefone d"),
+                        emailRepresentante: findVal("email do representante", "email do responsavel", "email representante", "email re"),
+                        idProposta: findVal("id da proposta", "id da prop", "id proposta"),
+                        idApolice: findVal("id da apólice", "id da apol", "id apolice", "id apol"),
+                        numeroApolice: findVal("número da apólice", "numero da apolice", "numero da", "nº apolice", "nº da apólice"),
+                        pdfApolice: findVal("pdf da apólice", "pdf da apo", "pdf da apolice", "pdf apolice", "link pdf"),
+                        cobertura: findVal("cobertura"),
+                        premio: findVal("premio", "prêmio"),
+                        dataEmissao: findVal("data de emissão", "data de em", "data de emissao", "data emissao"),
+                        inicioVigencia: findVal("data início", "data inicio", "data inicio vigencia", "data de inicio"),
+                        statusApolice: findVal("status da apólice", "status da a", "status da apolice", "status"),
+                        numeroProposta: findVal("nº da proposta", "nº da prop", "numero da proposta"),
+                        seguradora: findVal("seguradora", "segurador"),
+                        fimVigencia: findVal("data de vencimento", "data de ve", "vencimento", "fim vigencia"),
+                        linkFatura: findVal("link da fatura", "link da fatu", "fatura"),
+                        formaPagamento: findVal("forma de pagamento", "forma de p", "pagamento"),
+                        mesAtraso: findVal("mês em atraso", "mes em at", "mes em atraso", "atraso"),
+                        faturasAberto: findVal("número de faturas em aberto", "numero de faturas em aberto", "faturas em aberto", "abertas"),
                     };
                 }).filter(c => c.nome.length > 0);
 
                 if (parsed.length === 0) {
-                    toast({ title: "Coluna 'Nome' não encontrada", description: "Certifique-se de que a planilha possui a coluna 'Nome'.", variant: "destructive" });
+                    toast({ title: "Coluna 'Nome do cliente' não encontrada", description: "Certifique-se de que a planilha possui a coluna 'Nome do cliente' ou similar.", variant: "destructive" });
                     return;
                 }
 
@@ -345,6 +388,12 @@ export default function ClientesPage() {
 
                             {/* Card Body */}
                             <div className="p-4 space-y-2">
+                                {(c as any).nomeRepresentante && (
+                                    <div className="flex items-center gap-2 text-sm text-[#0F6570] font-semibold">
+                                        <UserIcon className="h-3.5 w-3.5 shrink-0" />
+                                        <span className="truncate">Rep: {(c as any).nomeRepresentante}</span>
+                                    </div>
+                                )}
                                 {c.telefone && (
                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                         <Phone className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -413,8 +462,10 @@ export default function ClientesPage() {
                                         <TableHead>Nome</TableHead>
                                         <TableHead>CPF/CNPJ</TableHead>
                                         <TableHead>Telefone</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Cidade/UF</TableHead>
+                                        <TableHead>Representante</TableHead>
+                                        <TableHead>Seguradora</TableHead>
+                                        <TableHead>Apólice / Proposta</TableHead>
+                                        <TableHead>Prêmio</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -423,8 +474,14 @@ export default function ClientesPage() {
                                             <TableCell className="font-semibold">{c.nome}</TableCell>
                                             <TableCell className="font-mono text-xs">{c.cpfCnpj || "—"}</TableCell>
                                             <TableCell className="text-xs">{c.telefone || "—"}</TableCell>
-                                            <TableCell className="text-xs">{c.email || "—"}</TableCell>
-                                            <TableCell className="text-xs">{[c.cidade, c.estado].filter(Boolean).join("/") || "—"}</TableCell>
+                                            <TableCell className="text-xs font-semibold text-gray-700">{c.nomeRepresentante || "—"}</TableCell>
+                                            <TableCell className="text-xs text-emerald-800 font-semibold">{c.seguradora || "—"}</TableCell>
+                                            <TableCell className="text-xs font-mono">
+                                                {c.numeroApolice ? `Apólice: ${c.numeroApolice}` : (c.numeroProposta || c.idProposta ? `Proposta: ${c.numeroProposta || c.idProposta}` : "—")}
+                                            </TableCell>
+                                            <TableCell className="text-xs font-semibold">
+                                                {c.premio ? `R$ ${parseFloat(c.premio).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -548,6 +605,21 @@ export default function ClientesPage() {
                                     searchPlaceholder="Pesquisar por nome..."
                                     clearable
                                 />
+                            </div>
+                            <div className="col-span-2 border-t pt-4 mt-2 font-semibold text-sm text-[#0F6570]">
+                                Representante Legal / Contato Adicional
+                            </div>
+                            <div>
+                                <Label>Nome do Representante</Label>
+                                <Input value={formData.nomeRepresentante} onChange={e => setField("nomeRepresentante", e.target.value)} placeholder="Nome completo" />
+                            </div>
+                            <div>
+                                <Label>Telefone do Representante</Label>
+                                <Input value={formData.telefoneRepresentante} onChange={e => setField("telefoneRepresentante", e.target.value)} placeholder="(11) 99999-9999" />
+                            </div>
+                            <div className="col-span-2">
+                                <Label>Email do Representante</Label>
+                                <Input type="email" value={formData.emailRepresentante} onChange={e => setField("emailRepresentante", e.target.value)} placeholder="email@exemplo.com" />
                             </div>
                             <div className="col-span-2">
                                 <Label>Observações</Label>

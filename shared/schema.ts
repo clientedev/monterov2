@@ -249,6 +249,9 @@ export const clientes = pgTable("clientes", {
   observacoes: text("observacoes"),
   tags: text("tags"),
   responsavelComercialId: integer("responsavel_comercial_id").references(() => users.id),
+  nomeRepresentante: text("nome_representante"),
+  telefoneRepresentante: text("telefone_representante"),
+  emailRepresentante: text("email_representante"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -281,6 +284,16 @@ export const apolices = pgTable("apolices", {
   comissao: text("comissao"),
   corretorId: integer("corretor_id").references(() => users.id),
   observacoes: text("observacoes"),
+  idProposta: text("id_proposta"),
+  idApolice: text("id_apolice"),
+  pdfApolice: text("pdf_apolice"),
+  cobertura: text("cobertura"),
+  dataEmissao: timestamp("data_emissao"),
+  numeroProposta: text("numero_proposta"),
+  linkFatura: text("link_fatura"),
+  formaPagamento: text("forma_pagamento"),
+  mesAtraso: text("mes_atraso"),
+  faturasAberto: text("faturas_aberto"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -330,6 +343,7 @@ export const insertProdutoSeguroSchema = createInsertSchema(produtosSeguro).omit
 export const insertApoliceSchema = createInsertSchema(apolices, {
   inicioVigencia: z.coerce.date().optional(),
   fimVigencia: z.coerce.date().optional(),
+  dataEmissao: z.coerce.date().optional(),
 }).omit({ id: true, createdAt: true });
 
 // ============================================================

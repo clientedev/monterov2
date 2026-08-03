@@ -8,7 +8,7 @@ import Groq from "groq-sdk";
 import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
 import { db } from "./db";
-import { sql } from "drizzle-orm";
+import { sql, eq, or, and, desc, asc } from "drizzle-orm";
 import {
   insertInquirySchema,
   insertContactSchema,
@@ -26,6 +26,10 @@ import {
   insertSeguradoraSchema,
   insertProdutoSeguroSchema,
   insertApoliceSchema,
+  clientes,
+  apolices,
+  seguradoras,
+  contacts,
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -734,8 +738,224 @@ export async function registerRoutes(
 
   app.post("/api/clientes", isTeam, async (req, res) => {
     try {
-      const input = insertClienteSchema.parse(req.body);
-      const cliente = await storage.createCliente(input);
+      const {
+        idProposta,
+        idApolice,
+        numeroApolice,
+        pdfApolice,
+        cobertura,
+        premio,
+        dataEmissao,
+        inicioVigencia,
+        statusApolice,
+        numeroProposta,
+        seguradora,
+        fimVigencia,
+        linkFatura,
+        formaPagamento,
+        mesAtraso,
+        faturasAberto,
+        ...clientData
+      } = req.body;
+
+      const parsedClientData = insertClienteSchema.parse(clientData);
+
+      const cleanName = (parsedClientData.nome || "").trim().toLowerCase();
+      const cleanDoc = (parsedClientData.cpfCnpj || "").trim();
+
+      let existingCliente: any = null;
+      if (cleanDoc) {
+        [existingCliente] = await db
+          .select()
+          .from(clientes)
+          .where(
+            or(
+              eq(sql`lower(nome)`, cleanName),
+              eq(clientes.cpfCnpj, cleanDoc)
+            )
+          );
+      } else if (cleanName) {
+        [existingCliente] = await db
+          .select()
+          .from(clientes)
+          .where(eq(sql`lower(nome)`, cleanName));
+      }
+
+      let cliente: any = null;
+
+      if (existingCliente) {
+        const updateData: any = {};
+        for (const key of Object.keys(parsedClientData)) {
+          const existingVal = (existingCliente as any)[key];
+          const newVal = (parsedClientData as any)[key];
+          if (
+            (existingVal === null || existingVal === "" || existingVal === undefined) &&
+            newVal !== undefined && newVal !== null && newVal !== ""
+          ) {
+            updateData[key] = newVal;
+          }
+        }
+        if (Object.keys(updateData).length > 0) {
+          cliente = await storage.updateCliente(existingCliente.id, updateData);
+        } else {
+          cliente = existingCliente;
+        }
+      } else {
+        cliente = await storage.createCliente(parsedClientData);
+      }
+
+      const cleanContactName = (cliente.nome || "").trim().toLowerCase();
+      const cleanContactDoc = (cliente.cpfCnpj || "").trim();
+
+      let existingContact: any = null;
+      if (cleanContactDoc) {
+        [existingContact] = await db
+          .select()
+          .from(contacts)
+          .where(
+            or(
+              eq(sql`lower(name)`, cleanContactName),
+              eq(contacts.document, cleanContactDoc)
+            )
+          );
+      } else if (cleanContactName) {
+        [existingContact] = await db
+          .select()
+          .from(contacts)
+          .where(eq(sql`lower(name)`, cleanContactName));
+      }
+
+      if (!existingContact) {
+        const numericDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+        const type = numericDoc.length > 11 ? "company" : "individual";
+        
+        await storage.createContact({
+          type,
+          name: cliente.nome,
+          email: cliente.email || null,
+          phone: cliente.telefone || null,
+          document: cliente.cpfCnpj || null,
+          address: cliente.endereco || null,
+          responsibleName: type === "company" ? (cliente.nomeRepresentante || cliente.nome) : null,
+          responsibleId: null,
+          anniversaryDate: null,
+          maritalStatus: null,
+          assignedTo: cliente.responsavelComercialId || null,
+        });
+      }
+
+      let seguradoraId: number | null = null;
+      if (seguradora && String(seguradora).trim() !== "") {
+        const cleanSegName = String(seguradora).trim().toLowerCase();
+        const [existingSeg] = await db
+          .select()
+          .from(seguradoras)
+          .where(eq(sql`lower(nome)`, cleanSegName));
+        
+        if (existingSeg) {
+          seguradoraId = existingSeg.id;
+        } else {
+          const newSeg = await storage.createSeguradora({ nome: String(seguradora).trim() });
+          seguradoraId = newSeg.id;
+        }
+      }
+
+      const hasPolicyFields = 
+        numeroApolice || idProposta || idApolice || seguradoraId || premio || 
+        inicioVigencia || fimVigencia || pdfApolice || cobertura || dataEmissao || 
+        numeroProposta || linkFatura || formaPagamento || mesAtraso || faturasAberto;
+
+      if (hasPolicyFields) {
+        const parseExcelDate = (val: any): Date | null => {
+          if (!val) return null;
+          if (val instanceof Date) return val;
+          if (typeof val === "number" || !isNaN(Number(val))) {
+            const num = Number(val);
+            return new Date((num - 25569) * 86400 * 1000);
+          }
+          const str = String(val).trim();
+          if (!str) return null;
+          const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+          if (dmy) {
+            return new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
+          }
+          const ymd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+          if (ymd) {
+            return new Date(parseInt(ymd[1]), parseInt(ymd[2]) - 1, parseInt(ymd[3]));
+          }
+          const parsed = new Date(str);
+          return isNaN(parsed.getTime()) ? null : parsed;
+        };
+
+        let statusMap = "ativa";
+        const rawStatus = (statusApolice || "").toLowerCase().trim();
+        if (rawStatus.includes("venc") || rawStatus.includes("exp")) {
+          statusMap = "vencida";
+        } else if (rawStatus.includes("canc")) {
+          statusMap = "cancelada";
+        } else if (rawStatus.includes("pend")) {
+          statusMap = "pendente";
+        }
+
+        const apolQuery: any[] = [];
+        if (numeroApolice && String(numeroApolice).trim() !== "") {
+          apolQuery.push(eq(apolices.numeroApolice, String(numeroApolice).trim()));
+        }
+        if (idProposta && String(idProposta).trim() !== "") {
+          apolQuery.push(eq(apolices.idProposta, String(idProposta).trim()));
+        }
+        if (idApolice && String(idApolice).trim() !== "") {
+          apolQuery.push(eq(apolices.idApolice, String(idApolice).trim()));
+        }
+
+        let existingApolice: any = null;
+        if (apolQuery.length > 0) {
+          [existingApolice] = await db
+            .select()
+            .from(apolices)
+            .where(or(...apolQuery));
+        }
+
+        const apolData = {
+          clienteId: cliente.id,
+          seguradoraId,
+          numeroApolice: numeroApolice ? String(numeroApolice).trim() : null,
+          status: statusMap,
+          inicioVigencia: parseExcelDate(inicioVigencia),
+          fimVigencia: parseExcelDate(fimVigencia),
+          premio: premio ? String(premio).trim() : null,
+          idProposta: idProposta ? String(idProposta).trim() : null,
+          idApolice: idApolice ? String(idApolice).trim() : null,
+          pdfApolice: pdfApolice ? String(pdfApolice).trim() : null,
+          cobertura: cobertura ? String(cobertura).trim() : null,
+          dataEmissao: parseExcelDate(dataEmissao),
+          numeroProposta: numeroProposta ? String(numeroProposta).trim() : null,
+          linkFatura: linkFatura ? String(linkFatura).trim() : null,
+          formaPagamento: formaPagamento ? String(formaPagamento).trim() : null,
+          mesAtraso: mesAtraso ? String(mesAtraso).trim() : null,
+          faturasAberto: faturasAberto ? String(faturasAberto).trim() : null,
+        };
+
+        if (existingApolice) {
+          const apolUpdate: any = {};
+          for (const key of Object.keys(apolData)) {
+            const existingVal = (existingApolice as any)[key];
+            const newVal = (apolData as any)[key];
+            if (
+              (existingVal === null || existingVal === "" || existingVal === undefined) &&
+              newVal !== undefined && newVal !== null && newVal !== ""
+            ) {
+              apolUpdate[key] = newVal;
+            }
+          }
+          if (Object.keys(apolUpdate).length > 0) {
+            await storage.updateApolice(existingApolice.id, apolUpdate);
+          }
+        } else {
+          await storage.createApolice(apolData);
+        }
+      }
+
       res.status(201).json(cliente);
     } catch (err: any) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors });

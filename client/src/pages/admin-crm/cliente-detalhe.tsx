@@ -73,6 +73,8 @@ export default function ClienteDetalhePage() {
         numeroApolice: "", produtoId: "", seguradoraId: "", status: "ativa",
         inicioVigencia: "", fimVigencia: "", premio: "", valorSegurado: "",
         comissao: "", corretorId: "", observacoes: "",
+        idProposta: "", idApolice: "", pdfApolice: "", cobertura: "", dataEmissao: "",
+        numeroProposta: "", linkFatura: "", formaPagamento: "", mesAtraso: "", faturasAberto: ""
     });
 
     const { data: cliente, isLoading: loadingCliente } = useQuery<Cliente>({
@@ -91,11 +93,17 @@ export default function ClienteDetalhePage() {
 
     const openCreateApolice = () => {
         setEditApolice(null);
-        setApoliceForm({ numeroApolice: "", produtoId: "", seguradoraId: "", status: "ativa", inicioVigencia: "", fimVigencia: "", premio: "", valorSegurado: "", comissao: "", corretorId: "", observacoes: "" });
+        setApoliceForm({
+            numeroApolice: "", produtoId: "", seguradoraId: "", status: "ativa",
+            inicioVigencia: "", fimVigencia: "", premio: "", valorSegurado: "",
+            comissao: "", corretorId: "", observacoes: "",
+            idProposta: "", idApolice: "", pdfApolice: "", cobertura: "", dataEmissao: "",
+            numeroProposta: "", linkFatura: "", formaPagamento: "", mesAtraso: "", faturasAberto: ""
+        });
         setShowApoliceForm(true);
     };
 
-    const openEditApolice = (a: Apolice) => {
+    const openEditApolice = (a: any) => {
         setEditApolice(a);
         setApoliceForm({
             numeroApolice: a.numeroApolice || "",
@@ -109,6 +117,16 @@ export default function ClienteDetalhePage() {
             comissao: a.comissao || "",
             corretorId: a.corretorId ? String(a.corretorId) : "",
             observacoes: a.observacoes || "",
+            idProposta: a.idProposta || "",
+            idApolice: a.idApolice || "",
+            pdfApolice: a.pdfApolice || "",
+            cobertura: a.cobertura || "",
+            dataEmissao: a.dataEmissao ? format(new Date(a.dataEmissao), "yyyy-MM-dd") : "",
+            numeroProposta: a.numeroProposta || "",
+            linkFatura: a.linkFatura || "",
+            formaPagamento: a.formaPagamento || "",
+            mesAtraso: a.mesAtraso || "",
+            faturasAberto: a.faturasAberto || "",
         });
         setShowApoliceForm(true);
     };
@@ -128,6 +146,16 @@ export default function ClienteDetalhePage() {
                 comissao: apoliceForm.comissao || null,
                 corretorId: apoliceForm.corretorId ? parseInt(apoliceForm.corretorId) : null,
                 observacoes: apoliceForm.observacoes || null,
+                idProposta: apoliceForm.idProposta || null,
+                idApolice: apoliceForm.idApolice || null,
+                pdfApolice: apoliceForm.pdfApolice || null,
+                cobertura: apoliceForm.cobertura || null,
+                dataEmissao: apoliceForm.dataEmissao ? new Date(apoliceForm.dataEmissao).toISOString() : null,
+                numeroProposta: apoliceForm.numeroProposta || null,
+                linkFatura: apoliceForm.linkFatura || null,
+                formaPagamento: apoliceForm.formaPagamento || null,
+                mesAtraso: apoliceForm.mesAtraso || null,
+                faturasAberto: apoliceForm.faturasAberto || null,
             };
             if (editApolice) {
                 const res = await apiRequest("PATCH", `/api/apolices/${editApolice.id}`, body);
@@ -243,6 +271,24 @@ export default function ClienteDetalhePage() {
                         <div className="flex items-center gap-2 text-sm text-white/80">
                             <Calendar className="h-4 w-4 shrink-0" />
                             <span>{cliente.dataNascimento}</span>
+                        </div>
+                    )}
+                    {(cliente as any).nomeRepresentante && (
+                        <div className="flex items-center gap-2 text-sm text-white/80">
+                            <UserIcon className="h-4 w-4 shrink-0" />
+                            <span>Rep: {(cliente as any).nomeRepresentante}</span>
+                        </div>
+                    )}
+                    {(cliente as any).telefoneRepresentante && (
+                        <div className="flex items-center gap-2 text-sm text-white/80">
+                            <Phone className="h-4 w-4 shrink-0" />
+                            <span>Tel Rep: {(cliente as any).telefoneRepresentante}</span>
+                        </div>
+                    )}
+                    {(cliente as any).emailRepresentante && (
+                        <div className="flex items-center gap-2 text-sm text-white/80 col-span-2">
+                            <Mail className="h-4 w-4 shrink-0" />
+                            <span className="truncate">Email Rep: {(cliente as any).emailRepresentante}</span>
                         </div>
                     )}
                 </div>
@@ -377,6 +423,26 @@ export default function ClienteDetalhePage() {
                                     <div><p className="text-xs text-gray-400 uppercase font-medium">Prêmio</p><p className="font-semibold">{selectedApolice.premio ? `R$ ${parseFloat(selectedApolice.premio).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</p></div>
                                     <div><p className="text-xs text-gray-400 uppercase font-medium">Valor Segurado</p><p className="font-semibold">{selectedApolice.valorSegurado ? `R$ ${parseFloat(selectedApolice.valorSegurado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</p></div>
                                     <div><p className="text-xs text-gray-400 uppercase font-medium">Comissão</p><p className="font-semibold">{selectedApolice.comissao ? `${selectedApolice.comissao}%` : "—"}</p></div>
+                                    <div><p className="text-xs text-gray-400 uppercase font-medium">ID Proposta / Nº Proposta</p><p className="font-semibold">{(selectedApolice as any).idProposta || (selectedApolice as any).numeroProposta || "—"}</p></div>
+                                    <div><p className="text-xs text-gray-400 uppercase font-medium">ID Apólice</p><p className="font-semibold">{(selectedApolice as any).idApolice || "—"}</p></div>
+                                    <div><p className="text-xs text-gray-400 uppercase font-medium">Cobertura</p><p className="font-semibold">{(selectedApolice as any).cobertura || "—"}</p></div>
+                                    <div><p className="text-xs text-gray-400 uppercase font-medium">Forma de Pagamento</p><p className="font-semibold">{(selectedApolice as any).formaPagamento || "—"}</p></div>
+                                    <div><p className="text-xs text-gray-400 uppercase font-medium">Faturas em Aberto / Mês Atraso</p><p className="font-semibold">{(selectedApolice as any).faturasAberto ? `${(selectedApolice as any).faturasAberto} fatura(s)` : ""} {(selectedApolice as any).mesAtraso ? `(Mês: ${(selectedApolice as any).mesAtraso})` : "—"}</p></div>
+                                    <div><p className="text-xs text-gray-400 uppercase font-medium">Data Emissão</p><p className="font-semibold">{(selectedApolice as any).dataEmissao ? format(new Date((selectedApolice as any).dataEmissao), "dd/MM/yyyy") : "—"}</p></div>
+                                    {((selectedApolice as any).pdfApolice || (selectedApolice as any).linkFatura) && (
+                                        <div className="col-span-2 flex gap-4 mt-2">
+                                            {(selectedApolice as any).pdfApolice && (
+                                                <a href={(selectedApolice as any).pdfApolice} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-[#0F6570] hover:underline font-bold border border-[#0F6570]/30 rounded-lg px-3 py-1.5 bg-[#0F6570]/5">
+                                                    <FileText className="h-3.5 w-3.5" /> PDF da Apólice
+                                                </a>
+                                            )}
+                                            {(selectedApolice as any).linkFatura && (
+                                                <a href={(selectedApolice as any).linkFatura} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-[#0F6570] hover:underline font-bold border border-[#0F6570]/30 rounded-lg px-3 py-1.5 bg-[#0F6570]/5">
+                                                    <DollarSign className="h-3.5 w-3.5" /> Link da Fatura
+                                                </a>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 {selectedApolice.observacoes && (
                                     <div className="bg-gray-50 rounded-lg p-3">
@@ -471,6 +537,49 @@ export default function ClienteDetalhePage() {
                                     triggerClassName="h-10 rounded-md"
                                     clearable
                                 />
+                            </div>
+                            <div className="col-span-2 border-t pt-4 mt-2 font-semibold text-sm text-[#0F6570]">
+                                Detalhes de Emissão, Proposta e Cobrança
+                            </div>
+                            <div>
+                                <Label>ID da Proposta</Label>
+                                <Input value={apoliceForm.idProposta} onChange={e => setField("idProposta", e.target.value)} placeholder="PROP-12345" />
+                            </div>
+                            <div>
+                                <Label>ID da Apólice</Label>
+                                <Input value={apoliceForm.idApolice} onChange={e => setField("idApolice", e.target.value)} placeholder="AP-998822" />
+                            </div>
+                            <div>
+                                <Label>Nº da Proposta</Label>
+                                <Input value={apoliceForm.numeroProposta} onChange={e => setField("numeroProposta", e.target.value)} placeholder="12345" />
+                            </div>
+                            <div>
+                                <Label>Data de Emissão</Label>
+                                <Input type="date" value={apoliceForm.dataEmissao} onChange={e => setField("dataEmissao", e.target.value)} />
+                            </div>
+                            <div>
+                                <Label>Cobertura</Label>
+                                <Input value={apoliceForm.cobertura} onChange={e => setField("cobertura", e.target.value)} placeholder="Ex: Incêndio, Colisão" />
+                            </div>
+                            <div>
+                                <Label>Forma de Pagamento</Label>
+                                <Input value={apoliceForm.formaPagamento} onChange={e => setField("formaPagamento", e.target.value)} placeholder="Ex: Boleto, Cartão" />
+                            </div>
+                            <div>
+                                <Label>Mês em Atraso</Label>
+                                <Input value={apoliceForm.mesAtraso} onChange={e => setField("mesAtraso", e.target.value)} placeholder="Ex: Junho/2026" />
+                            </div>
+                            <div>
+                                <Label>Número de Faturas em Aberto</Label>
+                                <Input value={apoliceForm.faturasAberto} onChange={e => setField("faturasAberto", e.target.value)} placeholder="Ex: 2" />
+                            </div>
+                            <div className="col-span-2">
+                                <Label>PDF da Apólice (URL)</Label>
+                                <Input value={apoliceForm.pdfApolice} onChange={e => setField("pdfApolice", e.target.value)} placeholder="https://exemplo.com/doc.pdf" />
+                            </div>
+                            <div className="col-span-2">
+                                <Label>Link da Fatura (URL)</Label>
+                                <Input value={apoliceForm.linkFatura} onChange={e => setField("linkFatura", e.target.value)} placeholder="https://exemplo.com/fatura.pdf" />
                             </div>
                             <div className="col-span-2">
                                 <Label>Observações</Label>
