@@ -50,7 +50,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Users, Building, User, UserPlus } from "lucide-react";
+import { Loader2, Plus, Users, Building, User, UserPlus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ContactProfile } from "@/components/ContactProfile";
 import * as XLSX from "xlsx";
@@ -77,6 +77,10 @@ export default function ContactsPage() {
     const [isImporting, setIsImporting] = useState(false);
     const [isEditing, setIsEditing] = useState<number | null>(null);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+
+    // ── Filters ────────────────────────────────────────────────────────────────
+    const [search, setSearch] = useState("");
+    const [filterType, setFilterType] = useState<string>("all");
 
     // ── "Adicionar responsável" mini-dialog state ────────────────────────────
     const [addResponsibleOpen, setAddResponsibleOpen] = useState(false);
@@ -318,6 +322,21 @@ export default function ContactsPage() {
             </div>
         );
     }
+
+    // ── Filtered contacts ──────────────────────────────────────────────────────
+    const filteredContacts = useMemo(() => {
+        const q = search.toLowerCase().trim();
+        return (contacts ?? []).filter(c => {
+            const matchType = filterType === "all" || c.type === filterType;
+            const matchSearch = !q ||
+                c.name.toLowerCase().includes(q) ||
+                (c.email || "").toLowerCase().includes(q) ||
+                (c.phone || "").includes(q) ||
+                (c.document || "").includes(q) ||
+                (c.responsibleName || "").toLowerCase().includes(q);
+            return matchType && matchSearch;
+        });
+    }, [contacts, search, filterType]);
 
     // Build options for SearchableSelect (individual contacts only, for responsível)
     const individualContactOptions = (contacts ?? [])
@@ -628,6 +647,37 @@ export default function ContactsPage() {
                 </div>
             </div>
 
+            {/* ── Filter Bar ─────────────────────────────────────────────────── */}
+            <div className="bg-white rounded-xl border p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <div className="relative flex-1 w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                        className="w-full pl-9 pr-9 h-10 rounded-lg border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        placeholder="Buscar por nome, e-mail, telefone ou documento..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                    />
+                    {search && (
+                        <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                </div>
+                <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger className="w-full sm:w-44 h-10 text-sm">
+                        <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos os tipos</SelectItem>
+                        <SelectItem value="individual">Pessoa Física</SelectItem>
+                        <SelectItem value="company">Pessoa Jurídica</SelectItem>
+                    </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {filteredContacts.length} de {contacts?.length ?? 0}
+                </span>
+            </div>
+
             {/* ── Contacts Table ──────────────────────────────────────────────── */}
             <div className="rounded-2xl border bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                 <Table>
@@ -642,17 +692,17 @@ export default function ContactsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {contacts?.length === 0 ? (
+                        {filteredContacts.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
                                     <div className="flex flex-col items-center gap-2">
                                         <Users className="h-8 w-8 opacity-20" />
-                                        <p>Nenhum contato cadastrado ainda.</p>
+                                        <p>{contacts?.length === 0 ? "Nenhum contato cadastrado ainda." : "Nenhum contato encontrado com os filtros aplicados."}</p>
                                     </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            contacts?.map((contact) => {
+                            filteredContacts.map((contact) => {
                                 const products = productsByContact.get(contact.id) ?? [];
                                 return (
                                     <TableRow key={contact.id} className="hover:bg-gray-50/50 transition-colors group">
