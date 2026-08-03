@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Cliente, User, Contact } from "@shared/schema";
+import { Cliente, User, Contact, Seguradora } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,11 +22,20 @@ import {
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, Download, Upload, FileSpreadsheet, CheckCircle2, User as UserIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, Download, Upload, FileSpreadsheet, CheckCircle2, User as UserIcon, X, Filter } from "lucide-react";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+    ativa: { label: "Ativa", color: "bg-emerald-100 text-emerald-800" },
+    em_atraso: { label: "Em Atraso", color: "bg-red-100 text-red-700" },
+    vencida: { label: "Vencida", color: "bg-gray-100 text-gray-600" },
+    cancelada: { label: "Cancelada", color: "bg-gray-100 text-gray-500" },
+    pendente: { label: "Pendente", color: "bg-yellow-100 text-yellow-700" },
+};
 
 interface ParsedClient {
     nome: string;
@@ -69,20 +78,17 @@ export default function ClientesPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [search, setSearch] = useState("");
+    const [filterSeguradora, setFilterSeguradora] = useState("all");
+    const [filterStatus, setFilterStatus] = useState("all");
     const [showForm, setShowForm] = useState(false);
     const [editTarget, setEditTarget] = useState<Cliente | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
-
-    // Import from contacts base state
     const [selectedContactImport, setSelectedContactImport] = useState("");
-
-    // Import Excel state
     const [showImportModal, setShowImportModal] = useState(false);
     const [previewClients, setPreviewClients] = useState<ParsedClient[]>([]);
     const [importing, setImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
 
-    // Form state
     const [formData, setFormData] = useState({
         nome: "", cpfCnpj: "", dataNascimento: "", telefone: "", whatsapp: "",
         email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "",
@@ -90,17 +96,24 @@ export default function ClientesPage() {
         nomeRepresentante: "", telefoneRepresentante: "", emailRepresentante: "",
     });
 
+    // Build query params for server-side filtering (skip sentinel "all")
+    const queryParams = new URLSearchParams();
+    if (filterSeguradora !== "all") queryParams.set("seguradora", filterSeguradora);
+    if (filterStatus !== "all") queryParams.set("status", filterStatus);
+    const clientesUrl = `/api/clientes${queryParams.toString() ? "?" + queryParams.toString() : ""}`;
+
     const { data: clientes, isLoading } = useQuery<Cliente[]>({
-        queryKey: ["/api/clientes"],
+        queryKey: ["/api/clientes", filterSeguradora, filterStatus],
+        queryFn: async () => {
+            const res = await fetch(clientesUrl, { credentials: "include" });
+            if (!res.ok) throw new Error("Erro ao carregar clientes");
+            return res.json();
+        },
     });
 
-    const { data: users } = useQuery<User[]>({
-        queryKey: ["/api/users"],
-    });
-
-    const { data: contacts } = useQuery<Contact[]>({
-        queryKey: ["/api/contacts"],
-    });
+    const { data: users } = useQuery<User[]>({ queryKey: ["/api/users"] });
+    const { data: contacts } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
+    const { data: seguradoras } = useQuery<Seguradora[]>({ queryKey: ["/api/seguradoras"] });
 
     const openCreate = () => {
         setEditTarget(null);
@@ -109,7 +122,7 @@ export default function ClientesPage() {
         setSelectedContactImport("");
     };
 
-    const openEdit = (c: Cliente & { nomeRepresentante?: string; telefoneRepresentante?: string; emailRepresentante?: string }) => {
+    const openEdit = (c: any) => {
         setEditTarget(c);
         setFormData({
             nome: c.nome || "",
@@ -167,32 +180,32 @@ export default function ClientesPage() {
         onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
     });
 
-    // Excel Download Template
+    // Excel Download Template — matches Azos report format exactly
     const handleDownloadTemplate = () => {
         const templateData = [
             {
-                "Nome do cliente": "João Silva",
-                "CPF do cliente": "123.456.789-00",
-                "Telefone do cliente": "(11) 99999-1111",
-                "Nome do representante": "Renato Silva",
-                "Telefone do representante": "(11) 99999-2222",
-                "Email do representante": "renato@representante.com",
-                "ID da proposta": "PROP-99238",
-                "ID da apólice": "AP-881273",
-                "Número da apólice": "12345678",
-                "PDF da apólice": "https://exemplo.com/apolice_joao.pdf",
-                "Cobertura": "Completa Auto",
-                "Premio": "1500.00",
-                "Data de emissão": "15/05/2026",
-                "Data Início": "20/05/2026",
-                "Status da apólice": "ativa",
-                "Nº da Proposta": "PROP-99238",
-                "Seguradora": "Porto Seguro",
-                "Data de vencimento": "20/05/2027",
-                "Link da fatura": "https://exemplo.com/fatura_joao.pdf",
-                "Forma de pagamento": "Boleto",
-                "Mês em atraso": "",
-                "Número de faturas em aberto": "0"
+                "Nome do cliente": "Leandro Antonio Russo Perez",
+                "CPF do cliente": "30629219869",
+                "Telefone do cliente": "+5511972818059",
+                "Nome do responsável": "MONTEIROS CORRETORA DE SEGUROS LTDA",
+                "Telefone do responsável": "+5511944547444",
+                "Email do responsável": "carolina@monteirocorretora.com.br",
+                "ID da proposta": "6a637ea3830b5ae03b5c3996",
+                "ID da apólice": "6a6b8e34c1ef83bff7d03134",
+                "Número da apólice": "056902026000213910033195000000",
+                "PDF da apólice": "https://api.azos.com.br/pdf/6a637ea3830b5ae03b5c3996/insurance_policy",
+                "Coberturas": "Morte, IPT, DG30, Cirurgias 2.0, DIH, Family-funeral-assistance",
+                "Premio": "R$ 356.16",
+                "Data de emissão da apólice": "24/07/2026",
+                "Data Início da vigência da apólice": "29/07/2026",
+                "Status da apólice (ativo, cancelado, em atraso)": "ativo",
+                "Nº da Proposta de Endosso": "10022042191500000001",
+                "Seguradora": "Excelsior",
+                "Data de vencimento da fatura": "26/07/2026",
+                "link da fatura": "https://checkout.iugu.com/invoices/exemplo",
+                "Forma de pagamento": "pix",
+                "Mês em aberto": "julho",
+                "Número de faturas em aberto": "0",
             }
         ];
 
@@ -200,21 +213,23 @@ export default function ClientesPage() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Modelo Importacao");
 
-        // Format column widths for all 22 columns
         worksheet["!cols"] = [
-            { wch: 25 }, { wch: 20 }, { wch: 18 }, { wch: 22 },
-            { wch: 22 }, { wch: 25 }, { wch: 18 }, { wch: 18 },
-            { wch: 18 }, { wch: 30 }, { wch: 20 }, { wch: 12 },
-            { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 18 },
-            { wch: 20 }, { wch: 18 }, { wch: 30 }, { wch: 18 },
-            { wch: 15 }, { wch: 25 }
+            { wch: 30 }, { wch: 18 }, { wch: 20 }, { wch: 35 },
+            { wch: 22 }, { wch: 35 }, { wch: 28 }, { wch: 28 },
+            { wch: 35 }, { wch: 60 }, { wch: 50 }, { wch: 14 },
+            { wch: 24 }, { wch: 32 }, { wch: 38 }, { wch: 28 },
+            { wch: 16 }, { wch: 26 }, { wch: 60 }, { wch: 18 },
+            { wch: 16 }, { wch: 28 }
         ];
 
-        XLSX.writeFile(workbook, "modelo_importacao_clientes.xlsx");
-        toast({ title: "Modelo baixado!", description: "Preencha a planilha e envie através do botão 'Subir Excel'." });
+        XLSX.writeFile(workbook, "modelo_importacao_azos.xlsx");
+        toast({ title: "Modelo baixado!", description: "Use este modelo no formato Azos para importar apólices." });
     };
 
-    // Excel File Upload & Parse
+    // Normalize string for comparison (remove accents, lowercase)
+    const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+    // Excel File Upload & Parse — reads Azos format + fallback generic
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -233,49 +248,130 @@ export default function ClientesPage() {
                     return;
                 }
 
-                // Map fields from Portuguese column headers
-                const parsed: ParsedClient[] = rawData.map((row) => {
-                    const findVal = (...keys: string[]) => {
-                        for (const k of keys) {
-                            const foundKey = Object.keys(row).find(rowKey => rowKey.trim().toLowerCase() === k.toLowerCase());
-                            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
-                                return String(row[foundKey]).trim();
+                // Flexible field finder: tries multiple aliases, normalized
+                const findVal = (row: Record<string, any>, ...keys: string[]) => {
+                    const normalizedRow: Record<string, string> = {};
+                    for (const k of Object.keys(row)) {
+                        normalizedRow[norm(k)] = String(row[k] ?? "").trim();
+                    }
+                    for (const k of keys) {
+                        const val = normalizedRow[norm(k)];
+                        if (val !== undefined && val !== "" && val !== "undefined") return val;
+                    }
+                    // Partial match fallback
+                    for (const k of keys) {
+                        const normK = norm(k);
+                        for (const rowKey of Object.keys(normalizedRow)) {
+                            if (rowKey.includes(normK) || normK.includes(rowKey)) {
+                                const val = normalizedRow[rowKey];
+                                if (val && val !== "undefined") return val;
                             }
                         }
-                        return "";
-                    };
+                    }
+                    return "";
+                };
 
+                const stripPremio = (val: string) => {
+                    const raw = val.replace(/^R\$\s*/i, "").trim();
+                    // Brazilian: 1.234,56 → remove dot thousands sep, comma→dot
+                    if (raw.includes(",") && raw.includes(".")) return raw.replace(/\./g, "").replace(",", ".");
+                    // Brazilian: 1234,56 → comma as decimal
+                    if (raw.includes(",")) return raw.replace(",", ".");
+                    // ISO/US: 356.16 already valid
+                    return raw;
+                };
+
+                const parsed: ParsedClient[] = rawData.map((row) => {
+                    const premio = findVal(row,
+                        "Premio", "Prêmio", "premio", "prêmio", "valor premio", "valor do premio"
+                    );
                     return {
-                        nome: findVal("nome do cliente", "nome completo", "nome", "cliente", "razao social"),
-                        cpfCnpj: findVal("cpf do cliente", "cpf_cnpj", "cpf/cnpj", "cpf", "cnpj", "documento"),
-                        dataNascimento: findVal("data_nascimento", "data de nascimento", "nascimento", "data nasc"),
-                        telefone: findVal("telefone do cliente", "telefone", "tel", "celular", "fone"),
-                        whatsapp: findVal("whatsapp", "whats", "zap"),
-                        email: findVal("email", "e-mail", "correio"),
-                        endereco: findVal("endereco", "endereço", "logradouro", "rua"),
-                        cidade: findVal("cidade", "municipio"),
-                        estado: findVal("estado", "uf"),
-                        observacoes: findVal("observacoes", "observações", "obs", "notas"),
-                        tags: findVal("tags", "categoria", "tag"),
-                        nomeRepresentante: findVal("nome do representante", "representante", "nome do responsavel", "nome do r"),
-                        telefoneRepresentante: findVal("telefone do representante", "telefone do responsavel", "telefone c", "telefone d"),
-                        emailRepresentante: findVal("email do representante", "email do responsavel", "email representante", "email re"),
-                        idProposta: findVal("id da proposta", "id da prop", "id proposta"),
-                        idApolice: findVal("id da apólice", "id da apol", "id apolice", "id apol"),
-                        numeroApolice: findVal("número da apólice", "numero da apolice", "numero da", "nº apolice", "nº da apólice"),
-                        pdfApolice: findVal("pdf da apólice", "pdf da apo", "pdf da apolice", "pdf apolice", "link pdf"),
-                        cobertura: findVal("cobertura"),
-                        premio: findVal("premio", "prêmio"),
-                        dataEmissao: findVal("data de emissão", "data de em", "data de emissao", "data emissao"),
-                        inicioVigencia: findVal("data início", "data inicio", "data inicio vigencia", "data de inicio"),
-                        statusApolice: findVal("status da apólice", "status da a", "status da apolice", "status"),
-                        numeroProposta: findVal("nº da proposta", "nº da prop", "numero da proposta"),
-                        seguradora: findVal("seguradora", "segurador"),
-                        fimVigencia: findVal("data de vencimento", "data de ve", "vencimento", "fim vigencia"),
-                        linkFatura: findVal("link da fatura", "link da fatu", "fatura"),
-                        formaPagamento: findVal("forma de pagamento", "forma de p", "pagamento"),
-                        mesAtraso: findVal("mês em atraso", "mes em at", "mes em atraso", "atraso"),
-                        faturasAberto: findVal("número de faturas em aberto", "numero de faturas em aberto", "faturas em aberto", "abertas"),
+                        nome: findVal(row,
+                            "Nome do cliente", "nome completo", "nome", "cliente", "razao social", "razão social"
+                        ),
+                        cpfCnpj: findVal(row,
+                            "CPF do cliente", "cpf_cnpj", "cpf/cnpj", "cpf", "cnpj", "documento"
+                        ),
+                        dataNascimento: findVal(row,
+                            "data_nascimento", "data de nascimento", "nascimento", "data nasc"
+                        ),
+                        telefone: findVal(row,
+                            "Telefone do cliente", "telefone", "tel", "celular", "fone"
+                        ),
+                        whatsapp: findVal(row, "whatsapp", "whats", "zap"),
+                        email: findVal(row, "email", "e-mail", "correio"),
+                        endereco: findVal(row, "endereco", "endereço", "logradouro", "rua"),
+                        cidade: findVal(row, "cidade", "municipio"),
+                        estado: findVal(row, "estado", "uf"),
+                        observacoes: findVal(row, "observacoes", "observações", "obs", "notas"),
+                        tags: findVal(row, "tags", "categoria", "tag"),
+                        nomeRepresentante: findVal(row,
+                            "Nome do responsável", "Nome do representante", "representante",
+                            "nome do responsavel", "nome responsavel", "nome representante"
+                        ),
+                        telefoneRepresentante: findVal(row,
+                            "Telefone do responsável", "Telefone do representante",
+                            "telefone do responsavel", "telefone responsavel", "telefone representante"
+                        ),
+                        emailRepresentante: findVal(row,
+                            "Email do responsável", "Email do representante",
+                            "email do responsavel", "email responsavel", "email representante"
+                        ),
+                        idProposta: findVal(row,
+                            "ID da proposta", "id da prop", "id proposta"
+                        ),
+                        idApolice: findVal(row,
+                            "ID da apólice", "ID da apolice", "id da apol", "id apolice", "id apol"
+                        ),
+                        numeroApolice: findVal(row,
+                            "Número da apólice", "Numero da apolice", "numero da apolice",
+                            "número da apólice", "nº apolice", "nº da apólice", "numero apolice"
+                        ),
+                        pdfApolice: findVal(row,
+                            "PDF da apólice", "PDF da apolice", "pdf da apolice",
+                            "pdf apolice", "link pdf", "pdf"
+                        ),
+                        cobertura: findVal(row,
+                            "Coberturas", "Cobertura", "coberturas", "cobertura"
+                        ),
+                        premio: premio ? stripPremio(premio) : "",
+                        dataEmissao: findVal(row,
+                            "Data de emissão da apólice", "Data de emissao da apolice",
+                            "data de emissão", "data de emissao", "data emissao", "data de em"
+                        ),
+                        inicioVigencia: findVal(row,
+                            "Data Início da vigência da apólice", "Data Inicio da vigencia da apolice",
+                            "data início", "data inicio", "data inicio vigencia", "data de inicio",
+                            "inicio vigencia", "inicio da vigencia"
+                        ),
+                        statusApolice: findVal(row,
+                            "Status da apólice (ativo, cancelado, em atraso)",
+                            "Status da apolice (ativo, cancelado, em atraso)",
+                            "status da apólice", "status da apolice", "status"
+                        ),
+                        numeroProposta: findVal(row,
+                            "Nº da Proposta de Endosso", "Nº da proposta de endosso",
+                            "nº da proposta", "numero da proposta", "num proposta", "proposta"
+                        ),
+                        seguradora: findVal(row, "Seguradora", "seguradora", "segurador"),
+                        fimVigencia: findVal(row,
+                            "Data de vencimento da fatura", "Data de vencimento da apólice",
+                            "data de vencimento", "vencimento", "fim vigencia", "fim da vigencia"
+                        ),
+                        linkFatura: findVal(row,
+                            "link da fatura", "Link da fatura", "link fatura", "fatura", "link"
+                        ),
+                        formaPagamento: findVal(row,
+                            "Forma de pagamento", "forma de pagamento", "forma de p", "pagamento"
+                        ),
+                        mesAtraso: findVal(row,
+                            "Mês em aberto", "Mes em aberto", "mês em atraso", "mes em atraso",
+                            "mes em at", "atraso", "mes aberto"
+                        ),
+                        faturasAberto: findVal(row,
+                            "Número de faturas em aberto", "Numero de faturas em aberto",
+                            "faturas em aberto", "faturas aberto", "abertas", "faturas"
+                        ),
                     };
                 }).filter(c => c.nome.length > 0);
 
@@ -291,7 +387,6 @@ export default function ClientesPage() {
             }
         };
         reader.readAsBinaryString(file);
-        // Reset file input
         e.target.value = "";
     };
 
@@ -313,24 +408,28 @@ export default function ClientesPage() {
         }
 
         queryClient.invalidateQueries({ queryKey: ["/api/clientes"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/seguros/dashboard"] });
         setImporting(false);
         setShowImportModal(false);
         setPreviewClients([]);
 
         toast({
             title: "Importação concluída!",
-            description: `${successCount} de ${previewClients.length} clientes foram cadastrados com sucesso.`,
+            description: `${successCount} de ${previewClients.length} clientes/apólices foram cadastrados com sucesso.`,
         });
     };
 
-    const filtered = clientes?.filter(c => {
+    // Client-side search filter (applied on top of server-side filters)
+    const filtered = (clientes || []).filter(c => {
+        if (!search) return true;
         const q = search.toLowerCase();
-        return !q || c.nome.toLowerCase().includes(q) || (c.cpfCnpj || "").includes(q) || (c.email || "").toLowerCase().includes(q);
-    }) || [];
+        return c.nome.toLowerCase().includes(q) ||
+            (c.cpfCnpj || "").includes(q) ||
+            (c.email || "").toLowerCase().includes(q) ||
+            (c.telefone || "").includes(q);
+    });
 
-    if (isLoading) {
-        return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-    }
+    const hasFilters = filterSeguradora !== "all" || filterStatus !== "all";
 
     const setField = (key: string, val: string) => setFormData(prev => ({ ...prev, [key]: val }));
 
@@ -339,7 +438,10 @@ export default function ClientesPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-display font-bold text-gray-900">Clientes</h2>
-                    <p className="text-muted-foreground mt-1">Base de clientes de seguros — {clientes?.length || 0} cadastrado(s).</p>
+                    <p className="text-muted-foreground mt-1">
+                        Base de clientes de seguros — {clientes?.length || 0} cadastrado(s)
+                        {hasFilters ? " (filtrado)" : ""}.
+                    </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Button variant="outline" className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50" onClick={handleDownloadTemplate}>
@@ -355,18 +457,61 @@ export default function ClientesPage() {
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Buscar por nome, CPF/CNPJ ou email..." value={search} onChange={e => setSearch(e.target.value)} />
+            {/* Search + Filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input className="pl-9" placeholder="Buscar por nome, CPF/CNPJ, telefone ou email..." value={search} onChange={e => setSearch(e.target.value)} />
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                    {/* Filter by Seguradora */}
+                    <Select value={filterSeguradora} onValueChange={setFilterSeguradora}>
+                        <SelectTrigger className="w-44 gap-1">
+                            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <SelectValue placeholder="Seguradora" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas as seguradoras</SelectItem>
+                            {(seguradoras || []).map(s => (
+                                <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* Filter by Status Apólice */}
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="w-40 gap-1">
+                            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos os status</SelectItem>
+                            {Object.entries(STATUS_LABELS).map(([val, { label }]) => (
+                                <SelectItem key={val} value={val}>{label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* Clear filters */}
+                    {hasFilters && (
+                        <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => { setFilterSeguradora("all"); setFilterStatus("all"); }}>
+                            <X className="h-3.5 w-3.5" /> Limpar
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Cards Grid */}
-            {filtered.length === 0 ? (
+            {isLoading ? (
+                <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            ) : filtered.length === 0 ? (
                 <div className="text-center py-20 text-muted-foreground bg-white rounded-xl border border-dashed">
                     <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
                     <p className="text-lg font-medium">Nenhum cliente encontrado.</p>
-                    <p className="text-sm mt-1">Clique em "Novo Cliente" ou "Subir Excel" para cadastrar clientes.</p>
+                    <p className="text-sm mt-1">
+                        {hasFilters ? "Tente outros filtros ou" : "Clique em"} "Novo Cliente" ou "Subir Excel" para cadastrar clientes.
+                    </p>
                 </div>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -443,47 +588,56 @@ export default function ClientesPage() {
 
             {/* Excel Import Preview Dialog */}
             <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-emerald-700">
-                            <FileSpreadsheet className="h-5 w-5" /> Importar Clientes via Excel ({previewClients.length} encontrados)
+                            <FileSpreadsheet className="h-5 w-5" /> Importar via Excel — {previewClients.length} linha(s) encontrada(s)
                         </DialogTitle>
                     </DialogHeader>
-                    
+
                     <div className="space-y-4 py-2">
                         <p className="text-sm text-muted-foreground">
-                            Confira os dados extraídos da planilha antes de confirmar a importação:
+                            Confira os dados extraídos antes de confirmar. Clientes duplicados serão atualizados; apólices novas serão criadas.
                         </p>
 
-                        <div className="max-h-60 overflow-y-auto rounded-lg border">
+                        <div className="max-h-72 overflow-y-auto rounded-lg border">
                             <Table>
                                 <TableHeader className="bg-gray-50 sticky top-0">
                                     <TableRow>
-                                        <TableHead>Nome</TableHead>
-                                        <TableHead>CPF/CNPJ</TableHead>
-                                        <TableHead>Telefone</TableHead>
-                                        <TableHead>Representante</TableHead>
-                                        <TableHead>Seguradora</TableHead>
-                                        <TableHead>Apólice / Proposta</TableHead>
-                                        <TableHead>Prêmio</TableHead>
+                                        <TableHead className="text-xs">Nome</TableHead>
+                                        <TableHead className="text-xs">CPF/CNPJ</TableHead>
+                                        <TableHead className="text-xs">Telefone</TableHead>
+                                        <TableHead className="text-xs">Seguradora</TableHead>
+                                        <TableHead className="text-xs">Nº Apólice</TableHead>
+                                        <TableHead className="text-xs">Prêmio</TableHead>
+                                        <TableHead className="text-xs">Status</TableHead>
+                                        <TableHead className="text-xs">Cobertura</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {previewClients.map((c, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell className="font-semibold">{c.nome}</TableCell>
-                                            <TableCell className="font-mono text-xs">{c.cpfCnpj || "—"}</TableCell>
-                                            <TableCell className="text-xs">{c.telefone || "—"}</TableCell>
-                                            <TableCell className="text-xs font-semibold text-gray-700">{c.nomeRepresentante || "—"}</TableCell>
-                                            <TableCell className="text-xs text-emerald-800 font-semibold">{c.seguradora || "—"}</TableCell>
-                                            <TableCell className="text-xs font-mono">
-                                                {c.numeroApolice ? `Apólice: ${c.numeroApolice}` : (c.numeroProposta || c.idProposta ? `Proposta: ${c.numeroProposta || c.idProposta}` : "—")}
-                                            </TableCell>
-                                            <TableCell className="text-xs font-semibold">
-                                                {c.premio ? `R$ ${parseFloat(c.premio).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {previewClients.map((c, i) => {
+                                        const status = STATUS_LABELS[c.statusApolice?.toLowerCase() === "em atraso" ? "em_atraso" : c.statusApolice?.toLowerCase() === "cancelado" ? "cancelada" : c.statusApolice?.toLowerCase() === "ativo" ? "ativa" : c.statusApolice || ""] || null;
+                                        return (
+                                            <TableRow key={i}>
+                                                <TableCell className="font-semibold text-xs">{c.nome}</TableCell>
+                                                <TableCell className="font-mono text-xs">{c.cpfCnpj || "—"}</TableCell>
+                                                <TableCell className="text-xs">{c.telefone || "—"}</TableCell>
+                                                <TableCell className="text-xs text-emerald-800 font-semibold">{c.seguradora || "—"}</TableCell>
+                                                <TableCell className="text-xs font-mono">{c.numeroApolice || c.idProposta || "—"}</TableCell>
+                                                <TableCell className="text-xs font-semibold">
+                                                    {c.premio ? `R$ ${parseFloat(c.premio).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {status ? (
+                                                        <Badge className={`text-[10px] ${status.color}`}>{status.label}</Badge>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-400">{c.statusApolice || "—"}</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-xs max-w-[160px] truncate">{c.cobertura || "—"}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>
@@ -491,7 +645,7 @@ export default function ClientesPage() {
                         {importing && (
                             <div className="space-y-2">
                                 <div className="flex justify-between text-xs font-semibold text-gray-700">
-                                    <span>Cadastrando clientes...</span>
+                                    <span>Cadastrando clientes e apólices...</span>
                                     <span>{importProgress}%</span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -505,7 +659,7 @@ export default function ClientesPage() {
                         <Button variant="outline" onClick={() => setShowImportModal(false)} disabled={importing}>Cancelar</Button>
                         <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2" onClick={runImport} disabled={importing}>
                             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                            Confirmar Importação de {previewClients.length} Clientes
+                            Importar {previewClients.length} Registro(s)
                         </Button>
                     </DialogFooter>
                 </DialogContent>

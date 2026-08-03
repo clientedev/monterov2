@@ -276,7 +276,7 @@ export const apolices = pgTable("apolices", {
   produtoId: integer("produto_id").references(() => produtosSeguro.id),
   seguradoraId: integer("seguradora_id").references(() => seguradoras.id),
   numeroApolice: text("numero_apolice"),
-  status: text("status", { enum: ["ativa", "vencida", "cancelada", "pendente"] }).notNull().default("ativa"),
+  status: text("status", { enum: ["ativa", "vencida", "cancelada", "pendente", "em_atraso"] }).notNull().default("ativa"),
   inicioVigencia: timestamp("inicio_vigencia"),
   fimVigencia: timestamp("fim_vigencia"),
   premio: text("premio"),

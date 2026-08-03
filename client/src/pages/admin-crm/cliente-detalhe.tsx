@@ -43,6 +43,9 @@ function getAlertInfo(apolice: Apolice) {
     if (apolice.status === "pendente") {
         return { label: "Pendente", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Clock, urgency: 1 };
     }
+    if (apolice.status === "em_atraso") {
+        return { label: "Em Atraso", color: "bg-red-100 text-red-700 border-red-200", icon: AlertTriangle, urgency: 3 };
+    }
     if (dias <= 15) return { label: `Vence em ${dias}d`, color: "bg-red-100 text-red-800 border-red-200", icon: AlertTriangle, urgency: 3 };
     if (dias <= 30) return { label: `Vence em ${dias}d`, color: "bg-orange-100 text-orange-800 border-orange-200", icon: AlertTriangle, urgency: 2 };
     if (dias <= 60) return { label: `Vence em ${dias}d`, color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: AlertTriangle, urgency: 1 };
@@ -51,6 +54,7 @@ function getAlertInfo(apolice: Apolice) {
 
 const STATUS_OPTIONS = [
     { value: "ativa", label: "Ativa" },
+    { value: "em_atraso", label: "Em Atraso" },
     { value: "vencida", label: "Vencida" },
     { value: "cancelada", label: "Cancelada" },
     { value: "pendente", label: "Pendente" },

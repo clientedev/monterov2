@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { format, differenceInDays, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 
 function getAlertInfo(apolice: Apolice) {
     if (!apolice.fimVigencia) return null;
@@ -53,14 +53,18 @@ export default function ApolicesPage() {
     const { toast } = useToast();
     const { user } = useAuth();
     const [, setLocation] = useLocation();
+    const searchStr = useSearch();
     const isAdmin = user?.role === "admin";
+
+    // Initialize status filter from URL param (e.g. ?status=em_atraso from dashboard drill-down)
+    const urlStatus = new URLSearchParams(searchStr).get("status") || "all";
 
     // Filters
     const [search, setSearch] = useState("");
     const [filterCliente, setFilterCliente] = useState<string>("all");
     const [filterProduto, setFilterProduto] = useState<string>("all");
     const [filterSeguradora, setFilterSeguradora] = useState<string>("all");
-    const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [filterStatus, setFilterStatus] = useState<string>(urlStatus);
     const [filterCorretor, setFilterCorretor] = useState<string>("all");
 
     const [deleteTarget, setDeleteTarget] = useState<Apolice | null>(null);

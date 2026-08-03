@@ -688,8 +688,60 @@ export class DatabaseStorage implements IStorage {
   // INSURANCE MODULE — CLIENTES
   // ============================================================
 
-  async getClientes(): Promise<Cliente[]> {
-    return await db.select().from(clientes).orderBy(asc(clientes.nome));
+  async getClientes(filters?: {
+    search?: string;
+    seguradoraNome?: string;
+    status?: string;
+    tags?: string;
+  }): Promise<Cliente[]> {
+    // If no filters that require joins, simple query
+    if (!filters?.seguradoraNome && !filters?.status) {
+      const all = await db.select().from(clientes).orderBy(asc(clientes.nome));
+      if (!filters?.search && !filters?.tags) return all;
+      const q = (filters.search || "").toLowerCase();
+      const t = (filters.tags || "").toLowerCase();
+      return all.filter(c => {
+        const matchSearch = !q || c.nome.toLowerCase().includes(q) ||
+          (c.cpfCnpj || "").includes(q) ||
+          (c.email || "").toLowerCase().includes(q) ||
+          (c.telefone || "").includes(q);
+        const matchTags = !t || (c.tags || "").toLowerCase().includes(t);
+        return matchSearch && matchTags;
+      });
+    }
+
+    // Need to join with apolices (and optionally seguradoras) for filtering
+    const allClientes = await db.select().from(clientes).orderBy(asc(clientes.nome));
+    const allApolices = await db.select().from(apolices);
+    const allSeguradoras = await db.select().from(seguradoras);
+
+    const segIds = filters.seguradoraNome
+      ? allSeguradoras
+          .filter(s => s.nome.toLowerCase().includes(filters.seguradoraNome!.toLowerCase()))
+          .map(s => s.id)
+      : null;
+
+    const clienteIdsWithStatus = filters.status
+      ? new Set(allApolices.filter(a => a.status === filters.status).map(a => a.clienteId))
+      : null;
+
+    const clienteIdsWithSeg = segIds
+      ? new Set(allApolices.filter(a => segIds.includes(a.seguradoraId!)).map(a => a.clienteId))
+      : null;
+
+    const q = (filters.search || "").toLowerCase();
+    const t = (filters.tags || "").toLowerCase();
+
+    return allClientes.filter(c => {
+      const matchSearch = !q || c.nome.toLowerCase().includes(q) ||
+        (c.cpfCnpj || "").includes(q) ||
+        (c.email || "").toLowerCase().includes(q) ||
+        (c.telefone || "").includes(q);
+      const matchTags = !t || (c.tags || "").toLowerCase().includes(t);
+      const matchSeg = !clienteIdsWithSeg || clienteIdsWithSeg.has(c.id);
+      const matchStatus = !clienteIdsWithStatus || clienteIdsWithStatus.has(c.id);
+      return matchSearch && matchTags && matchSeg && matchStatus;
+    });
   }
 
   async getCliente(id: number): Promise<Cliente | undefined> {
@@ -804,12 +856,15 @@ export class DatabaseStorage implements IStorage {
     totalAtivas: number;
     totalClientes: number;
     totalVencidas: number;
+    totalEmAtraso: number;
+    totalCanceladas: number;
     vencendo30: number;
     vencendo60: number;
     valorTotal: string;
     renovacaoMes: number;
     porSeguradora: { nome: string; total: number }[];
     porProduto: { nome: string; total: number }[];
+    porStatus: { status: string; total: number }[];
   }> {
     const now = new Date();
     const in30 = new Date(now); in30.setDate(in30.getDate() + 30);
@@ -823,6 +878,7 @@ export class DatabaseStorage implements IStorage {
     const allProdutos = await db.select().from(produtosSeguro);
 
     const ativas = allApolices.filter(a => a.status === "ativa");
+    const emAtraso = allApolices.filter(a => a.status === "em_atraso");
     const vencidas = allApolices.filter(a => a.status === "vencida");
 
     const vencendo30 = ativas.filter(a => {
@@ -866,16 +922,27 @@ export class DatabaseStorage implements IStorage {
       total: allApolices.filter(a => a.produtoId === p.id).length,
     })).filter(p => p.total > 0);
 
+    const canceladas = allApolices.filter(a => a.status === "cancelada");
+
+    // By status summary
+    const statusCounts = ["ativa", "vencida", "em_atraso", "cancelada", "pendente"].map(s => ({
+      status: s,
+      total: allApolices.filter(a => a.status === s).length,
+    })).filter(s => s.total > 0);
+
     return {
       totalAtivas: ativas.length,
       totalClientes: allClientes.length,
       totalVencidas: vencidas.length,
+      totalEmAtraso: emAtraso.length,
+      totalCanceladas: canceladas.length,
       vencendo30: vencendo30.length,
       vencendo60: vencendo60.length,
       valorTotal,
       renovacaoMes: renovacaoMes.length,
       porSeguradora,
       porProduto,
+      porStatus: statusCounts,
     };
   }
 }

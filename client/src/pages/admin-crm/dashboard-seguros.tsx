@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ShieldCheck, Users, AlertTriangle, XCircle, Calendar, DollarSign, RefreshCw, Building2, Package } from "lucide-react";
+import { Loader2, ShieldCheck, Users, AlertTriangle, XCircle, Calendar, DollarSign, RefreshCw, Building2, Package, Clock, Ban } from "lucide-react";
 import {
-    BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
+    BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { useLocation } from "wouter";
 
@@ -10,13 +10,32 @@ interface DashboardStats {
     totalAtivas: number;
     totalClientes: number;
     totalVencidas: number;
+    totalEmAtraso: number;
+    totalCanceladas: number;
     vencendo30: number;
     vencendo60: number;
     valorTotal: string;
     renovacaoMes: number;
     porSeguradora: { nome: string; total: number }[];
     porProduto: { nome: string; total: number }[];
+    porStatus: { status: string; total: number }[];
 }
+
+const STATUS_COLORS: Record<string, string> = {
+    ativa: "#10b981",
+    em_atraso: "#ef4444",
+    vencida: "#6b7280",
+    cancelada: "#9ca3af",
+    pendente: "#f59e0b",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+    ativa: "Ativa",
+    em_atraso: "Em Atraso",
+    vencida: "Vencida",
+    cancelada: "Cancelada",
+    pendente: "Pendente",
+};
 
 const COLORS = ["#0F6570", "#08454c", "#c65f54", "#f59e0b", "#10b981", "#6366f1", "#ec4899", "#8b5cf6"];
 
@@ -33,12 +52,22 @@ export default function DashboardSegurosPage() {
 
     const valorFormatado = parseFloat(stats?.valorTotal || "0").toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 
+    const totalApolices = (stats?.totalAtivas || 0) + (stats?.totalEmAtraso || 0) + (stats?.totalVencidas || 0) + (stats?.totalCanceladas || 0);
+
+    const porStatusData = (stats?.porStatus || []).map(s => ({
+        name: STATUS_LABELS[s.status] || s.status,
+        value: s.total,
+        color: STATUS_COLORS[s.status] || "#6b7280",
+    }));
+
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-display font-bold text-gray-900">Dashboard de Carteira de Seguros</h2>
-                    <p className="text-muted-foreground mt-1">Visão geral dos indicadores de apólices, vigências e renovações.</p>
+                    <p className="text-muted-foreground mt-1">
+                        Visão geral dos indicadores — {totalApolices} apólice(s) no total.
+                    </p>
                 </div>
             </div>
 
@@ -93,109 +122,164 @@ export default function DashboardSegurosPage() {
                 </Card>
             </div>
 
-            {/* Alerts Bar */}
-            <div className="grid gap-5 md:grid-cols-3">
+            {/* Status Alert Bar */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <Card className="border-l-4 border-l-red-500 shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={() => setLocation("/admin/apolices")}>
-                    <CardContent className="pt-5 flex items-center justify-between">
+                    onClick={() => setLocation("/admin/apolices?status=em_atraso")}>
+                    <CardContent className="pt-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground uppercase font-bold">Já Vencidas</p>
-                            <p className="text-2xl font-bold text-red-600 mt-1">{stats?.totalVencidas || 0}</p>
+                            <p className="text-xs text-muted-foreground uppercase font-bold">Em Atraso</p>
+                            <p className="text-2xl font-bold text-red-600 mt-1">{stats?.totalEmAtraso || 0}</p>
                         </div>
                         <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                            <XCircle className="h-6 w-6" />
+                            <Clock className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-l-4 border-l-gray-400 shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => setLocation("/admin/apolices?status=vencida")}>
+                    <CardContent className="pt-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-muted-foreground uppercase font-bold">Vencidas</p>
+                            <p className="text-2xl font-bold text-gray-600 mt-1">{stats?.totalVencidas || 0}</p>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                            <XCircle className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-l-4 border-l-slate-400 shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => setLocation("/admin/apolices?status=cancelada")}>
+                    <CardContent className="pt-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-muted-foreground uppercase font-bold">Canceladas</p>
+                            <p className="text-2xl font-bold text-slate-600 mt-1">{stats?.totalCanceladas || 0}</p>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                            <Ban className="h-5 w-5" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card className="border-l-4 border-l-orange-500 shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => setLocation("/admin/apolices")}>
-                    <CardContent className="pt-5 flex items-center justify-between">
+                    <CardContent className="pt-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground uppercase font-bold">Vencendo em 30 Dias</p>
+                            <p className="text-xs text-muted-foreground uppercase font-bold">Vencendo em 30d</p>
                             <p className="text-2xl font-bold text-orange-600 mt-1">{stats?.vencendo30 || 0}</p>
                         </div>
                         <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                            <AlertTriangle className="h-6 w-6" />
+                            <AlertTriangle className="h-5 w-5" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card className="border-l-4 border-l-yellow-500 shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => setLocation("/admin/apolices")}>
-                    <CardContent className="pt-5 flex items-center justify-between">
+                    <CardContent className="pt-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground uppercase font-bold">Vencendo em 60 Dias</p>
+                            <p className="text-xs text-muted-foreground uppercase font-bold">Vencendo em 60d</p>
                             <p className="text-2xl font-bold text-yellow-600 mt-1">{stats?.vencendo60 || 0}</p>
                         </div>
                         <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
-                            <Calendar className="h-6 w-6" />
+                            <Calendar className="h-5 w-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Charts Section */}
-            <div className="grid gap-6 md:grid-cols-2">
-                {/* Seguradoras Chart */}
-                <Card className="shadow-md border-none bg-white">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {/* Seguradoras Bar Chart */}
+                <Card className="shadow-md border-none bg-white lg:col-span-2">
                     <CardHeader>
                         <CardTitle className="text-sm font-bold text-gray-600 uppercase tracking-wider flex items-center gap-2">
                             <Building2 className="h-4 w-4 text-[#0F6570]" /> Apólices por Seguradora
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="h-[300px]">
-                        {stats?.porSeguradora.length === 0 ? (
+                        {(stats?.porSeguradora.length || 0) === 0 ? (
                             <div className="flex h-full items-center justify-center text-muted-foreground text-sm">Sem dados cadastrados.</div>
                         ) : (
                             <ResponsiveContainer width="100%" height="100%">
-                                <ReBarChart data={stats?.porSeguradora}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                    <XAxis dataKey="nome" fontSize={11} tickLine={false} axisLine={false} />
-                                    <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                                <ReBarChart data={stats?.porSeguradora} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                                    <XAxis type="number" fontSize={11} tickLine={false} axisLine={false} />
+                                    <YAxis type="category" dataKey="nome" fontSize={11} tickLine={false} axisLine={false} width={90} />
                                     <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} />
-                                    <Bar dataKey="total" fill="#0F6570" radius={[4, 4, 0, 0]} name="Apólices" />
+                                    <Bar dataKey="total" fill="#0F6570" radius={[0, 4, 4, 0]} name="Apólices" />
                                 </ReBarChart>
                             </ResponsiveContainer>
                         )}
                     </CardContent>
                 </Card>
 
-                {/* Produtos Chart */}
+                {/* Status Pie Chart */}
+                <Card className="shadow-md border-none bg-white">
+                    <CardHeader>
+                        <CardTitle className="text-sm font-bold text-gray-600 uppercase tracking-wider flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 text-emerald-600" /> Apólices por Status
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[300px] flex flex-col items-center justify-center">
+                        {porStatusData.length === 0 ? (
+                            <div className="text-muted-foreground text-sm">Sem dados cadastrados.</div>
+                        ) : (
+                            <>
+                                <ResponsiveContainer width="100%" height={180}>
+                                    <PieChart>
+                                        <Pie data={porStatusData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
+                                            {porStatusData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip contentStyle={{ borderRadius: "8px", border: "none" }} formatter={(val: any, name: any) => [val, name]} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <div className="flex flex-col gap-1.5 w-full mt-1">
+                                    {porStatusData.map((p, i) => (
+                                        <div key={i} className="flex items-center justify-between text-xs font-semibold text-gray-700">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                                                <span>{p.name}</span>
+                                            </div>
+                                            <span>{p.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Produtos Chart */}
+            {(stats?.porProduto.length || 0) > 0 && (
                 <Card className="shadow-md border-none bg-white">
                     <CardHeader>
                         <CardTitle className="text-sm font-bold text-gray-600 uppercase tracking-wider flex items-center gap-2">
                             <Package className="h-4 w-4 text-emerald-600" /> Apólices por Produto
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="h-[300px] flex items-center justify-center">
-                        {stats?.porProduto.length === 0 ? (
-                            <div className="text-muted-foreground text-sm">Sem dados cadastrados.</div>
-                        ) : (
-                            <div className="w-full h-full flex items-center">
-                                <ResponsiveContainer width="60%" height="100%">
-                                    <PieChart>
-                                        <Pie data={stats?.porProduto} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="total">
-                                            {stats?.porProduto.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip contentStyle={{ borderRadius: "8px", border: "none" }} />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <div className="flex flex-col gap-2 ml-4">
-                                    {stats?.porProduto.map((p, i) => (
-                                        <div key={i} className="flex items-center gap-2 text-xs font-semibold text-gray-700">
-                                            <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                                            <span>{p.nome}: {p.total}</span>
-                                        </div>
+                    <CardContent className="h-[260px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ReBarChart data={stats?.porProduto}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="nome" fontSize={11} tickLine={false} axisLine={false} />
+                                <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                                <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} />
+                                <Bar dataKey="total" radius={[4, 4, 0, 0]} name="Apólices">
+                                    {stats?.porProduto.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
-                                </div>
-                            </div>
-                        )}
+                                </Bar>
+                            </ReBarChart>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            </div>
+            )}
         </div>
     );
 }

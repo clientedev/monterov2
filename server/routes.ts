@@ -726,7 +726,13 @@ export async function registerRoutes(
 
   // Clientes de Seguro
   app.get("/api/clientes", isTeam, async (req, res) => {
-    const result = await storage.getClientes();
+    const filters = {
+      search: req.query.search as string | undefined,
+      seguradoraNome: req.query.seguradora as string | undefined,
+      status: req.query.status as string | undefined,
+      tags: req.query.tags as string | undefined,
+    };
+    const result = await storage.getClientes(filters);
     res.json(result);
   });
 
@@ -895,6 +901,8 @@ export async function registerRoutes(
           statusMap = "cancelada";
         } else if (rawStatus.includes("pend")) {
           statusMap = "pendente";
+        } else if (rawStatus.includes("atraso") || rawStatus.includes("aberto") || rawStatus.includes("inadimpl")) {
+          statusMap = "em_atraso";
         }
 
         const apolQuery: any[] = [];
@@ -923,7 +931,15 @@ export async function registerRoutes(
           status: statusMap,
           inicioVigencia: parseExcelDate(inicioVigencia),
           fimVigencia: parseExcelDate(fimVigencia),
-          premio: premio ? String(premio).trim() : null,
+          premio: premio ? (() => {
+            const raw = String(premio).trim().replace(/^R\$\s*/i, "").trim();
+            // Brazilian: 1.234,56 → remove dot thousands sep, comma→dot
+            if (raw.includes(",") && raw.includes(".")) return raw.replace(/\./g, "").replace(",", ".");
+            // Brazilian: 1234,56 → comma as decimal
+            if (raw.includes(",")) return raw.replace(",", ".");
+            // ISO/US: 356.16 already valid
+            return raw;
+          })() : null,
           idProposta: idProposta ? String(idProposta).trim() : null,
           idApolice: idApolice ? String(idApolice).trim() : null,
           pdfApolice: pdfApolice ? String(pdfApolice).trim() : null,
