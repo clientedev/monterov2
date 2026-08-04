@@ -28,6 +28,29 @@ import { format, differenceInDays, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLocation, useSearch } from "wouter";
 
+/** Converte qualquer formato de prêmio para número, retorna null se inválido */
+function parsePremio(val: string | null | undefined): number | null {
+    if (!val) return null;
+    let raw = val.replace(/^R\$\s*/i, "").replace(/\s/g, "").trim();
+    if (!raw) return null;
+    // Formato brasileiro com separador de milhar: 1.234,56
+    if (raw.includes(",") && raw.includes(".")) {
+        raw = raw.replace(/\./g, "").replace(",", ".");
+    } else if (raw.includes(",")) {
+        // 1234,56 → 1234.56
+        raw = raw.replace(",", ".");
+    }
+    // US/ISO: 356.16 → já está correto
+    const num = parseFloat(raw);
+    return isNaN(num) ? null : num;
+}
+
+function fmtPremio(val: string | null | undefined): string {
+    const num = parsePremio(val);
+    if (num === null) return "—";
+    return `R$ ${num.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+}
+
 function getAlertInfo(apolice: Apolice) {
     // Statuses explícitos do banco têm precedência — nunca sobrescrever com lógica de data
     if (apolice.status === "cancelada") {
@@ -55,8 +78,9 @@ function getAlertInfo(apolice: Apolice) {
     const dias = differenceInDays(fim, hoje);
 
     if (dias < 0) {
-        // Data passou mas status ainda é "ativa" no banco — exibe como vencida visualmente
-        return { label: "Vencida", color: "bg-red-100 text-red-800 border-red-200", icon: XCircle };
+        // Data passou mas status ainda é "ativa" — NÃO sobrescrever.
+        // fimVigencia pode ser a data da fatura mensal, não o fim real da apólice.
+        return { label: "Ativa", color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle };
     }
     if (dias <= 15) return { label: `Vence em ${dias}d`, color: "bg-red-100 text-red-800 border-red-200", icon: AlertTriangle };
     if (dias <= 30) return { label: `Vence em ${dias}d`, color: "bg-orange-100 text-orange-800 border-orange-200", icon: AlertTriangle };
@@ -266,7 +290,7 @@ export default function ApolicesPage() {
                                         {a.fimVigencia ? format(new Date(a.fimVigencia), "dd/MM/yy") : "—"}
                                     </TableCell>
                                     <TableCell className="font-semibold text-gray-900">
-                                        {a.premio ? `R$ ${parseFloat(a.premio).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                        {fmtPremio(a.premio)}
                                     </TableCell>
                                     <TableCell>
                                         {alertInfo && (

@@ -625,7 +625,14 @@ export default function ClientesPage() {
                                                 <TableCell className="text-xs text-emerald-800 font-semibold">{c.seguradora || "—"}</TableCell>
                                                 <TableCell className="text-xs font-mono">{c.numeroApolice || c.idProposta || "—"}</TableCell>
                                                 <TableCell className="text-xs font-semibold">
-                                                    {c.premio ? `R$ ${parseFloat(c.premio).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                                    {(() => {
+                                                        if (!c.premio) return "—";
+                                                        let raw = c.premio.replace(/^R\$\s*/i, "").replace(/\s/g, "");
+                                                        if (raw.includes(",") && raw.includes(".")) raw = raw.replace(/\./g, "").replace(",", ".");
+                                                        else if (raw.includes(",")) raw = raw.replace(",", ".");
+                                                        const num = parseFloat(raw);
+                                                        return isNaN(num) ? c.premio : `R$ ${num.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+                                                    })()}
                                                 </TableCell>
                                                 <TableCell>
                                                     {status ? (
