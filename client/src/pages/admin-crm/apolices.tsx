@@ -29,19 +29,34 @@ import { ptBR } from "date-fns/locale";
 import { useLocation, useSearch } from "wouter";
 
 function getAlertInfo(apolice: Apolice) {
-    if (!apolice.fimVigencia) return null;
-    const fim = new Date(apolice.fimVigencia);
-    const hoje = new Date();
-    const dias = differenceInDays(fim, hoje);
-
-    if (apolice.status === "vencida" || (apolice.status === "ativa" && isPast(fim))) {
-        return { label: "Vencida", color: "bg-red-100 text-red-800 border-red-200", icon: XCircle };
-    }
+    // Statuses explícitos do banco têm precedência — nunca sobrescrever com lógica de data
     if (apolice.status === "cancelada") {
         return { label: "Cancelada", color: "bg-gray-100 text-gray-600 border-gray-200", icon: XCircle };
     }
+    if (apolice.status === "em_atraso") {
+        return { label: "Em Atraso", color: "bg-red-100 text-red-800 border-red-200", icon: AlertTriangle };
+    }
     if (apolice.status === "pendente") {
         return { label: "Pendente", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Clock };
+    }
+    if (apolice.status === "vencida") {
+        return { label: "Vencida", color: "bg-gray-100 text-gray-600 border-gray-200", icon: XCircle };
+    }
+
+    // Status "ativa": usa a data de vigência apenas para alertas e verificação
+    if (!apolice.fimVigencia) {
+        return { label: "Ativa", color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle };
+    }
+
+    const fim = new Date(apolice.fimVigencia);
+    // Garante fim do dia para evitar falsos "vencido" por diferença de fuso horário
+    fim.setHours(23, 59, 59, 999);
+    const hoje = new Date();
+    const dias = differenceInDays(fim, hoje);
+
+    if (dias < 0) {
+        // Data passou mas status ainda é "ativa" no banco — exibe como vencida visualmente
+        return { label: "Vencida", color: "bg-red-100 text-red-800 border-red-200", icon: XCircle };
     }
     if (dias <= 15) return { label: `Vence em ${dias}d`, color: "bg-red-100 text-red-800 border-red-200", icon: AlertTriangle };
     if (dias <= 30) return { label: `Vence em ${dias}d`, color: "bg-orange-100 text-orange-800 border-orange-200", icon: AlertTriangle };
@@ -182,9 +197,10 @@ export default function ApolicesPage() {
                             <SelectContent>
                                 <SelectItem value="all">Todos os status</SelectItem>
                                 <SelectItem value="ativa">Ativa</SelectItem>
+                                <SelectItem value="em_atraso">Em Atraso</SelectItem>
+                                <SelectItem value="pendente">Pendente</SelectItem>
                                 <SelectItem value="vencida">Vencida</SelectItem>
                                 <SelectItem value="cancelada">Cancelada</SelectItem>
-                                <SelectItem value="pendente">Pendente</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
