@@ -303,7 +303,12 @@ export const apolices = pgTable("apolices", {
 
 export const insertPostSchema = createInsertSchema(posts, {
   publishedAt: z.coerce.date().optional(),
-}).omit({ id: true, createdAt: true });
+  title: z.string().min(3, "Título precisa ter ao menos 3 caracteres"),
+  slug: z.string().min(3, "Slug precisa ter ao menos 3 caracteres").regex(/^[a-z0-9-]+$/, "Slug deve conter apenas letras minúsculas, números e hífens"),
+  content: z.string().min(10, "Conteúdo muito curto"),
+  summary: z.string().min(5, "Resumo muito curto"),
+  coverImage: z.string().min(1, "Imagem de capa obrigatória"),
+}).omit({ id: true, createdAt: true, likes: true, isApproved: true });
 export const insertInquirySchema = createInsertSchema(inquiries).omit({ id: true, createdAt: true });
 export const insertServiceSchema = createInsertSchema(services).omit({ id: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });

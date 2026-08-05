@@ -11,7 +11,7 @@ export default function CommentsPage() {
     const { data: comments, isLoading } = useQuery({
         queryKey: ["/api/admin/comments"],
         queryFn: async () => {
-            const res = await fetch("/api/admin/comments");
+            const res = await fetch("/api/admin/comments", { credentials: "include" });
             if (!res.ok) throw new Error("Falha ao carregar comentários");
             return await res.json();
         }
@@ -19,7 +19,7 @@ export default function CommentsPage() {
 
     const approveMutation = useMutation({
         mutationFn: async (id: number) => {
-            const res = await fetch(`/api/admin/comments/${id}/approve`, { method: "PATCH" });
+            const res = await fetch(`/api/admin/comments/${id}/approve`, { method: "PATCH", credentials: "include" });
             if (!res.ok) throw new Error("Erro ao aprovar");
             return await res.json();
         },
@@ -34,7 +34,7 @@ export default function CommentsPage() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
-            const res = await fetch(`/api/admin/comments/${id}`, { method: "DELETE" });
+            const res = await fetch(`/api/admin/comments/${id}`, { method: "DELETE", credentials: "include" });
             if (!res.ok) throw new Error("Erro ao excluir");
         },
         onSuccess: () => {
