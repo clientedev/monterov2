@@ -16,14 +16,14 @@ declare module "http" {
 
 app.use(
   express.json({
-    limit: "50mb",
+    limit: "100mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false, limit: "50mb" }));
+app.use(express.urlencoded({ extended: false, limit: "100mb" }));
 
 // Serve attached_assets statically so images referenced by path work
 app.use("/attached_assets", express.static(resolve(process.cwd(), "attached_assets")));

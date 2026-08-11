@@ -20,9 +20,9 @@ export function VideoUpload({ value, onChange, label, description }: VideoUpload
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Limit to 5MB for videos stored as base64 (still risky but better for small clips)
-        if (file.size > 50 * 1024 * 1024) {
-            alert("O vídeo deve ter no máximo 50MB. Para vídeos maiores, use o link do YouTube.");
+        // Allow up to 100MB for videos stored as base64
+        if (file.size > 100 * 1024 * 1024) {
+            alert("O vídeo deve ter no máximo 100MB. Para vídeos maiores, use o link do YouTube.");
             return;
         }
 
@@ -81,7 +81,7 @@ export function VideoUpload({ value, onChange, label, description }: VideoUpload
                         </div>
                         <div className="text-center">
                             <span className="text-sm font-semibold text-primary">Clique para enviar vídeo</span>
-                            <p className="text-xs text-muted-foreground mt-1">MP4, WEBM ou OGG (Max. 5MB)</p>
+                            <p className="text-xs text-muted-foreground mt-1">MP4, WEBM ou OGG (Max. 100MB)</p>
                         </div>
                         <Input
                             type="file"

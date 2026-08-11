@@ -28,8 +28,8 @@ export function Navbar() {
     { name: "Blog", href: "/blog" },
     { name: "Contato", href: "/contact" },
   ];
-  const darkHeroPaths = ["/", "/sobre", "/services", "/blog"];
-  const isDarkHeroPage = darkHeroPaths.includes(location) || location.startsWith("/blog/") || location.startsWith("/services/");
+  const darkHeroPaths = ["/", "/sobre", "/services"];
+  const isDarkHeroPage = darkHeroPaths.includes(location) || location.startsWith("/services/");
   const showScrolledNavbar = scrolled || !isDarkHeroPage;
 
   const handleLinkClick = () => setIsOpen(false);
