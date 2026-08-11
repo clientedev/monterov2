@@ -233,7 +233,7 @@ export default function Home() {
                       <img
                         src={post.coverImage}
                         alt={post.title}
-                        className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                        className="w-full h-full object-cover object-center"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity pointer-events-none" />
                     </div>
@@ -639,23 +639,22 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {loadingPosts ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-96 bg-white rounded-3xl animate-pulse border border-slate-100" />
+                <div key={i} className="h-96 bg-white rounded-none animate-pulse border border-slate-100" />
               ))
             ) : (
-              posts?.slice(0, 3).map((post, index) => (
+              validPosts.slice(0, 3).map((post, index) => (
                 <Link key={post.id} href={`/blog/${post.slug}`}>
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.08 }}
-                    className="group cursor-pointer bg-white rounded-[2rem] overflow-hidden border border-slate-100 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col justify-between"
+                    className="group cursor-pointer bg-white rounded-none overflow-hidden border border-slate-100 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col justify-between"
                   >
-                    <div className="overflow-hidden h-56 bg-slate-100 relative">
-                      <div className="absolute inset-0 bg-slate-900/5 group-hover:bg-transparent transition-colors z-10" />
+                    <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 relative">
                       <img
                         src={post.coverImage}
                         alt={post.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-103"
+                        className="w-full h-full object-cover object-center"
                       />
                     </div>
                     <div className="p-7 flex-1 flex flex-col justify-between">
