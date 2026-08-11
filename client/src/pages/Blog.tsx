@@ -210,12 +210,16 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
         </button>
       </div>
 
-      {/* ── Caption / Title above image ── */}
-      <div className="px-4 pb-3">
-        <p className="text-[#163b52] text-sm leading-relaxed">
-          <span className="font-bold">{post.title}</span>
-          {post.summary ? <span className="text-slate-500 font-light"> — {post.summary}</span> : null}
-        </p>
+      {/* ── Title + Description above image ── */}
+      <div className="px-4 pb-3 space-y-1.5">
+        <h2 className="text-[#163b52] font-display font-bold text-base md:text-lg leading-snug">
+          {post.title}
+        </h2>
+        {post.summary && (
+          <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
+            {post.summary}
+          </p>
+        )}
       </div>
 
       {/* ── Media — full width, no crop ── */}
