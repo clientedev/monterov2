@@ -6,30 +6,33 @@ import { ptBR } from "date-fns/locale";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
-  Heart, MessageCircle, Share2, ShieldCheck, TrendingUp,
-  Image as ImageIcon, AlertCircle, RefreshCw, Play, ArrowRight,
-  Sparkles, Calendar, BookOpen
+  Heart, MessageCircle, Share2, ShieldCheck,
+  AlertCircle, RefreshCw, Play, ArrowRight,
+  Sparkles, Calendar, BookOpen, Star
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
 const formatDate = (dateInput: string | Date | null | undefined) => {
-  if (!dateInput) return 'Novidade';
+  if (!dateInput) return "Novidade";
   try {
     const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return 'Novidade';
-    return format(d, "dd 'de' MMM", { locale: ptBR });
+    if (isNaN(d.getTime())) return "Novidade";
+    return format(d, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   } catch {
-    return 'Novidade';
+    return "Novidade";
   }
+};
+
+const getYoutubeId = (url: string) => {
+  const match = url?.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+  return match?.[2] ?? null;
 };
 
 export default function Blog() {
   const { data: posts, isLoading, isError, error, refetch } = usePosts();
-  const { user } = useAuth();
   const { toast } = useToast();
   const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
 
@@ -39,369 +42,225 @@ export default function Blog() {
     },
     onSuccess: (_data, postId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      setLikedPosts(prev => {
+      setLikedPosts((prev) => {
         const next = new Set(prev);
-        if (next.has(postId)) next.delete(postId); else next.add(postId);
+        next.has(postId) ? next.delete(postId) : next.add(postId);
         return next;
       });
-    }
+    },
   });
 
   const handleShare = async (title: string, slug: string) => {
     const url = `${window.location.origin}/blog/${slug}`;
-    if (typeof navigator.share === 'function') {
+    if (typeof navigator.share === "function") {
       try { await navigator.share({ title, url }); } catch { }
     } else {
       navigator.clipboard?.writeText(url);
-      toast({ title: "Link copiado!", description: "Cole o link onde quiser compartilhar." });
+      toast({ title: "Link copiado!", description: "Cole onde quiser compartilhar." });
     }
   };
 
   return (
-    <div className="min-h-screen font-sans" style={{ background: "linear-gradient(to bottom, #0d2e3a 0%, #0a3a42 60%, #08454c 100%)" }}>
+    <div className="min-h-screen font-sans bg-[#eae4da]">
       <Navbar />
 
-      {/* ── Hero Header ── */}
-      <div className="pt-28 pb-10 relative overflow-hidden">
-        {/* Glow orbs */}
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-[#809ba6]/10 rounded-full blur-[120px] pointer-events-none" />
-
+      {/* ── Page Header ── */}
+      <div className="bg-[#08454c] pt-28 pb-14 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#809ba6]/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="container px-4 md:px-6 mx-auto relative z-10">
-          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#c65f54]/15 border border-[#c65f54]/30 text-[#c65f54] text-xs font-bold uppercase tracking-widest mb-4">
-                <Sparkles className="w-3.5 h-3.5" />
-                Comunidade Monteiro
-              </div>
-              <h1 className="text-4xl md:text-6xl font-display font-bold text-white leading-tight">
-                Blog &amp; <span className="text-[#c65f54]">Conteúdo</span>
-              </h1>
-              <p className="text-slate-300 mt-3 text-base md:text-lg max-w-xl font-light">
-                Dicas, tendências e novidades do universo de seguros e benefícios.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/70 text-sm font-semibold">
-                <TrendingUp className="w-4 h-4 text-[#c65f54]" />
-                Em alta
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/70 text-sm font-semibold">
-                <BookOpen className="w-4 h-4 text-[#c65f54]" />
-                {posts?.length ?? 0} artigos
-              </div>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#c65f54]/15 border border-[#c65f54]/30 text-[#c65f54] text-xs font-bold uppercase tracking-widest mb-5">
+            <Sparkles className="w-3.5 h-3.5" />
+            Blog Monteiro
+          </div>
+          <h1 className="text-4xl md:text-6xl font-display font-bold text-white leading-tight mb-4">
+            Artigos &amp; <span className="text-[#c65f54]">Novidades</span>
+          </h1>
+          <p className="text-white/60 text-base md:text-lg max-w-xl font-light">
+            Dicas, tendências e novidades do universo de seguros e benefícios para você e sua empresa.
+          </p>
+          <div className="flex items-center gap-3 mt-6">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm font-semibold">
+              <BookOpen className="w-4 h-4 text-[#c65f54]" />
+              {posts?.length ?? 0} artigos publicados
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Feed ── */}
-      <div className="container px-4 md:px-6 mx-auto pb-24 relative z-10">
+      {/* ── Article List ── */}
+      <div className="container px-4 md:px-6 mx-auto py-14">
+        <div className="max-w-3xl mx-auto space-y-5">
 
-        {/* Error */}
-        {isError && (
-          <div className="bg-red-900/30 border border-red-500/30 rounded-3xl p-10 text-center space-y-4 backdrop-blur-sm">
-            <AlertCircle className="w-12 h-12 text-red-400 mx-auto" />
-            <h3 className="font-bold text-red-300 text-lg">Erro ao carregar artigos</h3>
-            <p className="text-red-400/80 text-sm">{(error as Error)?.message ?? "Não foi possível carregar os artigos."}</p>
-            <button
-              onClick={() => refetch()}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-full text-sm font-bold hover:bg-red-700 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" /> Tentar novamente
-            </button>
-          </div>
-        )}
+          {/* Error */}
+          {isError && (
+            <div className="bg-red-50 border border-red-200 rounded-3xl p-10 text-center space-y-4">
+              <AlertCircle className="w-12 h-12 text-red-400 mx-auto" />
+              <h3 className="font-bold text-red-700 text-lg">Erro ao carregar artigos</h3>
+              <p className="text-red-500 text-sm">{(error as Error)?.message ?? "Não foi possível carregar os artigos."}</p>
+              <button
+                onClick={() => refetch()}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-full text-sm font-bold hover:bg-red-700 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" /> Tentar novamente
+              </button>
+            </div>
+          )}
 
-        {/* Skeleton */}
-        {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="rounded-[2rem] bg-white/5 animate-pulse border border-white/8 overflow-hidden">
-                <div className="h-64 bg-white/10" />
-                <div className="p-5 space-y-3">
-                  <div className="h-3 bg-white/10 rounded-full w-1/3" />
-                  <div className="h-5 bg-white/10 rounded-full w-4/5" />
-                  <div className="h-4 bg-white/10 rounded-full w-full" />
-                  <div className="h-4 bg-white/10 rounded-full w-2/3" />
+          {/* Skeletons */}
+          {isLoading &&
+            [1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="bg-white rounded-3xl border border-slate-100 overflow-hidden flex h-44 animate-pulse">
+                <div className="w-48 shrink-0 bg-slate-200" />
+                <div className="flex-1 p-6 space-y-3">
+                  <div className="h-3 bg-slate-200 rounded-full w-1/4" />
+                  <div className="h-5 bg-slate-200 rounded-full w-3/4" />
+                  <div className="h-4 bg-slate-200 rounded-full w-full" />
+                  <div className="h-4 bg-slate-200 rounded-full w-2/3" />
                 </div>
               </div>
             ))}
-          </div>
-        )}
 
-        {/* Empty */}
-        {!isLoading && !isError && (!posts || posts.length === 0) && (
-          <div className="text-center py-24">
-            <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <BookOpen className="w-10 h-10 text-white/30" />
-            </div>
-            <h3 className="text-white/60 font-bold text-xl mb-2">Nenhum artigo publicado ainda</h3>
-            <p className="text-white/30 text-sm">Em breve novos conteúdos serão publicados.</p>
-          </div>
-        )}
-
-        {/* ── Card Grid — TikTok/Reels Style ── */}
-        {!isLoading && !isError && posts && posts.length > 0 && (
-          <>
-            {/* First post — Hero card (full width) */}
-            <HeroCard post={posts[0]} likedPosts={likedPosts} onLike={(id) => likeMutation.mutate(id)} onShare={handleShare} />
-
-            {/* Remaining posts — 3-column masonry-like grid */}
-            {posts.length > 1 && (
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-auto">
-                {posts.slice(1).map((post, index) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    index={index}
-                    likedPosts={likedPosts}
-                    onLike={(id) => likeMutation.mutate(id)}
-                    onShare={handleShare}
-                    tall={index % 5 === 1 || index % 5 === 3}
-                  />
-                ))}
+          {/* Empty */}
+          {!isLoading && !isError && (!posts || posts.length === 0) && (
+            <div className="bg-white rounded-3xl border border-slate-100 p-16 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-5">
+                <BookOpen className="w-8 h-8 text-slate-400" />
               </div>
-            )}
-          </>
-        )}
+              <h3 className="font-bold text-slate-700 text-xl mb-2">Nenhum artigo publicado ainda</h3>
+              <p className="text-slate-400 text-sm">Em breve novos conteúdos serão publicados aqui.</p>
+            </div>
+          )}
+
+          {/* Article cards */}
+          {!isLoading &&
+            !isError &&
+            posts?.map((post, index) => {
+              const isLiked = likedPosts.has(post.id);
+              const ytId = post.youtubeUrl ? getYoutubeId(post.youtubeUrl) : null;
+              const thumbSrc = post.videoUrl
+                ? null
+                : ytId
+                ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`
+                : post.coverImage || "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=600";
+
+              return (
+                <motion.article
+                  key={post.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ delay: Math.min(index * 0.06, 0.3), duration: 0.45 }}
+                  className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-400 group"
+                >
+                  <Link href={`/blog/${post.slug}`}>
+                    <a className="flex h-44 cursor-pointer">
+                      {/* Thumbnail */}
+                      <div className="w-44 md:w-56 shrink-0 relative overflow-hidden bg-slate-100">
+                        {post.videoUrl ? (
+                          <video
+                            src={post.videoUrl}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-600"
+                            muted
+                          />
+                        ) : (
+                          <img
+                            src={thumbSrc!}
+                            alt={post.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-600"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=600";
+                            }}
+                          />
+                        )}
+                        {/* Overlay tint */}
+                        <div className="absolute inset-0 bg-[#08454c]/20 group-hover:bg-[#08454c]/10 transition-colors duration-400" />
+
+                        {/* Media type badge */}
+                        {(post.videoUrl || post.youtubeUrl) && (
+                          <div className="absolute bottom-3 left-3 w-8 h-8 rounded-full bg-[#c65f54] flex items-center justify-center shadow-lg">
+                            <Play className="w-3.5 h-3.5 text-white fill-white ml-0.5" />
+                          </div>
+                        )}
+
+                        {/* Featured badge */}
+                        {post.isFeatured && (
+                          <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow">
+                            <Star className="w-2.5 h-2.5 fill-white" /> Destaque
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Text */}
+                      <div className="flex-1 flex flex-col justify-between p-5 md:p-6 min-w-0">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              <Calendar className="w-3 h-3" />
+                              {formatDate(post.publishedAt)}
+                            </div>
+                            <span className="text-slate-200">•</span>
+                            <div className="flex items-center gap-1 text-[10px] font-bold text-[#c65f54] uppercase tracking-wider">
+                              <ShieldCheck className="w-3 h-3" />
+                              Monteiro Blog
+                            </div>
+                          </div>
+
+                          <h2 className="font-display font-bold text-[#163b52] text-base md:text-lg leading-snug line-clamp-2 group-hover:text-[#08454c] transition-colors duration-300 mb-2">
+                            {post.title}
+                          </h2>
+                          <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-2">
+                            {post.summary}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-3">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#c65f54] uppercase tracking-wider group-hover:gap-2.5 transition-all">
+                            Ler artigo
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          </span>
+                        </div>
+                      </div>
+                    </a>
+                  </Link>
+
+                  {/* Actions bar — outside the link so clicks don't navigate */}
+                  <div className="border-t border-slate-50 px-5 py-2.5 flex items-center gap-1">
+                    <button
+                      onClick={(e) => { e.preventDefault(); likeMutation.mutate(post.id); }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                        isLiked
+                          ? "bg-red-50 text-red-500"
+                          : "text-slate-400 hover:bg-slate-50 hover:text-red-400"
+                      }`}
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${isLiked ? "fill-current" : ""}`} />
+                      {post.likes ?? 0} Curtir
+                    </button>
+
+                    <Link href={`/blog/${post.slug}#comments`}>
+                      <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-slate-400 hover:bg-slate-50 hover:text-[#08454c] transition-all">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        Comentar
+                      </button>
+                    </Link>
+
+                    <button
+                      onClick={() => handleShare(post.title, post.slug)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-slate-400 hover:bg-slate-50 hover:text-blue-500 transition-all"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      Compartilhar
+                    </button>
+                  </div>
+                </motion.article>
+              );
+            })}
+        </div>
       </div>
 
       <Footer />
     </div>
-  );
-}
-
-/* ─────────────────────────────────────────
-   Hero Card — large featured first post
-───────────────────────────────────────── */
-function HeroCard({ post, likedPosts, onLike, onShare }: any) {
-  const isLiked = likedPosts.has(post.id);
-
-  const getYoutubeId = (url: string) => {
-    const match = url?.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
-    return match?.[2] ?? null;
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className="relative w-full rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl group"
-      style={{ minHeight: 480 }}
-    >
-      {/* Background media */}
-      <div className="absolute inset-0 z-0">
-        {post.videoUrl ? (
-          <video
-            src={post.videoUrl}
-            className="w-full h-full object-cover"
-            autoPlay muted loop playsInline
-          />
-        ) : post.youtubeUrl ? (
-          <img
-            src={`https://img.youtube.com/vi/${getYoutubeId(post.youtubeUrl)}/maxresdefault.jpg`}
-            alt={post.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-          />
-        ) : (
-          <img
-            src={post.coverImage || "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=1600"}
-            alt={post.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=1600"; }}
-          />
-        )}
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent" />
-      </div>
-
-      {/* Featured badge */}
-      {post.isFeatured && (
-        <div className="absolute top-5 left-5 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#c65f54] text-white text-xs font-bold uppercase tracking-wider shadow-lg">
-          <Sparkles className="w-3 h-3" /> Destaque
-        </div>
-      )}
-
-      {post.youtubeUrl && (
-        <div className="absolute top-5 right-5 z-20 w-10 h-10 rounded-full bg-red-600 flex items-center justify-center shadow-lg">
-          <Play className="w-4 h-4 text-white fill-white ml-0.5" />
-        </div>
-      )}
-
-      {/* Content overlay */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 p-7 md:p-10">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 text-white/70 text-xs font-semibold">
-            <Calendar className="w-3 h-3" />
-            {formatDate(post.publishedAt)}
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#08454c]/80 backdrop-blur-sm border border-[#809ba6]/30 text-white/70 text-xs font-semibold">
-            <ShieldCheck className="w-3 h-3 text-[#c65f54]" />
-            Monteiro Blog
-          </div>
-        </div>
-
-        <Link href={`/blog/${post.slug}`}>
-          <h2 className="text-2xl md:text-4xl font-display font-bold text-white leading-tight mb-3 hover:text-[#c65f54] transition-colors cursor-pointer line-clamp-3">
-            {post.title}
-          </h2>
-        </Link>
-
-        <p className="text-white/70 text-sm md:text-base font-light leading-relaxed line-clamp-2 mb-6 max-w-2xl">
-          {post.summary}
-        </p>
-
-        <div className="flex items-center justify-between">
-          <Link href={`/blog/${post.slug}`}>
-            <button className="flex items-center gap-2 px-6 py-3 bg-[#c65f54] text-white rounded-full font-bold text-sm hover:bg-[#c65f54]/90 transition-all hover:shadow-lg hover:shadow-[#c65f54]/30 group/btn">
-              Ler artigo completo
-              <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-            </button>
-          </Link>
-
-          <div className="flex items-center gap-2">
-            <ActionBtn
-              icon={<Heart className={`w-5 h-5 transition-colors ${isLiked ? 'text-red-400 fill-red-400' : 'text-white/70'}`} />}
-              label={`${post.likes ?? 0}`}
-              onClick={() => onLike(post.id)}
-            />
-            <Link href={`/blog/${post.slug}`}>
-              <ActionBtn icon={<MessageCircle className="w-5 h-5 text-white/70" />} label="Comentar" />
-            </Link>
-            <ActionBtn icon={<Share2 className="w-5 h-5 text-white/70" />} label="Compartilhar" onClick={() => onShare(post.title, post.slug)} />
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ─────────────────────────────────────────
-   Regular Post Card — TikTok-inspired
-───────────────────────────────────────── */
-function PostCard({ post, index, likedPosts, onLike, onShare, tall }: any) {
-  const isLiked = likedPosts.has(post.id);
-
-  const getYoutubeId = (url: string) => {
-    const match = url?.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
-    return match?.[2] ?? null;
-  };
-
-  const coverSrc = post.videoUrl
-    ? undefined
-    : post.youtubeUrl
-    ? `https://img.youtube.com/vi/${getYoutubeId(post.youtubeUrl)}/mqdefault.jpg`
-    : post.coverImage || "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=800";
-
-  return (
-    <motion.article
-      initial={{ opacity: 0, y: 25 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ delay: index * 0.07, duration: 0.5 }}
-      className={`relative rounded-[2rem] overflow-hidden border border-white/10 group flex flex-col ${tall ? 'row-span-2' : ''}`}
-      style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(10px)" }}
-    >
-      {/* Media area */}
-      <div className={`relative overflow-hidden ${tall ? 'h-80' : 'h-56'} bg-slate-900`}>
-        {post.videoUrl ? (
-          <video
-            src={post.videoUrl}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            muted
-            onMouseOver={e => (e.target as HTMLVideoElement).play()}
-            onMouseOut={e => (e.target as HTMLVideoElement).pause()}
-          />
-        ) : (
-          <img
-            src={coverSrc}
-            alt={post.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=800"; }}
-          />
-        )}
-        {/* Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-        {/* Badges */}
-        {post.isFeatured && (
-          <div className="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#c65f54] text-white text-[10px] font-bold uppercase tracking-wider">
-            <Sparkles className="w-2.5 h-2.5" /> Destaque
-          </div>
-        )}
-        {post.youtubeUrl && (
-          <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-red-600 flex items-center justify-center shadow-lg">
-            <Play className="w-3.5 h-3.5 text-white fill-white ml-0.5" />
-          </div>
-        )}
-        {post.videoUrl && (
-          <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 text-white text-[10px] font-bold uppercase flex items-center gap-1">
-            <Play className="w-2.5 h-2.5 fill-current" /> Vídeo
-          </div>
-        )}
-
-        {/* Date overlay at bottom of image */}
-        <div className="absolute bottom-3 left-3 flex items-center gap-1 text-white/70 text-[10px] font-semibold">
-          <Calendar className="w-3 h-3" />
-          {formatDate(post.publishedAt)}
-        </div>
-      </div>
-
-      {/* Text content */}
-      <div className="flex-1 flex flex-col p-5">
-        <Link href={`/blog/${post.slug}`}>
-          <h3 className="font-display font-bold text-white text-base leading-snug mb-2 line-clamp-2 hover:text-[#c65f54] transition-colors cursor-pointer group-hover:text-[#c65f54]/90">
-            {post.title}
-          </h3>
-        </Link>
-        <p className="text-white/50 text-xs font-light leading-relaxed line-clamp-2 flex-1">
-          {post.summary}
-        </p>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/8">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onLike(post.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${isLiked ? 'bg-red-500/20 text-red-400' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-red-300'}`}
-            >
-              <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
-              {post.likes ?? 0}
-            </button>
-            <button
-              onClick={() => onShare(post.title, post.slug)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 text-white/50 hover:bg-white/10 hover:text-blue-300 text-xs font-bold transition-all"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <Link href={`/blog/${post.slug}`}>
-            <button className="flex items-center gap-1 text-[#c65f54] text-xs font-bold hover:text-[#c65f54]/80 transition-colors group/read">
-              Ler
-              <ArrowRight className="w-3.5 h-3.5 group-hover/read:translate-x-0.5 transition-transform" />
-            </button>
-          </Link>
-        </div>
-      </div>
-    </motion.article>
-  );
-}
-
-/* ─────────────────────────────────────────
-   Shared action button helper
-───────────────────────────────────────── */
-function ActionBtn({ icon, label, onClick }: { icon: React.ReactNode; label?: string; onClick?: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 text-white/80 text-xs font-bold transition-all"
-    >
-      {icon}
-      {label && <span>{label}</span>}
-    </button>
   );
 }
