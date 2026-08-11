@@ -137,11 +137,11 @@ export default function PostDetail() {
             </h1>
           </header>
 
-          <div className="aspect-video rounded-2xl overflow-hidden mb-12 shadow-lg bg-slate-100">
+          <div className="aspect-video overflow-hidden mb-12 shadow-lg bg-slate-950 flex items-center justify-center">
             <img
               src={post.coverImage || "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=1200"}
               alt={post.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=1200";
               }}
