@@ -227,7 +227,9 @@ export async function registerRoutes(
   // Posts
   app.get(api.posts.list.path, async (req, res) => {
     const isAdminUser = req.isAuthenticated() && (req.user as any).role === "admin";
-    const posts = await storage.getPosts(!isAdminUser);
+    const requestAll = req.query.all === "true" || req.query.admin === "true";
+    const approvedOnly = !(isAdminUser && requestAll);
+    const posts = await storage.getPosts(approvedOnly);
     res.json(posts);
   });
 
@@ -235,6 +237,13 @@ export async function registerRoutes(
     const post = await storage.getPostBySlug(req.params.slug as string);
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
+    }
+    const isAdminUser = req.isAuthenticated() && (req.user as any).role === "admin";
+    if (!isAdminUser) {
+      const now = new Date();
+      if (!post.isApproved || (post.publishedAt && new Date(post.publishedAt) > now)) {
+        return res.status(404).json({ message: 'Post not found' });
+      }
     }
     res.json(post);
   });

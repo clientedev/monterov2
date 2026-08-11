@@ -17,14 +17,22 @@ export default function Home() {
   const { settings, slides, isLoadingSettings: loadingSettings } = useSiteSettings();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
+  // Filter only published posts (publishedAt <= now)
+  const now = new Date();
+  const validPosts = posts?.filter((p) => {
+    if (!p.publishedAt) return true;
+    const d = new Date(p.publishedAt);
+    return !isNaN(d.getTime()) && d <= now;
+  }) || [];
+
   // Filter featured posts first; if fewer than 3, fallback to latest approved posts
-  const featuredPosts = posts?.filter((p) => p.isFeatured) || [];
+  const featuredPosts = validPosts.filter((p) => p.isFeatured);
   const displayFeaturedPosts = (
     featuredPosts.length >= 3
       ? featuredPosts.slice(0, 3)
       : [
           ...featuredPosts,
-          ...(posts?.filter((p) => !p.isFeatured) || [])
+          ...validPosts.filter((p) => !p.isFeatured)
         ]
   ).slice(0, 3);
 

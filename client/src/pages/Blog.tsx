@@ -415,6 +415,13 @@ export default function Blog() {
     },
   });
 
+  const now = new Date();
+  const visiblePosts = posts?.filter((p) => {
+    if (!p.publishedAt) return true;
+    const d = new Date(p.publishedAt);
+    return !isNaN(d.getTime()) && d <= now;
+  });
+
   return (
     <div className="min-h-screen font-sans bg-[#f0ede8]">
       <Navbar />
@@ -438,7 +445,7 @@ export default function Blog() {
           </p>
           <div className="flex items-center justify-center mt-5">
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm font-semibold">
-              {posts?.length ?? 0} artigos publicados
+              {visiblePosts?.length ?? 0} artigos publicados
             </div>
           </div>
         </div>
@@ -474,7 +481,7 @@ export default function Blog() {
           </div>
         ))}
 
-        {!isLoading && !isError && (!posts || posts.length === 0) && (
+        {!isLoading && !isError && (!visiblePosts || visiblePosts.length === 0) && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-16 text-center">
             <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-5">
               <MessageCircle className="w-8 h-8 text-slate-300" />
@@ -484,7 +491,7 @@ export default function Blog() {
           </div>
         )}
 
-        {!isLoading && !isError && posts?.map((post, index) => (
+        {!isLoading && !isError && visiblePosts?.map((post, index) => (
           <Post
             key={post.id}
             post={post}

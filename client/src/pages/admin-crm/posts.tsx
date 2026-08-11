@@ -63,7 +63,11 @@ export default function PostsPage() {
     const [editingPost, setEditingPost] = useState<Post | null>(null);
 
     const { data: posts, isLoading } = useQuery<Post[]>({
-        queryKey: ["/api/posts"],
+        queryKey: ["/api/posts", { all: true }],
+        queryFn: async () => {
+            const res = await apiRequest("GET", "/api/posts?all=true");
+            return await res.json();
+        },
     });
 
     const createMutation = useMutation({
