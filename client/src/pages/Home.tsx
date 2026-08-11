@@ -229,11 +229,11 @@ export default function Home() {
                       </div>
                     )}
 
-                    <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 relative">
+                    <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 flex items-center justify-center relative p-1">
                       <img
                         src={post.coverImage}
                         alt={post.title}
-                        className="w-full h-full object-cover object-center"
+                        className="w-full h-full object-contain"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity pointer-events-none" />
                     </div>
@@ -650,11 +650,11 @@ export default function Home() {
                     transition={{ delay: index * 0.08 }}
                     className="group cursor-pointer bg-white rounded-none overflow-hidden border border-slate-100 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col justify-between"
                   >
-                    <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 relative">
+                    <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 flex items-center justify-center relative p-1">
                       <img
                         src={post.coverImage}
                         alt={post.title}
-                        className="w-full h-full object-cover object-center"
+                        className="w-full h-full object-contain"
                       />
                     </div>
                     <div className="p-7 flex-1 flex flex-col justify-between">
