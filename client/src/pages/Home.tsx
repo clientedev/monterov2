@@ -229,13 +229,13 @@ export default function Home() {
                       </div>
                     )}
 
-                    <div className="overflow-hidden h-56 bg-slate-900 relative">
+                    <div className="overflow-hidden h-56 bg-slate-950 flex items-center justify-center relative p-2">
                       <img
                         src={post.coverImage}
                         alt={post.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity pointer-events-none" />
                     </div>
 
                     <div className="p-7 flex-1 flex flex-col justify-between">
