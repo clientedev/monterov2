@@ -588,12 +588,12 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
       </div>
 
       {/* Media */}
-      <div className="relative w-full bg-slate-900 overflow-hidden cursor-pointer" onDoubleClick={triggerHeart}>
+      <div className="relative w-full aspect-[16/9] bg-slate-900 overflow-hidden cursor-pointer" onDoubleClick={triggerHeart}>
         {post.videoUrl ? (
-          <video src={post.videoUrl} controls playsInline className="w-full max-h-[520px] object-contain bg-black" />
+          <video src={post.videoUrl} controls playsInline className="w-full h-full object-contain bg-black" />
         ) : post.youtubeUrl && vid ? (
-          <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="block relative">
-            <img src={`https://img.youtube.com/vi/${vid}/maxresdefault.jpg`} alt={post.title} className="w-full max-h-[520px] object-cover" />
+          <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="block relative w-full h-full">
+            <img src={`https://img.youtube.com/vi/${vid}/maxresdefault.jpg`} alt={post.title} className="w-full h-full object-cover object-center" />
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
               <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center shadow-xl">
                 <Play className="w-6 h-6 text-white fill-white ml-1" />
@@ -603,7 +603,7 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
         ) : (
           <img
             src={cover!} alt={post.title}
-            className="w-full max-h-[520px] object-cover"
+            className="w-full h-full object-cover object-center"
             onError={e => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=900"; }}
           />
         )}
