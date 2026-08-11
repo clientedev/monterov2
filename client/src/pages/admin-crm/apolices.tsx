@@ -26,22 +26,61 @@ import {
 } from "lucide-react";
 import { format, differenceInDays, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
+
+/** Converte qualquer formato de prêmio para número, retorna null se inválido */
+function parsePremio(val: string | null | undefined): number | null {
+    if (!val) return null;
+    let raw = val.replace(/^R\$\s*/i, "").replace(/\s/g, "").trim();
+    if (!raw) return null;
+    // Formato brasileiro com separador de milhar: 1.234,56
+    if (raw.includes(",") && raw.includes(".")) {
+        raw = raw.replace(/\./g, "").replace(",", ".");
+    } else if (raw.includes(",")) {
+        // 1234,56 → 1234.56
+        raw = raw.replace(",", ".");
+    }
+    // US/ISO: 356.16 → já está correto
+    const num = parseFloat(raw);
+    return isNaN(num) ? null : num;
+}
+
+function fmtPremio(val: string | null | undefined): string {
+    const num = parsePremio(val);
+    if (num === null) return "—";
+    return `R$ ${num.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+}
 
 function getAlertInfo(apolice: Apolice) {
-    if (!apolice.fimVigencia) return null;
-    const fim = new Date(apolice.fimVigencia);
-    const hoje = new Date();
-    const dias = differenceInDays(fim, hoje);
-
-    if (apolice.status === "vencida" || (apolice.status === "ativa" && isPast(fim))) {
-        return { label: "Vencida", color: "bg-red-100 text-red-800 border-red-200", icon: XCircle };
-    }
+    // Statuses explícitos do banco têm precedência — nunca sobrescrever com lógica de data
     if (apolice.status === "cancelada") {
         return { label: "Cancelada", color: "bg-gray-100 text-gray-600 border-gray-200", icon: XCircle };
     }
+    if (apolice.status === "em_atraso") {
+        return { label: "Em Atraso", color: "bg-red-100 text-red-800 border-red-200", icon: AlertTriangle };
+    }
     if (apolice.status === "pendente") {
         return { label: "Pendente", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Clock };
+    }
+    if (apolice.status === "vencida") {
+        return { label: "Vencida", color: "bg-gray-100 text-gray-600 border-gray-200", icon: XCircle };
+    }
+
+    // Status "ativa": usa a data de vigência apenas para alertas e verificação
+    if (!apolice.fimVigencia) {
+        return { label: "Ativa", color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle };
+    }
+
+    const fim = new Date(apolice.fimVigencia);
+    // Garante fim do dia para evitar falsos "vencido" por diferença de fuso horário
+    fim.setHours(23, 59, 59, 999);
+    const hoje = new Date();
+    const dias = differenceInDays(fim, hoje);
+
+    if (dias < 0) {
+        // Data passou mas status ainda é "ativa" — NÃO sobrescrever.
+        // fimVigencia pode ser a data da fatura mensal, não o fim real da apólice.
+        return { label: "Ativa", color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle };
     }
     if (dias <= 15) return { label: `Vence em ${dias}d`, color: "bg-red-100 text-red-800 border-red-200", icon: AlertTriangle };
     if (dias <= 30) return { label: `Vence em ${dias}d`, color: "bg-orange-100 text-orange-800 border-orange-200", icon: AlertTriangle };
@@ -53,14 +92,18 @@ export default function ApolicesPage() {
     const { toast } = useToast();
     const { user } = useAuth();
     const [, setLocation] = useLocation();
+    const searchStr = useSearch();
     const isAdmin = user?.role === "admin";
+
+    // Initialize status filter from URL param (e.g. ?status=em_atraso from dashboard drill-down)
+    const urlStatus = new URLSearchParams(searchStr).get("status") || "all";
 
     // Filters
     const [search, setSearch] = useState("");
     const [filterCliente, setFilterCliente] = useState<string>("all");
     const [filterProduto, setFilterProduto] = useState<string>("all");
     const [filterSeguradora, setFilterSeguradora] = useState<string>("all");
-    const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [filterStatus, setFilterStatus] = useState<string>(urlStatus);
     const [filterCorretor, setFilterCorretor] = useState<string>("all");
 
     const [deleteTarget, setDeleteTarget] = useState<Apolice | null>(null);
@@ -178,9 +221,10 @@ export default function ApolicesPage() {
                             <SelectContent>
                                 <SelectItem value="all">Todos os status</SelectItem>
                                 <SelectItem value="ativa">Ativa</SelectItem>
+                                <SelectItem value="em_atraso">Em Atraso</SelectItem>
+                                <SelectItem value="pendente">Pendente</SelectItem>
                                 <SelectItem value="vencida">Vencida</SelectItem>
                                 <SelectItem value="cancelada">Cancelada</SelectItem>
-                                <SelectItem value="pendente">Pendente</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -246,7 +290,7 @@ export default function ApolicesPage() {
                                         {a.fimVigencia ? format(new Date(a.fimVigencia), "dd/MM/yy") : "—"}
                                     </TableCell>
                                     <TableCell className="font-semibold text-gray-900">
-                                        {a.premio ? `R$ ${parseFloat(a.premio).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                        {fmtPremio(a.premio)}
                                     </TableCell>
                                     <TableCell>
                                         {alertInfo && (

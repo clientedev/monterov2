@@ -25,24 +25,59 @@ import {
     Loader2, Plus, Pencil, Trash2, ArrowLeft, Phone, Mail, MapPin,
     FileText, Calendar, AlertTriangle, CheckCircle, XCircle, Clock, DollarSign, Building2, User as UserIcon,
 } from "lucide-react";
-import { format, differenceInDays, isPast } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-function getAlertInfo(apolice: Apolice) {
-    if (!apolice.fimVigencia) return null;
-    const fim = new Date(apolice.fimVigencia);
-    const hoje = new Date();
-    const dias = differenceInDays(fim, hoje);
-
-    if (apolice.status === "vencida" || (apolice.status === "ativa" && isPast(fim))) {
-        return { label: "Vencida", color: "bg-red-100 text-red-800 border-red-200", icon: XCircle, urgency: 4 };
+/** Converte qualquer formato de valor monetário para número, retorna null se inválido */
+function parsePremio(val: string | null | undefined): number | null {
+    if (!val) return null;
+    let raw = val.replace(/^R\$\s*/i, "").replace(/\s/g, "").trim();
+    if (!raw) return null;
+    if (raw.includes(",") && raw.includes(".")) {
+        raw = raw.replace(/\./g, "").replace(",", ".");
+    } else if (raw.includes(",")) {
+        raw = raw.replace(",", ".");
     }
+    const num = parseFloat(raw);
+    return isNaN(num) ? null : num;
+}
+
+function fmtPremio(val: string | null | undefined): string {
+    const num = parsePremio(val);
+    if (num === null) return "—";
+    return `R$ ${num.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+}
+
+/** Converte string "yyyy-MM-dd" para ISO sem shift de fuso horário */
+function dateToISO(val: string): string {
+    // Adiciona meio-dia para garantir que a data não mude por diferença de fuso (UTC-3)
+    return new Date(`${val}T12:00:00`).toISOString();
+}
+
+function getAlertInfo(apolice: Apolice) {
+    // Statuses explícitos do banco têm precedência — nunca sobrescrever com lógica de data
     if (apolice.status === "cancelada") {
         return { label: "Cancelada", color: "bg-gray-100 text-gray-600 border-gray-200", icon: XCircle, urgency: 0 };
+    }
+    if (apolice.status === "em_atraso") {
+        return { label: "Em Atraso", color: "bg-red-100 text-red-700 border-red-200", icon: AlertTriangle, urgency: 3 };
     }
     if (apolice.status === "pendente") {
         return { label: "Pendente", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Clock, urgency: 1 };
     }
+    if (apolice.status === "vencida") {
+        return { label: "Vencida", color: "bg-gray-100 text-gray-600 border-gray-200", icon: XCircle, urgency: 2 };
+    }
+
+    // Status "ativa": usa a data só para alertas de proximidade, nunca para sobrescrever
+    if (!apolice.fimVigencia) {
+        return { label: "Ativa", color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle, urgency: 0 };
+    }
+    const fim = new Date(apolice.fimVigencia);
+    fim.setHours(23, 59, 59, 999);
+    const dias = differenceInDays(fim, new Date());
+
+    if (dias < 0)  return { label: "Ativa", color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle, urgency: 0 };
     if (dias <= 15) return { label: `Vence em ${dias}d`, color: "bg-red-100 text-red-800 border-red-200", icon: AlertTriangle, urgency: 3 };
     if (dias <= 30) return { label: `Vence em ${dias}d`, color: "bg-orange-100 text-orange-800 border-orange-200", icon: AlertTriangle, urgency: 2 };
     if (dias <= 60) return { label: `Vence em ${dias}d`, color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: AlertTriangle, urgency: 1 };
@@ -51,6 +86,7 @@ function getAlertInfo(apolice: Apolice) {
 
 const STATUS_OPTIONS = [
     { value: "ativa", label: "Ativa" },
+    { value: "em_atraso", label: "Em Atraso" },
     { value: "vencida", label: "Vencida" },
     { value: "cancelada", label: "Cancelada" },
     { value: "pendente", label: "Pendente" },
@@ -139,8 +175,8 @@ export default function ClienteDetalhePage() {
                 produtoId: apoliceForm.produtoId ? parseInt(apoliceForm.produtoId) : null,
                 seguradoraId: apoliceForm.seguradoraId ? parseInt(apoliceForm.seguradoraId) : null,
                 status: apoliceForm.status,
-                inicioVigencia: apoliceForm.inicioVigencia ? new Date(apoliceForm.inicioVigencia).toISOString() : null,
-                fimVigencia: apoliceForm.fimVigencia ? new Date(apoliceForm.fimVigencia).toISOString() : null,
+                inicioVigencia: apoliceForm.inicioVigencia ? dateToISO(apoliceForm.inicioVigencia) : null,
+                fimVigencia: apoliceForm.fimVigencia ? dateToISO(apoliceForm.fimVigencia) : null,
                 premio: apoliceForm.premio || null,
                 valorSegurado: apoliceForm.valorSegurado || null,
                 comissao: apoliceForm.comissao || null,
@@ -150,7 +186,7 @@ export default function ClienteDetalhePage() {
                 idApolice: apoliceForm.idApolice || null,
                 pdfApolice: apoliceForm.pdfApolice || null,
                 cobertura: apoliceForm.cobertura || null,
-                dataEmissao: apoliceForm.dataEmissao ? new Date(apoliceForm.dataEmissao).toISOString() : null,
+                dataEmissao: apoliceForm.dataEmissao ? dateToISO(apoliceForm.dataEmissao) : null,
                 numeroProposta: apoliceForm.numeroProposta || null,
                 linkFatura: apoliceForm.linkFatura || null,
                 formaPagamento: apoliceForm.formaPagamento || null,
@@ -350,7 +386,7 @@ export default function ClienteDetalhePage() {
                                         <div>
                                             <p className="text-xs text-gray-400 font-medium uppercase">Prêmio</p>
                                             <p className="font-semibold text-gray-700">
-                                                {a.premio ? `R$ ${parseFloat(a.premio).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                                {fmtPremio(a.premio)}
                                             </p>
                                         </div>
                                         <div>
@@ -420,8 +456,8 @@ export default function ClienteDetalhePage() {
                                     <div><p className="text-xs text-gray-400 uppercase font-medium">Corretor</p><p className="font-semibold">{getCorretorNome(selectedApolice.corretorId)}</p></div>
                                     <div><p className="text-xs text-gray-400 uppercase font-medium">Início Vigência</p><p className="font-semibold">{selectedApolice.inicioVigencia ? format(new Date(selectedApolice.inicioVigencia), "dd/MM/yyyy") : "—"}</p></div>
                                     <div><p className="text-xs text-gray-400 uppercase font-medium">Fim Vigência</p><p className="font-semibold">{selectedApolice.fimVigencia ? format(new Date(selectedApolice.fimVigencia), "dd/MM/yyyy") : "—"}</p></div>
-                                    <div><p className="text-xs text-gray-400 uppercase font-medium">Prêmio</p><p className="font-semibold">{selectedApolice.premio ? `R$ ${parseFloat(selectedApolice.premio).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</p></div>
-                                    <div><p className="text-xs text-gray-400 uppercase font-medium">Valor Segurado</p><p className="font-semibold">{selectedApolice.valorSegurado ? `R$ ${parseFloat(selectedApolice.valorSegurado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</p></div>
+                                    <div><p className="text-xs text-gray-400 uppercase font-medium">Prêmio</p><p className="font-semibold">{fmtPremio(selectedApolice.premio)}</p></div>
+                                    <div><p className="text-xs text-gray-400 uppercase font-medium">Valor Segurado</p><p className="font-semibold">{fmtPremio(selectedApolice.valorSegurado)}</p></div>
                                     <div><p className="text-xs text-gray-400 uppercase font-medium">Comissão</p><p className="font-semibold">{selectedApolice.comissao ? `${selectedApolice.comissao}%` : "—"}</p></div>
                                     <div><p className="text-xs text-gray-400 uppercase font-medium">ID Proposta / Nº Proposta</p><p className="font-semibold">{(selectedApolice as any).idProposta || (selectedApolice as any).numeroProposta || "—"}</p></div>
                                     <div><p className="text-xs text-gray-400 uppercase font-medium">ID Apólice</p><p className="font-semibold">{(selectedApolice as any).idApolice || "—"}</p></div>
