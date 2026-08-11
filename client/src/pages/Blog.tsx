@@ -107,10 +107,12 @@ function ShareModal({ post, onClose }: { post: any; onClose: () => void }) {
 
       // Image area: centered, rounded rect (1080 x 700)
       const imgY = 260, imgH = 700;
+      const ix = 60, iy = imgY, iw = W - 120;
+
+      // Fill the image area background first (like the dark card bg)
       ctx.save();
       ctx.beginPath();
       const r = 60;
-      const ix = 60, iy = imgY, iw = W - 120;
       ctx.moveTo(ix + r, iy);
       ctx.lineTo(ix + iw - r, iy);
       ctx.arcTo(ix + iw, iy, ix + iw, iy + r, r);
@@ -121,22 +123,20 @@ function ShareModal({ post, onClose }: { post: any; onClose: () => void }) {
       ctx.lineTo(ix, iy + r);
       ctx.arcTo(ix, iy, ix + r, iy, r);
       ctx.closePath();
-      ctx.clip();
+      ctx.fillStyle = "#0d2535";
+      ctx.fill();
 
       if (img.width > 0) {
-        const aspect = img.width / img.height;
-        let sx = 0, sy = 0, sw = img.width, sh = img.height;
-        if (aspect > iw / imgH) {
-          sw = img.height * (iw / imgH);
-          sx = (img.width - sw) / 2;
-        } else {
-          sh = img.width / (iw / imgH);
-          sy = (img.height - sh) / 2;
-        }
-        ctx.drawImage(img, sx, sy, sw, sh, ix, iy, iw, imgH);
-      } else {
-        ctx.fillStyle = "#1a4a52";
-        ctx.fillRect(ix, iy, iw, imgH);
+        // object-contain: scale image to fit entirely inside the box, centered, no crop
+        const scaleX = iw / img.width;
+        const scaleY = imgH / img.height;
+        const scale = Math.min(scaleX, scaleY); // fit inside — same as object-contain
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        const drawX = ix + (iw - drawW) / 2;
+        const drawY = iy + (imgH - drawH) / 2;
+        ctx.clip();
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
       }
       ctx.restore();
 
