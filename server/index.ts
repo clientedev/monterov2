@@ -120,6 +120,8 @@ app.use((req, res, next) => {
     // Blog posts — ensure all schema columns exist
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS likes integer DEFAULT 0 NOT NULL`,
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_approved boolean DEFAULT false NOT NULL`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_featured boolean DEFAULT false NOT NULL`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS published_at timestamp DEFAULT NOW()`,
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_url text`,
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS youtube_url text`,
     `ALTER TABLE clientes ADD COLUMN IF NOT EXISTS nome_representante text`,

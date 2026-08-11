@@ -15,6 +15,7 @@ export const posts = pgTable("posts", {
   videoUrl: text("video_url"),
   youtubeUrl: text("youtube_url"),
   isApproved: boolean("is_approved").default(false).notNull(),
+  isFeatured: boolean("is_featured").default(false).notNull(),
   publishedAt: timestamp("published_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

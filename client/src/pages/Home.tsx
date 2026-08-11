@@ -17,6 +17,17 @@ export default function Home() {
   const { settings, slides, isLoadingSettings: loadingSettings } = useSiteSettings();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
+  // Filter featured posts first; if fewer than 3, fallback to latest approved posts
+  const featuredPosts = posts?.filter((p) => p.isFeatured) || [];
+  const displayFeaturedPosts = (
+    featuredPosts.length >= 3
+      ? featuredPosts.slice(0, 3)
+      : [
+          ...featuredPosts,
+          ...(posts?.filter((p) => !p.isFeatured) || [])
+        ]
+  ).slice(0, 3);
+
   const defaultSlides = [
     {
       id: 1,
@@ -161,6 +172,98 @@ export default function Home() {
             )}
           </div>
         )}
+      </section>
+
+      {/* Featured Blog Posts Section (Immediately following Hero) */}
+      <section className="py-20 bg-[#163b52] text-white relative overflow-hidden border-b border-white/10">
+        {/* Soft background glow */}
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-10 w-[400px] h-[400px] bg-[#08454c]/20 rounded-full blur-[120px] pointer-events-none" />
+        
+        <div className="container px-4 md:px-6 mx-auto relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#c65f54]/15 border border-[#c65f54]/30 text-[#c65f54] text-xs font-bold uppercase tracking-wider mb-3">
+                <Sparkles className="w-3.5 h-3.5" />
+                Artigos em Destaque
+              </div>
+              <h2 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">
+                Conteúdos Selecionados para Você
+              </h2>
+            </div>
+            <Link href="/blog">
+              <button className="hidden md:flex items-center gap-2 px-6 py-3 rounded-full text-white bg-white/10 hover:bg-white/20 border border-white/15 transition-all duration-300 shadow-sm font-bold text-sm">
+                Acessar Blog Completo
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {loadingPosts ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-96 bg-white/5 rounded-[2rem] animate-pulse border border-white/10" />
+              ))
+            ) : (
+              displayFeaturedPosts.map((post, index) => (
+                <Link key={post.id} href={`/blog/${post.slug}`}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 25 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1, duration: 0.5 }}
+                    className="group cursor-pointer bg-white text-[#163b52] rounded-[2rem] overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
+                  >
+                    {/* Badge Destacado */}
+                    {post.isFeatured && (
+                      <div className="absolute top-4 right-4 z-20 bg-amber-500 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-white" /> Destaque
+                      </div>
+                    )}
+
+                    <div className="overflow-hidden h-56 bg-slate-900 relative">
+                      <img
+                        src={post.coverImage}
+                        alt={post.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
+                    </div>
+
+                    <div className="p-7 flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">
+                          <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
+                          <span>•</span>
+                          <span className="text-[#c65f54]">Monteiro Blog</span>
+                        </div>
+                        <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300 line-clamp-2">
+                          {post.title}
+                        </h3>
+                        <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
+                          {post.summary}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#c65f54] uppercase tracking-wider pt-6 mt-auto">
+                        <span>Ler Artigo Completo</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
+                      </div>
+                    </div>
+                  </motion.div>
+                </Link>
+              ))
+            )}
+          </div>
+
+          <div className="mt-8 text-center md:hidden">
+            <Link href="/blog">
+              <button className="px-6 py-3.5 rounded-2xl text-white bg-white/10 border border-white/20 transition-all w-full font-bold">
+                Ver Todas as Postagens
+              </button>
+            </Link>
+          </div>
+        </div>
       </section>
 
       {/* Services Section */}

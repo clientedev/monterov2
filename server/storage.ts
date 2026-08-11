@@ -61,7 +61,7 @@ import {
   type Apolice,
   type InsertApolice,
 } from "@shared/schema";
-import { sql, and, desc, eq, asc } from "drizzle-orm";
+import { sql, and, desc, eq, asc, lte, or, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // Posts
@@ -220,7 +220,13 @@ export class DatabaseStorage implements IStorage {
   async getPosts(approvedOnly = true): Promise<Post[]> {
     let query = db.select().from(posts);
     if (approvedOnly) {
-      query = query.where(eq(posts.isApproved, true)) as any;
+      const now = new Date();
+      query = query.where(
+        and(
+          eq(posts.isApproved, true),
+          or(lte(posts.publishedAt, now), isNull(posts.publishedAt))
+        )
+      ) as any;
     }
     return await query.orderBy(desc(posts.publishedAt));
   }
@@ -925,7 +931,10 @@ export class MemStorage implements IStorage {
 
   // Posts
   async getPosts(approvedOnly = true): Promise<Post[]> {
-    const results = approvedOnly ? this.posts.filter(p => p.isApproved) : this.posts;
+    const now = new Date();
+    const results = approvedOnly 
+      ? this.posts.filter(p => p.isApproved && (!p.publishedAt || p.publishedAt <= now)) 
+      : this.posts;
     return [...results].sort((a, b) => {
       const timeA = a.publishedAt?.getTime() ?? 0;
       const timeB = b.publishedAt?.getTime() ?? 0;
@@ -950,7 +959,8 @@ export class MemStorage implements IStorage {
       videoUrl: post.videoUrl || null,
       youtubeUrl: post.youtubeUrl || null,
       isApproved: post.isApproved ?? false,
-      publishedAt: new Date(),
+      isFeatured: post.isFeatured ?? false,
+      publishedAt: post.publishedAt || new Date(),
       createdAt: new Date()
     };
     this.posts.push(newPost);
