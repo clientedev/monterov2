@@ -25,6 +25,16 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: "100mb" }));
 
+// Fast 301 domain redirect from monteirocorretora.com.br to monteiroseguros.com.br
+app.use((req, res, next) => {
+  const host = req.headers.host || "";
+  if (host.includes("monteirocorretora.com.br")) {
+    const targetUrl = `https://www.monteiroseguros.com.br${req.originalUrl || req.url}`;
+    return res.redirect(301, targetUrl);
+  }
+  next();
+});
+
 // Serve attached_assets statically so images referenced by path work
 app.use("/attached_assets", express.static(resolve(process.cwd(), "attached_assets")));
 

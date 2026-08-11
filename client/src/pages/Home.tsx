@@ -220,7 +220,7 @@ export default function Home() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.1, duration: 0.5 }}
-                    className="group cursor-pointer bg-white text-[#163b52] rounded-[2rem] overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
+                    className="group cursor-pointer bg-white text-[#163b52] rounded-none overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
                   >
                     {/* Badge Destacado */}
                     {post.isFeatured && (

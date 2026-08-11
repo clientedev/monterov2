@@ -536,7 +536,7 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ delay: Math.min(index * 0.06, 0.3), duration: 0.45 }}
-      className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+      className="bg-white rounded-none shadow-sm border border-slate-100 overflow-hidden"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
