@@ -4,7 +4,7 @@ import { usePosts } from "@/hooks/use-content";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Heart, MessageCircle, Share2, ShieldCheck, TrendingUp, Users, Image as ImageIcon } from "lucide-react";
+import { Heart, MessageCircle, Share2, ShieldCheck, TrendingUp, Users, Image as ImageIcon, AlertCircle, RefreshCw } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
@@ -14,7 +14,7 @@ import { ImageUpload } from "@/components/ImageUpload";
 import { VideoUpload } from "@/components/VideoUpload";
 
 export default function Blog() {
-  const { data: posts, isLoading } = usePosts();
+  const { data: posts, isLoading, isError, error, refetch } = usePosts();
   const { user } = useAuth();
   const { toast } = useToast();
   const [postText, setPostText] = useState("");
@@ -93,6 +93,17 @@ export default function Blog() {
       }
     } else {
       window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank', 'width=600,height=400');
+    }
+  };
+
+  const formatDate = (dateInput: string | Date | null | undefined) => {
+    if (!dateInput) return 'Novidade';
+    try {
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return 'Novidade';
+      return format(d, "dd 'de' MMMM 'às' HH:mm");
+    } catch {
+      return 'Novidade';
     }
   };
 
@@ -237,14 +248,45 @@ export default function Blog() {
         </div>
       </div>
 
-      {isLoading ? (
+      {/* Error State */}
+      {isError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center space-y-4">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto" />
+          <div>
+            <h3 className="font-bold text-red-700 text-lg">Erro ao carregar posts</h3>
+            <p className="text-red-500 text-sm mt-1">
+              {(error as Error)?.message || "Não foi possível carregar os artigos. Verifique sua conexão."}
+            </p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {isLoading && (
         <div className="space-y-6 px-4 md:px-0">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-slate-100" />
           ))}
         </div>
-      ) : (
+      )}
+
+      {!isLoading && !isError && (
         <div className="space-y-8 px-4 md:px-0 pb-16">
+          {(!posts || posts.length === 0) && (
+            <div className="bg-white border border-slate-100 rounded-2xl p-16 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ShieldCheck className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="font-bold text-slate-700 text-lg mb-2">Nenhum artigo publicado ainda</h3>
+              <p className="text-slate-500 text-sm">Os artigos aparecerão aqui assim que forem publicados pela equipe Monteiro.</p>
+            </div>
+          )}
           {posts?.map((post, index) => (
             <motion.article 
               key={post.id}
@@ -268,7 +310,7 @@ export default function Blog() {
                         </span>
                       </div>
                       <p className="text-xs font-medium text-slate-500">
-                        {post.publishedAt ? format(new Date(post.publishedAt), "dd 'de' MMMM 'às' HH:mm") : 'Rascunho'} • Especialista
+                        {formatDate(post.publishedAt)} • Especialista
                       </p>
                     </div>
                   </div>
@@ -297,7 +339,7 @@ export default function Blog() {
                     ) : post.youtubeUrl ? (
                       <div className="relative aspect-video bg-black flex items-center justify-center">
                         <img 
-                          src={`https://img.youtube.com/vi/${(post.youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/) || [])[2]}/0.jpg`}
+                          src={`https://img.youtube.com/vi/${(post.youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/) || [])[2]}/0.jpg`}
                           alt={post.title}
                           className="w-full h-full object-cover opacity-60"
                         />
