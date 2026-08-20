@@ -282,25 +282,27 @@ export default function LeadsPage() {
                                 Novo Negócio
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[450px] rounded-2xl border-none shadow-2xl">
-                            <DialogHeader>
-                                <DialogTitle className="text-2xl font-display font-bold tracking-tight">
+                        <DialogContent className="sm:max-w-[500px] w-[92vw] max-h-[90vh] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-white flex flex-col">
+                            <DialogHeader className="p-6 bg-slate-50 border-b border-slate-100 shrink-0">
+                                <DialogTitle className="text-2xl font-display font-bold text-slate-900 tracking-tight">
                                     {editingLeadId ? "Editar Negócio" : "Iniciar Novo Negócio"}
                                 </DialogTitle>
                             </DialogHeader>
-                            <LeadForm
-                                contacts={contacts || []}
-                                columns={columns}
-                                initialData={editingLeadId ? leads?.find(l => l.id === editingLeadId) : undefined}
-                                onSubmit={(data: InsertLead) => {
-                                    if (editingLeadId) {
-                                        updateLeadMutation.mutate(data);
-                                    } else {
-                                        createMutation.mutate(data);
-                                    }
-                                }}
-                                isPending={createMutation.isPending || updateLeadMutation.isPending}
-                            />
+                            <div className="p-6 overflow-y-auto flex-1 box-border">
+                                <LeadForm
+                                    contacts={contacts || []}
+                                    columns={columns}
+                                    initialData={editingLeadId ? leads?.find(l => l.id === editingLeadId) : undefined}
+                                    onSubmit={(data: InsertLead) => {
+                                        if (editingLeadId) {
+                                            updateLeadMutation.mutate(data);
+                                        } else {
+                                            createMutation.mutate(data);
+                                        }
+                                    }}
+                                    isPending={createMutation.isPending || updateLeadMutation.isPending}
+                                />
+                            </div>
                         </DialogContent>
                     </Dialog>
                 </div>
@@ -684,14 +686,14 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
 
     return (
         <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="space-y-4 pt-4">
+            <form onSubmit={handleFormSubmit} className="space-y-4 w-full box-border">
                 <FormField
                     control={form.control}
                     name="contactId"
                     render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="w-full min-w-0">
                             <FormLabel className="text-gray-600 font-bold">Contato / Cliente</FormLabel>
-                            <FormControl>
+                            <FormControl className="w-full min-w-0">
                                 <SearchableSelect
                                     options={contacts.map((c: any) => ({
                                         value: String(c.id),
@@ -710,19 +712,19 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                     )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
                     <FormField
                         control={form.control}
                         name="source"
                         render={({ field }) => (
-                            <FormItem>
+                            <FormItem className="w-full min-w-0">
                                 <FormLabel className="text-gray-600 font-bold">Origem</FormLabel>
                                 <Select
                                     onValueChange={field.onChange}
                                     value={field.value || ""}
                                 >
-                                    <FormControl>
-                                        <SelectTrigger className="rounded-xl h-11">
+                                    <FormControl className="w-full min-w-0">
+                                        <SelectTrigger className="rounded-xl h-11 w-full min-w-0">
                                             <SelectValue placeholder="Selecione a origem" />
                                         </SelectTrigger>
                                     </FormControl>
@@ -746,14 +748,14 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                         control={form.control}
                         name="product"
                         render={({ field }) => (
-                            <FormItem>
+                            <FormItem className="w-full min-w-0">
                                 <FormLabel className="text-gray-600 font-bold">Produto</FormLabel>
                                 <Select
                                     onValueChange={field.onChange}
                                     value={field.value || ""}
                                 >
-                                    <FormControl>
-                                        <SelectTrigger className="rounded-xl h-11">
+                                    <FormControl className="w-full min-w-0">
+                                        <SelectTrigger className="rounded-xl h-11 w-full min-w-0">
                                             <SelectValue placeholder={servicesLoading ? "Carregando..." : "Selecione"} />
                                         </SelectTrigger>
                                     </FormControl>
@@ -782,10 +784,10 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                     control={form.control}
                     name="value"
                     render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="w-full min-w-0">
                             <FormLabel className="text-gray-600 font-bold">Valor (R$)</FormLabel>
-                            <FormControl>
-                                <Input placeholder="0,00" className="rounded-xl h-11" {...field} value={field.value || ""} />
+                            <FormControl className="w-full min-w-0">
+                                <Input placeholder="0,00" className="rounded-xl h-11 w-full min-w-0 box-border" {...field} value={field.value || ""} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -796,10 +798,10 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                     control={form.control}
                     name="notes"
                     render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="w-full min-w-0">
                             <FormLabel className="text-gray-600 font-bold">Observações</FormLabel>
-                            <FormControl>
-                                <Textarea placeholder="Detalhes do negócio..." className="rounded-xl min-h-[100px]" {...field} value={field.value || ""} />
+                            <FormControl className="w-full min-w-0">
+                                <Textarea placeholder="Detalhes do negócio..." className="rounded-xl min-h-[100px] w-full min-w-0 box-border resize-y" {...field} value={field.value || ""} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -808,7 +810,7 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
 
                 <Button
                     type="submit"
-                    className="w-full h-12 rounded-xl text-lg font-bold shadow-lg shadow-primary/20"
+                    className="w-full h-12 rounded-xl text-lg font-bold shadow-lg shadow-primary/20 mt-2"
                     disabled={isPending}
                 >
                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
