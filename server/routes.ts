@@ -1136,9 +1136,18 @@ export async function registerRoutes(
   });
 
   app.patch("/api/tasks/:id", isTeam, async (req, res) => {
-    const task = await storage.updateTask(parseInt(req.params.id), req.body);
-    if (!task) return res.status(404).json({ message: "Task not found" });
-    res.json(task);
+    try {
+      const id = parseInt(req.params.id);
+      const { id: _, createdAt: __, createdBy: ___, ...updateData } = req.body;
+      if (updateData.dueDate) {
+        updateData.dueDate = new Date(updateData.dueDate);
+      }
+      const task = await storage.updateTask(id, updateData);
+      if (!task) return res.status(404).json({ message: "Task not found" });
+      res.json(task);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao atualizar tarefa" });
+    }
   });
 
   app.delete("/api/tasks/:id", isTeam, async (req, res) => {

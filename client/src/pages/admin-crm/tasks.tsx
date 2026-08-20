@@ -161,14 +161,22 @@ export default function TasksPage() {
 
     const updateMutation = useMutation({
         mutationFn: async (data: Partial<InsertTask>) => {
+            if (!editingTaskId) throw new Error("Nenhuma tarefa selecionada.");
             const res = await apiRequest("PATCH", `/api/tasks/${editingTaskId}`, data);
             return await res.json();
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-            toast({ title: "Tarefa atualizada" });
+            toast({ title: "Tarefa atualizada com sucesso!" });
             setOpen(false);
             setEditingTaskId(null);
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Erro ao atualizar tarefa",
+                description: error.message,
+                variant: "destructive",
+            });
         },
     });
 
@@ -620,14 +628,12 @@ function TaskCard({ task, users, deleteMutation, onEdit, isDragging }: any) {
 }
 
 function TaskDialog({ open, setOpen, columns, users, currentUser, onSubmit, isPending, defaultStatus, initialData }: any) {
+    const { toast } = useToast();
     const clientTaskSchema = insertTaskSchema.omit({ createdBy: true });
 
     const form = useForm<any>({
         resolver: zodResolver(clientTaskSchema),
-        defaultValues: initialData ? {
-            ...initialData,
-            dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : "",
-        } : {
+        defaultValues: {
             title: "",
             description: "",
             status: defaultStatus || "pendencia",
@@ -641,8 +647,13 @@ function TaskDialog({ open, setOpen, columns, users, currentUser, onSubmit, isPe
         if (open) {
             if (initialData) {
                 form.reset({
-                    ...initialData,
-                    dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : "",
+                    title: initialData.title || "",
+                    description: initialData.description || "",
+                    status: initialData.status || "pendencia",
+                    priority: initialData.priority || "medium",
+                    color: initialData.color || "default",
+                    assignedTo: initialData.assignedTo || currentUser?.id,
+                    contactId: initialData.contactId || null,
                 });
             } else {
                 form.reset({
@@ -652,10 +663,29 @@ function TaskDialog({ open, setOpen, columns, users, currentUser, onSubmit, isPe
                     priority: "medium",
                     color: "default",
                     assignedTo: currentUser?.id,
+                    contactId: null,
                 });
             }
         }
-    }, [open, initialData, defaultStatus, currentUser, form.reset]);
+    }, [open, initialData, defaultStatus, currentUser, form]);
+
+    const handleFormSubmit = form.handleSubmit(
+        (data) => {
+            const cleanData: any = { ...data };
+            delete cleanData.id;
+            delete cleanData.createdAt;
+            delete cleanData.createdBy;
+            onSubmit(cleanData);
+        },
+        (errors) => {
+            console.error("Task form validation errors:", errors);
+            toast({
+                title: "Verifique os campos da tarefa",
+                description: "Preencha o título e selecione um responsável.",
+                variant: "destructive",
+            });
+        }
+    );
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -677,7 +707,7 @@ function TaskDialog({ open, setOpen, columns, users, currentUser, onSubmit, isPe
                     </p>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="p-8 space-y-5 bg-white">
+                    <form onSubmit={handleFormSubmit} className="p-8 space-y-5 bg-white">
                         <FormField
                             control={form.control}
                             name="title"
