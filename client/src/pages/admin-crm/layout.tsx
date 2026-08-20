@@ -67,7 +67,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <>
             {/* Logo & Brand */}
             <div className="py-3 flex flex-col items-center justify-center border-b border-white/10 mb-2">
-                    <Link href="/admin">
+                    <Link href="/">
                         <div className="flex items-center justify-center cursor-pointer group w-full px-4">
                             <div className="relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
                                 {settings?.logoBase64 ? (
@@ -216,7 +216,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             {sidebarContent}
                         </SheetContent>
                     </Sheet>
-                    <Link href="/admin">
+                    <Link href="/">
                         {settings?.logoBase64 ? (
                             <img src={settings.logoBase64} alt={settings.siteName} className="h-8 w-auto object-contain" />
                         ) : (

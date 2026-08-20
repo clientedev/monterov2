@@ -714,7 +714,7 @@ function TaskDialog({ open, setOpen, columns, users, currentUser, onSubmit, isPe
                                         <FormLabel className="text-slate-700 font-bold text-sm">Responsável</FormLabel>
                                         <Select
                                             onValueChange={(val) => field.onChange(parseInt(val))}
-                                            defaultValue={field.value?.toString()}
+                                            value={field.value ? field.value.toString() : ""}
                                             disabled={currentUser?.role !== "admin"}
                                         >
                                             <FormControl>
@@ -742,7 +742,7 @@ function TaskDialog({ open, setOpen, columns, users, currentUser, onSubmit, isPe
                                         <FormLabel className="text-slate-700 font-bold text-sm">Nível de Urgência</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
-                                            defaultValue={field.value}
+                                            value={field.value || "medium"}
                                         >
                                             <FormControl>
                                                 <SelectTrigger className="rounded-xl border-slate-200 h-11 bg-slate-50/50">
@@ -770,7 +770,7 @@ function TaskDialog({ open, setOpen, columns, users, currentUser, onSubmit, isPe
                                         <FormLabel className="text-slate-700 font-bold text-sm">Status Atual</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
-                                            defaultValue={field.value}
+                                            value={field.value || "pendencia"}
                                         >
                                             <FormControl>
                                                 <SelectTrigger className="rounded-xl border-slate-200 h-11 bg-slate-50/50">
@@ -796,7 +796,7 @@ function TaskDialog({ open, setOpen, columns, users, currentUser, onSubmit, isPe
                                         <FormLabel className="text-slate-700 font-bold text-sm">Cor do Cartão</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
-                                            defaultValue={field.value}
+                                            value={field.value || "default"}
                                         >
                                             <FormControl>
                                                 <SelectTrigger className="rounded-xl border-slate-200 h-11 bg-slate-50/50">

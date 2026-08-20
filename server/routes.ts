@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import path from "path";
 import fs from "fs";
 import { api } from "@shared/routes";
+import { processAiChat } from "./ai-service";
 import Groq from "groq-sdk";
 import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
@@ -38,7 +39,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
 
-  // AI Chat Route
+  // AI Chat Route (Groq Cloud + Ollama Local + Intelligent DB Fallback)
   app.post("/api/chat", async (req, res) => {
     try {
       const { messages } = req.body;
@@ -46,40 +47,12 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid messages format" });
       }
 
-      // Initialize Groq only if key exists
-      const apiKey = process.env.GROQ_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ message: "GROQ_API_KEY não configurada no ambiente." });
-      }
-
-      const groq = new Groq({ apiKey });
-
-      const stream = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: "Você é a Carol, especialista da Monteiro Seguros e Benefícios (focada em planos de saúde e seguros de vida corporativos e familiares). Seja extremamente profissional, educada, amigável e MUITO concisa. Resolva dúvidas rapidamente."
-          },
-          ...messages
-        ],
-        model: "llama-3.3-70b-versatile",
-        temperature: 0.5,
-        max_tokens: 512,
-        stream: true,
-      });
-
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Transfer-Encoding', 'chunked');
-
-      for await (const chunk of stream) {
-        const text = chunk.choices[0]?.delta?.content || "";
-        if (text) res.write(text);
-      }
-
-      res.end();
+      await processAiChat(messages, res);
     } catch (error: any) {
-      console.error("Groq Chat Error:", error);
-      res.status(500).json({ message: error.message || "Internal server error connecting to AI" });
+      console.error("AI Engine Error:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: error.message || "Internal server error connecting to AI" });
+      }
     }
   });
 

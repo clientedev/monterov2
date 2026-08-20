@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Lead, Contact, InsertLead, insertLeadSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -266,7 +266,10 @@ export default function LeadsPage() {
                         />
                     </div>
 
-                    <Dialog open={open} onOpenChange={setOpen}>
+                    <Dialog open={open} onOpenChange={(v) => {
+                        setOpen(v);
+                        if (!v) setEditingLeadId(null);
+                    }}>
                         <DialogTrigger asChild>
                             <Button
                                 onClick={() => {
@@ -616,6 +619,7 @@ function LeadCard({
 }
 
 function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) {
+    const { toast } = useToast();
     const form = useForm<InsertLead>({
         resolver: zodResolver(insertLeadSchema),
         defaultValues: initialData ? {
@@ -625,7 +629,7 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
             product: initialData.product || "",
             notes: initialData.notes || "",
         } : {
-            contactId: 0,
+            contactId: contacts[0]?.id || 0,
             status: columns[0]?.id || "new",
             source: "",
             product: "",
@@ -633,6 +637,27 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
             notes: "",
         },
     });
+
+    useEffect(() => {
+        if (initialData) {
+            form.reset({
+                ...initialData,
+                value: initialData.value || "",
+                source: initialData.source || "",
+                product: initialData.product || "",
+                notes: initialData.notes || "",
+            });
+        } else {
+            form.reset({
+                contactId: contacts[0]?.id || 0,
+                status: columns[0]?.id || "new",
+                source: "",
+                product: "",
+                value: "",
+                notes: "",
+            });
+        }
+    }, [initialData, contacts, columns, form]);
 
     const { data: services, isLoading: servicesLoading } = useQuery<any[]>({
         queryKey: ["/api/services"],
@@ -645,9 +670,21 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
         retry: 2,
     });
 
+    const handleFormSubmit = form.handleSubmit(
+        (data) => onSubmit(data),
+        (errors) => {
+            console.error("Lead form errors:", errors);
+            toast({
+                title: "Verifique os campos do formulário",
+                description: "Certifique-se de ter selecionado um contato válido.",
+                variant: "destructive",
+            });
+        }
+    );
+
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+            <form onSubmit={handleFormSubmit} className="space-y-4 pt-4">
                 <FormField
                     control={form.control}
                     name="contactId"
@@ -682,7 +719,6 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                                 <FormLabel className="text-gray-600 font-bold">Origem</FormLabel>
                                 <Select
                                     onValueChange={field.onChange}
-                                    defaultValue={field.value || ""}
                                     value={field.value || ""}
                                 >
                                     <FormControl>
@@ -714,7 +750,6 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                                 <FormLabel className="text-gray-600 font-bold">Produto</FormLabel>
                                 <Select
                                     onValueChange={field.onChange}
-                                    defaultValue={field.value || ""}
                                     value={field.value || ""}
                                 >
                                     <FormControl>

@@ -16,7 +16,7 @@ export function useSiteSettings() {
     });
 
     const updateSettingsMutation = useMutation({
-        mutationFn: async (newSettings: InsertSiteSettings) => {
+        mutationFn: async (newSettings: Partial<InsertSiteSettings>) => {
             const res = await apiRequest("PATCH", "/api/site-settings", newSettings);
             return res.json();
         },
