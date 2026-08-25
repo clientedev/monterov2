@@ -519,13 +519,19 @@ export default function ClientesPage() {
                         <div key={c.id}
                             className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden group">
                             {/* Card Header */}
-                            <div className="bg-gradient-to-r from-[#0F6570] to-[#08454c] p-4">
+                            <div
+                                className="bg-gradient-to-r from-[#0F6570] to-[#08454c] p-4 cursor-pointer group/header hover:from-[#0b5059] hover:to-[#06353b] transition-all"
+                                onClick={() => setLocation(`/admin/clientes/${c.id}`)}
+                                title="Clique para ver o perfil do cliente"
+                            >
                                 <div className="flex items-center gap-3">
-                                    <div className="h-11 w-11 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg">
+                                    <div className="h-11 w-11 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg group-hover/header:scale-105 group-hover/header:bg-white/30 transition-all shrink-0">
                                         {c.nome.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="font-bold text-white truncate">{c.nome}</h3>
+                                        <h3 className="font-bold text-white truncate group-hover/header:underline flex items-center gap-1.5 text-base">
+                                            {c.nome}
+                                        </h3>
                                         {c.cpfCnpj && <p className="text-xs text-white/70 font-mono">{c.cpfCnpj}</p>}
                                     </div>
                                 </div>

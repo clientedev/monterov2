@@ -707,13 +707,20 @@ export default function ContactsPage() {
                                 return (
                                     <TableRow key={contact.id} className="hover:bg-gray-50/50 transition-colors group">
                                         <TableCell className="font-bold text-gray-900 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-bold
+                                            <div
+                                                className="flex items-center gap-3 cursor-pointer group/name text-gray-900 hover:text-primary transition-colors w-fit"
+                                                onClick={() => {
+                                                    setSelectedContactId(contact.id);
+                                                    setProfileOpen(true);
+                                                }}
+                                                title="Clique para ver o perfil do contato"
+                                            >
+                                                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-bold transition-transform group-hover/name:scale-105 shrink-0
                                                     ${contact.type === 'individual' ? 'bg-primary/80' : 'bg-secondary/80'}
                                                 `}>
                                                     {contact.name.charAt(0).toUpperCase()}
                                                 </div>
-                                                {contact.name}
+                                                <span className="group-hover/name:underline">{contact.name}</span>
                                             </div>
                                         </TableCell>
 
@@ -763,7 +770,21 @@ export default function ContactsPage() {
                                             {contact.type === 'company' ? (
                                                 <div className="flex flex-col">
                                                     <div className="flex items-center gap-1.5">
-                                                        <span className="font-bold text-slate-800">{contact.responsibleName || "Não inf."}</span>
+                                                        {contact.responsibleId ? (
+                                                            <button
+                                                                type="button"
+                                                                className="font-bold text-slate-800 hover:text-primary hover:underline transition-colors text-left cursor-pointer"
+                                                                onClick={() => {
+                                                                    setSelectedContactId(contact.responsibleId!);
+                                                                    setProfileOpen(true);
+                                                                }}
+                                                                title="Clique para ver o perfil do responsável"
+                                                            >
+                                                                {contact.responsibleName || "Não inf."}
+                                                            </button>
+                                                        ) : (
+                                                            <span className="font-bold text-slate-800">{contact.responsibleName || "Não inf."}</span>
+                                                        )}
                                                         {contact.responsibleId && (
                                                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
                                                                 Vinculado
