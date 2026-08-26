@@ -1,17 +1,19 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Lead, Contact, InsertLead, insertLeadSchema } from "@shared/schema";
+import { Lead, Contact, InsertLead, insertLeadSchema, User } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import {
     Form,
@@ -31,7 +33,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2, UserPlus } from "lucide-react";
+import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2, UserPlus, User as UserIcon, CheckCircle2, X, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
     AlertDialog,
@@ -47,6 +49,8 @@ import { Edit2, Trash2 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { cn } from "@/lib/utils";
+
+const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
 const DEFAULT_LEAD_COLUMNS = [
     { id: "new", label: "Novo Lead", color: "text-blue-500", bg: "bg-blue-50/50", accent: "border-blue-300" },
@@ -611,7 +615,7 @@ function LeadCard({
                             onClick={() => onMove(nextStatus)}
                         >
                             Avançar
-                            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                                                            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                         </Button>
                     )}
                 </div>
@@ -623,14 +627,37 @@ function LeadCard({
 function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) {
     const { toast } = useToast();
 
-    // Quick Add Contact modal state
-    const [showAddContactModal, setShowAddContactModal] = useState(false);
-    const [newContactType, setNewContactType] = useState<"individual" | "company">("individual");
-    const [newContactName, setNewContactName] = useState("");
-    const [newContactPhone, setNewContactPhone] = useState("");
-    const [newContactEmail, setNewContactEmail] = useState("");
-    const [newContactDocument, setNewContactDocument] = useState("");
-    const [isSavingContact, setIsSavingContact] = useState(false);
+    // Direct text search input state
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Full Client Modal state (matches clientes.tsx completely)
+    const [showFullClientModal, setShowFullClientModal] = useState(false);
+    const [selectedContactImport, setSelectedContactImport] = useState("");
+    const [isSavingFullClient, setIsSavingFullClient] = useState(false);
+
+    const [clientFormData, setClientFormData] = useState({
+        nome: "",
+        cpfCnpj: "",
+        dataNascimento: "",
+        telefone: "",
+        whatsapp: "",
+        email: "",
+        endereco: "",
+        cidade: "",
+        estado: "",
+        observacoes: "",
+        tags: "",
+        responsavelComercialId: "",
+        nomeRepresentante: "",
+        telefoneRepresentante: "",
+        emailRepresentante: "",
+    });
+
+    const setClientField = (field: string, value: any) => {
+        setClientFormData(prev => ({ ...prev, [field]: value }));
+    };
 
     const form = useForm<InsertLead>({
         resolver: zodResolver(insertLeadSchema),
@@ -641,7 +668,7 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
             product: initialData.product || "",
             notes: initialData.notes || "",
         } : {
-            contactId: contacts[0]?.id || 0,
+            contactId: 0,
             status: columns[0]?.id || "new",
             source: "",
             product: "",
@@ -649,6 +676,29 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
             notes: "",
         },
     });
+
+    const selectedContactId = form.watch("contactId");
+
+    // Sync input text query with selected contact
+    useEffect(() => {
+        if (selectedContactId) {
+            const found = contacts.find((c: any) => c.id === selectedContactId);
+            if (found) {
+                setSearchQuery(found.name);
+            }
+        }
+    }, [selectedContactId, contacts]);
+
+    // Close autocomplete dropdown on outside click
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if (initialData) {
@@ -659,17 +709,8 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                 product: initialData.product || "",
                 notes: initialData.notes || "",
             });
-        } else {
-            form.reset({
-                contactId: contacts[0]?.id || 0,
-                status: columns[0]?.id || "new",
-                source: "",
-                product: "",
-                value: "",
-                notes: "",
-            });
         }
-    }, [initialData, contacts, columns, form]);
+    }, [initialData, form]);
 
     const { data: services, isLoading: servicesLoading } = useQuery<any[]>({
         queryKey: ["/api/services"],
@@ -682,49 +723,89 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
         retry: 2,
     });
 
-    const handleCreateQuickContact = async () => {
-        if (!newContactName.trim()) {
-            toast({ title: "Nome do contato é obrigatório", variant: "destructive" });
+    const { data: users } = useQuery<User[]>({
+        queryKey: ["/api/users"],
+    });
+
+    // Filter contacts based on text typed in search input box
+    const filteredContacts = useMemo(() => {
+        const q = searchQuery.toLowerCase().trim();
+        if (!q) return contacts;
+        return contacts.filter((c: any) => 
+            (c.name || "").toLowerCase().includes(q) ||
+            (c.phone || "").includes(q) ||
+            (c.document || "").includes(q) ||
+            (c.email || "").toLowerCase().includes(q)
+        );
+    }, [contacts, searchQuery]);
+
+    // Save full client (same endpoint as clientes.tsx)
+    const handleSaveFullClient = async () => {
+        if (!clientFormData.nome.trim()) {
+            toast({ title: "Nome do cliente é obrigatório", variant: "destructive" });
             return;
         }
-        setIsSavingContact(true);
+        setIsSavingFullClient(true);
         try {
-            const res = await apiRequest("POST", "/api/contacts", {
-                type: newContactType,
-                name: newContactName.trim(),
-                phone: newContactPhone.trim() || null,
-                email: newContactEmail.trim() || null,
-                document: newContactDocument.trim() || null,
-            });
+            const payload: any = {
+                ...clientFormData,
+                responsavelComercialId: clientFormData.responsavelComercialId ? parseInt(clientFormData.responsavelComercialId) : null,
+            };
+
+            const res = await apiRequest("POST", "/api/clientes", payload);
             if (!res.ok) {
                 const err = await res.json();
-                throw new Error(err.message || "Erro ao criar contato");
+                throw new Error(err.message || "Erro ao cadastrar cliente");
             }
-            const createdContact: Contact = await res.json();
+            const createdCliente = await res.json();
 
+            // Refresh contacts and clientes cache
             await queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-            form.setValue("contactId", createdContact.id);
+            await queryClient.invalidateQueries({ queryKey: ["/api/clientes"] });
 
-            toast({ title: `✅ Contato "${createdContact.name}" criado e selecionado!` });
+            // Retrieve updated contacts list to set contactId
+            const contactsRes = await fetch("/api/contacts", { credentials: "include" });
+            let newContactId = createdCliente.id;
+            if (contactsRes.ok) {
+                const latestContacts: Contact[] = await contactsRes.json();
+                const found = latestContacts.find(c => 
+                    (c.document && createdCliente.cpfCnpj && c.document === createdCliente.cpfCnpj) ||
+                    (c.name && createdCliente.nome && c.name.toLowerCase().trim() === createdCliente.nome.toLowerCase().trim())
+                );
+                if (found) newContactId = found.id;
+            }
 
-            setNewContactName("");
-            setNewContactPhone("");
-            setNewContactEmail("");
-            setNewContactDocument("");
-            setShowAddContactModal(false);
+            form.setValue("contactId", newContactId);
+            setSearchQuery(createdCliente.nome);
+
+            toast({ title: `✅ Cliente "${createdCliente.nome}" cadastrado e selecionado!` });
+
+            setClientFormData({
+                nome: "", cpfCnpj: "", dataNascimento: "", telefone: "", whatsapp: "",
+                email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "",
+                responsavelComercialId: "", nomeRepresentante: "", telefoneRepresentante: "", emailRepresentante: "",
+            });
+            setSelectedContactImport("");
+            setShowFullClientModal(false);
         } catch (error: any) {
             toast({
-                title: "Erro ao criar contato",
+                title: "Erro ao cadastrar cliente",
                 description: error.message,
                 variant: "destructive",
             });
         } finally {
-            setIsSavingContact(false);
+            setIsSavingFullClient(false);
         }
     };
 
     const handleFormSubmit = form.handleSubmit(
-        (data) => onSubmit(data),
+        (data) => {
+            if (!data.contactId) {
+                toast({ title: "Selecione um cliente válido", variant: "destructive" });
+                return;
+            }
+            onSubmit(data);
+        },
         (errors) => {
             console.error("Lead form errors:", errors);
             toast({
@@ -743,7 +824,7 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                         control={form.control}
                         name="contactId"
                         render={({ field }) => (
-                            <FormItem className="w-full min-w-0">
+                            <FormItem className="w-full min-w-0 relative">
                                 <div className="flex items-center justify-between">
                                     <FormLabel className="text-gray-600 font-bold">Contato / Cliente *</FormLabel>
                                     {!initialData && (
@@ -752,38 +833,101 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                                             variant="ghost"
                                             size="sm"
                                             className="h-6 px-2 text-primary hover:bg-primary/10 text-xs font-bold gap-1"
-                                            onClick={() => setShowAddContactModal(true)}
+                                            onClick={() => setShowFullClientModal(true)}
                                         >
                                             <UserPlus className="h-3.5 w-3.5" />
-                                            Novo Contato
+                                            + Novo Cliente Completo
                                         </Button>
                                     )}
                                 </div>
                                 <FormControl className="w-full min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-1 min-w-0">
-                                            <SearchableSelect
-                                                options={contacts.map((c: any) => ({
-                                                    value: String(c.id),
-                                                    label: c.name,
-                                                    sublabel: c.phone ?? undefined,
-                                                }))}
-                                                value={field.value ? String(field.value) : ""}
-                                                onValueChange={(val) => val && field.onChange(parseInt(val))}
-                                                placeholder="Selecione ou pesquise um contato..."
-                                                searchPlaceholder="Pesquisar por nome ou telefone..."
+                                    <div className="flex items-center gap-2" ref={dropdownRef}>
+                                        <div className="relative flex-1 min-w-0">
+                                            <Input
+                                                type="text"
+                                                placeholder="Digite o nome ou telefone para pesquisar..."
+                                                value={searchQuery}
                                                 disabled={!!initialData}
-                                                onAddNew={!initialData ? () => setShowAddContactModal(true) : undefined}
-                                                addNewLabel="Adicionar novo contato"
+                                                onChange={(e) => {
+                                                    setSearchQuery(e.target.value);
+                                                    setIsDropdownOpen(true);
+                                                }}
+                                                onFocus={() => setIsDropdownOpen(true)}
+                                                className="rounded-xl h-11 pr-8 text-slate-900 font-medium"
                                             />
+                                            {searchQuery && !initialData && (
+                                                <button
+                                                    type="button"
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                                    onClick={() => {
+                                                        setSearchQuery("");
+                                                        field.onChange(0);
+                                                        setIsDropdownOpen(true);
+                                                    }}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </button>
+                                            )}
+
+                                            {/* Autocomplete Dropdown List */}
+                                            {isDropdownOpen && !initialData && (
+                                                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-slate-200 shadow-2xl z-50 max-h-64 overflow-y-auto p-1 space-y-0.5">
+                                                    <button
+                                                        type="button"
+                                                        className="w-full text-left px-3 py-2.5 rounded-xl bg-primary/5 hover:bg-primary/10 text-primary font-bold text-xs flex items-center gap-2 transition-colors border-b border-primary/10 mb-1"
+                                                        onClick={() => {
+                                                            setIsDropdownOpen(false);
+                                                            setShowFullClientModal(true);
+                                                        }}
+                                                    >
+                                                        <span className="h-5 w-5 rounded-full bg-primary text-white flex items-center justify-center text-xs font-black">+</span>
+                                                        Cadastrar Novo Cliente Completo
+                                                    </button>
+
+                                                    {filteredContacts.length === 0 ? (
+                                                        <div className="p-4 text-center text-sm text-slate-400 italic">
+                                                            Nenhum contato encontrado para "{searchQuery}".
+                                                        </div>
+                                                    ) : (
+                                                        filteredContacts.map((c: any) => (
+                                                            <div
+                                                                key={c.id}
+                                                                className={cn(
+                                                                    "px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 flex items-center justify-between transition-colors",
+                                                                    field.value === c.id ? "bg-primary/10 font-bold text-primary" : "text-slate-800"
+                                                                )}
+                                                                onClick={() => {
+                                                                    field.onChange(c.id);
+                                                                    setSearchQuery(c.name);
+                                                                    setIsDropdownOpen(false);
+                                                                }}
+                                                            >
+                                                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                                    <div className="h-7 w-7 rounded-full bg-primary/20 text-primary font-bold text-xs flex items-center justify-center shrink-0">
+                                                                        {c.name.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                    <div className="truncate">
+                                                                        <p className="text-sm font-semibold truncate">{c.name}</p>
+                                                                        {c.phone && <p className="text-xs text-slate-400 truncate">{c.phone}</p>}
+                                                                    </div>
+                                                                </div>
+                                                                {field.value === c.id && (
+                                                                    <Check className="h-4 w-4 text-primary shrink-0 ml-2" />
+                                                                )}
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
+
                                         {!initialData && (
                                             <Button
                                                 type="button"
                                                 size="icon"
-                                                className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 text-white shrink-0 shadow-sm transition-transform active:scale-95"
-                                                onClick={() => setShowAddContactModal(true)}
-                                                title="Adicionar Novo Contato"
+                                                className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 text-white shrink-0 shadow-md transition-all active:scale-95"
+                                                onClick={() => setShowFullClientModal(true)}
+                                                title="Cadastrar Novo Cliente Completo (Com todas as informações)"
                                             >
                                                 <Plus className="h-5 w-5" />
                                             </Button>
@@ -795,210 +939,236 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                         )}
                     />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+                        <FormField
+                            control={form.control}
+                            name="source"
+                            render={({ field }) => (
+                                <FormItem className="w-full min-w-0">
+                                    <FormLabel className="text-gray-600 font-bold">Origem</FormLabel>
+                                    <Select
+                                        onValueChange={field.onChange}
+                                        value={field.value || ""}
+                                    >
+                                        <FormControl className="w-full min-w-0">
+                                            <SelectTrigger className="rounded-xl h-11 w-full min-w-0">
+                                                <SelectValue placeholder="Selecione a origem" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Indicação">Indicação</SelectItem>
+                                            <SelectItem value="Carteira">Carteira</SelectItem>
+                                            <SelectItem value="BNI">BNI</SelectItem>
+                                            <SelectItem value="MA">MA</SelectItem>
+                                            <SelectItem value="GWM">GWM</SelectItem>
+                                            <SelectItem value="Redes Sociais">Redes Sociais</SelectItem>
+                                            {field.value && !["Indicação", "Carteira", "BNI", "MA", "GWM", "Redes Sociais"].includes(field.value) && (
+                                                <SelectItem value={field.value}>{field.value}</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="product"
+                            render={({ field }) => (
+                                <FormItem className="w-full min-w-0">
+                                    <FormLabel className="text-gray-600 font-bold">Produto</FormLabel>
+                                    <Select
+                                        onValueChange={field.onChange}
+                                        value={field.value || ""}
+                                    >
+                                        <FormControl className="w-full min-w-0">
+                                            <SelectTrigger className="rounded-xl h-11 w-full min-w-0">
+                                                <SelectValue placeholder={servicesLoading ? "Carregando..." : "Selecione"} />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {servicesLoading && (
+                                                <div className="flex items-center justify-center py-4 text-sm text-slate-500">
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando serviços...
+                                                </div>
+                                            )}
+                                            {!servicesLoading && (!services || services.length === 0) && (
+                                                <div className="py-3 px-3 text-sm text-slate-400 text-center">Nenhum serviço cadastrado</div>
+                                            )}
+                                            {services?.map((s: any) => (
+                                                <SelectItem key={s.id} value={s.title}>
+                                                    {s.title}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                     <FormField
                         control={form.control}
-                        name="source"
+                        name="value"
                         render={({ field }) => (
                             <FormItem className="w-full min-w-0">
-                                <FormLabel className="text-gray-600 font-bold">Origem</FormLabel>
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value || ""}
-                                >
-                                    <FormControl className="w-full min-w-0">
-                                        <SelectTrigger className="rounded-xl h-11 w-full min-w-0">
-                                            <SelectValue placeholder="Selecione a origem" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Indicação">Indicação</SelectItem>
-                                        <SelectItem value="Carteira">Carteira</SelectItem>
-                                        <SelectItem value="BNI">BNI</SelectItem>
-                                        <SelectItem value="MA">MA</SelectItem>
-                                        <SelectItem value="GWM">GWM</SelectItem>
-                                        <SelectItem value="Redes Sociais">Redes Sociais</SelectItem>
-                                        {field.value && !["Indicação", "Carteira", "BNI", "MA", "GWM", "Redes Sociais"].includes(field.value) && (
-                                            <SelectItem value={field.value}>{field.value}</SelectItem>
-                                        )}
-                                    </SelectContent>
-                                </Select>
+                                <FormLabel className="text-gray-600 font-bold">Valor (R$)</FormLabel>
+                                <FormControl className="w-full min-w-0">
+                                    <Input placeholder="0,00" className="rounded-xl h-11 w-full min-w-0 box-border" {...field} value={field.value || ""} />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
+
                     <FormField
                         control={form.control}
-                        name="product"
+                        name="notes"
                         render={({ field }) => (
                             <FormItem className="w-full min-w-0">
-                                <FormLabel className="text-gray-600 font-bold">Produto</FormLabel>
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value || ""}
-                                >
-                                    <FormControl className="w-full min-w-0">
-                                        <SelectTrigger className="rounded-xl h-11 w-full min-w-0">
-                                            <SelectValue placeholder={servicesLoading ? "Carregando..." : "Selecione"} />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {servicesLoading && (
-                                            <div className="flex items-center justify-center py-4 text-sm text-slate-500">
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando serviços...
-                                            </div>
-                                        )}
-                                        {!servicesLoading && (!services || services.length === 0) && (
-                                            <div className="py-3 px-3 text-sm text-slate-400 text-center">Nenhum serviço cadastrado</div>
-                                        )}
-                                        {services?.map((s: any) => (
-                                            <SelectItem key={s.id} value={s.title}>
-                                                {s.title}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <FormLabel className="text-gray-600 font-bold">Observações</FormLabel>
+                                <FormControl className="w-full min-w-0">
+                                    <Textarea placeholder="Detalhes do negócio..." className="rounded-xl min-h-[100px] w-full min-w-0 box-border resize-y" {...field} value={field.value || ""} />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
-                </div>
-                <FormField
-                    control={form.control}
-                    name="value"
-                    render={({ field }) => (
-                        <FormItem className="w-full min-w-0">
-                            <FormLabel className="text-gray-600 font-bold">Valor (R$)</FormLabel>
-                            <FormControl className="w-full min-w-0">
-                                <Input placeholder="0,00" className="rounded-xl h-11 w-full min-w-0 box-border" {...field} value={field.value || ""} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
 
-                <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                        <FormItem className="w-full min-w-0">
-                            <FormLabel className="text-gray-600 font-bold">Observações</FormLabel>
-                            <FormControl className="w-full min-w-0">
-                                <Textarea placeholder="Detalhes do negócio..." className="rounded-xl min-h-[100px] w-full min-w-0 box-border resize-y" {...field} value={field.value || ""} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                    <Button
+                        type="submit"
+                        className="w-full h-12 rounded-xl text-lg font-bold shadow-lg shadow-primary/20 mt-2"
+                        disabled={isPending}
+                    >
+                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {initialData ? "Salvar Alterações" : "Criar Negócio"}
+                    </Button>
+                </form>
+            </Form>
 
-                <Button
-                    type="submit"
-                    className="w-full h-12 rounded-xl text-lg font-bold shadow-lg shadow-primary/20 mt-2"
-                    disabled={isPending}
-                >
-                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {initialData ? "Salvar Alterações" : "Criar Negócio"}
-                </Button>
-            </form>
-        </Form>
-
-        {/* Quick Add Contact Modal */}
-        <Dialog open={showAddContactModal} onOpenChange={setShowAddContactModal}>
-            <DialogContent className="sm:max-w-[420px] w-[92vw] rounded-3xl border-none shadow-2xl p-6 bg-white">
-                <DialogHeader className="pb-2">
-                    <DialogTitle className="text-xl font-display font-bold flex items-center gap-2 text-slate-900">
-                        <UserPlus className="h-5 w-5 text-primary" />
-                        Novo Contato
-                    </DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 pt-2">
-                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
-                        <button
-                            type="button"
-                            className={cn(
-                                "py-1.5 text-xs font-bold rounded-lg transition-all",
-                                newContactType === "individual" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-900"
-                            )}
-                            onClick={() => setNewContactType("individual")}
-                        >
-                            Pessoa Física
-                        </button>
-                        <button
-                            type="button"
-                            className={cn(
-                                "py-1.5 text-xs font-bold rounded-lg transition-all",
-                                newContactType === "company" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-900"
-                            )}
-                            onClick={() => setNewContactType("company")}
-                        >
-                            Pessoa Jurídica
-                        </button>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-700">Nome / Razão Social *</label>
-                        <Input
-                            placeholder="Ex: João Silva ou Empresa LTDA"
-                            className="rounded-xl h-11"
-                            value={newContactName}
-                            onChange={(e) => setNewContactName(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700">Telefone / WhatsApp</label>
-                            <Input
-                                placeholder="(11) 99999-9999"
-                                className="rounded-xl h-11"
-                                value={newContactPhone}
-                                onChange={(e) => setNewContactPhone(e.target.value)}
-                            />
+            {/* FULL CLIENT CREATION MODAL (Identical to clientes.tsx) */}
+            <Dialog open={showFullClientModal} onOpenChange={setShowFullClientModal}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-display font-bold text-slate-900">Novo Cliente</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={e => { e.preventDefault(); handleSaveFullClient(); }}>
+                        <div className="grid grid-cols-2 gap-4 py-2">
+                            <div className="col-span-2 bg-slate-50 rounded-xl p-3 border border-dashed border-slate-200">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Puxar da Base de Contatos (opcional)</Label>
+                                <SearchableSelect
+                                    options={(contacts ?? []).map((c: any) => ({
+                                        value: String(c.id),
+                                        label: c.name,
+                                        sublabel: [c.phone, c.email].filter(Boolean).join(" · ") || undefined,
+                                    }))}
+                                    value={selectedContactImport}
+                                    onValueChange={(val) => {
+                                        setSelectedContactImport(val);
+                                        if (!val) return;
+                                        const c = contacts?.find((x: any) => String(x.id) === val);
+                                        if (!c) return;
+                                        setClientFormData(prev => ({
+                                            ...prev,
+                                            nome: c.name || prev.nome,
+                                            cpfCnpj: c.document || prev.cpfCnpj,
+                                            telefone: c.phone || prev.telefone,
+                                            whatsapp: c.phone || prev.whatsapp,
+                                            email: c.email || prev.email,
+                                            endereco: c.address || prev.endereco,
+                                        }));
+                                    }}
+                                    placeholder="Buscar contato para pré-preencher..."
+                                    searchPlaceholder="Pesquisar por nome ou telefone..."
+                                    clearable
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <Label className="font-bold">Nome *</Label>
+                                <Input value={clientFormData.nome} onChange={e => setClientField("nome", e.target.value)} placeholder="Nome completo" required className="rounded-xl h-11" />
+                            </div>
+                            <div>
+                                <Label className="font-bold">CPF / CNPJ</Label>
+                                <Input value={clientFormData.cpfCnpj} onChange={e => setClientField("cpfCnpj", e.target.value)} placeholder="000.000.000-00" className="rounded-xl h-11" />
+                            </div>
+                            <div>
+                                <Label className="font-bold">Data de Nascimento</Label>
+                                <Input type="date" value={clientFormData.dataNascimento} onChange={e => setClientField("dataNascimento", e.target.value)} className="rounded-xl h-11" />
+                            </div>
+                            <div>
+                                <Label className="font-bold">Telefone</Label>
+                                <Input value={clientFormData.telefone} onChange={e => setClientField("telefone", e.target.value)} placeholder="(11) 99999-9999" className="rounded-xl h-11" />
+                            </div>
+                            <div>
+                                <Label className="font-bold">WhatsApp</Label>
+                                <Input value={clientFormData.whatsapp} onChange={e => setClientField("whatsapp", e.target.value)} placeholder="(11) 99999-9999" className="rounded-xl h-11" />
+                            </div>
+                            <div className="col-span-2">
+                                <Label className="font-bold">Email</Label>
+                                <Input type="email" value={clientFormData.email} onChange={e => setClientField("email", e.target.value)} placeholder="email@exemplo.com" className="rounded-xl h-11" />
+                            </div>
+                            <div className="col-span-2">
+                                <Label className="font-bold">Endereço</Label>
+                                <Input value={clientFormData.endereco} onChange={e => setClientField("endereco", e.target.value)} placeholder="Rua, número, bairro" className="rounded-xl h-11" />
+                            </div>
+                            <div>
+                                <Label className="font-bold">Cidade</Label>
+                                <Input value={clientFormData.cidade} onChange={e => setClientField("cidade", e.target.value)} placeholder="São Paulo" className="rounded-xl h-11" />
+                            </div>
+                            <div>
+                                <Label className="font-bold">Estado</Label>
+                                <Select value={clientFormData.estado} onValueChange={v => setClientField("estado", v)}>
+                                    <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="UF" /></SelectTrigger>
+                                    <SelectContent>
+                                        {ESTADOS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="col-span-2">
+                                <Label className="font-bold">Tags <span className="text-xs text-muted-foreground font-normal">(separadas por vírgula)</span></Label>
+                                <Input value={clientFormData.tags} onChange={e => setClientField("tags", e.target.value)} placeholder="VIP, Renovação, Empresarial" className="rounded-xl h-11" />
+                            </div>
+                            <div className="col-span-2">
+                                <Label className="font-bold">Responsável Comercial</Label>
+                                <SearchableSelect
+                                    options={(users ?? []).map(u => ({ value: String(u.id), label: u.name }))}
+                                    value={clientFormData.responsavelComercialId}
+                                    onValueChange={v => setClientField("responsavelComercialId", v)}
+                                    placeholder="Selecionar responsável..."
+                                    searchPlaceholder="Pesquisar por nome..."
+                                    clearable
+                                />
+                            </div>
+                            <div className="col-span-2 border-t pt-4 mt-2 font-bold text-sm text-[#0F6570]">
+                                Representante Legal / Contato Adicional
+                            </div>
+                            <div>
+                                <Label className="font-bold">Nome do Representante</Label>
+                                <Input value={clientFormData.nomeRepresentante} onChange={e => setClientField("nomeRepresentante", e.target.value)} placeholder="Nome completo" className="rounded-xl h-11" />
+                            </div>
+                            <div>
+                                <Label className="font-bold">Telefone do Representante</Label>
+                                <Input value={clientFormData.telefoneRepresentante} onChange={e => setClientField("telefoneRepresentante", e.target.value)} placeholder="(11) 99999-9999" className="rounded-xl h-11" />
+                            </div>
+                            <div className="col-span-2">
+                                <Label className="font-bold">Email do Representante</Label>
+                                <Input type="email" value={clientFormData.emailRepresentante} onChange={e => setClientField("emailRepresentante", e.target.value)} placeholder="email@exemplo.com" className="rounded-xl h-11" />
+                            </div>
+                            <div className="col-span-2">
+                                <Label className="font-bold">Observações</Label>
+                                <Textarea value={clientFormData.observacoes} onChange={e => setClientField("observacoes", e.target.value)} placeholder="Anotações sobre o cliente..." rows={3} className="rounded-xl" />
+                            </div>
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700">{newContactType === "individual" ? "CPF" : "CNPJ"}</label>
-                            <Input
-                                placeholder={newContactType === "individual" ? "000.000.000-00" : "00.000.000/0001-00"}
-                                className="rounded-xl h-11"
-                                value={newContactDocument}
-                                onChange={(e) => setNewContactDocument(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-700">Email</label>
-                        <Input
-                            type="email"
-                            placeholder="contato@exemplo.com"
-                            className="rounded-xl h-11"
-                            value={newContactEmail}
-                            onChange={(e) => setNewContactEmail(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="flex-1 h-11 rounded-xl font-bold border-slate-200"
-                            onClick={() => setShowAddContactModal(false)}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            type="button"
-                            className="flex-1 h-11 rounded-xl font-bold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
-                            onClick={handleCreateQuickContact}
-                            disabled={isSavingContact}
-                        >
-                            {isSavingContact ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                            Salvar e Selecionar
-                        </Button>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
+                        <DialogFooter className="mt-4 gap-2">
+                            <Button type="button" variant="outline" onClick={() => setShowFullClientModal(false)} className="rounded-xl font-bold">Cancelar</Button>
+                            <Button type="submit" disabled={isSavingFullClient} className="rounded-xl font-bold bg-primary hover:bg-primary/90 text-white">
+                                {isSavingFullClient && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                Criar Cliente
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
