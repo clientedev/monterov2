@@ -34,6 +34,9 @@ interface SearchableSelectProps {
   emptyMessage?: string;
   /** Set to true to allow clearing the selection */
   clearable?: boolean;
+  /** Optional callback to trigger quick creation of a new item */
+  onAddNew?: () => void;
+  addNewLabel?: string;
 }
 
 /**
@@ -52,6 +55,8 @@ export function SearchableSelect({
   triggerClassName,
   emptyMessage = "Nenhum item encontrado.",
   clearable = false,
+  onAddNew,
+  addNewLabel = "Adicionar novo...",
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
@@ -95,8 +100,41 @@ export function SearchableSelect({
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            <CommandEmpty>
+              <div className="py-2 px-3 text-center space-y-2">
+                <p className="text-xs text-muted-foreground">{emptyMessage}</p>
+                {onAddNew && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs font-bold text-primary border-primary/20 hover:bg-primary/5 rounded-lg"
+                    onClick={() => {
+                      setOpen(false);
+                      onAddNew();
+                    }}
+                  >
+                    + {addNewLabel}
+                  </Button>
+                )}
+              </div>
+            </CommandEmpty>
             <CommandGroup>
+              {onAddNew && (
+                <CommandItem
+                  value="__add_new_option__"
+                  onSelect={() => {
+                    setOpen(false);
+                    onAddNew();
+                  }}
+                  className="text-primary font-bold text-xs cursor-pointer bg-primary/5 hover:bg-primary/10 border-b border-primary/10 mb-1 py-2"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-4 w-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-black">+</span>
+                    {addNewLabel}
+                  </span>
+                </CommandItem>
+              )}
               {clearable && value && (
                 <CommandItem
                   value="__clear__"

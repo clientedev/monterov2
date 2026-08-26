@@ -31,7 +31,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
     AlertDialog,
@@ -622,6 +622,16 @@ function LeadCard({
 
 function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) {
     const { toast } = useToast();
+
+    // Quick Add Contact modal state
+    const [showAddContactModal, setShowAddContactModal] = useState(false);
+    const [newContactType, setNewContactType] = useState<"individual" | "company">("individual");
+    const [newContactName, setNewContactName] = useState("");
+    const [newContactPhone, setNewContactPhone] = useState("");
+    const [newContactEmail, setNewContactEmail] = useState("");
+    const [newContactDocument, setNewContactDocument] = useState("");
+    const [isSavingContact, setIsSavingContact] = useState(false);
+
     const form = useForm<InsertLead>({
         resolver: zodResolver(insertLeadSchema),
         defaultValues: initialData ? {
@@ -672,6 +682,47 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
         retry: 2,
     });
 
+    const handleCreateQuickContact = async () => {
+        if (!newContactName.trim()) {
+            toast({ title: "Nome do contato é obrigatório", variant: "destructive" });
+            return;
+        }
+        setIsSavingContact(true);
+        try {
+            const res = await apiRequest("POST", "/api/contacts", {
+                type: newContactType,
+                name: newContactName.trim(),
+                phone: newContactPhone.trim() || null,
+                email: newContactEmail.trim() || null,
+                document: newContactDocument.trim() || null,
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || "Erro ao criar contato");
+            }
+            const createdContact: Contact = await res.json();
+
+            await queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+            form.setValue("contactId", createdContact.id);
+
+            toast({ title: `✅ Contato "${createdContact.name}" criado e selecionado!` });
+
+            setNewContactName("");
+            setNewContactPhone("");
+            setNewContactEmail("");
+            setNewContactDocument("");
+            setShowAddContactModal(false);
+        } catch (error: any) {
+            toast({
+                title: "Erro ao criar contato",
+                description: error.message,
+                variant: "destructive",
+            });
+        } finally {
+            setIsSavingContact(false);
+        }
+    };
+
     const handleFormSubmit = form.handleSubmit(
         (data) => onSubmit(data),
         (errors) => {
@@ -685,32 +736,64 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
     );
 
     return (
-        <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="space-y-4 w-full box-border">
-                <FormField
-                    control={form.control}
-                    name="contactId"
-                    render={({ field }) => (
-                        <FormItem className="w-full min-w-0">
-                            <FormLabel className="text-gray-600 font-bold">Contato / Cliente</FormLabel>
-                            <FormControl className="w-full min-w-0">
-                                <SearchableSelect
-                                    options={contacts.map((c: any) => ({
-                                        value: String(c.id),
-                                        label: c.name,
-                                        sublabel: c.phone ?? undefined,
-                                    }))}
-                                    value={field.value ? String(field.value) : ""}
-                                    onValueChange={(val) => val && field.onChange(parseInt(val))}
-                                    placeholder="Selecione ou pesquise um contato..."
-                                    searchPlaceholder="Pesquisar pelo nome ou telefone..."
-                                    disabled={!!initialData}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+        <>
+            <Form {...form}>
+                <form onSubmit={handleFormSubmit} className="space-y-4 w-full box-border">
+                    <FormField
+                        control={form.control}
+                        name="contactId"
+                        render={({ field }) => (
+                            <FormItem className="w-full min-w-0">
+                                <div className="flex items-center justify-between">
+                                    <FormLabel className="text-gray-600 font-bold">Contato / Cliente *</FormLabel>
+                                    {!initialData && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-primary hover:bg-primary/10 text-xs font-bold gap-1"
+                                            onClick={() => setShowAddContactModal(true)}
+                                        >
+                                            <UserPlus className="h-3.5 w-3.5" />
+                                            Novo Contato
+                                        </Button>
+                                    )}
+                                </div>
+                                <FormControl className="w-full min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <SearchableSelect
+                                                options={contacts.map((c: any) => ({
+                                                    value: String(c.id),
+                                                    label: c.name,
+                                                    sublabel: c.phone ?? undefined,
+                                                }))}
+                                                value={field.value ? String(field.value) : ""}
+                                                onValueChange={(val) => val && field.onChange(parseInt(val))}
+                                                placeholder="Selecione ou pesquise um contato..."
+                                                searchPlaceholder="Pesquisar por nome ou telefone..."
+                                                disabled={!!initialData}
+                                                onAddNew={!initialData ? () => setShowAddContactModal(true) : undefined}
+                                                addNewLabel="Adicionar novo contato"
+                                            />
+                                        </div>
+                                        {!initialData && (
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 text-white shrink-0 shadow-sm transition-transform active:scale-95"
+                                                onClick={() => setShowAddContactModal(true)}
+                                                title="Adicionar Novo Contato"
+                                            >
+                                                <Plus className="h-5 w-5" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
                     <FormField
@@ -818,5 +901,104 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                 </Button>
             </form>
         </Form>
+
+        {/* Quick Add Contact Modal */}
+        <Dialog open={showAddContactModal} onOpenChange={setShowAddContactModal}>
+            <DialogContent className="sm:max-w-[420px] w-[92vw] rounded-3xl border-none shadow-2xl p-6 bg-white">
+                <DialogHeader className="pb-2">
+                    <DialogTitle className="text-xl font-display font-bold flex items-center gap-2 text-slate-900">
+                        <UserPlus className="h-5 w-5 text-primary" />
+                        Novo Contato
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                        <button
+                            type="button"
+                            className={cn(
+                                "py-1.5 text-xs font-bold rounded-lg transition-all",
+                                newContactType === "individual" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-900"
+                            )}
+                            onClick={() => setNewContactType("individual")}
+                        >
+                            Pessoa Física
+                        </button>
+                        <button
+                            type="button"
+                            className={cn(
+                                "py-1.5 text-xs font-bold rounded-lg transition-all",
+                                newContactType === "company" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-900"
+                            )}
+                            onClick={() => setNewContactType("company")}
+                        >
+                            Pessoa Jurídica
+                        </button>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Nome / Razão Social *</label>
+                        <Input
+                            placeholder="Ex: João Silva ou Empresa LTDA"
+                            className="rounded-xl h-11"
+                            value={newContactName}
+                            onChange={(e) => setNewContactName(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-700">Telefone / WhatsApp</label>
+                            <Input
+                                placeholder="(11) 99999-9999"
+                                className="rounded-xl h-11"
+                                value={newContactPhone}
+                                onChange={(e) => setNewContactPhone(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-700">{newContactType === "individual" ? "CPF" : "CNPJ"}</label>
+                            <Input
+                                placeholder={newContactType === "individual" ? "000.000.000-00" : "00.000.000/0001-00"}
+                                className="rounded-xl h-11"
+                                value={newContactDocument}
+                                onChange={(e) => setNewContactDocument(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Email</label>
+                        <Input
+                            type="email"
+                            placeholder="contato@exemplo.com"
+                            className="rounded-xl h-11"
+                            value={newContactEmail}
+                            onChange={(e) => setNewContactEmail(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="flex-1 h-11 rounded-xl font-bold border-slate-200"
+                            onClick={() => setShowAddContactModal(false)}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            className="flex-1 h-11 rounded-xl font-bold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
+                            onClick={handleCreateQuickContact}
+                            disabled={isSavingContact}
+                        >
+                            {isSavingContact ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                            Salvar e Selecionar
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
