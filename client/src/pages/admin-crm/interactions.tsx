@@ -98,7 +98,7 @@ export default function InteractionsPage() {
         );
     }
 
-    const getContactName = (id: number) => contacts?.find(c => c.id === id)?.name || "Desconhecido";
+    const getContactName = (id: number | string) => contacts?.find(c => String(c.id) === String(id))?.name || "Desconhecido";
 
     return (
         <div className="space-y-6">

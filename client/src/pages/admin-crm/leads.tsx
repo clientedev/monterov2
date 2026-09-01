@@ -104,12 +104,49 @@ export default function LeadsPage() {
         queryKey: ["/api/contacts"],
     });
 
+    const { data: clientes } = useQuery<any[]>({
+        queryKey: ["/api/clientes"],
+    });
+
+    const getContactForLead = (contactId?: number | string | null) => {
+        if (!contactId) return null;
+        const contact = contacts?.find(c => String(c.id) === String(contactId));
+        if (contact) return contact;
+        const cliente = clientes?.find(c => String(c.id) === String(contactId));
+        if (cliente) {
+            return {
+                id: cliente.id,
+                name: cliente.nome,
+                phone: cliente.telefone,
+                email: cliente.email,
+                document: cliente.cpfCnpj
+            };
+        }
+        return null;
+    };
+
     const updateStatusMutation = useMutation({
         mutationFn: async ({ id, status }: { id: number; status: string }) => {
             const res = await apiRequest("PATCH", `/api/leads/${id}/status`, { status });
             return await res.json();
         },
-        onSuccess: () => {
+        onMutate: async ({ id, status }) => {
+            await queryClient.cancelQueries({ queryKey: ["/api/leads"] });
+            const previousLeads = queryClient.getQueryData<Lead[]>(["/api/leads"]);
+            if (previousLeads) {
+                queryClient.setQueryData<Lead[]>(
+                    ["/api/leads"],
+                    previousLeads.map((l) => (l.id === id ? { ...l, status } : l))
+                );
+            }
+            return { previousLeads };
+        },
+        onError: (_err, _variables, context) => {
+            if (context?.previousLeads) {
+                queryClient.setQueryData(["/api/leads"], context.previousLeads);
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
         },
     });
@@ -427,7 +464,7 @@ export default function LeadsPage() {
                                                         >
                                                             {leads?.filter(l => l.status === column.id && (
                                                                 search === "" ||
-                                                                contacts?.find(c => c.id === l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
+                                                                getContactForLead(l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
                                                             )).map((lead, index) => (
                                                                 <Draggable key={lead.id} draggableId={lead.id.toString()} index={index}>
                                                                     {(provided, snapshot) => (
@@ -442,7 +479,7 @@ export default function LeadsPage() {
                                                                         >
                                                                             <LeadCard
                                                                                 lead={lead}
-                                                                                contact={contacts?.find(c => c.id === lead.contactId)}
+                                                                                contact={getContactForLead(lead.contactId)}
                                                                                 columns={columns}
                                                                                 onMove={(newStatus) => updateStatusMutation.mutate({ id: lead.id, status: newStatus })}
                                                                                 onEdit={() => {
@@ -521,7 +558,7 @@ function LeadCard({
     onDelete
 }: {
     lead: Lead,
-    contact?: Contact,
+    contact?: { name: string; [key: string]: any } | null,
     columns: any[],
     onMove: (s: string) => void,
     onEdit: () => void,
@@ -682,7 +719,7 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
     // Sync input text query with selected contact
     useEffect(() => {
         if (selectedContactId) {
-            const found = contacts.find((c: any) => c.id === selectedContactId);
+            const found = contacts?.find((c: any) => String(c.id) === String(selectedContactId));
             if (found) {
                 setSearchQuery(found.name);
             }
@@ -765,14 +802,17 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
 
             // Retrieve updated contacts list to set contactId
             const contactsRes = await fetch("/api/contacts", { credentials: "include" });
-            let newContactId = createdCliente.id;
+            let newContactId = 0;
             if (contactsRes.ok) {
                 const latestContacts: Contact[] = await contactsRes.json();
                 const found = latestContacts.find(c => 
-                    (c.document && createdCliente.cpfCnpj && c.document === createdCliente.cpfCnpj) ||
+                    (c.document && createdCliente.cpfCnpj && c.document.replace(/\D/g, "") === createdCliente.cpfCnpj.replace(/\D/g, "")) ||
                     (c.name && createdCliente.nome && c.name.toLowerCase().trim() === createdCliente.nome.toLowerCase().trim())
                 );
                 if (found) newContactId = found.id;
+            }
+            if (!newContactId) {
+                newContactId = createdCliente.id;
             }
 
             form.setValue("contactId", newContactId);
