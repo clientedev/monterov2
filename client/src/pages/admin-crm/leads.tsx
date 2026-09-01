@@ -49,6 +49,7 @@ import { Edit2, Trash2 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { cn } from "@/lib/utils";
+import { ContactProfile } from "@/components/ContactProfile";
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
@@ -77,6 +78,7 @@ export default function LeadsPage() {
     const [search, setSearch] = useState("");
     const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
     const [deleteLeadId, setDeleteLeadId] = useState<number | null>(null);
+    const [viewContactId, setViewContactId] = useState<number | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Dynamic Columns State
@@ -487,6 +489,7 @@ export default function LeadsPage() {
                                                                                     setOpen(true);
                                                                                 }}
                                                                                 onDelete={() => setDeleteLeadId(lead.id)}
+                                                                                onViewContact={(cId) => setViewContactId(cId)}
                                                                             />
                                                                         </div>
                                                                     )}
@@ -545,6 +548,12 @@ export default function LeadsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <ContactProfile
+                contactId={viewContactId}
+                open={!!viewContactId}
+                onOpenChange={(open) => !open && setViewContactId(null)}
+            />
         </div>
     );
 }
@@ -555,14 +564,16 @@ function LeadCard({
     columns,
     onMove,
     onEdit,
-    onDelete
+    onDelete,
+    onViewContact
 }: {
     lead: Lead,
     contact?: { name: string; [key: string]: any } | null,
     columns: any[],
     onMove: (s: string) => void,
     onEdit: () => void,
-    onDelete: () => void
+    onDelete: () => void,
+    onViewContact?: (contactId: number) => void
 }) {
     const statusIndex = columns.findIndex(s => s.id === lead.status);
     const nextStatus = statusIndex !== -1 && statusIndex < columns.length - 1 ? columns[statusIndex + 1].id : null;
@@ -583,7 +594,13 @@ function LeadCard({
 
             <div className="flex justify-between items-start mb-4">
                 <div className="flex-1 pr-12">
-                    <h4 className="font-bold text-gray-900 line-clamp-1">{contact?.name || "Desconhecido"}</h4>
+                    <h4 
+                        className="font-bold text-gray-900 line-clamp-1 cursor-pointer hover:text-primary transition-colors hover:underline"
+                        onClick={() => lead.contactId && onViewContact?.(lead.contactId)}
+                        title="Clique para ver e editar os dados do contato"
+                    >
+                        {contact?.name || "Desconhecido"}
+                    </h4>
                     <div className="flex flex-wrap gap-1 mt-1">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-gray-100 text-gray-600">
                             {lead.source || "Direto"}

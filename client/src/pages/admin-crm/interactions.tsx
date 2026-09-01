@@ -40,10 +40,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus } from "lucide-react";
 import { format } from "date-fns";
+import { ContactProfile } from "@/components/ContactProfile";
 
 export default function InteractionsPage() {
     const { toast } = useToast();
     const [open, setOpen] = useState(false);
+    const [viewContactId, setViewContactId] = useState<number | null>(null);
 
     const { data: interactions, isLoading: interactionsLoading } = useQuery<Interaction[]>({
         queryKey: ["/api/interactions"],
@@ -260,7 +262,15 @@ export default function InteractionsPage() {
                                         {interaction.date ? format(new Date(interaction.date), "PPP p") : "-"}
                                     </TableCell>
                                     <TableCell className="capitalize">{interaction.type}</TableCell>
-                                    <TableCell>{getContactName(interaction.contactId)}</TableCell>
+                                    <TableCell>
+                                        <span 
+                                            className="font-bold cursor-pointer hover:text-primary transition-colors hover:underline"
+                                            onClick={() => setViewContactId(interaction.contactId)}
+                                            title="Clique para ver e editar os dados do contato"
+                                        >
+                                            {getContactName(interaction.contactId)}
+                                        </span>
+                                    </TableCell>
                                     <TableCell className="max-w-md truncate" title={interaction.description}>
                                         {interaction.description}
                                     </TableCell>
@@ -270,6 +280,12 @@ export default function InteractionsPage() {
                     </TableBody>
                 </Table>
             </div>
+
+            <ContactProfile
+                contactId={viewContactId}
+                open={!!viewContactId}
+                onOpenChange={(open) => !open && setViewContactId(null)}
+            />
         </div>
     );
 }
