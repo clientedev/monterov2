@@ -39,7 +39,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Shield, User as UserIcon, UserPlus, Trash2, Eye, EyeOff, KeyRound } from "lucide-react";
+import { Loader2, Shield, User as UserIcon, UserPlus, Trash2, Eye, EyeOff, KeyRound, Mail, Edit2 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function UsersPage() {
@@ -50,9 +50,14 @@ export default function UsersPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [newName, setNewName] = useState("");
     const [newUsername, setNewUsername] = useState("");
+    const [newEmail, setNewEmail] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [newRole, setNewRole] = useState<"admin" | "employee" | "client">("client");
     const [showNewPassword, setShowNewPassword] = useState(false);
+
+    // Edit email state
+    const [editTargetUser, setEditTargetUser] = useState<User | null>(null);
+    const [editEmail, setEditEmail] = useState("");
 
     // Reset password state
     const [resetTargetUser, setResetTargetUser] = useState<User | null>(null);
@@ -84,11 +89,36 @@ export default function UsersPage() {
         },
     });
 
+    const updateEmailMutation = useMutation({
+        mutationFn: async ({ id, email }: { id: number; email: string }) => {
+            const res = await apiRequest("PATCH", `/api/admin/users/${id}/email`, { email });
+            if (!res.ok) {
+                const body = await res.json();
+                throw new Error(body.message || "Erro ao atualizar e-mail");
+            }
+            return await res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+            toast({ title: "E-mail atualizado com sucesso" });
+            setEditTargetUser(null);
+            setEditEmail("");
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Erro ao atualizar e-mail",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
     const createUserMutation = useMutation({
         mutationFn: async () => {
             const res = await apiRequest("POST", "/api/admin/users", {
                 name: newName,
                 username: newUsername,
+                email: newEmail,
                 password: newPassword,
                 role: newRole,
             });
@@ -104,6 +134,7 @@ export default function UsersPage() {
             setShowCreate(false);
             setNewName("");
             setNewUsername("");
+            setNewEmail("");
             setNewPassword("");
             setNewRole("client");
         },
@@ -200,32 +231,57 @@ export default function UsersPage() {
                         <TableRow>
                             <TableHead>Usuário</TableHead>
                             <TableHead>Nome</TableHead>
+                            <TableHead>E-mail</TableHead>
                             <TableHead>Permissão</TableHead>
                             <TableHead>Criado em</TableHead>
-                            {isAdmin && <TableHead className="w-12" />}
+                            {isAdmin && <TableHead className="w-24 text-right pr-4">Ações</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {users?.map((user) => (
-                            <TableRow key={user.id} className="hover:bg-gray-50/50">
+                        {users?.map((u) => (
+                            <TableRow key={u.id} className="hover:bg-gray-50/50">
                                 <TableCell className="font-medium">
                                     <div className="flex items-center gap-3">
                                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                                            {user.username.charAt(0).toUpperCase()}
+                                            {u.username.charAt(0).toUpperCase()}
                                         </div>
-                                        {user.username}
-                                        {user.id === currentUser?.id && (
+                                        {u.username}
+                                        {u.id === currentUser?.id && (
                                             <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">Você</span>
                                         )}
                                     </div>
                                 </TableCell>
-                                <TableCell>{user.name}</TableCell>
+                                <TableCell className="font-semibold">{u.name}</TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2 text-sm text-slate-700">
+                                        <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                        {u.email ? (
+                                            <span>{u.email}</span>
+                                        ) : (
+                                            <span className="text-slate-400 italic text-xs">Sem e-mail</span>
+                                        )}
+                                        {isAdmin && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6 ml-1 text-slate-400 hover:text-primary"
+                                                onClick={() => {
+                                                    setEditTargetUser(u);
+                                                    setEditEmail(u.email || "");
+                                                }}
+                                                title="Editar E-mail"
+                                            >
+                                                <Edit2 className="h-3 w-3" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </TableCell>
                                 <TableCell>
                                     {isAdmin ? (
                                         <Select
-                                            defaultValue={user.role}
+                                            defaultValue={u.role}
                                             onValueChange={(value) =>
-                                                updateRoleMutation.mutate({ id: user.id, role: value })
+                                                updateRoleMutation.mutate({ id: u.id, role: value })
                                             }
                                             disabled={updateRoleMutation.isPending}
                                         >
@@ -255,9 +311,9 @@ export default function UsersPage() {
                                         </Select>
                                     ) : (
                                         <span className="flex items-center gap-1.5 text-sm">
-                                            {user.role === "admin" ? (
+                                            {u.role === "admin" ? (
                                                 <><Shield className="h-3.5 w-3.5 text-yellow-600" /> Administrador</>
-                                            ) : user.role === "employee" ? (
+                                            ) : u.role === "employee" ? (
                                                 <><UserIcon className="h-3.5 w-3.5 text-gray-400" /> Funcionário</>
                                             ) : (
                                                 <><UserIcon className="h-3.5 w-3.5 text-amber-500" /> Cliente</>
@@ -266,26 +322,26 @@ export default function UsersPage() {
                                     )}
                                 </TableCell>
                                 <TableCell className="text-muted-foreground text-sm">
-                                    {user.createdAt ? format(new Date(user.createdAt), "dd/MM/yyyy") : "—"}
+                                    {u.createdAt ? format(new Date(u.createdAt), "dd/MM/yyyy") : "—"}
                                 </TableCell>
-                                 {isAdmin && (
-                                    <TableCell>
-                                        <div className="flex items-center gap-1">
+                                {isAdmin && (
+                                    <TableCell className="text-right pr-4">
+                                        <div className="flex items-center justify-end gap-1">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50"
-                                                onClick={() => setResetTargetUser(user)}
+                                                onClick={() => setResetTargetUser(u)}
                                                 title="Redefinir Senha"
                                             >
                                                 <KeyRound className="h-4 w-4" />
                                             </Button>
-                                            {user.id !== currentUser?.id && (
+                                            {u.id !== currentUser?.id && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
                                                     className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                                                    onClick={() => setDeleteTargetId(user.id)}
+                                                    onClick={() => setDeleteTargetId(u.id)}
                                                     title="Excluir Usuário"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
@@ -300,6 +356,43 @@ export default function UsersPage() {
                 </Table>
             </div>
 
+            {/* Edit Email Dialog */}
+            <Dialog open={editTargetUser !== null} onOpenChange={(open) => !open && setEditTargetUser(null)}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">Editar E-mail do Usuário</DialogTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Atualizando o e-mail de <span className="font-bold text-foreground">{editTargetUser?.name}</span>
+                        </p>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                            <Label className="font-semibold text-sm">Endereço de E-mail *</Label>
+                            <Input
+                                type="email"
+                                value={editEmail}
+                                onChange={(e) => setEditEmail(e.target.value)}
+                                placeholder="exemplo@monteiroseguros.com.br"
+                                required
+                            />
+                        </div>
+                        <DialogFooter className="pt-2">
+                            <Button variant="outline" onClick={() => setEditTargetUser(null)}>
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={() => editTargetUser && updateEmailMutation.mutate({ id: editTargetUser.id, email: editEmail })}
+                                disabled={updateEmailMutation.isPending || !editEmail.trim()}
+                                className="gap-2"
+                            >
+                                {updateEmailMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Salvar E-mail
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             {/* Create User Dialog */}
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
                 <DialogContent className="sm:max-w-[420px]">
@@ -308,7 +401,7 @@ export default function UsersPage() {
                     </DialogHeader>
                     <form onSubmit={handleCreate} className="space-y-4 pt-2">
                         <div className="space-y-2">
-                            <Label htmlFor="new-name" className="font-semibold text-sm">Nome completo</Label>
+                            <Label htmlFor="new-name" className="font-semibold text-sm">Nome completo *</Label>
                             <Input
                                 id="new-name"
                                 value={newName}
@@ -318,7 +411,18 @@ export default function UsersPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="new-username" className="font-semibold text-sm">Usuário (login)</Label>
+                            <Label htmlFor="new-email" className="font-semibold text-sm">E-mail *</Label>
+                            <Input
+                                id="new-email"
+                                type="email"
+                                value={newEmail}
+                                onChange={(e) => setNewEmail(e.target.value)}
+                                placeholder="Ex: joao.silva@monteiroseguros.com.br"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="new-username" className="font-semibold text-sm">Usuário (login) *</Label>
                             <Input
                                 id="new-username"
                                 value={newUsername}
@@ -328,7 +432,7 @@ export default function UsersPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="new-password" className="font-semibold text-sm">Senha</Label>
+                            <Label htmlFor="new-password" className="font-semibold text-sm">Senha *</Label>
                             <div className="relative">
                                 <Input
                                     id="new-password"

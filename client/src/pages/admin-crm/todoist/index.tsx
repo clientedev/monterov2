@@ -214,18 +214,18 @@ export default function TodoistModulePage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#0F6570] via-[#164e57] to-[#0f172a] p-6 rounded-2xl border border-white/10 shadow-2xl">
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
             <CheckSquare className="h-6 w-6 stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-              TODOIST <span className="text-xs px-2 py-0.5 bg-amber-500 text-slate-950 rounded font-black">CRM INTEGRADO</span>
+            <h1 className="text-2xl font-display font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              Gerenciador de Tarefas <span className="text-xs px-2.5 py-0.5 bg-primary text-white rounded-full font-bold">TODOIST CRM</span>
             </h1>
-            <p className="text-xs text-slate-300">
-              Gerenciador completo de tarefas e produtividade comercial sincronizado ao CRM.
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Gerenciador de produtividade comercial totalmente integrado à base de clientes e oportunidades do CRM.
             </p>
           </div>
         </div>
@@ -233,9 +233,9 @@ export default function TodoistModulePage() {
         <div className="flex items-center gap-3">
           <Button
             onClick={() => setQuickAddOpen(true)}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-sm px-5 py-2.5 rounded-xl shadow-lg shadow-amber-500/20 gap-2 active:scale-95 transition-all"
+            className="bg-primary hover:bg-primary/90 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-md shadow-primary/20 gap-2 active:scale-95 transition-all"
           >
-            <Plus className="h-5 w-5" /> + Tarefa Rápida
+            <Plus className="h-5 w-5" /> + Nova Tarefa
           </Button>
         </div>
       </div>
@@ -243,20 +243,22 @@ export default function TodoistModulePage() {
       {/* Main Workspace Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Sidebar Navigation (Menu Items) */}
-        <div className="space-y-4 bg-[#0f172a] p-4 rounded-2xl border border-white/10 h-fit shadow-xl">
-          <p className="text-[11px] uppercase font-bold text-amber-400 px-3 tracking-widest">Navegação Principal</p>
+        <div className="space-y-4 bg-white p-4 rounded-2xl border border-gray-200 h-fit shadow-sm">
+          <p className="text-[11px] uppercase font-bold text-[#1A3A4F] px-3 tracking-widest">Navegação Principal</p>
 
           <nav className="space-y-1">
             <Button
               variant="ghost"
               onClick={() => setActiveView("today")}
               className={`w-full justify-start gap-3 text-xs font-semibold rounded-xl px-3 py-2.5 ${
-                activeView === "today" ? "bg-amber-500 text-slate-950 shadow-md font-bold" : "text-slate-300 hover:bg-white/5"
+                activeView === "today" ? "bg-primary text-white shadow-md font-bold" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
-              <Sun className="h-4 w-4 text-amber-400" /> Hoje
+              <Sun className={`h-4 w-4 ${activeView === "today" ? "text-amber-300" : "text-amber-500"}`} /> Hoje
               {dashboardStats?.myTasks?.todayCount > 0 && (
-                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                <span className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  activeView === "today" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
+                }`}>
                   {dashboardStats.myTasks.todayCount}
                 </span>
               )}
@@ -266,73 +268,73 @@ export default function TodoistModulePage() {
               variant="ghost"
               onClick={() => setActiveView("inbox")}
               className={`w-full justify-start gap-3 text-xs font-semibold rounded-xl px-3 py-2.5 ${
-                activeView === "inbox" ? "bg-amber-500 text-slate-950 shadow-md font-bold" : "text-slate-300 hover:bg-white/5"
+                activeView === "inbox" ? "bg-primary text-white shadow-md font-bold" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
-              <InboxIcon className="h-4 w-4 text-blue-400" /> Inbox (Não organizadas)
+              <InboxIcon className={`h-4 w-4 ${activeView === "inbox" ? "text-blue-200" : "text-blue-500"}`} /> Inbox
             </Button>
 
             <Button
               variant="ghost"
               onClick={() => setActiveView("upcoming")}
               className={`w-full justify-start gap-3 text-xs font-semibold rounded-xl px-3 py-2.5 ${
-                activeView === "upcoming" ? "bg-amber-500 text-slate-950 shadow-md font-bold" : "text-slate-300 hover:bg-white/5"
+                activeView === "upcoming" ? "bg-primary text-white shadow-md font-bold" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
-              <CalendarIcon className="h-4 w-4 text-emerald-400" /> Próximas
+              <CalendarIcon className={`h-4 w-4 ${activeView === "upcoming" ? "text-emerald-200" : "text-emerald-500"}`} /> Próximas
             </Button>
 
             <Button
               variant="ghost"
               onClick={() => setActiveView("kanban")}
               className={`w-full justify-start gap-3 text-xs font-semibold rounded-xl px-3 py-2.5 ${
-                activeView === "kanban" ? "bg-amber-500 text-slate-950 shadow-md font-bold" : "text-slate-300 hover:bg-white/5"
+                activeView === "kanban" ? "bg-primary text-white shadow-md font-bold" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
-              <Kanban className="h-4 w-4 text-indigo-400" /> Quadro Kanban
+              <Kanban className={`h-4 w-4 ${activeView === "kanban" ? "text-indigo-200" : "text-indigo-500"}`} /> Quadro Kanban
             </Button>
 
             <Button
               variant="ghost"
               onClick={() => setActiveView("completed")}
               className={`w-full justify-start gap-3 text-xs font-semibold rounded-xl px-3 py-2.5 ${
-                activeView === "completed" ? "bg-amber-500 text-slate-950 shadow-md font-bold" : "text-slate-300 hover:bg-white/5"
+                activeView === "completed" ? "bg-primary text-white shadow-md font-bold" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
-              <CheckCircle2 className="h-4 w-4 text-teal-400" /> Concluídas
+              <CheckCircle2 className={`h-4 w-4 ${activeView === "completed" ? "text-teal-200" : "text-teal-500"}`} /> Concluídas
             </Button>
 
             <Button
               variant="ghost"
               onClick={() => setActiveView("dashboard")}
               className={`w-full justify-start gap-3 text-xs font-semibold rounded-xl px-3 py-2.5 ${
-                activeView === "dashboard" ? "bg-amber-500 text-slate-950 shadow-md font-bold" : "text-slate-300 hover:bg-white/5"
+                activeView === "dashboard" ? "bg-primary text-white shadow-md font-bold" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
-              <BarChart2 className="h-4 w-4 text-purple-400" /> Dashboard & Inteligência CRM
+              <BarChart2 className={`h-4 w-4 ${activeView === "dashboard" ? "text-purple-200" : "text-purple-500"}`} /> Dashboard & Métricas
             </Button>
 
             <Button
               variant="ghost"
               onClick={() => setActiveView("automations")}
               className={`w-full justify-start gap-3 text-xs font-semibold rounded-xl px-3 py-2.5 ${
-                activeView === "automations" ? "bg-amber-500 text-slate-950 shadow-md font-bold" : "text-slate-300 hover:bg-white/5"
+                activeView === "automations" ? "bg-primary text-white shadow-md font-bold" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
-              <Zap className="h-4 w-4 text-yellow-400" /> Automações CRM
+              <Zap className={`h-4 w-4 ${activeView === "automations" ? "text-yellow-200" : "text-yellow-500"}`} /> Automações CRM
             </Button>
           </nav>
 
-          <hr className="border-white/10 my-3" />
+          <hr className="border-gray-200 my-3" />
 
           {/* Projects Submenu */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-3">
-              <span className="text-[11px] uppercase font-bold text-slate-400 tracking-widest">Projetos</span>
+              <span className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Projetos</span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-5 w-5 text-slate-400 hover:text-amber-400"
+                className="h-5 w-5 text-slate-400 hover:text-primary"
                 onClick={() => setNewProjectOpen(true)}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -346,7 +348,7 @@ export default function TodoistModulePage() {
                   variant="ghost"
                   onClick={() => setActiveView(`project_${p.id}`)}
                   className={`w-full justify-start gap-2.5 text-xs font-medium rounded-lg px-3 py-2 ${
-                    activeView === `project_${p.id}` ? "bg-white/10 text-white font-bold" : "text-slate-400 hover:text-white"
+                    activeView === `project_${p.id}` ? "bg-slate-100 text-slate-900 font-bold" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
@@ -354,21 +356,21 @@ export default function TodoistModulePage() {
                 </Button>
               ))}
               {projects.length === 0 && (
-                <p className="text-[11px] text-slate-500 italic px-3">Nenhum projeto cadastrado.</p>
+                <p className="text-[11px] text-slate-400 italic px-3">Nenhum projeto cadastrado.</p>
               )}
             </div>
           </div>
 
-          <hr className="border-white/10 my-3" />
+          <hr className="border-gray-200 my-3" />
 
           {/* Labels Submenu */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-3">
-              <span className="text-[11px] uppercase font-bold text-slate-400 tracking-widest">Etiquetas</span>
+              <span className="text-[11px] uppercase font-bold text-slate-500 tracking-widest">Etiquetas</span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-5 w-5 text-slate-400 hover:text-amber-400"
+                className="h-5 w-5 text-slate-400 hover:text-primary"
                 onClick={() => setNewLabelOpen(true)}
               >
                 <Plus className="h-3.5 w-3.5" />

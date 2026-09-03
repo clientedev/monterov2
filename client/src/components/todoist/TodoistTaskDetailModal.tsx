@@ -159,20 +159,20 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#0f172a] text-slate-100 border-white/10 p-0 overflow-hidden rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl bg-white text-slate-900 border-slate-200 p-0 overflow-hidden rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
         {isLoading || !task ? (
           <div className="p-12 text-center text-slate-400">Carregando detalhes...</div>
         ) : (
           <>
             {/* Header */}
-            <div className="p-6 bg-[#162032] border-b border-white/10 flex items-start justify-between gap-4">
+            <div className="p-6 bg-slate-50 border-b border-slate-200 flex items-start justify-between gap-4">
               <div className="flex items-start gap-3 flex-1">
                 <button
                   onClick={() => completeTaskMutation.mutate()}
                   className={`mt-1 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     task.status === "done"
-                      ? "bg-emerald-500 border-emerald-500 text-slate-950"
-                      : "border-slate-400 hover:border-amber-400"
+                      ? "bg-emerald-600 border-emerald-600 text-white"
+                      : "border-slate-400 hover:border-primary"
                   }`}
                 >
                   {task.status === "done" && <CheckSquare className="h-4 w-4" />}
@@ -185,9 +185,9 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                         updateTaskMutation.mutate({ title: e.target.value });
                       }
                     }}
-                    className="bg-transparent text-xl font-bold border-none px-0 text-white focus-visible:ring-0 shadow-none focus-visible:bg-black/20"
+                    className="bg-transparent text-xl font-bold border-none px-0 text-slate-900 focus-visible:ring-0 shadow-none focus-visible:bg-slate-100/50"
                   />
-                  <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                  <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
                     <span>Criado por {task.createdBy}</span>
                     <span>•</span>
                     <span>{format(new Date(task.createdAt), "dd/MM/yyyy 'às' HH:mm")}</span>
@@ -202,7 +202,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
               <div className="lg:col-span-2 space-y-6">
                 {/* Description */}
                 <div>
-                  <h4 className="text-xs uppercase font-bold text-slate-400 tracking-wider mb-2">Descrição</h4>
+                  <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider mb-2">Descrição</h4>
                   <Textarea
                     placeholder="Adicionar descrição detalhada..."
                     defaultValue={task.description || ""}
@@ -211,18 +211,18 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                         updateTaskMutation.mutate({ description: e.target.value });
                       }
                     }}
-                    className="bg-slate-900/50 border-white/10 text-sm text-slate-200 min-h-[90px] focus-visible:ring-amber-500/50"
+                    className="bg-slate-50 border-slate-200 text-sm text-slate-900 min-h-[90px] focus-visible:ring-primary/20 rounded-xl"
                   />
                 </div>
 
                 {/* Subtasks Checklist */}
-                <div className="bg-slate-900/40 p-4 rounded-xl border border-white/5 space-y-3">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-2">
-                      <CheckSquare className="h-4 w-4 text-amber-400" />
+                    <h4 className="text-xs uppercase font-bold text-slate-600 tracking-wider flex items-center gap-2">
+                      <CheckSquare className="h-4 w-4 text-primary" />
                       Checklist / Subtarefas ({completedSubtasksCount}/{subtasks.length})
                     </h4>
-                    <span className="text-xs font-bold text-amber-400">{progressPercent}%</span>
+                    <span className="text-xs font-bold text-primary">{progressPercent}%</span>
                   </div>
 
                   {subtasks.length > 0 && (
@@ -231,7 +231,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
 
                   <div className="space-y-2 mt-3">
                     {subtasks.map((st: any) => (
-                      <div key={st.id} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-slate-800/40 hover:bg-slate-800/70 border border-white/5">
+                      <div key={st.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-white hover:bg-slate-100/80 border border-slate-200 shadow-sm">
                         <div className="flex items-center gap-3 flex-1">
                           <Checkbox
                             checked={st.completed}
@@ -239,14 +239,14 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                               toggleSubtaskMutation.mutate({ id: st.id, completed: !!checked })
                             }
                           />
-                          <span className={`text-sm ${st.completed ? "line-through text-slate-500" : "text-slate-200"}`}>
+                          <span className={`text-sm ${st.completed ? "line-through text-slate-400" : "text-slate-800 font-medium"}`}>
                             {st.title}
                           </span>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-slate-500 hover:text-red-400 hover:bg-red-500/10"
+                          className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
                           onClick={() => deleteSubtaskMutation.mutate(st.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -269,9 +269,9 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                       placeholder="Adicionar item ao checklist..."
                       value={newSubtaskTitle}
                       onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                      className="bg-slate-800/60 border-white/10 text-xs h-9"
+                      className="bg-white border-slate-200 text-xs h-9 rounded-lg"
                     />
-                    <Button type="submit" size="sm" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold h-9">
+                    <Button type="submit" size="sm" className="bg-primary hover:bg-primary/90 text-white font-bold h-9 rounded-lg">
                       <Plus className="h-4 w-4" />
                     </Button>
                   </form>
@@ -279,15 +279,15 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
 
                 {/* CRM Entity Linkage Display Card */}
                 {(task.contact || task.lead || task.cliente || task.apolice) && (
-                  <div className="bg-gradient-to-r from-amber-500/10 to-emerald-500/10 p-4 rounded-xl border border-amber-500/20 space-y-2">
-                    <h4 className="text-xs uppercase font-bold text-amber-400 tracking-wider flex items-center gap-2">
+                  <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 space-y-2">
+                    <h4 className="text-xs uppercase font-bold text-primary tracking-wider flex items-center gap-2">
                       <ExternalLink className="h-4 w-4" />
                       Vínculo com CRM
                     </h4>
                     <div className="flex flex-wrap gap-2 pt-1">
                       {task.contact && (
                         <Link href="/admin/contacts">
-                          <Button variant="outline" size="sm" className="bg-slate-900/80 border-amber-500/30 text-amber-300 text-xs gap-1.5 hover:bg-amber-500/20">
+                          <Button variant="outline" size="sm" className="bg-white border-primary/30 text-primary text-xs gap-1.5 hover:bg-primary/10 rounded-lg">
                             <User className="h-3.5 w-3.5" />
                             Contato: {task.contact.name}
                           </Button>
@@ -295,7 +295,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                       )}
                       {task.lead && (
                         <Link href="/admin/leads">
-                          <Button variant="outline" size="sm" className="bg-slate-900/80 border-indigo-500/30 text-indigo-300 text-xs gap-1.5 hover:bg-indigo-500/20">
+                          <Button variant="outline" size="sm" className="bg-white border-indigo-300 text-indigo-700 text-xs gap-1.5 hover:bg-indigo-50 rounded-lg">
                             <FileText className="h-3.5 w-3.5" />
                             Oportunidade #{task.lead.id} ({task.lead.status})
                           </Button>
@@ -303,7 +303,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                       )}
                       {task.cliente && (
                         <Link href={`/admin/clientes/${task.cliente.id}`}>
-                          <Button variant="outline" size="sm" className="bg-slate-900/80 border-emerald-500/30 text-emerald-300 text-xs gap-1.5 hover:bg-emerald-500/20">
+                          <Button variant="outline" size="sm" className="bg-white border-emerald-300 text-emerald-700 text-xs gap-1.5 hover:bg-emerald-50 rounded-lg">
                             <ShieldCheck className="h-3.5 w-3.5" />
                             Cliente Seguro: {task.cliente.nome}
                           </Button>
@@ -311,7 +311,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                       )}
                       {task.apolice && (
                         <Link href="/admin/apolices">
-                          <Button variant="outline" size="sm" className="bg-slate-900/80 border-cyan-500/30 text-cyan-300 text-xs gap-1.5 hover:bg-cyan-500/20">
+                          <Button variant="outline" size="sm" className="bg-white border-cyan-300 text-cyan-700 text-xs gap-1.5 hover:bg-cyan-50 rounded-lg">
                             <Building className="h-3.5 w-3.5" />
                             Apólice: {task.apolice.numeroApolice || `#${task.apolice.id}`}
                           </Button>
@@ -323,23 +323,23 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
 
                 {/* Comments & Discussion */}
                 <div className="space-y-3">
-                  <h4 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-blue-400" />
+                  <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" />
                     Comentários & Anotações
                   </h4>
 
                   <div className="space-y-3 max-h-52 overflow-y-auto pr-2 custom-scrollbar">
                     {task.comments?.map((c: any) => (
-                      <div key={c.id} className="p-3 bg-slate-900/50 rounded-xl border border-white/5 space-y-1">
-                        <div className="flex items-center justify-between text-xs text-slate-400">
-                          <span className="font-semibold text-amber-400">{c.user?.name || c.user?.username || "Usuário"}</span>
+                      <div key={c.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <span className="font-semibold text-primary">{c.user?.name || c.user?.username || "Usuário"}</span>
                           <span>{format(new Date(c.createdAt), "dd/MM 'às' HH:mm")}</span>
                         </div>
-                        <p className="text-xs text-slate-200 whitespace-pre-wrap">{c.content}</p>
+                        <p className="text-xs text-slate-800 whitespace-pre-wrap">{c.content}</p>
                       </div>
                     ))}
                     {(!task.comments || task.comments.length === 0) && (
-                      <p className="text-xs text-slate-500 italic">Nenhum comentário cadastrado.</p>
+                      <p className="text-xs text-slate-400 italic">Nenhum comentário cadastrado.</p>
                     )}
                   </div>
 
@@ -356,9 +356,9 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                       placeholder="Escrever um comentário..."
                       value={newCommentText}
                       onChange={(e) => setNewCommentText(e.target.value)}
-                      className="bg-slate-900/60 border-white/10 text-xs"
+                      className="bg-white border-slate-200 text-xs rounded-lg"
                     />
-                    <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                    <Button type="submit" size="sm" className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg">
                       <Send className="h-3.5 w-3.5" />
                     </Button>
                   </form>
@@ -366,18 +366,18 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
 
                 {/* Activity History Trail */}
                 <div className="space-y-3 pt-2">
-                  <h4 className="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center gap-2">
+                  <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
                     <History className="h-4 w-4 text-slate-400" />
                     Histórico de Alterações
                   </h4>
 
-                  <div className="space-y-2 text-xs text-slate-400 max-h-40 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-2 text-xs text-slate-500 max-h-40 overflow-y-auto custom-scrollbar">
                     {task.activityLogs?.map((log: any) => (
                       <div key={log.id} className="flex items-start gap-2 text-[11px]">
-                        <span className="text-amber-400 font-semibold">{log.user?.name || log.user?.username}:</span>
+                        <span className="text-primary font-semibold">{log.user?.name || log.user?.username}:</span>
                         <span>{log.action}</span>
-                        <span className="text-slate-500 font-mono">({format(new Date(log.createdAt), "HH:mm dd/MM")})</span>
-                        {log.details && <span className="text-slate-400">— {log.details}</span>}
+                        <span className="text-slate-400 font-mono">({format(new Date(log.createdAt), "HH:mm dd/MM")})</span>
+                        {log.details && <span className="text-slate-500">— {log.details}</span>}
                       </div>
                     ))}
                   </div>
@@ -385,31 +385,31 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
               </div>
 
               {/* Right Column: Settings & Attributes */}
-              <div className="space-y-6 bg-slate-900/50 p-5 rounded-2xl border border-white/5 h-fit">
+              <div className="space-y-6 bg-slate-50 p-5 rounded-2xl border border-slate-200 h-fit">
                 {/* Priority */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                     Prioridade
                   </label>
                   <Select
                     value={task.priority}
                     onValueChange={(val) => updateTaskMutation.mutate({ priority: val })}
                   >
-                    <SelectTrigger className="bg-slate-800 border-white/10 text-xs font-bold text-white">
+                    <SelectTrigger className="bg-white border-slate-200 text-xs font-bold text-slate-800 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-white/10 text-white">
-                      <SelectItem value="P1" className="text-red-400 font-bold">P1 — Urgente</SelectItem>
-                      <SelectItem value="P2" className="text-orange-400 font-bold">P2 — Alta</SelectItem>
-                      <SelectItem value="P3" className="text-blue-400 font-bold">P3 — Normal</SelectItem>
-                      <SelectItem value="P4" className="text-slate-400 font-bold">P4 — Baixa</SelectItem>
+                    <SelectContent className="bg-white border-slate-200 text-slate-800">
+                      <SelectItem value="P1" className="text-red-600 font-bold">P1 — Urgente</SelectItem>
+                      <SelectItem value="P2" className="text-orange-600 font-bold">P2 — Alta</SelectItem>
+                      <SelectItem value="P3" className="text-blue-600 font-bold">P3 — Normal</SelectItem>
+                      <SelectItem value="P4" className="text-slate-500 font-bold">P4 — Baixa</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Project */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                     <Folder className="h-3.5 w-3.5" /> Projeto
                   </label>
                   <Select
@@ -418,10 +418,10 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                       updateTaskMutation.mutate({ projectId: val === "0" ? null : parseInt(val) })
                     }
                   >
-                    <SelectTrigger className="bg-slate-800 border-white/10 text-xs text-white">
+                    <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl">
                       <SelectValue placeholder="Selecione um projeto" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-white/10 text-white">
+                    <SelectContent className="bg-white border-slate-200 text-slate-800">
                       <SelectItem value="0">Inbox (Sem Projeto)</SelectItem>
                       {projects.map((p: any) => (
                         <SelectItem key={p.id} value={String(p.id)}>
@@ -434,17 +434,17 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
 
                 {/* Assignee */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5" /> Responsável
                   </label>
                   <Select
                     value={task.assignedTo ? String(task.assignedTo) : ""}
                     onValueChange={(val) => updateTaskMutation.mutate({ assignedTo: parseInt(val) })}
                   >
-                    <SelectTrigger className="bg-slate-800 border-white/10 text-xs text-white">
+                    <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl">
                       <SelectValue placeholder="Atribuir a..." />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-white/10 text-white">
+                    <SelectContent className="bg-white border-slate-200 text-slate-800">
                       {usersList.map((u: any) => (
                         <SelectItem key={u.id} value={String(u.id)}>
                           {u.name || u.username} ({u.role})
@@ -457,7 +457,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                 {/* Due Date & Time */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                    <label className="text-xs font-bold text-slate-600 flex items-center gap-1">
                       <CalendarIcon className="h-3.5 w-3.5" /> Data
                     </label>
                     <Input
@@ -466,27 +466,27 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                       onChange={(e) =>
                         updateTaskMutation.mutate({ dueDate: e.target.value ? new Date(e.target.value) : null })
                       }
-                      className="bg-slate-800 border-white/10 text-xs text-white"
+                      className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                    <label className="text-xs font-bold text-slate-600 flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" /> Horário
                     </label>
                     <Input
                       type="time"
                       value={task.dueTime || ""}
                       onChange={(e) => updateTaskMutation.mutate({ dueTime: e.target.value || null })}
-                      className="bg-slate-800 border-white/10 text-xs text-white"
+                      className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl"
                     />
                   </div>
                 </div>
 
                 {/* Recurrence */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                    <Repeat className="h-3.5 w-3.5 text-emerald-400" /> Recorrência
+                  <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                    <Repeat className="h-3.5 w-3.5 text-emerald-600" /> Recorrência
                   </label>
                   <Select
                     value={task.isRecurring ? task.recurrenceRule || "weekly" : "none"}
@@ -498,10 +498,10 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                       }
                     }}
                   >
-                    <SelectTrigger className="bg-slate-800 border-white/10 text-xs text-white">
+                    <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-white/10 text-white">
+                    <SelectContent className="bg-white border-slate-200 text-slate-800">
                       <SelectItem value="none">Não se repete</SelectItem>
                       <SelectItem value="daily">Todos os dias</SelectItem>
                       <SelectItem value="weekdays">Dias úteis (Seg-Sex)</SelectItem>

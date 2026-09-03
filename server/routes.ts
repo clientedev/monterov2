@@ -10,6 +10,7 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
 import { db } from "./db";
 import { sql, eq, or, and, desc, asc } from "drizzle-orm";
+import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail } from "./email";
 import {
   insertInquirySchema,
   insertContactSchema,
@@ -512,6 +513,22 @@ export async function registerRoutes(
         assignedUserId: (req.user as any)?.id,
       });
 
+      // Notify assigned user if different from creator
+      if (lead.assignedTo && lead.assignedTo !== (req.user as any)?.id) {
+        const contact = await storage.getContact(lead.contactId);
+        const actor = await storage.getUser((req.user as any)?.id);
+        const { subject, html } = buildLeadAssignedEmail({
+          recipientName: "",
+          assignerName: actor?.name || "Sistema",
+          clientName: contact?.name || `Contato #${lead.contactId}`,
+          leadId: lead.id,
+          product: lead.product || undefined,
+          value: lead.value || undefined,
+          status: lead.status,
+        });
+        sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_assigned", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
+      }
+
       res.status(201).json(lead);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -522,6 +539,7 @@ export async function registerRoutes(
   });
 
   app.patch("/api/leads/:id/status", isTeam, async (req, res) => {
+    const leadBefore = await storage.getLead(parseInt(req.params.id));
     const lead = await storage.updateLeadStatus(parseInt(req.params.id), req.body.status);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
 
@@ -541,12 +559,50 @@ export async function registerRoutes(
       });
     }
 
+    // Notify responsible user of status change
+    if (lead.assignedTo && lead.assignedTo !== (req.user as any)?.id) {
+      const contact = await storage.getContact(lead.contactId);
+      const actor = await storage.getUser((req.user as any)?.id);
+      const { subject, html } = buildLeadStatusChangedEmail({
+        recipientName: "",
+        changerName: actor?.name || "Sistema",
+        clientName: contact?.name || `Contato #${lead.contactId}`,
+        leadId: lead.id,
+        oldStatus: leadBefore?.status || "?",
+        newStatus: req.body.status,
+        product: lead.product || undefined,
+      });
+      sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_status_changed", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
+    }
+
     res.json(lead);
   });
 
   app.patch("/api/leads/:id", isTeam, async (req, res) => {
+    const leadBefore = await storage.getLead(parseInt(req.params.id));
     const lead = await storage.updateLead(parseInt(req.params.id), req.body);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
+
+    // Notify newly assigned user
+    if (
+      lead.assignedTo &&
+      lead.assignedTo !== (req.user as any)?.id &&
+      lead.assignedTo !== leadBefore?.assignedTo
+    ) {
+      const contact = await storage.getContact(lead.contactId);
+      const actor = await storage.getUser((req.user as any)?.id);
+      const { subject, html } = buildLeadAssignedEmail({
+        recipientName: "",
+        assignerName: actor?.name || "Sistema",
+        clientName: contact?.name || `Contato #${lead.contactId}`,
+        leadId: lead.id,
+        product: lead.product || undefined,
+        value: lead.value || undefined,
+        status: lead.status,
+      });
+      sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_assigned", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
+    }
+
     res.json(lead);
   });
 
@@ -655,9 +711,15 @@ export async function registerRoutes(
   // Admin: Create user
   app.post("/api/admin/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { username, password, name, role } = req.body;
+      const { username, password, name, role, email } = req.body;
       if (!username || !password || !name) {
         return res.status(400).json({ message: "username, password e name são obrigatórios" });
+      }
+      if (email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return res.status(400).json({ message: "Formato de e-mail inválido" });
+        }
       }
       const existing = await storage.getUserByUsername(username);
       if (existing) {
@@ -669,11 +731,32 @@ export async function registerRoutes(
         password: hashedPassword,
         name,
         role: role || "employee",
+        email: email || null,
       });
       const { password: _, ...safeUser } = user;
       res.status(201).json(safeUser);
     } catch (err) {
       res.status(500).json({ message: "Erro ao criar usuário" });
+    }
+  });
+
+  // Admin: Update user email
+  app.patch("/api/admin/users/:id/email", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "E-mail é obrigatório" });
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Formato de e-mail inválido" });
+      }
+      const updatedUser = await storage.updateUserEmail(parseInt(req.params.id), email);
+      if (!updatedUser) return res.status(404).json({ message: "Usuário não encontrado" });
+      const { password: _, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao atualizar e-mail" });
     }
   });
 

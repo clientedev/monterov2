@@ -57,6 +57,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role", { enum: ["admin", "employee", "client"] }).notNull().default("client"),
   name: text("name").notNull(),
+  email: text("email"),
   avatar: text("avatar"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -89,6 +90,7 @@ export const leads = pgTable("leads", {
   product: text("product"), // NEW: selected product name
   value: text("value"),
   notes: text("notes"),
+  assignedTo: integer("assigned_to").references(() => users.id), // Responsável pela oportunidade
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -349,10 +351,7 @@ export const insertProdutoSeguroSchema = createInsertSchema(produtosSeguro).omit
 export const insertApoliceSchema = createInsertSchema(apolices, {
   inicioVigencia: z.coerce.date().optional(),
   fimVigencia: z.coerce.date().optional(),
-  vencimentoOriginal: z.coerce.date().optional(),
   dataEmissao: z.coerce.date().optional(),
-  dataCancelamento: z.coerce.date().optional(),
-  updatedAt: z.coerce.date().optional(),
 }).omit({ id: true, createdAt: true });
 
 // ============================================================
@@ -488,6 +487,23 @@ export const insertTodoistCommentSchema = createInsertSchema(todoistComments).om
 export const insertTodoistAutomationSchema = createInsertSchema(todoistAutomations).omit({ id: true, createdAt: true });
 
 // ============================================================
+// EMAIL NOTIFICATION LOGS
+// ============================================================
+
+export const emailNotificationLogs = pgTable("email_notification_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  eventType: text("event_type").notNull(), // lead_assigned, lead_status_changed, task_assigned, etc.
+  recordType: text("record_type"),         // lead, task, etc.
+  recordId: integer("record_id"),
+  status: text("status", { enum: ["sent", "failed", "skipped"] }).notNull().default("sent"),
+  errorMessage: text("error_message"),
+  sentAt: timestamp("sent_at").defaultNow(),
+});
+
+export const insertEmailNotificationLogSchema = createInsertSchema(emailNotificationLogs).omit({ id: true, sentAt: true });
+
+// ============================================================
 // TYPES
 // ============================================================
 
@@ -552,3 +568,6 @@ export type TodoistAutomation = typeof todoistAutomations.$inferSelect;
 export type InsertTodoistAutomation = z.infer<typeof insertTodoistAutomationSchema>;
 export type TodoistNotification = typeof todoistNotifications.$inferSelect;
 
+// Email Notification Log Type
+export type EmailNotificationLog = typeof emailNotificationLogs.$inferSelect;
+export type InsertEmailNotificationLog = z.infer<typeof insertEmailNotificationLogSchema>;

@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Plus,
   Sparkles,
@@ -70,15 +71,13 @@ export function TodoistQuickAddModal({
 
   const [contactId, setContactId] = useState<number | undefined>(defaultContactId);
   const [leadId, setLeadId] = useState<number | undefined>(defaultLeadId);
-  const [clienteId, setClienteId] = useState<number | undefined>(defaultClienteId);
-  const [apoliceId, setApoliceId] = useState<number | undefined>(defaultApoliceId);
 
   const { data: projects = [] } = useQuery<any[]>({
     queryKey: ["/api/todoist/projects"],
   });
 
   const { data: usersList = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/users"],
+    queryKey: ["/api/users"],
   });
 
   const { data: contactsList = [] } = useQuery<any[]>({
@@ -87,14 +86,6 @@ export function TodoistQuickAddModal({
 
   const { data: leadsList = [] } = useQuery<any[]>({
     queryKey: ["/api/leads"],
-  });
-
-  const { data: clientesList = [] } = useQuery<any[]>({
-    queryKey: ["/api/clientes"],
-  });
-
-  const { data: apolicesList = [] } = useQuery<any[]>({
-    queryKey: ["/api/apolices"],
   });
 
   const createTaskMutation = useMutation({
@@ -148,61 +139,78 @@ export function TodoistQuickAddModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      toast({ title: "Digite um título para a tarefa", variant: "destructive" });
+      toast({ title: "Digite o título da tarefa", variant: "destructive" });
       return;
     }
 
     createTaskMutation.mutate({
-      title: title.trim(),
-      description: description.trim() || null,
+      title,
+      description,
       priority,
       projectId: projectId === "0" ? null : parseInt(projectId),
       assignedTo: assignedTo ? parseInt(assignedTo) : user?.id,
-      dueDate: dueDate ? new Date(dueDate) : null,
-      dueTime: dueTime || null,
+      dueDate: dueDate ? new Date(`${dueDate}T${dueTime || "12:00"}:00`) : null,
+      dueTime,
       isRecurring,
       recurrenceRule: isRecurring ? recurrenceRule : null,
       contactId: contactId || null,
       leadId: leadId || null,
-      clienteId: clienteId || null,
-      apoliceId: apoliceId || null,
+      clienteId: defaultClienteId || null,
+      apoliceId: defaultApoliceId || null,
     });
   };
 
+  const contactOptions = contactsList.map((c: any) => {
+    const assignedUser = usersList.find((u: any) => u.id === c.assignedTo);
+    return {
+      value: String(c.id),
+      label: c.name,
+      sublabel: `${c.type === 'company' ? 'PJ' : 'PF'}${assignedUser ? ` • Resp: ${assignedUser.name}` : ''}`
+    };
+  });
+
+  const leadOptions = leadsList.map((l: any) => {
+    const contact = contactsList.find((c: any) => c.id === l.contactId);
+    const assignedUser = usersList.find((u: any) => u.id === l.assignedTo);
+    return {
+      value: String(l.id),
+      label: contact?.name ? `${contact.name} (${l.product || 'Lead'})` : `Oportunidade #${l.id}`,
+      sublabel: `Status: ${l.status}${assignedUser ? ` • Resp: ${assignedUser.name}` : ''}`
+    };
+  });
+
+  const userOptions = usersList.map((u: any) => ({
+    value: String(u.id),
+    label: u.name,
+    sublabel: u.role === 'admin' ? 'Administrador' : 'Equipe'
+  }));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-[#0f172a] text-slate-100 border-white/10 p-6 rounded-2xl shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
-            <Plus className="h-5 w-5 text-amber-400" />
-            Nova Tarefa (TODOIST CRM)
+      <DialogContent className="sm:max-w-[550px] w-[95vw] bg-white border-slate-200 shadow-2xl rounded-2xl p-6 overflow-y-auto max-h-[90vh]">
+        <DialogHeader className="border-b border-slate-100 pb-3">
+          <DialogTitle className="text-xl font-bold font-display text-slate-900 flex items-center gap-2">
+            <Plus className="h-5 w-5 text-primary" /> Nova Tarefa
           </DialogTitle>
         </DialogHeader>
 
-        {/* Quick Smart Text NLP Input */}
-        <div className="bg-amber-500/10 p-3.5 rounded-xl border border-amber-500/20 space-y-2">
-          <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-            <Sparkles className="h-4 w-4" />
-            Criação Rápida com Interpretação Inteligente
+        {/* Quick Parse IA Input */}
+        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mt-2">
+          <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5 mb-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Adicionar Rápido com IA
           </label>
           <div className="flex gap-2">
             <Input
-              placeholder="Ex: Entrar em contato com João amanhã às 14h p1"
+              placeholder="Ex: Ligar para João amanhã às 15h P1"
               value={smartInputText}
               onChange={(e) => setSmartInputText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleQuickParse();
-                }
-              }}
-              className="bg-slate-900/80 border-amber-500/30 text-xs text-white placeholder:text-slate-500"
+              className="bg-white border-slate-200 text-xs text-slate-800"
             />
             <Button
               type="button"
               onClick={handleQuickParse}
               disabled={isParsing}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs gap-1.5 shrink-0"
+              className="bg-primary hover:bg-primary/90 text-white font-bold text-xs gap-1.5 shrink-0 rounded-lg"
             >
               {isParsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
               Interpretar
@@ -213,24 +221,24 @@ export function TodoistQuickAddModal({
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {/* Title */}
           <div>
-            <label className="text-xs font-semibold text-slate-300">Título da Tarefa *</label>
+            <label className="text-xs font-bold text-slate-700">Título da Tarefa *</label>
             <Input
               placeholder="O que precisa ser feito?"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="bg-slate-900 border-white/10 text-sm text-white font-medium focus-visible:ring-amber-500/50 mt-1"
+              className="bg-white border-slate-200 text-sm text-slate-900 font-medium mt-1 rounded-xl"
               required
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="text-xs font-semibold text-slate-300">Descrição / Notas</label>
+            <label className="text-xs font-bold text-slate-700">Descrição / Notas</label>
             <Textarea
               placeholder="Detalhes adicionais..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="bg-slate-900 border-white/10 text-xs text-white min-h-[70px] mt-1"
+              className="bg-white border-slate-200 text-xs text-slate-800 min-h-[70px] mt-1 rounded-xl"
             />
           </div>
 
@@ -238,28 +246,28 @@ export function TodoistQuickAddModal({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Priority */}
             <div>
-              <label className="text-xs font-semibold text-slate-300">Prioridade</label>
+              <label className="text-xs font-bold text-slate-700">Prioridade</label>
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger className="bg-slate-900 border-white/10 text-xs text-white mt-1">
+                <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 mt-1 rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-white/10 text-white">
-                  <SelectItem value="P1" className="text-red-400 font-bold">P1 — Urgente</SelectItem>
-                  <SelectItem value="P2" className="text-orange-400 font-bold">P2 — Alta</SelectItem>
-                  <SelectItem value="P3" className="text-blue-400 font-bold">P3 — Normal</SelectItem>
-                  <SelectItem value="P4" className="text-slate-400 font-bold">P4 — Baixa</SelectItem>
+                <SelectContent className="bg-white border-slate-200 text-slate-800">
+                  <SelectItem value="P1" className="text-red-600 font-bold">P1 — Urgente</SelectItem>
+                  <SelectItem value="P2" className="text-orange-600 font-bold">P2 — Alta</SelectItem>
+                  <SelectItem value="P3" className="text-blue-600 font-bold">P3 — Normal</SelectItem>
+                  <SelectItem value="P4" className="text-slate-500 font-bold">P4 — Baixa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Project */}
             <div>
-              <label className="text-xs font-semibold text-slate-300">Projeto</label>
+              <label className="text-xs font-bold text-slate-700">Projeto</label>
               <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger className="bg-slate-900 border-white/10 text-xs text-white mt-1">
+                <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 mt-1 rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-white/10 text-white">
+                <SelectContent className="bg-white border-slate-200 text-slate-800">
                   <SelectItem value="0">Inbox (Sem Projeto)</SelectItem>
                   {projects.map((p: any) => (
                     <SelectItem key={p.id} value={String(p.id)}>
@@ -270,53 +278,50 @@ export function TodoistQuickAddModal({
               </Select>
             </div>
 
-            {/* Assignee */}
+            {/* Assignee — Searchable */}
             <div>
-              <label className="text-xs font-semibold text-slate-300">Responsável</label>
-              <Select value={assignedTo} onValueChange={setAssignedTo}>
-                <SelectTrigger className="bg-slate-900 border-white/10 text-xs text-white mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-white/10 text-white">
-                  {usersList.map((u: any) => (
-                    <SelectItem key={u.id} value={String(u.id)}>
-                      {u.name || u.username}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-xs font-bold text-slate-700">Responsável</label>
+              <div className="mt-1">
+                <SearchableSelect
+                  options={userOptions}
+                  value={assignedTo}
+                  onValueChange={setAssignedTo}
+                  placeholder="Selecione responsável..."
+                  searchPlaceholder="Pesquisar usuário..."
+                />
+              </div>
             </div>
           </div>
 
           {/* Grid: Date, Time, Recurrence */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" /> Data de Vencimento
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5 text-primary" /> Vencimento
               </label>
               <Input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="bg-slate-900 border-white/10 text-xs text-white mt-1"
+                className="bg-white border-slate-200 text-xs text-slate-800 mt-1 rounded-xl"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> Horário
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5 text-primary" /> Horário
               </label>
               <Input
                 type="time"
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
-                className="bg-slate-900 border-white/10 text-xs text-white mt-1"
+                className="bg-white border-slate-200 text-xs text-slate-800 mt-1 rounded-xl"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-                <Repeat className="h-3.5 w-3.5 text-emerald-400" /> Recorrência
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <Repeat className="h-3.5 w-3.5 text-emerald-600" /> Recorrência
               </label>
               <Select
                 value={isRecurring ? recurrenceRule : "none"}
@@ -329,10 +334,10 @@ export function TodoistQuickAddModal({
                   }
                 }}
               >
-                <SelectTrigger className="bg-slate-900 border-white/10 text-xs text-white mt-1">
+                <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 mt-1 rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-white/10 text-white">
+                <SelectContent className="bg-white border-slate-200 text-slate-800">
                   <SelectItem value="none">Não se repete</SelectItem>
                   <SelectItem value="daily">Todos os dias</SelectItem>
                   <SelectItem value="weekdays">Dias úteis (Seg-Sex)</SelectItem>
@@ -344,72 +349,56 @@ export function TodoistQuickAddModal({
             </div>
           </div>
 
-          {/* CRM Entity Selector Section */}
-          <div className="bg-slate-900/60 p-3 rounded-xl border border-white/5 space-y-3">
-            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Vincular a Registro do CRM</span>
+          {/* CRM Entity Selector Section with SearchableSelect */}
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+            <span className="text-xs font-bold text-primary uppercase tracking-wider">Vincular a Registro do CRM</span>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Contact */}
+              {/* Contact with SearchableSelect */}
               <div>
-                <label className="text-[11px] text-slate-400 flex items-center gap-1">
-                  <User className="h-3 w-3" /> Contato / Empresa
+                <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1 mb-1">
+                  <User className="h-3 w-3 text-slate-400" /> Contato / Empresa
                 </label>
-                <Select
-                  value={contactId ? String(contactId) : "0"}
-                  onValueChange={(val) => setContactId(val === "0" ? undefined : parseInt(val))}
-                >
-                  <SelectTrigger className="bg-slate-800 border-white/10 text-xs text-white mt-1">
-                    <SelectValue placeholder="Selecione um contato..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-white/10 text-white">
-                    <SelectItem value="0">Nenhum</SelectItem>
-                    {contactsList.map((c: any) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.name} ({c.type === 'company' ? 'PJ' : 'PF'})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={contactOptions}
+                  value={contactId ? String(contactId) : undefined}
+                  onValueChange={(val) => setContactId(val ? parseInt(val) : undefined)}
+                  placeholder="Pesquisar contato..."
+                  searchPlaceholder="Nome do contato ou PJ..."
+                  clearable
+                />
               </div>
 
-              {/* Lead / Opportunity */}
+              {/* Lead / Opportunity with SearchableSelect */}
               <div>
-                <label className="text-[11px] text-slate-400 flex items-center gap-1">
-                  <FileText className="h-3 w-3" /> Oportunidade / Funil
+                <label className="text-[11px] font-bold text-slate-600 flex items-center gap-1 mb-1">
+                  <FileText className="h-3 w-3 text-slate-400" /> Oportunidade / Funil
                 </label>
-                <Select
-                  value={leadId ? String(leadId) : "0"}
-                  onValueChange={(val) => setLeadId(val === "0" ? undefined : parseInt(val))}
-                >
-                  <SelectTrigger className="bg-slate-800 border-white/10 text-xs text-white mt-1">
-                    <SelectValue placeholder="Selecione oportunidade..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-white/10 text-white">
-                    <SelectItem value="0">Nenhuma</SelectItem>
-                    {leadsList.map((l: any) => (
-                      <SelectItem key={l.id} value={String(l.id)}>
-                        Oportunidade #{l.id} ({l.product || l.status})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={leadOptions}
+                  value={leadId ? String(leadId) : undefined}
+                  onValueChange={(val) => setLeadId(val ? parseInt(val) : undefined)}
+                  placeholder="Pesquisar oportunidade..."
+                  searchPlaceholder="Nome do cliente ou produto..."
+                  clearable
+                />
               </div>
             </div>
           </div>
 
           {/* Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="bg-transparent border-white/10 text-slate-300 hover:bg-white/5 text-xs"
+              className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 text-xs rounded-xl"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={createTaskMutation.isPending}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs gap-1.5"
+              className="bg-primary hover:bg-primary/90 text-white font-bold text-xs gap-1.5 rounded-xl shadow-md"
             >
               {createTaskMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Adicionar Tarefa

@@ -109,19 +109,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </div>
 
                     {/* TODOIST Module Section */}
-                    <div className="animate-in fade-in slide-in-from-left-4 duration-500 bg-black/20 p-3 rounded-2xl border border-amber-500/20">
-                        <div className="flex items-center justify-between px-2 mb-3">
-                            <p className="text-[11px] uppercase text-amber-400 font-black tracking-[0.15em]">TODOIST CRM</p>
+                    <div className="animate-in fade-in slide-in-from-left-4 duration-500">
+                        <div className="flex items-center justify-between px-2 mb-2">
+                            <p className="text-[11px] uppercase text-[#1A3A4F] font-bold tracking-[0.15em]">TODOIST Tarefas</p>
                             <Button
                                 size="sm"
                                 onClick={() => setQuickAddOpen(true)}
-                                className="h-6 text-[10px] bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold gap-1 px-2"
+                                className="h-6 text-[10px] bg-primary hover:bg-primary/90 text-white font-bold gap-1 px-2 rounded-lg"
                             >
                                 <Plus className="h-3 w-3" /> Tarefa
                             </Button>
                         </div>
                         <nav className="space-y-1">
-                            <NavLink href="/admin/todoist" icon={CheckSquare} label="Gerenciador TODOIST" />
+                            <NavLink href="/admin/todoist" icon={CheckSquare} label="Tarefas & Kanban" />
                         </nav>
                     </div>
 

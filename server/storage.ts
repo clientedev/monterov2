@@ -124,6 +124,7 @@ export interface IStorage {
   updateUserRole(id: number, role: string): Promise<User | undefined>;
   updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined>;
   updateUserProfile(id: number, data: { name?: string; avatar?: string }): Promise<User | undefined>;
+  updateUserEmail(id: number, email: string): Promise<User | undefined>;
   deleteUser(id: number): Promise<void>;
 
   // Contacts
@@ -452,6 +453,15 @@ export class DatabaseStorage implements IStorage {
     const [updatedUser] = await db
       .update(users)
       .set(data)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async updateUserEmail(id: number, email: string): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ email })
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
@@ -1699,6 +1709,7 @@ export class MemStorage implements IStorage {
       likes: 0,
       videoUrl: post.videoUrl || null,
       youtubeUrl: post.youtubeUrl || null,
+      isApproved: (post as any).isApproved ?? true,
       isFeatured: post.isFeatured ?? false,
       publishedAt: post.publishedAt || new Date(),
       createdAt: new Date()
@@ -1863,6 +1874,7 @@ export class MemStorage implements IStorage {
       username: user.username,
       password: user.password,
       name: user.name,
+      email: user.email || null,
       role: user.role || "client",
       avatar: user.avatar || null,
       createdAt: new Date(),
@@ -1896,6 +1908,12 @@ export class MemStorage implements IStorage {
     return user;
   }
 
+  async updateUserEmail(id: number, email: string): Promise<User | undefined> {
+    const user = this.users.find((u) => u.id === id);
+    if (user) user.email = email;
+    return user;
+  }
+
   async deleteUser(id: number): Promise<void> {
     this.users = this.users.filter((u) => u.id !== id);
   }
@@ -1921,11 +1939,6 @@ export class MemStorage implements IStorage {
       address: contact.address || null,
       responsibleName: contact.responsibleName || null,
       maritalStatus: contact.maritalStatus || null,
-      rg: contact.rg || null,
-      cnh: contact.cnh || null,
-      birthDate: contact.birthDate || null,
-      gender: contact.gender || null,
-      profession: contact.profession || null,
       anniversaryDate: contact.anniversaryDate || null,
       responsibleId: contact.responsibleId || null,
       assignedTo: contact.assignedTo ?? 0,
@@ -1974,7 +1987,8 @@ export class MemStorage implements IStorage {
       notes: lead.notes || null,
       product: lead.product || null,
       status: lead.status ?? "New",
-      contactId: lead.contactId ?? 0
+      contactId: lead.contactId ?? 0,
+      assignedTo: lead.assignedTo || null
     };
     this.leads.push(newLead);
     return newLead;

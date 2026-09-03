@@ -77,6 +77,7 @@ export default function LeadsPage() {
     const { settings, updateSettings } = useSiteSettings();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
+    const [selectedResponsible, setSelectedResponsible] = useState<string>("all");
     const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
     const [deleteLeadId, setDeleteLeadId] = useState<number | null>(null);
     const [viewContactId, setViewContactId] = useState<number | null>(null);
@@ -110,6 +111,15 @@ export default function LeadsPage() {
     const { data: clientes } = useQuery<any[]>({
         queryKey: ["/api/clientes"],
     });
+
+    const { data: users } = useQuery<User[]>({
+        queryKey: ["/api/users"],
+    });
+
+    const getResponsibleUser = (userId?: number | null) => {
+        if (!userId) return null;
+        return users?.find(u => u.id === userId) || null;
+    };
 
     const getContactForLead = (contactId?: number | string | null) => {
         if (!contactId) return null;
@@ -300,6 +310,24 @@ export default function LeadsPage() {
                         {isExpanded ? "Reduzir Tela" : "Expandir Quadro"}
                     </Button>
 
+                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-xl border border-gray-200 shadow-sm h-10">
+                        <UserIcon className="h-4 w-4 text-slate-400 shrink-0" />
+                        <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Responsável:</span>
+                        <Select value={selectedResponsible} onValueChange={setSelectedResponsible}>
+                            <SelectTrigger className="border-none shadow-none h-8 p-0 text-xs font-bold text-slate-800 focus:ring-0 focus:outline-none min-w-[110px]">
+                                <SelectValue placeholder="Todos" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all" className="font-bold text-xs">Todos</SelectItem>
+                                {users?.map((u) => (
+                                    <SelectItem key={u.id} value={u.id.toString()} className="text-xs font-medium">
+                                        {u.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
@@ -335,6 +363,7 @@ export default function LeadsPage() {
                             <div className="p-6 overflow-y-auto flex-1 box-border">
                                 <LeadForm
                                     contacts={contacts || []}
+                                    users={users || []}
                                     columns={columns}
                                     initialData={editingLeadId ? leads?.find(l => l.id === editingLeadId) : undefined}
                                     onSubmit={(data: InsertLead) => {
@@ -468,6 +497,9 @@ export default function LeadsPage() {
                                                             {leads?.filter(l => l.status === column.id && (
                                                                 search === "" ||
                                                                 getContactForLead(l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
+                                                            ) && (
+                                                                selectedResponsible === "all" ||
+                                                                String(l.assignedTo) === String(selectedResponsible)
                                                             )).map((lead, index) => (
                                                                 <Draggable key={lead.id} draggableId={lead.id.toString()} index={index}>
                                                                     {(provided, snapshot) => (
@@ -483,6 +515,7 @@ export default function LeadsPage() {
                                                                             <LeadCard
                                                                                 lead={lead}
                                                                                 contact={getContactForLead(lead.contactId)}
+                                                                                responsible={getResponsibleUser(lead.assignedTo)}
                                                                                 columns={columns}
                                                                                 onMove={(newStatus) => updateStatusMutation.mutate({ id: lead.id, status: newStatus })}
                                                                                 onEdit={() => {
@@ -566,6 +599,7 @@ export default function LeadsPage() {
 function LeadCard({
     lead,
     contact,
+    responsible,
     columns,
     onMove,
     onEdit,
@@ -574,6 +608,7 @@ function LeadCard({
 }: {
     lead: Lead,
     contact?: { name: string; [key: string]: any } | null,
+    responsible?: { id: number; name: string; avatar?: string | null } | null,
     columns: any[],
     onMove: (s: string) => void,
     onEdit: () => void,
@@ -589,18 +624,18 @@ function LeadCard({
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-[#1A3A4F] opacity-0 group-hover:opacity-100 transition-opacity" />
             
             <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-gray-100">
-                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100" onClick={onEdit}>
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100" onClick={onEdit} title="✏️ Editar Venda e Responsável">
                     <Edit2 className="h-3 w-3" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50" onClick={onDelete}>
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50" onClick={onDelete} title="Excluir Venda">
                     <Trash2 className="h-3 w-3" />
                 </Button>
             </div>
 
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start mb-3">
                 <div className="flex-1 pr-12">
                     <h4 
-                        className="font-bold text-gray-900 line-clamp-1 cursor-pointer hover:text-primary transition-colors hover:underline"
+                        className="font-bold text-gray-900 line-clamp-1 cursor-pointer hover:text-primary transition-colors hover:underline text-base"
                         onClick={() => lead.contactId && onViewContact?.(lead.contactId)}
                         title="Clique para ver e editar os dados do contato"
                     >
@@ -617,6 +652,24 @@ function LeadCard({
                         )}
                     </div>
                 </div>
+            </div>
+
+            {/* Responsável display block */}
+            <div className="flex items-center justify-between bg-slate-50/80 px-2.5 py-1.5 rounded-lg border border-slate-100 mb-3 text-xs">
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                    <div className="h-5 w-5 rounded-full bg-primary/15 text-primary font-bold text-[10px] flex items-center justify-center shrink-0">
+                        {responsible?.name?.charAt(0).toUpperCase() || "?"}
+                    </div>
+                    <span className="text-slate-500 font-medium">Responsável:</span>
+                    <strong className="text-slate-800 font-semibold truncate">{responsible?.name || "Não atribuído"}</strong>
+                </div>
+                <button
+                    onClick={onEdit}
+                    className="text-slate-400 hover:text-primary transition-colors p-0.5"
+                    title="Editar responsável"
+                >
+                    ✏️
+                </button>
             </div>
 
             <div className="mb-4">
@@ -683,7 +736,7 @@ function LeadCard({
     );
 }
 
-function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) {
+function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialData }: any) {
     const { toast } = useToast();
 
     // Direct text search input state
@@ -726,6 +779,7 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
             source: initialData.source || "",
             product: initialData.product || "",
             notes: initialData.notes || "",
+            assignedTo: initialData.assignedTo || undefined,
         } : {
             contactId: 0,
             status: columns[0]?.id || "new",
@@ -733,6 +787,7 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
             product: "",
             value: "",
             notes: "",
+            assignedTo: undefined,
         },
     });
 
@@ -767,6 +822,7 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                 source: initialData.source || "",
                 product: initialData.product || "",
                 notes: initialData.notes || "",
+                assignedTo: initialData.assignedTo || undefined,
             });
         }
     }, [initialData, form]);
@@ -780,10 +836,6 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
         },
         staleTime: 0,
         retry: 2,
-    });
-
-    const { data: users } = useQuery<User[]>({
-        queryKey: ["/api/users"],
     });
 
     // Filter contacts based on text typed in search input box
@@ -1001,6 +1053,40 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                         )}
                     />
 
+                    {/* Field for Responsável pela Venda */}
+                    <FormField
+                        control={form.control}
+                        name="assignedTo"
+                        render={({ field }) => (
+                            <FormItem className="w-full min-w-0">
+                                <FormLabel className="text-gray-600 font-bold">Responsável pela Venda</FormLabel>
+                                <Select
+                                    onValueChange={(val) => field.onChange(val ? parseInt(val) : null)}
+                                    value={field.value ? field.value.toString() : ""}
+                                >
+                                    <FormControl className="w-full min-w-0">
+                                        <SelectTrigger className="rounded-xl h-11 w-full min-w-0">
+                                            <SelectValue placeholder="Selecione o responsável..." />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {users?.map((u: any) => (
+                                            <SelectItem key={u.id} value={u.id.toString()}>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-5 w-5 rounded-full bg-primary/20 text-primary font-bold text-[10px] flex items-center justify-center">
+                                                        {u.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <span>{u.name}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
                         <FormField
                             control={form.control}
@@ -1193,7 +1279,7 @@ function LeadForm({ contacts, columns, onSubmit, isPending, initialData }: any) 
                             <div className="col-span-2">
                                 <Label className="font-bold">Responsável Comercial</Label>
                                 <SearchableSelect
-                                    options={(users ?? []).map(u => ({ value: String(u.id), label: u.name }))}
+                                    options={(users ?? []).map((u: any) => ({ value: String(u.id), label: u.name }))}
                                     value={clientFormData.responsavelComercialId}
                                     onValueChange={v => setClientField("responsavelComercialId", v)}
                                     placeholder="Selecionar responsável..."
