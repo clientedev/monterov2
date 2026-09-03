@@ -1324,12 +1324,29 @@ export async function registerRoutes(
 
   // Tasks
   app.get("/api/todoist/tasks", isTeam, async (req, res) => {
+    let assignedToFilter: number | undefined = undefined;
+    const userRole = (req.user as any)?.role;
+    const currentUserId = (req.user as any)?.id;
+
+    if (req.query.assignedTo) {
+      if (req.query.assignedTo === "all") {
+        assignedToFilter = undefined;
+      } else if (req.query.assignedTo === "me") {
+        assignedToFilter = currentUserId;
+      } else {
+        assignedToFilter = parseInt(req.query.assignedTo as string);
+      }
+    } else if (userRole !== "admin") {
+      // Non-admin users view their own tasks by default
+      assignedToFilter = currentUserId;
+    }
+
     const filters = {
       view: req.query.view as string,
       projectId: req.query.projectId ? parseInt(req.query.projectId as string) : undefined,
       priority: req.query.priority as string,
       labelId: req.query.labelId ? parseInt(req.query.labelId as string) : undefined,
-      assignedTo: req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined,
+      assignedTo: assignedToFilter,
       contactId: req.query.contactId ? parseInt(req.query.contactId as string) : undefined,
       leadId: req.query.leadId ? parseInt(req.query.leadId as string) : undefined,
       clienteId: req.query.clienteId ? parseInt(req.query.clienteId as string) : undefined,

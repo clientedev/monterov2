@@ -72,6 +72,7 @@ export default function TodoistModulePage() {
   const [selectedPriorityFilter, setSelectedPriorityFilter] = useState<string>("all");
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>("all");
   const [selectedLabelFilter, setSelectedLabelFilter] = useState<number | null>(null);
+  const [selectedUserFilter, setSelectedUserFilter] = useState<string>(user?.role === "admin" ? "all" : "me");
 
   // Project creation modal
   const [newProjectOpen, setNewProjectOpen] = useState(false);
@@ -91,6 +92,7 @@ export default function TodoistModulePage() {
   const [autoPriority, setAutoPriority] = useState("P2");
 
   // Fetching data
+  const { data: usersList = [] } = useQuery<any[]>({ queryKey: ["/api/users"] });
   const { data: projects = [] } = useQuery<any[]>({ queryKey: ["/api/todoist/projects"] });
   const { data: labels = [] } = useQuery<any[]>({ queryKey: ["/api/todoist/labels"] });
   const { data: automations = [] } = useQuery<any[]>({ queryKey: ["/api/todoist/automations"] });
@@ -109,14 +111,27 @@ export default function TodoistModulePage() {
   }
   if (selectedPriorityFilter !== "all") queryParams.append("priority", selectedPriorityFilter);
   if (selectedLabelFilter) queryParams.append("labelId", String(selectedLabelFilter));
+  if (selectedUserFilter) queryParams.append("assignedTo", selectedUserFilter);
   if (searchQuery.trim()) queryParams.append("search", searchQuery.trim());
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<any[]>({
-    queryKey: ["/api/todoist/tasks", activeView, selectedPriorityFilter, selectedLabelFilter, searchQuery],
+    queryKey: ["/api/todoist/tasks", activeView, selectedPriorityFilter, selectedLabelFilter, selectedUserFilter, searchQuery],
     queryFn: async () => {
       const res = await fetch(`/api/todoist/tasks?${queryParams.toString()}`);
       if (!res.ok) throw new Error("Erro ao carregar tarefas");
       return res.json();
+    },
+  });
+
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      await apiRequest("DELETE", `/api/todoist/tasks/${taskId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/todoist/dashboard"] });
+      toast({ title: "Tarefa excluída com sucesso!" });
     },
   });
 
@@ -399,23 +414,45 @@ export default function TodoistModulePage() {
         <div className="lg:col-span-3 space-y-6">
           {/* Global Search & Filters Bar */}
           {activeView !== "dashboard" && activeView !== "automations" && (
-            <div className="bg-[#0f172a] p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row gap-3 items-center justify-between shadow-xl">
+            <div className="bg-white p-4 rounded-2xl border border-gray-200 flex flex-col md:flex-row gap-3 items-center justify-between shadow-sm">
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <Input
                   placeholder="Pesquisar tarefas por título, descrição ou dados..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-slate-900/80 border-white/10 pl-9 text-xs text-white"
+                  className="bg-slate-50 border-gray-200 pl-9 text-xs text-slate-900 rounded-xl"
                 />
               </div>
 
-              <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
+                {/* Admin User Filter Dropdown */}
+                {user?.role === "admin" && (
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-gray-200 rounded-xl px-3 py-1">
+                    <User className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-bold text-slate-600">Tarefas de:</span>
+                    <Select value={selectedUserFilter} onValueChange={setSelectedUserFilter}>
+                      <SelectTrigger className="border-none bg-transparent h-7 text-xs font-bold text-slate-900 focus:ring-0 shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border-gray-200 text-slate-900">
+                        <SelectItem value="all">Todos os Usuários</SelectItem>
+                        <SelectItem value="me">Minhas Tarefas (Eu)</SelectItem>
+                        {usersList.map((u: any) => (
+                          <SelectItem key={u.id} value={String(u.id)}>
+                            {u.name || u.username} ({u.role})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <Select value={selectedPriorityFilter} onValueChange={setSelectedPriorityFilter}>
-                  <SelectTrigger className="bg-slate-900 border-white/10 text-xs text-white w-36">
+                  <SelectTrigger className="bg-slate-50 border-gray-200 text-xs text-slate-800 w-36 rounded-xl">
                     <SelectValue placeholder="Prioridade" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-white/10 text-white">
+                  <SelectContent className="bg-white border-gray-200 text-slate-900">
                     <SelectItem value="all">Todas Prioridades</SelectItem>
                     <SelectItem value="P1">P1 — Urgente</SelectItem>
                     <SelectItem value="P2">P2 — Alta</SelectItem>
@@ -432,8 +469,8 @@ export default function TodoistModulePage() {
             <div className="space-y-6">
               {/* Overdue Section */}
               {overdueTasks.length > 0 && (
-                <div className="bg-red-950/20 p-5 rounded-2xl border border-red-500/30 space-y-3">
-                  <div className="flex items-center gap-2 text-red-400">
+                <div className="bg-red-50/70 p-5 rounded-2xl border border-red-200 space-y-3 shadow-sm">
+                  <div className="flex items-center gap-2 text-red-600">
                     <AlertTriangle className="h-5 w-5" />
                     <h3 className="text-sm font-bold uppercase tracking-wider">ATRASADAS ({overdueTasks.length})</h3>
                   </div>
@@ -444,6 +481,7 @@ export default function TodoistModulePage() {
                         task={t}
                         onToggleComplete={(id) => completeTaskMutation.mutate(id)}
                         onSelectTask={(task) => setSelectedTaskId(task.id)}
+                        onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
                       />
                     ))}
                   </div>
@@ -451,10 +489,10 @@ export default function TodoistModulePage() {
               )}
 
               {/* Today Section */}
-              <div className="bg-[#0f172a] p-5 rounded-2xl border border-white/10 space-y-3 shadow-xl">
-                <div className="flex items-center gap-2 text-amber-400">
-                  <Sun className="h-5 w-5" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider">HOJE ({todayTasks.length})</h3>
+              <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-3 shadow-sm">
+                <div className="flex items-center gap-2 text-primary font-bold">
+                  <Sun className="h-5 w-5 text-amber-500" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">HOJE ({todayTasks.length})</h3>
                 </div>
                 {todayTasks.length === 0 ? (
                   <p className="text-xs text-slate-400 py-4 text-center italic">Nenhuma tarefa agendada para hoje. Parabéns!</p>
@@ -466,6 +504,7 @@ export default function TodoistModulePage() {
                         task={t}
                         onToggleComplete={(id) => completeTaskMutation.mutate(id)}
                         onSelectTask={(task) => setSelectedTaskId(task.id)}
+                        onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
                       />
                     ))}
                   </div>
@@ -473,13 +512,13 @@ export default function TodoistModulePage() {
               </div>
 
               {/* Upcoming Section */}
-              <div className="bg-[#0f172a] p-5 rounded-2xl border border-white/10 space-y-3 shadow-xl">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Clock className="h-5 w-5" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider">PRÓXIMAS ({upcomingTasks.length})</h3>
+              <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-3 shadow-sm">
+                <div className="flex items-center gap-2 text-slate-700 font-bold">
+                  <Clock className="h-5 w-5 text-emerald-600" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">PRÓXIMAS ({upcomingTasks.length})</h3>
                 </div>
                 {upcomingTasks.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center italic">Sem mais tarefas pendentes.</p>
+                  <p className="text-xs text-slate-400 py-4 text-center italic">Sem mais tarefas pendentes.</p>
                 ) : (
                   <div className="space-y-2.5">
                     {upcomingTasks.map((t) => (
@@ -488,6 +527,7 @@ export default function TodoistModulePage() {
                         task={t}
                         onToggleComplete={(id) => completeTaskMutation.mutate(id)}
                         onSelectTask={(task) => setSelectedTaskId(task.id)}
+                        onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
                       />
                     ))}
                   </div>
@@ -498,8 +538,8 @@ export default function TodoistModulePage() {
 
           {/* VIEW: INBOX / UPCOMING / COMPLETED / PROJECTS */}
           {activeView !== "today" && activeView !== "kanban" && activeView !== "dashboard" && activeView !== "automations" && (
-            <div className="bg-[#0f172a] p-5 rounded-2xl border border-white/10 space-y-4 shadow-xl">
-              <h3 className="text-base font-bold text-white uppercase tracking-wider">
+            <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-sm">
+              <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider">
                 {activeView === "inbox" && "Caixa de Entrada (Inbox)"}
                 {activeView === "upcoming" && "Próximas Tarefas"}
                 {activeView === "completed" && "Tarefas Concluídas"}
@@ -509,7 +549,7 @@ export default function TodoistModulePage() {
               {tasksLoading ? (
                 <p className="text-xs text-slate-400 py-6 text-center">Carregando...</p>
               ) : tasks.length === 0 ? (
-                <p className="text-xs text-slate-500 py-8 text-center italic">Nenhuma tarefa encontrada para esta visão.</p>
+                <p className="text-xs text-slate-400 py-8 text-center italic">Nenhuma tarefa encontrada para esta visão.</p>
               ) : (
                 <div className="space-y-2.5">
                   {tasks.map((t) => (
@@ -518,6 +558,7 @@ export default function TodoistModulePage() {
                       task={t}
                       onToggleComplete={(id) => completeTaskMutation.mutate(id)}
                       onSelectTask={(task) => setSelectedTaskId(task.id)}
+                      onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
                     />
                   ))}
                 </div>
@@ -530,10 +571,10 @@ export default function TodoistModulePage() {
             <DragDropContext onDragEnd={handleDragEnd}>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
-                  { id: "backlog", title: "Backlog", color: "border-slate-500/30 text-slate-400" },
-                  { id: "a_fazer", title: "A Fazer", color: "border-blue-500/30 text-blue-400" },
-                  { id: "em_andamento", title: "Em Andamento", color: "border-amber-500/30 text-amber-400" },
-                  { id: "concluido", title: "Concluído", color: "border-emerald-500/30 text-emerald-400" },
+                  { id: "backlog", title: "Backlog", color: "border-slate-300 text-slate-600 bg-slate-100" },
+                  { id: "a_fazer", title: "A Fazer", color: "border-blue-300 text-blue-700 bg-blue-50" },
+                  { id: "em_andamento", title: "Em Andamento", color: "border-amber-300 text-amber-800 bg-amber-50" },
+                  { id: "concluido", title: "Concluído", color: "border-emerald-300 text-emerald-800 bg-emerald-50" },
                 ].map((col) => {
                   const colTasks = tasks.filter((t) => t.kanbanColumn === col.id);
                   return (
@@ -542,11 +583,11 @@ export default function TodoistModulePage() {
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className="bg-[#0f172a] p-4 rounded-2xl border border-white/10 min-h-[500px] flex flex-col space-y-3 shadow-xl"
+                          className="bg-slate-50 p-4 rounded-2xl border border-gray-200 min-h-[500px] flex flex-col space-y-3 shadow-sm"
                         >
-                          <div className={`flex items-center justify-between pb-2 border-b border-white/10 ${col.color}`}>
+                          <div className={`flex items-center justify-between pb-2 border-b px-2 py-1 rounded-lg font-bold ${col.color}`}>
                             <h4 className="text-xs font-bold uppercase tracking-wider">{col.title}</h4>
-                            <span className="text-xs px-2 py-0.5 rounded bg-white/10 font-bold">{colTasks.length}</span>
+                            <span className="text-xs px-2 py-0.5 rounded bg-white font-bold border border-slate-200">{colTasks.length}</span>
                           </div>
 
                           <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar">
@@ -562,6 +603,7 @@ export default function TodoistModulePage() {
                                       task={t}
                                       onToggleComplete={(id) => completeTaskMutation.mutate(id)}
                                       onSelectTask={(task) => setSelectedTaskId(task.id)}
+                                      onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
                                     />
                                   </div>
                                 )}
@@ -583,45 +625,45 @@ export default function TodoistModulePage() {
             <div className="space-y-6">
               {/* Metric Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="bg-[#0f172a] border-white/10 text-white">
+                <Card className="bg-white border-gray-200 text-slate-900 shadow-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-xs text-slate-400 font-medium">Tarefas Hoje</CardTitle>
+                    <CardTitle className="text-xs text-slate-500 font-medium">Tarefas Hoje</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-black text-amber-400">
+                    <div className="text-2xl font-bold text-amber-600">
                       {dashboardStats?.myTasks?.todayCount || 0}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#0f172a] border-white/10 text-white">
+                <Card className="bg-white border-gray-200 text-slate-900 shadow-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-xs text-slate-400 font-medium">Atrasadas</CardTitle>
+                    <CardTitle className="text-xs text-slate-500 font-medium">Atrasadas</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-black text-red-500">
+                    <div className="text-2xl font-bold text-red-600">
                       {dashboardStats?.myTasks?.overdueCount || 0}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#0f172a] border-white/10 text-white">
+                <Card className="bg-white border-gray-200 text-slate-900 shadow-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-xs text-slate-400 font-medium">Concluídas Hoje</CardTitle>
+                    <CardTitle className="text-xs text-slate-500 font-medium">Concluídas Hoje</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-black text-emerald-400">
+                    <div className="text-2xl font-bold text-emerald-600">
                       {dashboardStats?.myTasks?.completedTodayCount || 0}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#0f172a] border-white/10 text-white">
+                <Card className="bg-white border-gray-200 text-slate-900 shadow-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-xs text-slate-400 font-medium">Total Pendente</CardTitle>
+                    <CardTitle className="text-xs text-slate-500 font-medium">Total Pendente</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-black text-blue-400">
+                    <div className="text-2xl font-bold text-primary">
                       {dashboardStats?.myTasks?.totalPending || 0}
                     </div>
                   </CardContent>
@@ -629,29 +671,29 @@ export default function TodoistModulePage() {
               </div>
 
               {/* CRM Intelligence Section */}
-              <div className="bg-gradient-to-r from-[#0F6570]/30 to-indigo-950/40 p-6 rounded-2xl border border-amber-500/30 space-y-4 shadow-xl">
-                <div className="flex items-center gap-2 text-amber-400">
+              <div className="bg-primary/5 p-6 rounded-2xl border border-primary/20 space-y-4 shadow-sm">
+                <div className="flex items-center gap-2 text-primary">
                   <Sparkles className="h-5 w-5" />
-                  <h3 className="text-sm font-black uppercase tracking-wider">INTELIGÊNCIA CRM + TAREFAS</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider">INTELIGÊNCIA CRM + TAREFAS</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Leads without contact */}
-                  <div className="bg-slate-900/80 p-4 rounded-xl border border-white/10 space-y-3">
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-3 shadow-sm">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-200">Leads Sem Nenhum Contato</h4>
-                      <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500/30 font-bold">
+                      <h4 className="text-xs font-bold text-slate-800">Leads Sem Nenhum Contato</h4>
+                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 font-bold">
                         {dashboardStats?.crmIntelligence?.leadsWithoutContactCount || 0}
                       </Badge>
                     </div>
                     <div className="space-y-2">
                       {dashboardStats?.crmIntelligence?.leadsWithoutContact?.map((lead: any) => (
-                        <div key={lead.id} className="flex items-center justify-between p-2 rounded bg-slate-800/60 text-xs">
-                          <span className="text-white font-medium">Oportunidade #{lead.id} ({lead.product || "Lead"})</span>
+                        <div key={lead.id} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                          <span className="text-slate-900 font-medium">Oportunidade #{lead.id} ({lead.product || "Lead"})</span>
                           <Button
                             size="sm"
                             onClick={() => setQuickAddOpen(true)}
-                            className="h-6 text-[10px] bg-amber-500 text-slate-950 font-bold"
+                            className="h-7 text-[11px] bg-primary text-white font-bold rounded-lg"
                           >
                             + Follow-up
                           </Button>
@@ -661,21 +703,21 @@ export default function TodoistModulePage() {
                   </div>
 
                   {/* Stale Leads > 7 Days */}
-                  <div className="bg-slate-900/80 p-4 rounded-xl border border-white/10 space-y-3">
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-3 shadow-sm">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-200">Oportunidades Paradas (&gt; 7 dias)</h4>
-                      <Badge variant="outline" className="bg-orange-500/20 text-orange-400 border-orange-500/30 font-bold">
+                      <h4 className="text-xs font-bold text-slate-800">Oportunidades Paradas (&gt; 7 dias)</h4>
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 font-bold">
                         {dashboardStats?.crmIntelligence?.staleLeadsCount || 0}
                       </Badge>
                     </div>
                     <div className="space-y-2">
                       {dashboardStats?.crmIntelligence?.staleLeads?.map((lead: any) => (
-                        <div key={lead.id} className="flex items-center justify-between p-2 rounded bg-slate-800/60 text-xs">
-                          <span className="text-white font-medium">Oportunidade #{lead.id} ({lead.status})</span>
+                        <div key={lead.id} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                          <span className="text-slate-900 font-medium">Oportunidade #{lead.id} ({lead.status})</span>
                           <Button
                             size="sm"
                             onClick={() => setQuickAddOpen(true)}
-                            className="h-6 text-[10px] bg-amber-500 text-slate-950 font-bold"
+                            className="h-7 text-[11px] bg-primary text-white font-bold rounded-lg"
                           >
                             + Reativar
                           </Button>
@@ -690,16 +732,16 @@ export default function TodoistModulePage() {
 
           {/* VIEW: AUTOMATIONS */}
           {activeView === "automations" && (
-            <div className="bg-[#0f172a] p-6 rounded-2xl border border-white/10 space-y-5 shadow-xl">
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 space-y-5 shadow-sm">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-yellow-400">
-                  <Zap className="h-5 w-5" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider">Regras de Automação de Tarefas CRM</h3>
+                <div className="flex items-center gap-2 text-primary font-bold">
+                  <Zap className="h-5 w-5 text-amber-500" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">Regras de Automação de Tarefas CRM</h3>
                 </div>
                 <Button
                   onClick={() => setNewAutomationOpen(true)}
                   size="sm"
-                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs gap-1"
+                  className="bg-primary hover:bg-primary/90 text-white font-bold text-xs gap-1 rounded-xl"
                 >
                   <Plus className="h-4 w-4" /> Nova Regra
                 </Button>
@@ -707,22 +749,22 @@ export default function TodoistModulePage() {
 
               <div className="space-y-3">
                 {automations.map((a: any) => (
-                  <div key={a.id} className="p-4 bg-slate-900/60 rounded-xl border border-white/10 flex items-center justify-between gap-4">
+                  <div key={a.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-white">{a.name}</h4>
-                      <p className="text-xs text-slate-400">
-                        Quando ocorrer: <span className="text-amber-300 font-semibold">{a.eventType}</span> → Gerar Tarefa:{" "}
-                        <span className="text-white font-semibold">"{a.actionTaskTitle}"</span> ({a.actionPriority})
+                      <h4 className="text-sm font-bold text-slate-900">{a.name}</h4>
+                      <p className="text-xs text-slate-600">
+                        Quando ocorrer: <span className="text-primary font-semibold">{a.eventType}</span> → Gerar Tarefa:{" "}
+                        <span className="text-slate-900 font-semibold">"{a.actionTaskTitle}"</span> ({a.actionPriority})
                       </p>
                     </div>
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold">
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold">
                       Ativa
                     </Badge>
                   </div>
                 ))}
 
                 {automations.length === 0 && (
-                  <p className="text-xs text-slate-500 py-6 text-center italic">Nenhuma regra de automação cadastrada.</p>
+                  <p className="text-xs text-slate-400 py-6 text-center italic">Nenhuma regra de automação cadastrada.</p>
                 )}
               </div>
             </div>
@@ -741,28 +783,28 @@ export default function TodoistModulePage() {
 
       {/* New Project Dialog */}
       <Dialog open={newProjectOpen} onOpenChange={setNewProjectOpen}>
-        <DialogContent className="bg-[#0f172a] border-white/10 text-white">
+        <DialogContent className="bg-white border-slate-200 text-slate-900 rounded-2xl">
           <DialogHeader>
             <DialogTitle>Novo Projeto</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <label className="text-xs text-slate-400">Nome do Projeto *</label>
+              <label className="text-xs font-bold text-slate-600">Nome do Projeto *</label>
               <Input
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="Ex: Vendas, Marketing, Implantação"
-                className="bg-slate-900 border-white/10 text-xs mt-1 text-white"
+                className="bg-white border-slate-200 text-xs mt-1 text-slate-900 rounded-xl"
               />
             </div>
 
             <div>
-              <label className="text-xs text-slate-400">Cor do Projeto</label>
+              <label className="text-xs font-bold text-slate-600">Cor do Projeto</label>
               <Input
                 type="color"
                 value={newProjectColor}
                 onChange={(e) => setNewProjectColor(e.target.value)}
-                className="bg-slate-900 border-white/10 h-10 mt-1 cursor-pointer"
+                className="bg-white border-slate-200 h-10 mt-1 cursor-pointer rounded-xl"
               />
             </div>
 
@@ -776,7 +818,7 @@ export default function TodoistModulePage() {
                   });
                 }
               }}
-              className="w-full bg-amber-500 text-slate-950 font-bold text-xs"
+              className="w-full bg-primary text-white font-bold text-xs rounded-xl"
             >
               Criar Projeto
             </Button>
@@ -786,28 +828,28 @@ export default function TodoistModulePage() {
 
       {/* New Label Dialog */}
       <Dialog open={newLabelOpen} onOpenChange={setNewLabelOpen}>
-        <DialogContent className="bg-[#0f172a] border-white/10 text-white">
+        <DialogContent className="bg-white border-slate-200 text-slate-900 rounded-2xl">
           <DialogHeader>
             <DialogTitle>Nova Etiqueta</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <label className="text-xs text-slate-400">Nome da Etiqueta *</label>
+              <label className="text-xs font-bold text-slate-600">Nome da Etiqueta *</label>
               <Input
                 value={newLabelName}
                 onChange={(e) => setNewLabelName(e.target.value)}
                 placeholder="Ex: ligacao, whatsapp, reuniao"
-                className="bg-slate-900 border-white/10 text-xs mt-1 text-white"
+                className="bg-white border-slate-200 text-xs mt-1 text-slate-900 rounded-xl"
               />
             </div>
 
             <div>
-              <label className="text-xs text-slate-400">Cor</label>
+              <label className="text-xs font-bold text-slate-600">Cor</label>
               <Input
                 type="color"
                 value={newLabelColor}
                 onChange={(e) => setNewLabelColor(e.target.value)}
-                className="bg-slate-900 border-white/10 h-10 mt-1 cursor-pointer"
+                className="bg-white border-slate-200 h-10 mt-1 cursor-pointer rounded-xl"
               />
             </div>
 
@@ -821,7 +863,7 @@ export default function TodoistModulePage() {
                   });
                 }
               }}
-              className="w-full bg-amber-500 text-slate-950 font-bold text-xs"
+              className="w-full bg-primary text-white font-bold text-xs rounded-xl"
             >
               Criar Etiqueta
             </Button>
@@ -831,28 +873,28 @@ export default function TodoistModulePage() {
 
       {/* New Automation Dialog */}
       <Dialog open={newAutomationOpen} onOpenChange={setNewAutomationOpen}>
-        <DialogContent className="bg-[#0f172a] border-white/10 text-white">
+        <DialogContent className="bg-white border-slate-200 text-slate-900 rounded-2xl">
           <DialogHeader>
             <DialogTitle>Nova Regra de Automação CRM</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <label className="text-xs text-slate-400">Nome da Regra *</label>
+              <label className="text-xs font-bold text-slate-600">Nome da Regra *</label>
               <Input
                 value={autoName}
                 onChange={(e) => setAutoName(e.target.value)}
                 placeholder="Ex: Follow-up de Novo Lead"
-                className="bg-slate-900 border-white/10 text-xs mt-1 text-white"
+                className="bg-white border-slate-200 text-xs mt-1 text-slate-900 rounded-xl"
               />
             </div>
 
             <div>
-              <label className="text-xs text-slate-400">Gatilho do CRM</label>
+              <label className="text-xs font-bold text-slate-600">Gatilho do CRM</label>
               <Select value={autoEventType} onValueChange={setAutoEventType}>
-                <SelectTrigger className="bg-slate-900 border-white/10 text-xs text-white mt-1">
+                <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-900 mt-1 rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-white/10 text-white">
+                <SelectContent className="bg-white border-slate-200 text-slate-900">
                   <SelectItem value="new_lead">Quando Novo Lead Entrar</SelectItem>
                   <SelectItem value="lead_status_changed">Quando Status da Oportunidade Mudar</SelectItem>
                   <SelectItem value="deal_closed">Quando Venda for Fechada</SelectItem>
@@ -861,12 +903,12 @@ export default function TodoistModulePage() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-400">Título da Tarefa Automática *</label>
+              <label className="text-xs font-bold text-slate-600">Título da Tarefa Automática *</label>
               <Input
                 value={autoActionTitle}
                 onChange={(e) => setAutoActionTitle(e.target.value)}
                 placeholder="Ex: Entrar em contato com novo lead"
-                className="bg-slate-900 border-white/10 text-xs mt-1 text-white"
+                className="bg-white border-slate-200 text-xs mt-1 text-slate-900 rounded-xl"
               />
             </div>
 
@@ -882,7 +924,7 @@ export default function TodoistModulePage() {
                   });
                 }
               }}
-              className="w-full bg-amber-500 text-slate-950 font-bold text-xs"
+              className="w-full bg-primary text-white font-bold text-xs rounded-xl"
             >
               Salvar Regra
             </Button>

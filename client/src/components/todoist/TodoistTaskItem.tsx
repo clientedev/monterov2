@@ -13,7 +13,9 @@ import {
   ShieldCheck,
   FileText,
   Tag,
-  Folder
+  Folder,
+  Trash2,
+  Edit2
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -22,9 +24,10 @@ interface TodoistTaskItemProps {
   task: any;
   onToggleComplete: (id: number) => void;
   onSelectTask: (task: any) => void;
+  onDeleteTask?: (id: number) => void;
 }
 
-export function TodoistTaskItem({ task, onToggleComplete, onSelectTask }: TodoistTaskItemProps) {
+export function TodoistTaskItem({ task, onToggleComplete, onSelectTask, onDeleteTask }: TodoistTaskItemProps) {
   const isDone = task.status === "done";
   
   // Priority styling
@@ -81,14 +84,15 @@ export function TodoistTaskItem({ task, onToggleComplete, onSelectTask }: Todois
 
       {/* Main Details */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h4
-            className={`text-sm font-semibold truncate ${
-              isDone ? "line-through text-slate-400" : "text-slate-900"
-            }`}
-          >
-            {task.title}
-          </h4>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h4
+              className={`text-sm font-semibold truncate ${
+                isDone ? "line-through text-slate-400" : "text-slate-900"
+              }`}
+            >
+              {task.title}
+            </h4>
 
           {/* Priority Badge */}
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${pInfo.badgeBg}`}>
@@ -116,6 +120,36 @@ export function TodoistTaskItem({ task, onToggleComplete, onSelectTask }: Todois
               #{label.name}
             </span>
           ))}
+          </div>
+
+          {/* Quick Actions (Edit & Delete) */}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-slate-400 hover:text-primary hover:bg-slate-100"
+              onClick={() => onSelectTask(task)}
+              title="Editar Tarefa"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+            </Button>
+
+            {onDeleteTask && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                onClick={() => {
+                  if (confirm(`Excluir a tarefa "${task.title}"?`)) {
+                    onDeleteTask(task.id);
+                  }
+                }}
+                title="Excluir Tarefa"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Description snippet */}

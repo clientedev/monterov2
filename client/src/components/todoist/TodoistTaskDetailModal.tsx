@@ -151,6 +151,18 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
     },
   });
 
+  const deleteTaskMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/todoist/tasks/${taskId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/todoist/dashboard"] });
+      toast({ title: "Tarefa excluída com sucesso!" });
+      onOpenChange(false);
+    },
+  });
+
   if (!open || !taskId) return null;
 
   const subtasks = task?.subtasks || [];
@@ -194,6 +206,20 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                   </div>
                 </div>
               </div>
+
+              {/* Excluir button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold gap-1.5 rounded-xl mr-6"
+                onClick={() => {
+                  if (confirm(`Tem certeza que deseja excluir a tarefa "${task.title}"?`)) {
+                    deleteTaskMutation.mutate();
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Excluir Tarefa
+              </Button>
             </div>
 
             {/* Content Body */}
