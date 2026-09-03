@@ -150,6 +150,7 @@ app.use((req, res, next) => {
 
     // Users & Leads & Email Notifications
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS email text`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password boolean DEFAULT false NOT NULL`,
     `ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to integer REFERENCES users(id)`,
     `CREATE TABLE IF NOT EXISTS email_notification_logs (
       id SERIAL PRIMARY KEY,

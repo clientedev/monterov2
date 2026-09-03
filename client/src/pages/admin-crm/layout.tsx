@@ -32,6 +32,7 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import logo from "@assets/logo_monteiro_v2.png";
 import { Separator } from "@/components/ui/separator";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { ForcePasswordChangeDialog } from "@/components/ForcePasswordChangeDialog";
 import { Plus } from "lucide-react";
 import { TodoistNotificationBell } from "@/components/todoist/TodoistNotificationBell";
 import { TodoistQuickAddModal } from "@/components/todoist/TodoistQuickAddModal";
@@ -322,6 +323,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
 
                 <TodoistQuickAddModal open={quickAddOpen} onOpenChange={setQuickAddOpen} />
+
+                {/* Force password change for newly created accounts */}
+                <ForcePasswordChangeDialog open={!!(user as any)?.mustChangePassword} />
             </main>
         </div>
     );

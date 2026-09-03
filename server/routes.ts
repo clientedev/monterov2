@@ -732,6 +732,7 @@ export async function registerRoutes(
         name,
         role: role || "employee",
         email: email || null,
+        mustChangePassword: true, // Force password change on first login
       });
       const { password: _, ...safeUser } = user;
       res.status(201).json(safeUser);

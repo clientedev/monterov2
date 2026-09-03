@@ -443,7 +443,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined> {
     const [updated] = await db
       .update(users)
-      .set({ password: hashedPassword })
+      .set({ password: hashedPassword, mustChangePassword: false })
       .where(eq(users.id, id))
       .returning();
     return updated;
@@ -1877,6 +1877,7 @@ export class MemStorage implements IStorage {
       email: user.email || null,
       role: user.role || "client",
       avatar: user.avatar || null,
+      mustChangePassword: user.mustChangePassword ?? false,
       createdAt: new Date(),
     };
     this.users.push(newUser);
