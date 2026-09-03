@@ -36,6 +36,12 @@ import { Plus } from "lucide-react";
 import { TodoistNotificationBell } from "@/components/todoist/TodoistNotificationBell";
 import { TodoistQuickAddModal } from "@/components/todoist/TodoistQuickAddModal";
 
+const WhatsAppIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.6 0 001.333 4.993L2 22l5.233-1.237a9.96 9.96 0 004.779 1.221h.005c5.505 0 9.988-4.478 9.989-9.984 0-2.669-1.038-5.176-2.925-7.062A9.925 9.925 0 0012.012 2zm5.835 14.167c-.247.692-1.233 1.266-2.025 1.341-.542.052-1.25.093-3.626-.893-3.04-1.262-4.992-4.364-5.143-4.566-.151-.202-1.234-1.644-1.234-3.136 0-1.492.784-2.226 1.062-2.528.277-.302.604-.378.805-.378.201 0 .402.002.578.01.188.008.44-.071.69.531.252.604.856 2.088.931 2.24.076.151.126.327.025.529-.101.201-.151.327-.302.503-.151.176-.317.393-.453.528-.151.151-.309.315-.133.617.176.302.784 1.294 1.684 2.096 1.157 1.03 2.133 1.35 2.435 1.501.302.151.478.126.654-.076.176-.201.755-.881.956-1.183.201-.302.402-.252.679-.151.277.101 1.761.83 2.063.981.302.151.503.227.578.353.075.126.075.729-.172 1.421z" />
+  </svg>
+);
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, logoutMutation } = useAuth();
     const [location, setLocation] = useLocation();
@@ -102,6 +108,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <NavLink href="/admin" icon={LayoutDashboard} label="Visão Geral" />
                             <NavLink href="/admin/contacts" icon={Users} label="Base de Contatos" />
                             <NavLink href="/admin/leads" icon={UserPlus} label="Leads & Pipeline" />
+                            <a
+                                href="https://whatsapp.monteiroseguros.com.br/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                            >
+                                <Button
+                                    variant="ghost"
+                                    className="w-full justify-start gap-4 px-4 py-3 rounded-xl text-sm font-bold text-emerald-400 hover:text-white hover:bg-emerald-600/30 transition-all duration-300 border border-emerald-500/30 my-1"
+                                >
+                                    <WhatsAppIcon className="h-5 w-5 fill-emerald-400" />
+                                    Monteiro Conecta
+                                </Button>
+                            </a>
                             <NavLink href="/admin/interactions" icon={Megaphone} label="Régua de Contato" />
                             <NavLink href="/admin/prospecting" icon={PhoneCall} label="Prospecção" />
                             <NavLink href="/admin/company-search" icon={Search} label="Busca de Empresas" />
@@ -245,6 +265,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         )}
                     </Link>
                 </div>
+
+                {/* Mobile Monteiro Conecta Button */}
+                <a
+                    href="https://whatsapp.monteiroseguros.com.br/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 px-3 py-1.5 rounded-xl shadow-md"
+                    >
+                        <WhatsAppIcon className="h-4 w-4 fill-white" /> Conecta
+                    </Button>
+                </a>
             </header>
 
             {/* Desktop Sidebar */}
@@ -259,6 +293,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 {/* Top Action Header Bar */}
                 <div className="bg-[#0a0c10]/80 backdrop-blur border-b border-white/5 px-8 py-3 flex items-center justify-end gap-3 z-20 shrink-0">
+                    <a
+                        href="https://whatsapp.monteiroseguros.com.br/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 px-4 py-2 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                        >
+                            <WhatsAppIcon className="h-4 w-4 fill-white" /> Monteiro Conecta
+                        </Button>
+                    </a>
                     <Button
                         onClick={() => setQuickAddOpen(true)}
                         size="sm"
