@@ -147,6 +147,106 @@ app.use((req, res, next) => {
     `ALTER TABLE apolices ADD COLUMN IF NOT EXISTS forma_pagamento text`,
     `ALTER TABLE apolices ADD COLUMN IF NOT EXISTS mes_atraso text`,
     `ALTER TABLE apolices ADD COLUMN IF NOT EXISTS faturas_aberto text`,
+
+    // Users & Leads & Email Notifications
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS email text`,
+    `ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to integer REFERENCES users(id)`,
+    `CREATE TABLE IF NOT EXISTS email_notification_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      event_type TEXT NOT NULL,
+      record_type TEXT,
+      record_id INTEGER,
+      status TEXT NOT NULL DEFAULT 'sent',
+      error_message TEXT,
+      sent_at TIMESTAMP DEFAULT NOW()
+    )`,
+
+    // TODOIST Module Tables
+    `CREATE TABLE IF NOT EXISTS todoist_projects (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT DEFAULT '#0F6570',
+      icon TEXT DEFAULT 'folder',
+      is_favorite BOOLEAN DEFAULT false,
+      user_id INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS todoist_labels (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT DEFAULT '#3b82f6',
+      user_id INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS todoist_tasks (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      priority TEXT DEFAULT 'P3',
+      kanban_column TEXT DEFAULT 'a_fazer',
+      status TEXT DEFAULT 'todo',
+      due_date TIMESTAMP,
+      due_time TEXT,
+      is_recurring BOOLEAN DEFAULT false,
+      recurrence_rule TEXT,
+      project_id INTEGER REFERENCES todoist_projects(id) ON DELETE SET NULL,
+      assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+      lead_id INTEGER REFERENCES leads(id) ON DELETE SET NULL,
+      cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL,
+      apolice_id INTEGER REFERENCES apolices(id) ON DELETE SET NULL,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      completed_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS todoist_task_labels (
+      task_id INTEGER REFERENCES todoist_tasks(id) ON DELETE CASCADE,
+      label_id INTEGER REFERENCES todoist_labels(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS todoist_subtasks (
+      id SERIAL PRIMARY KEY,
+      task_id INTEGER REFERENCES todoist_tasks(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      completed BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS todoist_comments (
+      id SERIAL PRIMARY KEY,
+      task_id INTEGER REFERENCES todoist_tasks(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS todoist_activity_logs (
+      id SERIAL PRIMARY KEY,
+      task_id INTEGER REFERENCES todoist_tasks(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      action TEXT NOT NULL,
+      details TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS todoist_automations (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      action_title TEXT NOT NULL,
+      priority TEXT DEFAULT 'P2',
+      target_user_id INTEGER REFERENCES users(id),
+      project_id INTEGER REFERENCES todoist_projects(id),
+      active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS todoist_notifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      task_id INTEGER REFERENCES todoist_tasks(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      read BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`
   ];
 
   for (const sql of startupQueries) {
