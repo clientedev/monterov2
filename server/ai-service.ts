@@ -14,7 +14,109 @@ Regras:
 3. Tire dúvidas com clareza e convide o cliente a solicitar uma cotação rápida.`;
 
 /**
- * Strategy 1: Universal Cloud LLM (Groq / xAI Grok / OpenAI)
+ * Strategy 1: Official Google Gemini 1.5 / 2.0 Flash (Free Tier)
+ */
+async function tryGeminiLLM(messages: ChatMessage[], res?: any): Promise<boolean> {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!apiKey || !apiKey.trim()) return false;
+
+  const cleanKey = apiKey.trim();
+  const cleanMessages = messages.filter(m => m && m.content && m.content.trim());
+
+  const contents = cleanMessages.map(m => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content.trim() }]
+  }));
+
+  const models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+
+  for (const model of models) {
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: SYSTEM_PROMPT }]
+          },
+          contents: contents.length > 0 ? contents : [{ role: "user", parts: [{ text: "Olá" }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 800
+          }
+        })
+      });
+
+      if (response.ok) {
+        const data: any = await response.json();
+        const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (replyText && replyText.trim()) {
+          if (res) {
+            res.setHeader("Content-Type", "text/plain; charset=utf-8");
+            res.write(replyText.trim());
+            res.end();
+          }
+          return true;
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[AI Engine] Gemini API model ${model} error:`, err.message || err);
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Todoist NLP Task Parser using Gemini Flash Free Tier
+ */
+export async function parseTaskWithGemini(text: string): Promise<any | null> {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!apiKey || !apiKey.trim()) return null;
+
+  const cleanKey = apiKey.trim();
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const prompt = `Você é um assistente de IA especialista em extrair dados de tarefas para o CRM Todoist.
+Data atual de hoje para referência: ${todayStr}.
+Texto informado pelo usuário: "${text}"
+
+Extraia os campos em um JSON VÁLIDO E ESTRITO (sem marcadores de código markdown, apenas o objeto JSON puro):
+{
+  "title": "título limpo e objetivo da tarefa",
+  "priority": "P1" ou "P2" ou "P3" ou "P4",
+  "dueDate": "YYYY-MM-DD" (ou null se não for informada nenhuma data),
+  "dueTime": "HH:mm" (ou null se não for informado nenhum horário),
+  "contactName": "nome da pessoa ou cliente citado no texto, se houver" (ou null)
+}`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
+      })
+    });
+
+    if (response.ok) {
+      const data: any = await response.json();
+      const rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (rawJson) {
+        const cleanedJson = rawJson.replace(/```json|```/g, "").trim();
+        return JSON.parse(cleanedJson);
+      }
+    }
+  } catch (err: any) {
+    console.warn("[Gemini Task Interpreter] Failed to parse task with Gemini:", err.message || err);
+  }
+
+  return null;
+}
+
+/**
+ * Strategy 2: Universal Cloud LLM (Groq / xAI Grok / OpenAI)
  */
 async function tryUniversalCloudLLM(messages: ChatMessage[], res?: any): Promise<boolean> {
   const apiKey = process.env.GROQ_API_KEY || 
@@ -282,18 +384,22 @@ async function runSmartDatabaseFallback(messages: ChatMessage[], res?: any): Pro
  * Multi-Tier Generative AI Processor
  */
 export async function processAiChat(messages: ChatMessage[], res: any) {
-  // 1. Universal Cloud API (Groq / xAI Grok / OpenAI API keys if set)
+  // 1. Primary: Google Gemini 1.5/2.0 Flash (Free Tier API Key)
+  const geminiSuccess = await tryGeminiLLM(messages, res);
+  if (geminiSuccess) return;
+
+  // 2. Secondary: Universal Cloud API (Groq / xAI Grok / OpenAI API keys if set)
   const universalSuccess = await tryUniversalCloudLLM(messages, res);
   if (universalSuccess) return;
 
-  // 2. Free Cloud Generative Engine (Llama 3.3 Public Generative Model - Zero Key needed!)
+  // 3. Free Cloud Generative Engine (Llama 3.3 Public Generative Model - Zero Key needed!)
   const freeCloudSuccess = await tryFreeCloudGenerativeLLM(messages, res);
   if (freeCloudSuccess) return;
 
-  // 3. Local Ollama (if running on user machine)
+  // 4. Local Ollama (if running on user machine)
   const ollamaSuccess = await tryOllama(messages, res);
   if (ollamaSuccess) return;
 
-  // 4. Intelligent Database Fallback
+  // 5. Intelligent Database Fallback
   await runSmartDatabaseFallback(messages, res);
 }

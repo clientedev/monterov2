@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import path from "path";
 import fs from "fs";
 import { api } from "@shared/routes";
-import { processAiChat } from "./ai-service";
+import { processAiChat, parseTaskWithGemini } from "./ai-service";
 import Groq from "groq-sdk";
 import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
@@ -1503,13 +1503,35 @@ export async function registerRoutes(
     res.json(stats);
   });
 
-  // Quick NLP Task Title Interpreter
+  // Quick NLP Task Title Interpreter (Gemini AI + Rule-based fallback)
   app.post("/api/todoist/quick-parse", isTeam, async (req, res) => {
     const { text } = req.body;
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ message: "Texto não informado" });
     }
 
+    // 1. Try Gemini AI structured parsing
+    const aiParsed = await parseTaskWithGemini(text.trim());
+    if (aiParsed && aiParsed.title) {
+      let formattedDate: string | null = null;
+      if (aiParsed.dueDate) {
+        try {
+          formattedDate = new Date(aiParsed.dueDate).toISOString();
+        } catch (e) {
+          formattedDate = null;
+        }
+      }
+      return res.json({
+        title: aiParsed.title,
+        priority: aiParsed.priority || "P3",
+        dueDate: formattedDate,
+        dueTime: aiParsed.dueTime || null,
+        contactName: aiParsed.contactName || null,
+        parsedBy: "Google Gemini 1.5 Flash AI"
+      });
+    }
+
+    // 2. Rule-based regex fallback parser
     const inputLower = text.trim().toLowerCase();
     let title = text.trim();
     let dateStr: string | null = null;
@@ -1580,6 +1602,7 @@ export async function registerRoutes(
       dueDate: dateStr,
       dueTime: timeStr,
       priority,
+      parsedBy: "Rule Engine Fallback"
     });
   });
 
