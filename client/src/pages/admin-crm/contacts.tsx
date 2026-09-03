@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, InsertContact, insertContactSchema, Lead, Product } from "@shared/schema";
+import { TodoistCrmSection } from "@/components/todoist/TodoistCrmSection";
 
 // Calculate age from "DD/MM/AAAA" string
 function calcAge(dateStr: string | null | undefined): number | null {
@@ -840,6 +841,10 @@ export default function ContactsPage() {
                         )}
                     </TableBody>
                 </Table>
+            </div>
+
+            <div className="mt-8">
+                <TodoistCrmSection title="Tarefas da Base de Contatos" />
             </div>
 
             <ContactProfile

@@ -27,6 +27,12 @@ import {
   insertSeguradoraSchema,
   insertProdutoSeguroSchema,
   insertApoliceSchema,
+  insertTodoistProjectSchema,
+  insertTodoistLabelSchema,
+  insertTodoistTaskSchema,
+  insertTodoistSubtaskSchema,
+  insertTodoistCommentSchema,
+  insertTodoistAutomationSchema,
   clientes,
   apolices,
   seguradoras,
@@ -253,8 +259,7 @@ export async function registerRoutes(
       const input = insertPostSchema.parse(req.body);
       console.log(`[POSTS] Creating new post... Payload size: ${JSON.stringify(input).length} bytes`);
       console.log(`[POSTS] Input keys: ${Object.keys(input).join(', ')}`);
-      const isApproved = (req.user as any).role === "admin";
-      const post = await storage.createPost({ ...input, isApproved });
+      const post = await storage.createPost(input);
       res.status(201).json(post);
     } catch (error: any) {
       console.error("[POSTS] Creation failed:", error);
@@ -499,6 +504,14 @@ export async function registerRoutes(
     try {
       const input = insertLeadSchema.parse(req.body);
       const lead = await storage.createLead(input);
+
+      // Trigger Todoist automations
+      await storage.triggerTodoistAutomations('new_lead', {
+        leadId: lead.id,
+        contactId: lead.contactId,
+        assignedUserId: (req.user as any)?.id,
+      });
+
       res.status(201).json(lead);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -511,6 +524,23 @@ export async function registerRoutes(
   app.patch("/api/leads/:id/status", isTeam, async (req, res) => {
     const lead = await storage.updateLeadStatus(parseInt(req.params.id), req.body.status);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
+
+    // Trigger Todoist automations
+    await storage.triggerTodoistAutomations('lead_status_changed', {
+      leadId: lead.id,
+      contactId: lead.contactId,
+      assignedUserId: (req.user as any)?.id,
+      title: `Status: ${req.body.status}`,
+    });
+
+    if (req.body.status === 'implemented' || req.body.status === 'closed') {
+      await storage.triggerTodoistAutomations('deal_closed', {
+        leadId: lead.id,
+        contactId: lead.contactId,
+        assignedUserId: (req.user as any)?.id,
+      });
+    }
+
     res.json(lead);
   });
 
@@ -950,7 +980,7 @@ export async function registerRoutes(
             await storage.updateApolice(existingApolice.id, apolUpdate);
           }
         } else {
-          await storage.createApolice(apolData);
+          await storage.createApolice(apolData as any);
         }
       }
 
@@ -1155,6 +1185,304 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  // ============================================================
+  // TODOIST API ENDPOINTS
+  // ============================================================
+
+  // Projects
+  app.get("/api/todoist/projects", isTeam, async (req, res) => {
+    const projects = await storage.getTodoistProjects((req.user as any)?.id);
+    res.json(projects);
+  });
+
+  app.post("/api/todoist/projects", isTeam, async (req, res) => {
+    try {
+      const input = insertTodoistProjectSchema.parse({ ...req.body, createdBy: (req.user as any)?.id });
+      const project = await storage.createTodoistProject(input);
+      res.status(201).json(project);
+    } catch (err: any) {
+      res.status(400).json({ message: err.errors || err.message });
+    }
+  });
+
+  app.patch("/api/todoist/projects/:id", isTeam, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const updated = await storage.updateTodoistProject(id, req.body);
+    if (!updated) return res.status(404).json({ message: "Projeto não encontrado" });
+    res.json(updated);
+  });
+
+  app.delete("/api/todoist/projects/:id", isTeam, async (req, res) => {
+    const id = parseInt(req.params.id);
+    await storage.deleteTodoistProject(id);
+    res.sendStatus(204);
+  });
+
+  // Labels
+  app.get("/api/todoist/labels", isTeam, async (req, res) => {
+    const labels = await storage.getTodoistLabels();
+    res.json(labels);
+  });
+
+  app.post("/api/todoist/labels", isTeam, async (req, res) => {
+    try {
+      const input = insertTodoistLabelSchema.parse({ ...req.body, createdBy: (req.user as any)?.id });
+      const label = await storage.createTodoistLabel(input);
+      res.status(201).json(label);
+    } catch (err: any) {
+      res.status(400).json({ message: err.errors || err.message });
+    }
+  });
+
+  app.delete("/api/todoist/labels/:id", isTeam, async (req, res) => {
+    await storage.deleteTodoistLabel(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
+  // Tasks
+  app.get("/api/todoist/tasks", isTeam, async (req, res) => {
+    const filters = {
+      view: req.query.view as string,
+      projectId: req.query.projectId ? parseInt(req.query.projectId as string) : undefined,
+      priority: req.query.priority as string,
+      labelId: req.query.labelId ? parseInt(req.query.labelId as string) : undefined,
+      assignedTo: req.query.assignedTo ? parseInt(req.query.assignedTo as string) : undefined,
+      contactId: req.query.contactId ? parseInt(req.query.contactId as string) : undefined,
+      leadId: req.query.leadId ? parseInt(req.query.leadId as string) : undefined,
+      clienteId: req.query.clienteId ? parseInt(req.query.clienteId as string) : undefined,
+      apoliceId: req.query.apoliceId ? parseInt(req.query.apoliceId as string) : undefined,
+      search: req.query.search as string,
+      status: req.query.status as string,
+      kanbanColumn: req.query.kanbanColumn as string,
+    };
+    const tasksList = await storage.getTodoistTasks(filters);
+    res.json(tasksList);
+  });
+
+  app.get("/api/todoist/tasks/:id", isTeam, async (req, res) => {
+    const task = await storage.getTodoistTask(parseInt(req.params.id));
+    if (!task) return res.status(404).json({ message: "Tarefa não encontrada" });
+    res.json(task);
+  });
+
+  app.post("/api/todoist/tasks", isTeam, async (req, res) => {
+    try {
+      const { subtaskTitles, labelIds, ...taskData } = req.body;
+      const parsed = insertTodoistTaskSchema.parse({
+        ...taskData,
+        createdBy: (req.user as any)?.id,
+        assignedTo: taskData.assignedTo || (req.user as any)?.id,
+      });
+
+      const task = await storage.createTodoistTask(parsed, subtaskTitles, labelIds, (req.user as any)?.id);
+      res.status(201).json(task);
+    } catch (err: any) {
+      res.status(400).json({ message: err.errors || err.message });
+    }
+  });
+
+  app.patch("/api/todoist/tasks/:id", isTeam, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { subtasksList, labelIds, ...updates } = req.body;
+      const updated = await storage.updateTodoistTask(id, updates, subtasksList, labelIds, (req.user as any)?.id);
+      if (!updated) return res.status(404).json({ message: "Tarefa não encontrada" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/todoist/tasks/:id/complete", isTeam, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = (req.user as any)?.id || 1;
+      const result = await storage.completeTodoistTask(id, userId);
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/todoist/tasks/:id", isTeam, async (req, res) => {
+    await storage.deleteTodoistTask(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
+  // Subtasks
+  app.post("/api/todoist/subtasks", isTeam, async (req, res) => {
+    try {
+      const input = insertTodoistSubtaskSchema.parse(req.body);
+      const subtask = await storage.createTodoistSubtask(input);
+      res.status(201).json(subtask);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/todoist/subtasks/:id", isTeam, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const subtask = await storage.updateTodoistSubtask(id, req.body.completed, req.body.title);
+    if (!subtask) return res.status(404).json({ message: "Subtarefa não encontrada" });
+    res.json(subtask);
+  });
+
+  app.delete("/api/todoist/subtasks/:id", isTeam, async (req, res) => {
+    await storage.deleteTodoistSubtask(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
+  // Comments
+  app.get("/api/todoist/tasks/:id/comments", isTeam, async (req, res) => {
+    const commentsList = await storage.getTodoistComments(parseInt(req.params.id));
+    res.json(commentsList);
+  });
+
+  app.post("/api/todoist/tasks/:id/comments", isTeam, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = (req.user as any)?.id;
+      const input = insertTodoistCommentSchema.parse({ ...req.body, taskId, userId });
+      const newComment = await storage.createTodoistComment(input);
+      res.status(201).json(newComment);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // Activity Logs
+  app.get("/api/todoist/tasks/:id/activity", isTeam, async (req, res) => {
+    const logs = await storage.getTodoistActivityLogs(parseInt(req.params.id));
+    res.json(logs);
+  });
+
+  // Automations
+  app.get("/api/todoist/automations", isTeam, async (req, res) => {
+    const automations = await storage.getTodoistAutomations();
+    res.json(automations);
+  });
+
+  app.post("/api/todoist/automations", isAdmin, async (req, res) => {
+    try {
+      const input = insertTodoistAutomationSchema.parse(req.body);
+      const auto = await storage.createTodoistAutomation(input);
+      res.status(201).json(auto);
+    } catch (err: any) {
+      res.status(400).json({ message: err.errors || err.message });
+    }
+  });
+
+  app.patch("/api/todoist/automations/:id", isAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const updated = await storage.updateTodoistAutomation(id, req.body);
+    if (!updated) return res.status(404).json({ message: "Automação não encontrada" });
+    res.json(updated);
+  });
+
+  app.delete("/api/todoist/automations/:id", isAdmin, async (req, res) => {
+    await storage.deleteTodoistAutomation(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
+  // Notifications
+  app.get("/api/todoist/notifications", isTeam, async (req, res) => {
+    const userId = (req.user as any)?.id;
+    const notifs = await storage.getTodoistNotifications(userId);
+    res.json(notifs);
+  });
+
+  app.patch("/api/todoist/notifications/:id/read", isTeam, async (req, res) => {
+    await storage.markTodoistNotificationRead(parseInt(req.params.id));
+    res.sendStatus(204);
+  });
+
+  // Dashboard Stats
+  app.get("/api/todoist/dashboard", isTeam, async (req, res) => {
+    const userId = (req.user as any)?.id;
+    const stats = await storage.getTodoistDashboardStats(userId);
+    res.json(stats);
+  });
+
+  // Quick NLP Task Title Interpreter
+  app.post("/api/todoist/quick-parse", isTeam, async (req, res) => {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ message: "Texto não informado" });
+    }
+
+    const inputLower = text.trim().toLowerCase();
+    let title = text.trim();
+    let dateStr: string | null = null;
+    let timeStr: string | null = null;
+    let priority = "P3";
+
+    if (inputLower.includes("p1") || inputLower.includes("urgente")) {
+      priority = "P1";
+    } else if (inputLower.includes("p2") || inputLower.includes("alta")) {
+      priority = "P2";
+    } else if (inputLower.includes("p4") || inputLower.includes("baixa")) {
+      priority = "P4";
+    }
+
+    const parsedDate = new Date();
+
+    if (inputLower.includes("hoje")) {
+      dateStr = parsedDate.toISOString();
+      title = title.replace(/hoje/gi, "").trim();
+    } else if (inputLower.includes("amanhã") || inputLower.includes("amanha")) {
+      parsedDate.setDate(parsedDate.getDate() + 1);
+      dateStr = parsedDate.toISOString();
+      title = title.replace(/amanhã|amanha/gi, "").trim();
+    } else if (inputLower.includes("segunda")) {
+      const day = parsedDate.getDay();
+      const diff = (1 + 7 - day) % 7 || 7;
+      parsedDate.setDate(parsedDate.getDate() + diff);
+      dateStr = parsedDate.toISOString();
+      title = title.replace(/segunda(-feira)?/gi, "").trim();
+    } else if (inputLower.includes("terça") || inputLower.includes("terca")) {
+      const day = parsedDate.getDay();
+      const diff = (2 + 7 - day) % 7 || 7;
+      parsedDate.setDate(parsedDate.getDate() + diff);
+      dateStr = parsedDate.toISOString();
+      title = title.replace(/terça|terca(-feira)?/gi, "").trim();
+    } else if (inputLower.includes("quarta")) {
+      const day = parsedDate.getDay();
+      const diff = (3 + 7 - day) % 7 || 7;
+      parsedDate.setDate(parsedDate.getDate() + diff);
+      dateStr = parsedDate.toISOString();
+      title = title.replace(/quarta(-feira)?/gi, "").trim();
+    } else if (inputLower.includes("quinta")) {
+      const day = parsedDate.getDay();
+      const diff = (4 + 7 - day) % 7 || 7;
+      parsedDate.setDate(parsedDate.getDate() + diff);
+      dateStr = parsedDate.toISOString();
+      title = title.replace(/quinta(-feira)?/gi, "").trim();
+    } else if (inputLower.includes("sexta")) {
+      const day = parsedDate.getDay();
+      const diff = (5 + 7 - day) % 7 || 7;
+      parsedDate.setDate(parsedDate.getDate() + diff);
+      dateStr = parsedDate.toISOString();
+      title = title.replace(/sexta(-feira)?/gi, "").trim();
+    }
+
+    const timeMatch = text.match(/(?:às|as|at)?\s*(\d{1,2})(?::(\d{2})|h(\d{2})?)/i);
+    if (timeMatch) {
+      const hours = timeMatch[1].padStart(2, "0");
+      const minutes = timeMatch[2] || timeMatch[3] || "00";
+      timeStr = `${hours}:${minutes}`;
+      title = title.replace(timeMatch[0], "").trim();
+    }
+
+    title = title.replace(/\b(para|de|com)\b\s*$/gi, "").trim();
+
+    res.json({
+      title: title || text,
+      dueDate: dateStr,
+      dueTime: timeStr,
+      priority,
+    });
+  });
+
   app.get("/api/site-settings", async (req, res) => {
     const settings = await storage.getSiteSettings();
     res.json(settings);
@@ -1163,7 +1491,7 @@ export async function registerRoutes(
   app.patch("/api/site-settings", isAdmin, async (req, res) => {
     try {
       const input = insertSiteSettingsSchema.partial().parse(req.body);
-      const settings = await storage.updateSiteSettings(input);
+      const settings = await storage.updateSiteSettings(input as any);
       res.json(settings);
     } catch (err) {
       if (err instanceof z.ZodError) {

@@ -60,8 +60,32 @@ import {
   type InsertProdutoSeguro,
   type Apolice,
   type InsertApolice,
+  todoistProjects,
+  todoistProjectMembers,
+  todoistLabels,
+  todoistTasks,
+  todoistSubtasks,
+  todoistTaskLabels,
+  todoistComments,
+  todoistActivityLogs,
+  todoistAutomations,
+  todoistNotifications,
+  type TodoistProject,
+  type InsertTodoistProject,
+  type TodoistLabel,
+  type InsertTodoistLabel,
+  type TodoistTask,
+  type InsertTodoistTask,
+  type TodoistSubtask,
+  type InsertTodoistSubtask,
+  type TodoistComment,
+  type InsertTodoistComment,
+  type TodoistActivityLog,
+  type TodoistAutomation,
+  type InsertTodoistAutomation,
+  type TodoistNotification,
 } from "@shared/schema";
-import { sql, and, desc, eq, asc, lte, or, isNull } from "drizzle-orm";
+import { sql, and, desc, eq, asc, lte, or, isNull, inArray, gte, like } from "drizzle-orm";
 
 export interface IStorage {
   // Posts
@@ -161,7 +185,7 @@ export interface IStorage {
   deleteProduct(id: number): Promise<void>;
 
   // Insurance Module — Clientes
-  getClientes(): Promise<Cliente[]>;
+  getClientes(filters?: { search?: string; seguradoraNome?: string; status?: string; tags?: string }): Promise<Cliente[]>;
   getCliente(id: number): Promise<Cliente | undefined>;
   createCliente(cliente: InsertCliente): Promise<Cliente>;
   updateCliente(id: number, cliente: Partial<InsertCliente>): Promise<Cliente | undefined>;
@@ -203,6 +227,57 @@ export interface IStorage {
     porSeguradora: { nome: string; total: number }[];
     porProduto: { nome: string; total: number }[];
   }>;
+
+  // Todoist Module Methods
+  getTodoistProjects(userId?: number): Promise<TodoistProject[]>;
+  getTodoistProject(id: number): Promise<TodoistProject | undefined>;
+  createTodoistProject(project: InsertTodoistProject): Promise<TodoistProject>;
+  updateTodoistProject(id: number, project: Partial<InsertTodoistProject>): Promise<TodoistProject | undefined>;
+  deleteTodoistProject(id: number): Promise<void>;
+
+  getTodoistLabels(): Promise<TodoistLabel[]>;
+  createTodoistLabel(label: InsertTodoistLabel): Promise<TodoistLabel>;
+  deleteTodoistLabel(id: number): Promise<void>;
+
+  getTodoistTasks(filters?: {
+    view?: string;
+    projectId?: number;
+    priority?: string;
+    labelId?: number;
+    assignedTo?: number;
+    contactId?: number;
+    leadId?: number;
+    clienteId?: number;
+    apoliceId?: number;
+    search?: string;
+    status?: string;
+    kanbanColumn?: string;
+    isRecurring?: boolean;
+  }): Promise<any[]>;
+  getTodoistTask(id: number): Promise<any | undefined>;
+  createTodoistTask(task: InsertTodoistTask, subtaskTitles?: string[], labelIds?: number[], createdByUserId?: number): Promise<TodoistTask>;
+  updateTodoistTask(id: number, updates: Partial<InsertTodoistTask>, subtasksList?: { id?: number; title: string; completed?: boolean }[], labelIds?: number[], updatedByUserId?: number): Promise<TodoistTask | undefined>;
+  completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }>;
+  deleteTodoistTask(id: number): Promise<void>;
+
+  createTodoistSubtask(subtask: InsertTodoistSubtask): Promise<TodoistSubtask>;
+  updateTodoistSubtask(id: number, completed: boolean, title?: string): Promise<TodoistSubtask | undefined>;
+  deleteTodoistSubtask(id: number): Promise<void>;
+
+  getTodoistComments(taskId: number): Promise<any[]>;
+  createTodoistComment(comment: InsertTodoistComment): Promise<TodoistComment>;
+  getTodoistActivityLogs(taskId: number): Promise<any[]>;
+
+  getTodoistAutomations(): Promise<TodoistAutomation[]>;
+  createTodoistAutomation(automation: InsertTodoistAutomation): Promise<TodoistAutomation>;
+  updateTodoistAutomation(id: number, updates: Partial<InsertTodoistAutomation>): Promise<TodoistAutomation | undefined>;
+  deleteTodoistAutomation(id: number): Promise<void>;
+  triggerTodoistAutomations(eventType: string, context: { leadId?: number; contactId?: number; clienteId?: number; apoliceId?: number; assignedUserId?: number; title?: string }): Promise<number>;
+
+  getTodoistNotifications(userId: number): Promise<TodoistNotification[]>;
+  markTodoistNotificationRead(id: number): Promise<void>;
+
+  getTodoistDashboardStats(userId: number): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -694,7 +769,7 @@ export class DatabaseStorage implements IStorage {
   // INSURANCE MODULE — CLIENTES
   // ============================================================
 
-  async getClientes(): Promise<Cliente[]> {
+  async getClientes(filters?: { search?: string; seguradoraNome?: string; status?: string; tags?: string }): Promise<Cliente[]> {
     return await db.select().from(clientes).orderBy(asc(clientes.nome));
   }
 
@@ -884,6 +959,672 @@ export class DatabaseStorage implements IStorage {
       porProduto,
     };
   }
+
+  // ============================================================
+  // TODOIST MODULE METHODS
+  // ============================================================
+
+  async getTodoistProjects(userId?: number): Promise<TodoistProject[]> {
+    return await db.select().from(todoistProjects).orderBy(desc(todoistProjects.createdAt));
+  }
+
+  async getTodoistProject(id: number): Promise<TodoistProject | undefined> {
+    const [project] = await db.select().from(todoistProjects).where(eq(todoistProjects.id, id));
+    return project;
+  }
+
+  async createTodoistProject(project: InsertTodoistProject): Promise<TodoistProject> {
+    const [newProj] = await db.insert(todoistProjects).values(project).returning();
+    return newProj;
+  }
+
+  async updateTodoistProject(id: number, project: Partial<InsertTodoistProject>): Promise<TodoistProject | undefined> {
+    const [updated] = await db.update(todoistProjects).set(project).where(eq(todoistProjects.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTodoistProject(id: number): Promise<void> {
+    await db.delete(todoistProjects).where(eq(todoistProjects.id, id));
+  }
+
+  async getTodoistLabels(): Promise<TodoistLabel[]> {
+    return await db.select().from(todoistLabels).orderBy(asc(todoistLabels.name));
+  }
+
+  async createTodoistLabel(label: InsertTodoistLabel): Promise<TodoistLabel> {
+    const [newLabel] = await db.insert(todoistLabels).values(label).returning();
+    return newLabel;
+  }
+
+  async deleteTodoistLabel(id: number): Promise<void> {
+    await db.delete(todoistLabels).where(eq(todoistLabels.id, id));
+  }
+
+  async getTodoistTasks(filters?: {
+    view?: string;
+    projectId?: number;
+    priority?: string;
+    labelId?: number;
+    assignedTo?: number;
+    contactId?: number;
+    leadId?: number;
+    clienteId?: number;
+    apoliceId?: number;
+    search?: string;
+    status?: string;
+    kanbanColumn?: string;
+    isRecurring?: boolean;
+  }): Promise<any[]> {
+    let query = db.select().from(todoistTasks);
+    const conditions: any[] = [];
+
+    if (filters?.projectId !== undefined) {
+      if (filters.projectId === 0) {
+        conditions.push(isNull(todoistTasks.projectId));
+      } else {
+        conditions.push(eq(todoistTasks.projectId, filters.projectId));
+      }
+    }
+
+    if (filters?.priority) {
+      conditions.push(eq(todoistTasks.priority, filters.priority as any));
+    }
+
+    if (filters?.assignedTo) {
+      conditions.push(eq(todoistTasks.assignedTo, filters.assignedTo));
+    }
+
+    if (filters?.contactId) {
+      conditions.push(eq(todoistTasks.contactId, filters.contactId));
+    }
+
+    if (filters?.leadId) {
+      conditions.push(eq(todoistTasks.leadId, filters.leadId));
+    }
+
+    if (filters?.clienteId) {
+      conditions.push(eq(todoistTasks.clienteId, filters.clienteId));
+    }
+
+    if (filters?.apoliceId) {
+      conditions.push(eq(todoistTasks.apoliceId, filters.apoliceId));
+    }
+
+    if (filters?.status) {
+      conditions.push(eq(todoistTasks.status, filters.status as any));
+    }
+
+    if (filters?.kanbanColumn) {
+      conditions.push(eq(todoistTasks.kanbanColumn, filters.kanbanColumn as any));
+    }
+
+    if (filters?.isRecurring !== undefined) {
+      conditions.push(eq(todoistTasks.isRecurring, filters.isRecurring));
+    }
+
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(todoistTasks.title, searchTerm),
+          like(todoistTasks.description, searchTerm)
+        )
+      );
+    }
+
+    if (filters?.view === 'today') {
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(
+        and(
+          lte(todoistTasks.dueDate, endOfDay),
+          or(eq(todoistTasks.status, 'todo'), eq(todoistTasks.status, 'in_progress'))
+        )
+      );
+    } else if (filters?.view === 'overdue') {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      conditions.push(
+        and(
+          lte(todoistTasks.dueDate, startOfDay),
+          or(eq(todoistTasks.status, 'todo'), eq(todoistTasks.status, 'in_progress'))
+        )
+      );
+    } else if (filters?.view === 'upcoming') {
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(
+        and(
+          gte(todoistTasks.dueDate, endOfDay),
+          or(eq(todoistTasks.status, 'todo'), eq(todoistTasks.status, 'in_progress'))
+        )
+      );
+    } else if (filters?.view === 'completed') {
+      conditions.push(eq(todoistTasks.status, 'done'));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    const rawTasks = await query.orderBy(asc(todoistTasks.dueDate), desc(todoistTasks.priority));
+
+    const hydratedTasks = await Promise.all(rawTasks.map(async (t) => {
+      let project = undefined;
+      if (t.projectId) {
+        [project] = await db.select().from(todoistProjects).where(eq(todoistProjects.id, t.projectId));
+      }
+
+      let assignee = undefined;
+      if (t.assignedTo) {
+        [assignee] = await db.select().from(users).where(eq(users.id, t.assignedTo));
+      }
+
+      let contact = undefined;
+      if (t.contactId) {
+        [contact] = await db.select().from(contacts).where(eq(contacts.id, t.contactId));
+      }
+
+      let lead = undefined;
+      if (t.leadId) {
+        [lead] = await db.select().from(leads).where(eq(leads.id, t.leadId));
+      }
+
+      let cliente = undefined;
+      if (t.clienteId) {
+        [cliente] = await db.select().from(clientes).where(eq(clientes.id, t.clienteId));
+      }
+
+      let apolice = undefined;
+      if (t.apoliceId) {
+        [apolice] = await db.select().from(apolices).where(eq(apolices.id, t.apoliceId));
+      }
+
+      const subtasks = await db.select().from(todoistSubtasks).where(eq(todoistSubtasks.taskId, t.id)).orderBy(asc(todoistSubtasks.order));
+
+      const labelLinks = await db.select().from(todoistTaskLabels).where(eq(todoistTaskLabels.taskId, t.id));
+      let taskLabels: TodoistLabel[] = [];
+      if (labelLinks.length > 0) {
+        const labelIds = labelLinks.map(l => l.labelId);
+        taskLabels = await db.select().from(todoistLabels).where(inArray(todoistLabels.id, labelIds));
+      }
+
+      const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(todoistComments).where(eq(todoistComments.taskId, t.id));
+
+      return {
+        ...t,
+        project,
+        assignee,
+        contact,
+        lead,
+        cliente,
+        apolice,
+        subtasks,
+        labels: taskLabels,
+        commentsCount: Number(count || 0),
+      };
+    }));
+
+    if (filters?.labelId) {
+      return hydratedTasks.filter(t => t.labels.some((l: any) => l.id === filters.labelId));
+    }
+
+    return hydratedTasks;
+  }
+
+  async getTodoistTask(id: number): Promise<any> {
+    const [t] = await db.select().from(todoistTasks).where(eq(todoistTasks.id, id));
+    if (!t) return undefined;
+
+    let project = undefined;
+    if (t.projectId) {
+      [project] = await db.select().from(todoistProjects).where(eq(todoistProjects.id, t.projectId));
+    }
+
+    let assignee = undefined;
+    if (t.assignedTo) {
+      [assignee] = await db.select().from(users).where(eq(users.id, t.assignedTo));
+    }
+
+    let contact = undefined;
+    if (t.contactId) {
+      [contact] = await db.select().from(contacts).where(eq(contacts.id, t.contactId));
+    }
+
+    let lead = undefined;
+    if (t.leadId) {
+      [lead] = await db.select().from(leads).where(eq(leads.id, t.leadId));
+    }
+
+    let cliente = undefined;
+    if (t.clienteId) {
+      [cliente] = await db.select().from(clientes).where(eq(clientes.id, t.clienteId));
+    }
+
+    let apolice = undefined;
+    if (t.apoliceId) {
+      [apolice] = await db.select().from(apolices).where(eq(apolices.id, t.apoliceId));
+    }
+
+    const subtasks = await db.select().from(todoistSubtasks).where(eq(todoistSubtasks.taskId, t.id)).orderBy(asc(todoistSubtasks.order));
+
+    const labelLinks = await db.select().from(todoistTaskLabels).where(eq(todoistTaskLabels.taskId, t.id));
+    let taskLabels: TodoistLabel[] = [];
+    if (labelLinks.length > 0) {
+      const labelIds = labelLinks.map(l => l.labelId);
+      taskLabels = await db.select().from(todoistLabels).where(inArray(todoistLabels.id, labelIds));
+    }
+
+    const commentsList = await db.select().from(todoistComments).where(eq(todoistComments.taskId, t.id)).orderBy(asc(todoistComments.createdAt));
+    const commentsWithUser = await Promise.all(commentsList.map(async (c) => {
+      const [u] = await db.select().from(users).where(eq(users.id, c.userId));
+      return { ...c, user: u };
+    }));
+
+    const activityLogsList = await db.select().from(todoistActivityLogs).where(eq(todoistActivityLogs.taskId, t.id)).orderBy(desc(todoistActivityLogs.createdAt));
+    const activityLogsWithUser = await Promise.all(activityLogsList.map(async (a) => {
+      const [u] = await db.select().from(users).where(eq(users.id, a.userId));
+      return { ...a, user: u };
+    }));
+
+    return {
+      ...t,
+      project,
+      assignee,
+      contact,
+      lead,
+      cliente,
+      apolice,
+      subtasks,
+      labels: taskLabels,
+      comments: commentsWithUser,
+      activityLogs: activityLogsWithUser,
+    };
+  }
+
+  async createTodoistTask(task: InsertTodoistTask, subtaskTitles?: string[], labelIds?: number[], createdByUserId?: number): Promise<TodoistTask> {
+    const [newTask] = await db.insert(todoistTasks).values(task).returning();
+
+    if (subtaskTitles && subtaskTitles.length > 0) {
+      for (let i = 0; i < subtaskTitles.length; i++) {
+        if (subtaskTitles[i].trim()) {
+          await db.insert(todoistSubtasks).values({
+            taskId: newTask.id,
+            title: subtaskTitles[i].trim(),
+            completed: false,
+            order: i,
+          });
+        }
+      }
+    }
+
+    if (labelIds && labelIds.length > 0) {
+      for (const lId of labelIds) {
+        await db.insert(todoistTaskLabels).values({
+          taskId: newTask.id,
+          labelId: lId,
+        });
+      }
+    }
+
+    const userId = createdByUserId || newTask.createdBy;
+    await db.insert(todoistActivityLogs).values({
+      taskId: newTask.id,
+      userId,
+      action: "criou a tarefa",
+      details: `Tarefa "${newTask.title}" criada.`,
+    });
+
+    if (newTask.assignedTo && newTask.assignedTo !== userId) {
+      await db.insert(todoistNotifications).values({
+        userId: newTask.assignedTo,
+        taskId: newTask.id,
+        title: "Nova Tarefa Atribuída",
+        message: `Você foi atribuído à tarefa "${newTask.title}".`,
+        type: "assigned",
+      });
+    }
+
+    return newTask;
+  }
+
+  async updateTodoistTask(
+    id: number,
+    updates: Partial<InsertTodoistTask>,
+    subtasksList?: { id?: number; title: string; completed?: boolean }[],
+    labelIds?: number[],
+    updatedByUserId?: number
+  ): Promise<TodoistTask | undefined> {
+    const [existing] = await db.select().from(todoistTasks).where(eq(todoistTasks.id, id));
+    if (!existing) return undefined;
+
+    const [updated] = await db.update(todoistTasks).set({ ...updates, updatedAt: new Date() }).where(eq(todoistTasks.id, id)).returning();
+
+    const userId = updatedByUserId || updated.createdBy;
+
+    if (updates.status && updates.status !== existing.status) {
+      await db.insert(todoistActivityLogs).values({
+        taskId: id,
+        userId,
+        action: "alterou o status",
+        details: `Status alterado de ${existing.status} para ${updates.status}.`,
+      });
+    }
+
+    if (updates.dueDate && new Date(updates.dueDate).getTime() !== existing.dueDate?.getTime()) {
+      await db.insert(todoistActivityLogs).values({
+        taskId: id,
+        userId,
+        action: "alterou a data de vencimento",
+        details: `Vencimento definido para ${new Date(updates.dueDate).toLocaleDateString('pt-BR')}.`,
+      });
+    }
+
+    if (updates.assignedTo && updates.assignedTo !== existing.assignedTo) {
+      const [newAssignee] = await db.select().from(users).where(eq(users.id, updates.assignedTo));
+      await db.insert(todoistActivityLogs).values({
+        taskId: id,
+        userId,
+        action: "atribuiu a tarefa",
+        details: `Tarefa atribuída a ${newAssignee?.name || newAssignee?.username || 'usuário'}.`,
+      });
+
+      if (updates.assignedTo !== userId) {
+        await db.insert(todoistNotifications).values({
+          userId: updates.assignedTo,
+          taskId: id,
+          title: "Tarefa Atribuída",
+          message: `A tarefa "${updated.title}" foi atribuída a você.`,
+          type: "assigned",
+        });
+      }
+    }
+
+    if (subtasksList) {
+      await db.delete(todoistSubtasks).where(eq(todoistSubtasks.taskId, id));
+      for (let i = 0; i < subtasksList.length; i++) {
+        if (subtasksList[i].title.trim()) {
+          await db.insert(todoistSubtasks).values({
+            taskId: id,
+            title: subtasksList[i].title.trim(),
+            completed: subtasksList[i].completed || false,
+            order: i,
+          });
+        }
+      }
+    }
+
+    if (labelIds) {
+      await db.delete(todoistTaskLabels).where(eq(todoistTaskLabels.taskId, id));
+      for (const lId of labelIds) {
+        await db.insert(todoistTaskLabels).values({
+          taskId: id,
+          labelId: lId,
+        });
+      }
+    }
+
+    return updated;
+  }
+
+  async completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }> {
+    const [existing] = await db.select().from(todoistTasks).where(eq(todoistTasks.id, id));
+    if (!existing) throw new Error("Task not found");
+
+    const newStatus = existing.status === 'done' ? 'todo' : 'done';
+    const newKanban = newStatus === 'done' ? 'concluido' : 'a_fazer';
+    const completedAt = newStatus === 'done' ? new Date() : null;
+
+    const [task] = await db.update(todoistTasks).set({
+      status: newStatus,
+      kanbanColumn: newKanban,
+      completedAt,
+      completedBy: newStatus === 'done' ? userId : null,
+      updatedAt: new Date(),
+    }).where(eq(todoistTasks.id, id)).returning();
+
+    await db.insert(todoistActivityLogs).values({
+      taskId: id,
+      userId,
+      action: newStatus === 'done' ? "concluiu a tarefa" : "reabriu a tarefa",
+      details: newStatus === 'done' ? "Tarefa marcada como concluída." : "Tarefa reaberta.",
+    });
+
+    let nextOccurrenceTask: TodoistTask | undefined = undefined;
+
+    if (newStatus === 'done' && existing.isRecurring && existing.recurrenceRule && existing.dueDate) {
+      const nextDate = new Date(existing.dueDate);
+      const rule = existing.recurrenceRule.toLowerCase();
+
+      if (rule === 'daily') {
+        nextDate.setDate(nextDate.getDate() + 1);
+      } else if (rule === 'weekdays') {
+        nextDate.setDate(nextDate.getDate() + 1);
+        if (nextDate.getDay() === 6) nextDate.setDate(nextDate.getDate() + 2);
+        if (nextDate.getDay() === 0) nextDate.setDate(nextDate.getDate() + 1);
+      } else if (rule === 'weekly') {
+        nextDate.setDate(nextDate.getDate() + 7);
+      } else if (rule === 'monthly') {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+      } else if (rule === 'yearly') {
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+      } else if (rule.startsWith('every_x_days:')) {
+        const days = parseInt(rule.split(':')[1]) || 1;
+        nextDate.setDate(nextDate.getDate() + days);
+      } else {
+        nextDate.setDate(nextDate.getDate() + 7);
+      }
+
+      [nextOccurrenceTask] = await db.insert(todoistTasks).values({
+        title: existing.title,
+        description: existing.description,
+        projectId: existing.projectId,
+        assignedTo: existing.assignedTo,
+        createdBy: userId,
+        priority: existing.priority,
+        status: 'todo',
+        kanbanColumn: 'a_fazer',
+        dueDate: nextDate,
+        dueTime: existing.dueTime,
+        isRecurring: true,
+        recurrenceRule: existing.recurrenceRule,
+        contactId: existing.contactId,
+        leadId: existing.leadId,
+        clienteId: existing.clienteId,
+        apoliceId: existing.apoliceId,
+      }).returning();
+
+      const existingSubtasks = await db.select().from(todoistSubtasks).where(eq(todoistSubtasks.taskId, id));
+      for (const st of existingSubtasks) {
+        await db.insert(todoistSubtasks).values({
+          taskId: nextOccurrenceTask.id,
+          title: st.title,
+          completed: false,
+          order: st.order,
+        });
+      }
+
+      const existingLabels = await db.select().from(todoistTaskLabels).where(eq(todoistTaskLabels.taskId, id));
+      for (const l of existingLabels) {
+        await db.insert(todoistTaskLabels).values({
+          taskId: nextOccurrenceTask.id,
+          labelId: l.labelId,
+        });
+      }
+
+      await db.insert(todoistActivityLogs).values({
+        taskId: nextOccurrenceTask.id,
+        userId,
+        action: "criada por recorrência",
+        details: `Próxima ocorrência gerada para ${nextDate.toLocaleDateString('pt-BR')}.`,
+      });
+    }
+
+    return { task, nextOccurrenceTask };
+  }
+
+  async deleteTodoistTask(id: number): Promise<void> {
+    await db.delete(todoistTasks).where(eq(todoistTasks.id, id));
+  }
+
+  async createTodoistSubtask(subtask: InsertTodoistSubtask): Promise<TodoistSubtask> {
+    const [st] = await db.insert(todoistSubtasks).values(subtask).returning();
+    return st;
+  }
+
+  async updateTodoistSubtask(id: number, completed: boolean, title?: string): Promise<TodoistSubtask | undefined> {
+    const updates: any = { completed };
+    if (title !== undefined) updates.title = title;
+
+    const [updated] = await db.update(todoistSubtasks).set(updates).where(eq(todoistSubtasks.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTodoistSubtask(id: number): Promise<void> {
+    await db.delete(todoistSubtasks).where(eq(todoistSubtasks.id, id));
+  }
+
+  async getTodoistComments(taskId: number): Promise<any[]> {
+    const list = await db.select().from(todoistComments).where(eq(todoistComments.taskId, taskId)).orderBy(asc(todoistComments.createdAt));
+    return await Promise.all(list.map(async (c) => {
+      const [u] = await db.select().from(users).where(eq(users.id, c.userId));
+      return { ...c, user: u };
+    }));
+  }
+
+  async createTodoistComment(comment: InsertTodoistComment): Promise<TodoistComment> {
+    const [newComment] = await db.insert(todoistComments).values(comment).returning();
+    await db.insert(todoistActivityLogs).values({
+      taskId: comment.taskId,
+      userId: comment.userId,
+      action: "adicionou comentário",
+      details: comment.content.substring(0, 50),
+    });
+    return newComment;
+  }
+
+  async getTodoistActivityLogs(taskId: number): Promise<any[]> {
+    const list = await db.select().from(todoistActivityLogs).where(eq(todoistActivityLogs.taskId, taskId)).orderBy(desc(todoistActivityLogs.createdAt));
+    return await Promise.all(list.map(async (a) => {
+      const [u] = await db.select().from(users).where(eq(users.id, a.userId));
+      return { ...a, user: u };
+    }));
+  }
+
+  async getTodoistAutomations(): Promise<TodoistAutomation[]> {
+    return await db.select().from(todoistAutomations).orderBy(desc(todoistAutomations.createdAt));
+  }
+
+  async createTodoistAutomation(automation: InsertTodoistAutomation): Promise<TodoistAutomation> {
+    const [auto] = await db.insert(todoistAutomations).values(automation).returning();
+    return auto;
+  }
+
+  async updateTodoistAutomation(id: number, updates: Partial<InsertTodoistAutomation>): Promise<TodoistAutomation | undefined> {
+    const [updated] = await db.update(todoistAutomations).set(updates).where(eq(todoistAutomations.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTodoistAutomation(id: number): Promise<void> {
+    await db.delete(todoistAutomations).where(eq(todoistAutomations.id, id));
+  }
+
+  async triggerTodoistAutomations(eventType: string, context: { leadId?: number; contactId?: number; clienteId?: number; apoliceId?: number; assignedUserId?: number; title?: string }): Promise<number> {
+    const activeRules = await db.select().from(todoistAutomations).where(
+      and(
+        eq(todoistAutomations.eventType, eventType as any),
+        eq(todoistAutomations.isActive, true)
+      )
+    );
+
+    let triggeredCount = 0;
+    for (const rule of activeRules) {
+      const dueDate = new Date();
+      if (rule.daysOffset) {
+        dueDate.setDate(dueDate.getDate() + rule.daysOffset);
+      }
+
+      const assignedTo = rule.assigneeOption === 'specific_user' && rule.specificAssigneeId
+        ? rule.specificAssigneeId
+        : context.assignedUserId || 1;
+
+      const title = context.title ? `${rule.actionTaskTitle}: ${context.title}` : rule.actionTaskTitle;
+
+      await db.insert(todoistTasks).values({
+        title,
+        description: `Gerado automaticamente via regra de automação CRM "${rule.name}".`,
+        priority: rule.actionPriority,
+        assignedTo,
+        createdBy: 1,
+        status: 'todo',
+        kanbanColumn: 'a_fazer',
+        dueDate,
+        contactId: context.contactId,
+        leadId: context.leadId,
+        clienteId: context.clienteId,
+        apoliceId: context.apoliceId,
+        autoGeneratedBy: rule.name,
+      });
+
+      triggeredCount++;
+    }
+
+    return triggeredCount;
+  }
+
+  async getTodoistNotifications(userId: number): Promise<TodoistNotification[]> {
+    return await db.select().from(todoistNotifications).where(eq(todoistNotifications.userId, userId)).orderBy(desc(todoistNotifications.createdAt));
+  }
+
+  async markTodoistNotificationRead(id: number): Promise<void> {
+    await db.update(todoistNotifications).set({ isRead: true }).where(eq(todoistNotifications.id, id));
+  }
+
+  async getTodoistDashboardStats(userId: number): Promise<any> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const allUserTasks = await db.select().from(todoistTasks).where(eq(todoistTasks.assignedTo, userId));
+    const todayTasks = allUserTasks.filter(t => t.dueDate && t.dueDate <= endOfDay && t.status !== 'done');
+    const overdueTasks = allUserTasks.filter(t => t.dueDate && t.dueDate < startOfDay && t.status !== 'done');
+    const upcomingTasks = allUserTasks.filter(t => t.dueDate && t.dueDate > endOfDay && t.status !== 'done');
+    const completedTodayTasks = allUserTasks.filter(t => t.completedAt && t.completedAt >= startOfDay);
+
+    const allLeads = await db.select().from(leads);
+    const leadsWithInteractions = await db.select({ leadId: interactions.leadId }).from(interactions);
+    const leadIdsWithInteraction = new Set(leadsWithInteractions.map(i => i.leadId).filter(Boolean));
+    const leadsWithoutContact = allLeads.filter(l => !leadIdsWithInteraction.has(l.id) && l.status !== 'cancelled' && l.status !== 'implemented');
+    const staleLeads = allLeads.filter(l => l.createdAt && new Date(l.createdAt) < sevenDaysAgo && l.status !== 'cancelled' && l.status !== 'implemented');
+
+    const priorityCounts = {
+      P1: allUserTasks.filter(t => t.priority === 'P1' && t.status !== 'done').length,
+      P2: allUserTasks.filter(t => t.priority === 'P2' && t.status !== 'done').length,
+      P3: allUserTasks.filter(t => t.priority === 'P3' && t.status !== 'done').length,
+      P4: allUserTasks.filter(t => t.priority === 'P4' && t.status !== 'done').length,
+    };
+
+    return {
+      myTasks: {
+        todayCount: todayTasks.length,
+        overdueCount: overdueTasks.length,
+        upcomingCount: upcomingTasks.length,
+        completedTodayCount: completedTodayTasks.length,
+        totalPending: allUserTasks.filter(t => t.status !== 'done').length,
+      },
+      priorityCounts,
+      crmIntelligence: {
+        leadsWithoutContactCount: leadsWithoutContact.length,
+        leadsWithoutContact: leadsWithoutContact.slice(0, 5),
+        staleLeadsCount: staleLeads.length,
+        staleLeads: staleLeads.slice(0, 5),
+      },
+    };
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -958,7 +1699,6 @@ export class MemStorage implements IStorage {
       likes: 0,
       videoUrl: post.videoUrl || null,
       youtubeUrl: post.youtubeUrl || null,
-      isApproved: post.isApproved ?? false,
       isFeatured: post.isFeatured ?? false,
       publishedAt: post.publishedAt || new Date(),
       createdAt: new Date()
@@ -1029,6 +1769,7 @@ export class MemStorage implements IStorage {
     const newProduct: Product = {
       ...product,
       id,
+      description: product.description || null,
       isActive: product.isActive ?? true,
       createdAt: new Date(),
     };
@@ -1178,7 +1919,17 @@ export class MemStorage implements IStorage {
       phone: contact.phone || null,
       document: contact.document || null,
       address: contact.address || null,
-      assignedTo: contact.assignedTo ?? 0
+      responsibleName: contact.responsibleName || null,
+      maritalStatus: contact.maritalStatus || null,
+      rg: contact.rg || null,
+      cnh: contact.cnh || null,
+      birthDate: contact.birthDate || null,
+      gender: contact.gender || null,
+      profession: contact.profession || null,
+      anniversaryDate: contact.anniversaryDate || null,
+      responsibleId: contact.responsibleId || null,
+      assignedTo: contact.assignedTo ?? 0,
+      productType: contact.productType || null,
     };
     this.contacts.push(newContact);
     return newContact;
@@ -1221,6 +1972,7 @@ export class MemStorage implements IStorage {
       value: lead.value || null,
       source: lead.source || null,
       notes: lead.notes || null,
+      product: lead.product || null,
       status: lead.status ?? "New",
       contactId: lead.contactId ?? 0
     };
@@ -1333,6 +2085,7 @@ export class MemStorage implements IStorage {
       contactId: task.contactId || null,
       priority: task.priority || "medium",
       status: (task.status as any) || "pendencia",
+      color: task.color || "#0F6570",
     };
     this.tasks.push(newTask);
     return newTask;
@@ -1377,6 +2130,10 @@ export class MemStorage implements IStorage {
         id: this.currentId.siteSettings++,
         siteName: "Monteiro Corretora",
         logoBase64: null,
+        logoScale: 100,
+        logoScaleMobile: 100,
+        taskColumns: null,
+        leadColumns: null,
         primaryColor: "#08454c",
         secondaryColor: "#c65f54",
         fontSans: "Inter",
@@ -1384,13 +2141,13 @@ export class MemStorage implements IStorage {
         heroTitle: "Protegendo seu Futuro, Garantindo seu Legado",
         heroSubtitle: "Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna.",
         aboutTitle: "Sobre a Monteiro Corretora",
-        aboutContent: "Fundada por Carlos Monteiro, a Monteiro Corretora começou com uma missão simples: tornar o seguro compreensível, acessível e verdadeiramente protetor para famílias e empresas em São Paulo.\n\nNas últimas três décadas, crescemos de um pequeno escritório familiar para uma das corretoras mais respeitadas da região. Nosso crescimento não mudou nossos valores fundamentais — ainda tratamos cada cliente como parte da família.",
+        aboutContent: "Fundada por Carlos Monteiro...",
         aboutImageBase64: "/equipe.jpg",
         servicesTitle: "Soluções Completas em Seguros",
-        servicesSubtitle: "Planos de cobertura personalizados projetados para atender às suas necessidades específicas.",
+        servicesSubtitle: "Planos de cobertura personalizados...",
         blogTitle: "Blog e Novidades",
-        blogSubtitle: "Fique por dentro das novidades e dicas do mercado de seguros.",
-        footerText: "Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios.",
+        blogSubtitle: "Fique por dentro...",
+        footerText: "Oferecemos soluções...",
         contactEmail: "contato@monteiro.com",
         contactPhone: "+55 (11) 9999-9999",
         address: "Rua do Comércio, 123, São Paulo, SP",
@@ -1528,7 +2285,7 @@ export class MemStorage implements IStorage {
   }
 
   // Insurance stubs (MemStorage not used in production)
-  async getClientes(): Promise<Cliente[]> { return []; }
+  async getClientes(filters?: any): Promise<Cliente[]> { return []; }
   async getCliente(id: number): Promise<Cliente | undefined> { return undefined; }
   async createCliente(c: InsertCliente): Promise<Cliente> { throw new Error("Not implemented"); }
   async updateCliente(id: number, c: Partial<InsertCliente>): Promise<Cliente | undefined> { return undefined; }
@@ -1549,6 +2306,36 @@ export class MemStorage implements IStorage {
   async getDashboardSeguros() {
     return { totalAtivas: 0, totalClientes: 0, totalVencidas: 0, vencendo30: 0, vencendo60: 0, valorTotal: "0.00", renovacaoMes: 0, porSeguradora: [], porProduto: [] };
   }
+
+  // Todoist Stubs for MemStorage
+  async getTodoistProjects(userId?: number): Promise<TodoistProject[]> { return []; }
+  async getTodoistProject(id: number): Promise<TodoistProject | undefined> { return undefined; }
+  async createTodoistProject(project: InsertTodoistProject): Promise<TodoistProject> { throw new Error("Not implemented"); }
+  async updateTodoistProject(id: number, project: Partial<InsertTodoistProject>): Promise<TodoistProject | undefined> { return undefined; }
+  async deleteTodoistProject(id: number): Promise<void> {}
+  async getTodoistLabels(): Promise<TodoistLabel[]> { return []; }
+  async createTodoistLabel(label: InsertTodoistLabel): Promise<TodoistLabel> { throw new Error("Not implemented"); }
+  async deleteTodoistLabel(id: number): Promise<void> {}
+  async getTodoistTasks(filters?: any): Promise<any[]> { return []; }
+  async getTodoistTask(id: number): Promise<any | undefined> { return undefined; }
+  async createTodoistTask(task: InsertTodoistTask, subtaskTitles?: string[], labelIds?: number[], createdByUserId?: number): Promise<TodoistTask> { throw new Error("Not implemented"); }
+  async updateTodoistTask(id: number, updates: Partial<InsertTodoistTask>, subtasksList?: any[], labelIds?: number[], updatedByUserId?: number): Promise<TodoistTask | undefined> { return undefined; }
+  async completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }> { throw new Error("Not implemented"); }
+  async deleteTodoistTask(id: number): Promise<void> {}
+  async createTodoistSubtask(subtask: InsertTodoistSubtask): Promise<TodoistSubtask> { throw new Error("Not implemented"); }
+  async updateTodoistSubtask(id: number, completed: boolean, title?: string): Promise<TodoistSubtask | undefined> { return undefined; }
+  async deleteTodoistSubtask(id: number): Promise<void> {}
+  async getTodoistComments(taskId: number): Promise<any[]> { return []; }
+  async createTodoistComment(comment: InsertTodoistComment): Promise<TodoistComment> { throw new Error("Not implemented"); }
+  async getTodoistActivityLogs(taskId: number): Promise<any[]> { return []; }
+  async getTodoistAutomations(): Promise<TodoistAutomation[]> { return []; }
+  async createTodoistAutomation(automation: InsertTodoistAutomation): Promise<TodoistAutomation> { throw new Error("Not implemented"); }
+  async updateTodoistAutomation(id: number, updates: Partial<InsertTodoistAutomation>): Promise<TodoistAutomation | undefined> { return undefined; }
+  async deleteTodoistAutomation(id: number): Promise<void> {}
+  async triggerTodoistAutomations(eventType: string, context: any): Promise<number> { return 0; }
+  async getTodoistNotifications(userId: number): Promise<TodoistNotification[]> { return []; }
+  async markTodoistNotificationRead(id: number): Promise<void> {}
+  async getTodoistDashboardStats(userId: number): Promise<any> { return { myTasks: { todayCount: 0, overdueCount: 0, upcomingCount: 0, completedTodayCount: 0, totalPending: 0 }, priorityCounts: { P1: 0, P2: 0, P3: 0, P4: 0 }, crmIntelligence: { leadsWithoutContactCount: 0, leadsWithoutContact: [], staleLeadsCount: 0, staleLeads: [] } }; }
 }
 
 export const storage = new DatabaseStorage();

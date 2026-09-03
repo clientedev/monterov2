@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { TodoistCrmSection } from "@/components/todoist/TodoistCrmSection";
 import {
     Dialog,
     DialogContent,
@@ -548,6 +549,10 @@ export default function LeadsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <div className="mt-8">
+                <TodoistCrmSection title="Tarefas Comerciais do Funil" />
+            </div>
 
             <ContactProfile
                 contactId={viewContactId}

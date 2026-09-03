@@ -32,12 +32,16 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import logo from "@assets/logo_monteiro_v2.png";
 import { Separator } from "@/components/ui/separator";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { Plus } from "lucide-react";
+import { TodoistNotificationBell } from "@/components/todoist/TodoistNotificationBell";
+import { TodoistQuickAddModal } from "@/components/todoist/TodoistQuickAddModal";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, logoutMutation } = useAuth();
     const [location, setLocation] = useLocation();
     const { settings } = useSiteSettings();
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const [quickAddOpen, setQuickAddOpen] = useState(false);
 
     if (!user) return null;
 
@@ -101,6 +105,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <NavLink href="/admin/interactions" icon={Megaphone} label="Régua de Contato" />
                             <NavLink href="/admin/prospecting" icon={PhoneCall} label="Prospecção" />
                             <NavLink href="/admin/company-search" icon={Search} label="Busca de Empresas" />
+                        </nav>
+                    </div>
+
+                    {/* TODOIST Module Section */}
+                    <div className="animate-in fade-in slide-in-from-left-4 duration-500 bg-black/20 p-3 rounded-2xl border border-amber-500/20">
+                        <div className="flex items-center justify-between px-2 mb-3">
+                            <p className="text-[11px] uppercase text-amber-400 font-black tracking-[0.15em]">TODOIST CRM</p>
+                            <Button
+                                size="sm"
+                                onClick={() => setQuickAddOpen(true)}
+                                className="h-6 text-[10px] bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold gap-1 px-2"
+                            >
+                                <Plus className="h-3 w-3" /> Tarefa
+                            </Button>
+                        </div>
+                        <nav className="space-y-1">
+                            <NavLink href="/admin/todoist" icon={CheckSquare} label="Gerenciador TODOIST" />
                         </nav>
                     </div>
 
@@ -232,15 +253,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Main Workspace */}
-            <main className="flex-1 overflow-auto bg-[#f1f5f9] relative">
+            <main className="flex-1 overflow-auto bg-[#f1f5f9] relative flex flex-col">
                 {/* Decorative header gradient */}
                 <div className="h-40 w-full bg-[#0a0c10] absolute top-0 left-0 -z-10" />
 
-                <div className="p-10 min-h-full">
+                {/* Top Action Header Bar */}
+                <div className="bg-[#0a0c10]/80 backdrop-blur border-b border-white/5 px-8 py-3 flex items-center justify-end gap-3 z-20 shrink-0">
+                    <Button
+                        onClick={() => setQuickAddOpen(true)}
+                        size="sm"
+                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs gap-1.5 shadow-lg shadow-amber-500/20"
+                    >
+                        <Plus className="h-4 w-4" /> + Tarefa
+                    </Button>
+                    <TodoistNotificationBell />
+                </div>
+
+                <div className="p-10 flex-1">
                     <div className="max-w-[1400px] mx-auto animate-in fade-in zoom-in-95 duration-500">
                         {children}
                     </div>
                 </div>
+
+                <TodoistQuickAddModal open={quickAddOpen} onOpenChange={setQuickAddOpen} />
             </main>
         </div>
     );

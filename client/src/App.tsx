@@ -38,6 +38,7 @@ import SiteConfigPage from "@/pages/admin-crm/site-config";
 import ReviewsPage from "@/pages/admin-crm/reviews";
 import ProspectingPage from "@/pages/admin-crm/prospecting";
 import CompanySearchPage from "@/pages/admin-crm/company-search";
+import TodoistModulePage from "@/pages/admin-crm/todoist";
 
 // Insurance Module Pages
 import DashboardSegurosPage from "@/pages/admin-crm/dashboard-seguros";
@@ -125,6 +126,7 @@ function Router() {
       <ProtectedAdminRoute path="/admin/reviews" component={ReviewsPage} />
       <ProtectedAdminRoute path="/admin/prospecting" component={ProspectingPage} />
       <ProtectedAdminRoute path="/admin/company-search" component={CompanySearchPage} />
+      <ProtectedAdminRoute path="/admin/todoist" component={TodoistModulePage} />
 
       {/* Insurance Module Routes */}
       <ProtectedAdminRoute path="/admin/seguros" component={DashboardSegurosPage} />

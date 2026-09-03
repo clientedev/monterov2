@@ -4,6 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Apolice, Cliente, Seguradora, ProdutoSeguro, User } from "@shared/schema";
+import { TodoistCrmSection } from "@/components/todoist/TodoistCrmSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -317,6 +318,10 @@ export default function ApolicesPage() {
                         })}
                     </TableBody>
                 </Table>
+            </div>
+
+            <div className="mt-8">
+                <TodoistCrmSection title="Tarefas de Gestão de Apólices & Renovações" />
             </div>
 
             {/* Delete Confirmation */}
