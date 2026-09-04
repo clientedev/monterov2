@@ -256,12 +256,12 @@ export function baseLayout(params: {
 
           <!-- BRAND HEADER WITH LOGO AND TITLE — dark brand color -->
           <tr>
-            <td style="background:linear-gradient(135deg,#0F172A 0%,#08454C 100%);padding:36px 40px 28px;text-align:center;">
+            <td style="background:linear-gradient(135deg,#0F172A 0%,#08454C 100%);padding:26px 30px 22px;text-align:center;">
               <img src="${logoSrc}" alt="Monteiro Seguros &amp; Benefícios"
-                width="200"
-                style="display:block;margin:0 auto 24px;width:200px;max-width:200px;height:auto;object-fit:contain;" />
+                width="270"
+                style="display:block;margin:0 auto 12px;width:270px;max-width:270px;height:auto;object-fit:contain;" />
               <h1 style="margin:0 0 0;color:#FFFFFF;font-size:22px;font-weight:800;line-height:1.35;font-family:Arial,sans-serif;letter-spacing:-0.3px;">${title}</h1>
-              ${badge ? `<div style="margin-top:12px;"><span style="background:rgba(16,185,129,0.2);color:#34D399;font-size:11px;font-weight:700;padding:4px 16px;border-radius:20px;border:1px solid rgba(16,185,129,0.4);display:inline-block;letter-spacing:1px;text-transform:uppercase;">${badge}</span></div>` : ""}
+              ${badge ? `<div style="margin-top:10px;"><span style="background:rgba(16,185,129,0.2);color:#34D399;font-size:11px;font-weight:700;padding:4px 16px;border-radius:20px;border:1px solid rgba(16,185,129,0.4);display:inline-block;letter-spacing:1px;text-transform:uppercase;">${badge}</span></div>` : ""}
             </td>
           </tr>
 
