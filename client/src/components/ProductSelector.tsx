@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,20 +22,14 @@ interface ProductSelectorProps {
 }
 
 export function ProductSelector({ value = "", onChange, className = "" }: ProductSelectorProps) {
-    const [selectedStandard, setSelectedStandard] = useState<string[]>([]);
-    const [isOutroSelected, setIsOutroSelected] = useState<boolean>(false);
-    const [outroText, setOutroText] = useState<string>("");
-
-    // Synchronize component internal state with prop `value`
-    useEffect(() => {
-        if (!value) {
-            setSelectedStandard([]);
-            setIsOutroSelected(false);
-            setOutroText("");
-            return;
+    // Derive selection state directly from controlled `value` prop
+    const { selectedStandard, isOutroSelected, outroText } = useMemo(() => {
+        const raw = value || "";
+        if (!raw) {
+            return { selectedStandard: [], isOutroSelected: false, outroText: "" };
         }
 
-        const items = value.split(",").map((s) => s.trim()).filter(Boolean);
+        const items = raw.split(",").map((s) => s.trim()).filter(Boolean);
         const standard: string[] = [];
         let hasOutro = false;
         let customVal = "";
@@ -45,14 +39,11 @@ export function ProductSelector({ value = "", onChange, className = "" }: Produc
                 standard.push(item);
             } else {
                 hasOutro = true;
-                const clean = item.replace(/^Outro:\s*/i, "");
-                customVal = clean;
+                customVal = item.replace(/^Outro:\s*/i, "");
             }
         }
 
-        setSelectedStandard(standard);
-        setIsOutroSelected(hasOutro);
-        setOutroText(customVal);
+        return { selectedStandard: standard, isOutroSelected: hasOutro, outroText: customVal };
     }, [value]);
 
     const emitChange = (standards: string[], outroActive: boolean, customText: string) => {
@@ -71,17 +62,14 @@ export function ProductSelector({ value = "", onChange, className = "" }: Produc
         } else {
             updated = selectedStandard.filter((p) => p !== prod);
         }
-        setSelectedStandard(updated);
         emitChange(updated, isOutroSelected, outroText);
     };
 
     const handleOutroToggle = (checked: boolean) => {
-        setIsOutroSelected(checked);
         emitChange(selectedStandard, checked, outroText);
     };
 
     const handleOutroTextChange = (text: string) => {
-        setOutroText(text);
         emitChange(selectedStandard, isOutroSelected, text);
     };
 

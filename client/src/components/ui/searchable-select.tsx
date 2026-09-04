@@ -152,7 +152,7 @@ export function SearchableSelect({
                 <CommandItem
                   key={option.value}
                   // cmdk uses this for client-side filtering
-                  value={`${option.label} ${option.sublabel ?? ""}`}
+                  value={`${option.label} ${option.sublabel ?? ""} ${option.value}`}
                   onSelect={() => {
                     onValueChange(option.value);
                     setOpen(false);

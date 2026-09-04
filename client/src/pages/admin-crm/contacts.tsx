@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -393,6 +394,9 @@ export default function ContactsPage() {
                         <DialogContent className="sm:max-w-[450px] rounded-2xl border-none shadow-2xl">
                             <DialogHeader>
                                 <DialogTitle className="text-2xl font-display font-bold">{isEditing ? "Editar Contato" : "Novo Contato"}</DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground">
+                                    {isEditing ? "Altere as informações do contato abaixo e salve as alterações." : "Preencha os dados abaixo para cadastrar um novo contato."}
+                                </DialogDescription>
                             </DialogHeader>
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
@@ -404,8 +408,7 @@ export default function ContactsPage() {
                                                 <FormLabel className="text-gray-600 font-bold">Tipo de Cliente</FormLabel>
                                                 <Select
                                                     onValueChange={field.onChange}
-                                                    defaultValue={field.value}
-                                                    value={field.value}
+                                                    value={field.value || "individual"}
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger className="rounded-xl h-11">
@@ -576,8 +579,7 @@ export default function ContactsPage() {
                                                     <FormLabel className="text-gray-600 font-bold">Estado Civil</FormLabel>
                                                     <Select
                                                         onValueChange={field.onChange}
-                                                        defaultValue={field.value || undefined}
-                                                        value={field.value || undefined}
+                                                        value={field.value || ""}
                                                     >
                                                         <FormControl>
                                                             <SelectTrigger className="rounded-xl h-11">
@@ -602,7 +604,7 @@ export default function ContactsPage() {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel className="text-gray-600 font-bold">Status do Cliente</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value || "Ativo"} value={field.value || "Ativo"}>
+                                                <Select onValueChange={field.onChange} value={field.value || "Ativo"}>
                                                     <FormControl>
                                                         <SelectTrigger className="rounded-xl h-11">
                                                             <SelectValue placeholder="Selecione o status" />
