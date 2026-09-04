@@ -33,9 +33,7 @@ import logo from "@assets/logo_monteiro_v2.png";
 import { Separator } from "@/components/ui/separator";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { ForcePasswordChangeDialog } from "@/components/ForcePasswordChangeDialog";
-import { Plus } from "lucide-react";
 import { TodoistNotificationBell } from "@/components/todoist/TodoistNotificationBell";
-import { TodoistQuickAddModal } from "@/components/todoist/TodoistQuickAddModal";
 
 const WhatsAppIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -48,7 +46,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [location, setLocation] = useLocation();
     const { settings } = useSiteSettings();
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-    const [quickAddOpen, setQuickAddOpen] = useState(false);
 
     if (!user) return null;
 
@@ -133,13 +130,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <div className="animate-in fade-in slide-in-from-left-4 duration-500">
                         <div className="flex items-center justify-between px-2 mb-2">
                             <p className="text-[11px] uppercase text-[#1A3A4F] font-bold tracking-[0.15em]">TODOIST Tarefas</p>
-                            <Button
-                                size="sm"
-                                onClick={() => setQuickAddOpen(true)}
-                                className="h-6 text-[10px] bg-primary hover:bg-primary/90 text-white font-bold gap-1 px-2 rounded-lg"
-                            >
-                                <Plus className="h-3 w-3" /> Tarefa
-                            </Button>
                         </div>
                         <nav className="space-y-1">
                             <NavLink href="/admin/todoist" icon={CheckSquare} label="Tarefas & Kanban" />
@@ -306,13 +296,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <WhatsAppIcon className="h-4 w-4 fill-white" /> Monteiro Conecta
                         </Button>
                     </a>
-                    <Button
-                        onClick={() => setQuickAddOpen(true)}
-                        size="sm"
-                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs gap-1.5 shadow-lg shadow-amber-500/20"
-                    >
-                        <Plus className="h-4 w-4" /> + Tarefa
-                    </Button>
                     <TodoistNotificationBell />
                 </div>
 
@@ -321,8 +304,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {children}
                     </div>
                 </div>
-
-                <TodoistQuickAddModal open={quickAddOpen} onOpenChange={setQuickAddOpen} />
 
                 {/* Force password change for newly created accounts */}
                 <ForcePasswordChangeDialog open={!!(user as any)?.mustChangePassword} />

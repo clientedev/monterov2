@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useRoute, useLocation } from "wouter";
 import { Cliente, Apolice, Seguradora, ProdutoSeguro, User } from "@shared/schema";
-import { TodoistCrmSection } from "@/components/todoist/TodoistCrmSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -418,11 +417,6 @@ export default function ClienteDetalhePage() {
                         })}
                     </div>
                 )}
-            </div>
-
-            {/* Todoist CRM Section */}
-            <div className="pt-4">
-                <TodoistCrmSection clienteId={cliente.id} title={`Tarefas Todoist de ${cliente.nome}`} />
             </div>
 
             {/* Observations */}
