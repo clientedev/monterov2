@@ -20,6 +20,7 @@ import PublicServicesPage from "@/pages/Services";
 import ServiceDetail from "./pages/ServiceDetail";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import ProfilePage from "./pages/Profile";
+import CreatePasswordPage from "./pages/CreatePassword";
 
 // Admin CRM Pages
 import ContactsPage from "@/pages/admin-crm/contacts";
@@ -105,6 +106,7 @@ function Router() {
       <Route path="/services" component={PublicServicesPage} />
       <Route path="/services/:id" component={ServiceDetail} />
       <Route path="/contact" component={Contact} />
+      <Route path="/criar-senha" component={CreatePasswordPage} />
 
       {/* Customer Area */}
       <ProtectedClientRoute path="/dashboard" component={CustomerDashboard} />

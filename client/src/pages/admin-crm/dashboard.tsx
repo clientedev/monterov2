@@ -169,10 +169,27 @@ export default function AdminDashboard() {
     const currentMonthName = monthNames[today.getMonth()];
 
     const monthlyBirthdayContacts = useMemo(() => {
-        if (!contacts) return [];
-        return contacts.filter(c => {
-            if (!c.anniversaryDate) return false;
-            const parts = c.anniversaryDate.split("/");
+        const list: Array<{ id: number; name: string; email?: string | null; phone?: string | null; anniversaryDate?: string | null; productType?: string | null; isEmployee?: boolean }> = [];
+        
+        if (contacts) {
+            for (const c of contacts) {
+                if (c.anniversaryDate) {
+                    list.push({ id: c.id, name: c.name, email: c.email, phone: c.phone, anniversaryDate: c.anniversaryDate, productType: c.productType, isEmployee: false });
+                }
+            }
+        }
+        
+        if (users) {
+            for (const u of users) {
+                if (u.anniversaryDate && u.role !== "client") {
+                    list.push({ id: u.id + 100000, name: `${u.name} (Funcionário)`, email: u.email, phone: null, anniversaryDate: u.anniversaryDate, productType: "Equipe Interna", isEmployee: true });
+                }
+            }
+        }
+
+        return list.filter(item => {
+            if (!item.anniversaryDate) return false;
+            const parts = item.anniversaryDate.split("/");
             if (parts.length < 2) return false;
             const m = parseInt(parts[1], 10);
             return m === currentMonthNum;
@@ -181,7 +198,7 @@ export default function AdminDashboard() {
             const dayB = parseInt(b.anniversaryDate?.split("/")[0] || "0", 10);
             return dayA - dayB;
         });
-    }, [contacts, currentMonthNum]);
+    }, [contacts, users, currentMonthNum]);
 
     const todayBirthdayContacts = useMemo(() => {
         return monthlyBirthdayContacts.filter(c => {

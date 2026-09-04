@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Contact, InsertContact, insertContactSchema, Lead, Product } from "@shared/schema";
+import { Contact, InsertContact, insertContactSchema, Lead, Product, User as UserType } from "@shared/schema";
 
 // Calculate age from "DD/MM/AAAA" string
 function calcAge(dateStr: string | null | undefined): number | null {
@@ -51,7 +51,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Users, Building, User, UserPlus, Search, X } from "lucide-react";
+import { Loader2, Plus, Users, Building, User, UserPlus, Search, X, KeyRound, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ContactProfile } from "@/components/ContactProfile";
 import * as XLSX from "xlsx";
@@ -96,6 +96,32 @@ export default function ContactsPage() {
     const { data: contacts, isLoading } = useQuery<Contact[]>({
         queryKey: ["/api/contacts"],
     });
+
+    const { data: usersList } = useQuery<UserType[]>({
+        queryKey: ["/api/users"],
+    });
+
+    const userAccountsByEmail = useMemo(() => {
+        const map = new Map<string, UserType>();
+        if (!usersList) return map;
+        for (const u of usersList) {
+            if (u.email) {
+                map.set(u.email.toLowerCase().trim(), u);
+            }
+        }
+        return map;
+    }, [usersList]);
+
+    const userAccountsByContactId = useMemo(() => {
+        const map = new Map<number, UserType>();
+        if (!usersList) return map;
+        for (const u of usersList) {
+            if (u.contactId) {
+                map.set(u.contactId, u);
+            }
+        }
+        return map;
+    }, [usersList]);
 
     const { data: allLeads } = useQuery<Lead[]>({
         queryKey: ["/api/leads"],
@@ -204,24 +230,31 @@ export default function ContactsPage() {
             setShowImport(false);
         }
     };
+    const DEFAULT_CONTACT_FORM_VALUES: InsertContact = {
+        type: "individual",
+        name: "",
+        email: "",
+        phone: "",
+        document: "",
+        address: "",
+        responsibleName: "",
+        responsibleId: undefined,
+        anniversaryDate: "",
+        maritalStatus: "",
+        productType: "",
+        status: "Ativo",
+    };
 
     const form = useForm<InsertContact>({
         resolver: zodResolver(insertContactSchema),
-        defaultValues: {
-            type: "individual",
-            name: "",
-            email: "",
-            phone: "",
-            document: "",
-            address: "",
-            responsibleName: "",
-            responsibleId: undefined,
-            anniversaryDate: "",
-            maritalStatus: "",
-            productType: "",
-            status: "Ativo",
-        },
+        defaultValues: DEFAULT_CONTACT_FORM_VALUES,
     });
+
+    const handleOpenCreateModal = () => {
+        setIsEditing(null);
+        form.reset(DEFAULT_CONTACT_FORM_VALUES);
+        setOpen(true);
+    };
 
     const watchedAnniversary = form.watch("anniversaryDate");
 
@@ -384,13 +417,14 @@ export default function ContactsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setIsEditing(null); form.reset(); } }}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-11 px-6 font-bold">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Adicionar Contato
-                            </Button>
-                        </DialogTrigger>
+                    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setIsEditing(null); form.reset(DEFAULT_CONTACT_FORM_VALUES); } }}>
+                        <Button 
+                            onClick={handleOpenCreateModal}
+                            className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-11 px-6 font-bold"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Adicionar Contato
+                        </Button>
                         <DialogContent className="sm:max-w-[650px] w-full max-w-[95vw] rounded-3xl border-none shadow-2xl overflow-hidden p-0 max-h-[90vh] flex flex-col bg-white">
                             <DialogHeader className="p-6 pb-4 bg-slate-50 border-b shrink-0">
                                 <DialogTitle className="text-2xl font-display font-bold text-gray-900">{isEditing ? "Editar Contato" : "Novo Contato"}</DialogTitle>
@@ -789,23 +823,24 @@ export default function ContactsPage() {
             </div>
 
             {/* ── Contacts Table ──────────────────────────────────────────────── */}
-            <div className="rounded-2xl border bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-gray-50/80">
+                    <TableHeader className="bg-slate-50">
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className="py-4 font-bold text-gray-600">Identificação</TableHead>
-                            <TableHead className="py-4 font-bold text-gray-600">Status</TableHead>
-                            <TableHead className="py-4 font-bold text-gray-600">Produto</TableHead>
-                            <TableHead className="py-4 font-bold text-gray-600">Responsável</TableHead>
-                            <TableHead className="py-4 font-bold text-gray-600">Email</TableHead>
-                            <TableHead className="py-4 font-bold text-gray-600">Telefone</TableHead>
-                            <TableHead className="py-4 text-right font-bold text-gray-600">Ações</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Contato / Nome</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Tipo de Cliente</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">CPF / CNPJ & Responsável</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">E-mail / Telefone</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Idade / Data Comem.</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Produtos</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Status</TableHead>
+                            <TableHead className="py-4 text-right font-bold text-slate-700">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredContacts.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
+                                <TableCell colSpan={8} className="text-center h-32 text-muted-foreground">
                                     <div className="flex flex-col items-center gap-2">
                                         <Users className="h-8 w-8 opacity-20" />
                                         <p>{contacts?.length === 0 ? "Nenhum contato cadastrado ainda." : "Nenhum contato encontrado com os filtros aplicados."}</p>
@@ -815,34 +850,133 @@ export default function ContactsPage() {
                         ) : (
                             filteredContacts.map((contact) => {
                                 const products = productsByContact.get(contact.id) ?? [];
+                                const matchedUser = userAccountsByContactId.get(contact.id) || (contact.email ? userAccountsByEmail.get(contact.email.toLowerCase().trim()) : null);
+                                const displayAvatar = matchedUser?.avatar || (contact as any).avatar;
+                                const age = calcAge(contact.anniversaryDate);
+
                                 return (
-                                    <TableRow key={contact.id} className="hover:bg-gray-50/50 transition-colors group">
-                                        <TableCell className="font-bold text-gray-900 py-4">
+                                    <TableRow key={contact.id} className="hover:bg-slate-50/70 transition-colors group">
+                                        {/* 1. Nome / Identificação + Badge de Conta */}
+                                        <TableCell className="font-bold text-slate-900 py-4">
                                             <div
-                                                className="flex items-center gap-3 cursor-pointer group/name text-gray-900 hover:text-primary transition-colors w-fit"
+                                                className="flex items-center gap-3 cursor-pointer group/name text-slate-900 hover:text-primary transition-colors w-fit"
                                                 onClick={() => {
                                                     setSelectedContactId(contact.id);
                                                     setProfileOpen(true);
                                                 }}
                                                 title="Clique para ver o perfil do contato"
                                             >
-                                                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-bold transition-transform group-hover/name:scale-105 shrink-0
-                                                    ${contact.type === 'individual' ? 'bg-primary/80' : 'bg-secondary/80'}
+                                                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold transition-transform group-hover/name:scale-105 shrink-0 overflow-hidden shadow-sm
+                                                    ${contact.type === 'individual' ? 'bg-primary' : 'bg-secondary'}
                                                 `}>
-                                                    {contact.name.charAt(0).toUpperCase()}
+                                                    {displayAvatar ? (
+                                                        <img src={displayAvatar} alt={contact.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        contact.name.charAt(0).toUpperCase()
+                                                    )}
                                                 </div>
-                                                <span className="group-hover/name:underline">{contact.name}</span>
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="group-hover/name:underline text-slate-900 font-bold text-sm">{contact.name}</span>
+                                                        {matchedUser && (
+                                                            <Badge className="bg-amber-50 text-amber-800 border-amber-200 font-bold text-[9px] px-1.5 py-0.2 gap-1 rounded-md">
+                                                                <KeyRound className="h-2.5 w-2.5 text-amber-600" /> Possui Conta
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </TableCell>
 
-                                        {/* ── Status Column ──────────────────────────────────────── */}
+                                        {/* 2. Tipo de Cliente (PF / PJ) */}
                                         <TableCell className="py-4">
                                             <Badge
                                                 variant="outline"
-                                                className={`rounded-full py-0.5 px-3 font-bold text-[11px] uppercase tracking-wider border ${
-                                                    contact.status === "Ativo" || !contact.status
+                                                className={`rounded-lg py-1 px-2.5 border-none flex items-center w-fit gap-1.5 font-bold text-[10px] uppercase tracking-wider
+                                                    ${contact.type === 'individual' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}
+                                            >
+                                                {contact.type === 'individual' ? <User className="h-3 w-3" /> : <Building className="h-3 w-3" />}
+                                                {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
+                                            </Badge>
+                                        </TableCell>
+
+                                        {/* 3. CPF/CNPJ & Responsável (PJ) */}
+                                        <TableCell className="text-slate-700 font-medium py-4">
+                                            <div className="flex flex-col space-y-0.5">
+                                                <span className="font-bold text-slate-800 text-xs">{contact.document || "—"}</span>
+                                                {contact.type === 'company' && (
+                                                    <div className="flex items-center gap-1">
+                                                        {contact.responsibleId ? (
+                                                            <button
+                                                                type="button"
+                                                                className="text-[11px] font-bold text-slate-700 hover:text-primary hover:underline transition-colors text-left cursor-pointer"
+                                                                onClick={() => {
+                                                                    setSelectedContactId(contact.responsibleId!);
+                                                                    setProfileOpen(true);
+                                                                }}
+                                                                title="Clique para ver o perfil do responsável"
+                                                            >
+                                                                Resp: {contact.responsibleName || "Não inf."}
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-[11px] text-slate-500">Resp: {contact.responsibleName || "Não inf."}</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+
+                                        {/* 4. E-mail & Telefone */}
+                                        <TableCell className="text-slate-600 py-4 text-xs space-y-0.5">
+                                            <div className="font-medium text-slate-800">{contact.email || "—"}</div>
+                                            <div className="text-slate-400">{contact.phone || "—"}</div>
+                                        </TableCell>
+
+                                        {/* 5. Idade / Data Comemorativa */}
+                                        <TableCell className="py-4">
+                                            {contact.anniversaryDate ? (
+                                                <div className="flex flex-col space-y-0.5">
+                                                    <span className="text-xs font-semibold text-slate-700">{contact.anniversaryDate}</span>
+                                                    {age !== null && (
+                                                        <Badge variant="outline" className="w-fit py-0 px-1.5 bg-rose-50 text-rose-600 border-rose-200 font-bold text-[10px]">
+                                                            🎂 {age} anos
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 italic">—</span>
+                                            )}
+                                        </TableCell>
+
+                                        {/* 6. Produtos */}
+                                        <TableCell className="py-4">
+                                            <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                                {products.length > 0 ? (
+                                                    products.slice(0, 2).map((prod) => (
+                                                        <Badge key={prod} variant="outline" className="rounded-lg py-0.5 px-2 border-none bg-primary/10 text-primary font-bold text-[10px] uppercase">
+                                                            {prod}
+                                                        </Badge>
+                                                    ))
+                                                ) : contact.productType ? (
+                                                    contact.productType.split(",").map(pt => pt.trim()).filter(Boolean).slice(0, 2).map(pt => (
+                                                        <Badge key={pt} variant="outline" className="rounded-lg py-0.5 px-2 border-none bg-amber-50 text-amber-700 font-bold text-[10px] uppercase">
+                                                            {pt}
+                                                        </Badge>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 italic">—</span>
+                                                )}
+                                            </div>
+                                        </TableCell>
+
+                                        {/* 7. Status */}
+                                        <TableCell className="py-4">
+                                            <Badge
+                                                variant="outline"
+                                                className={`rounded-full py-0.5 px-2.5 font-bold text-[10px] uppercase border ${
+                                                    (contact.status || "Ativo") === "Ativo"
                                                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                        : contact.status === "Prospects"
+                                                        : (contact.status || "Ativo") === "Prospects"
                                                         ? "bg-blue-50 text-blue-700 border-blue-200"
                                                         : "bg-rose-50 text-rose-700 border-rose-200"
                                                 }`}
@@ -851,87 +985,25 @@ export default function ContactsPage() {
                                             </Badge>
                                         </TableCell>
 
-                                        {/* ── Products / type column ─────────────────────────────── */}
-                                        <TableCell className="py-4">
-                                            <div className="flex flex-wrap gap-1">
-                                                {products.length > 0 ? (
-                                                    <>
-                                                        {products.slice(0, 3).map((prod) => (
-                                                            <Badge key={prod} variant="outline"
-                                                                className="rounded-lg py-0.5 px-2.5 border-none bg-primary/10 text-primary font-bold text-[10px] uppercase tracking-wider">
-                                                                {prod}
-                                                            </Badge>
-                                                        ))}
-                                                        {products.length > 3 && (
-                                                            <Badge variant="outline" className="rounded-lg py-0.5 px-2 border border-dashed text-[10px] text-gray-400">
-                                                                +{products.length - 3}
-                                                            </Badge>
-                                                        )}
-                                                    </>
-                                                ) : contact.productType ? (
-                                                    contact.productType.split(",").map(pt => pt.trim()).filter(Boolean).map(pt => (
-                                                        <Badge key={pt} variant="outline"
-                                                            className="rounded-lg py-0.5 px-2.5 border-none bg-amber-50 text-amber-700 font-bold text-[10px] uppercase tracking-wider">
-                                                            {pt}
-                                                        </Badge>
-                                                    ))
-                                                ) : (
-                                                    <Badge variant="outline"
-                                                        className={`rounded-lg py-1 px-3 border-none flex items-center w-fit gap-1.5 font-bold text-[10px] uppercase tracking-wider
-                                                            ${contact.type === 'individual' ? 'bg-blue-50 text-blue-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                                                        {contact.type === 'individual' ? <User className="h-3 w-3" /> : <Building className="h-3 w-3" />}
-                                                        {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
-                                                    </Badge>
-                                                )}
-                                                {/* Age badge */}
-                                                {(() => { const age = calcAge(contact.anniversaryDate); return age !== null ? (
-                                                    <Badge variant="outline"
-                                                        className="rounded-lg py-0.5 px-2 border-none bg-rose-50 text-rose-600 font-bold text-[10px]">
-                                                        🎂 {age} anos
-                                                    </Badge>
-                                                ) : null; })()}
-                                            </div>
-                                        </TableCell>
-
-                                        <TableCell className="text-gray-600 font-medium py-4">
-                                            {contact.type === 'company' ? (
-                                                <div className="flex flex-col">
-                                                    <div className="flex items-center gap-1.5">
-                                                        {contact.responsibleId ? (
-                                                            <button
-                                                                type="button"
-                                                                className="font-bold text-slate-800 hover:text-primary hover:underline transition-colors text-left cursor-pointer"
-                                                                onClick={() => {
-                                                                    setSelectedContactId(contact.responsibleId!);
-                                                                    setProfileOpen(true);
-                                                                }}
-                                                                title="Clique para ver o perfil do responsável"
-                                                            >
-                                                                {contact.responsibleName || "Não inf."}
-                                                            </button>
-                                                        ) : (
-                                                            <span className="font-bold text-slate-800">{contact.responsibleName || "Não inf."}</span>
-                                                        )}
-                                                        {contact.responsibleId && (
-                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
-                                                                Vinculado
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Doc: {contact.document || "—"}</span>
-                                                </div>
-                                            ) : (
-                                                contact.document || "—"
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-gray-500 py-4">{contact.email || "—"}</TableCell>
-                                        <TableCell className="text-gray-500 py-4">{contact.phone || "—"}</TableCell>
+                                        {/* 8. Ações */}
                                         <TableCell className="text-right py-4">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg p-2"
+                                                    className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg p-0"
+                                                    onClick={() => {
+                                                        setSelectedContactId(contact.id);
+                                                        setProfileOpen(true);
+                                                    }}
+                                                    title="Ver Perfil Completo"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 text-slate-600 hover:bg-slate-100 rounded-lg p-0"
                                                     onClick={() => {
                                                         form.reset({
                                                             type: contact.type || "individual",

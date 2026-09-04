@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Contact, Interaction, Lead, Task, InsertContact } from "@shared/schema";
+import { Contact, Interaction, Lead, Task, InsertContact, ContactFile } from "@shared/schema";
 import { ProductSelector } from "@/components/ProductSelector";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -40,7 +40,12 @@ import {
     Shield,
     FileDown,
     Printer,
-    Briefcase
+    Briefcase,
+    Paperclip,
+    Upload,
+    Trash2,
+    KeyRound,
+    Download
 } from "lucide-react";
 
 function calcAge(dateStr: string | null | undefined): number | null {
@@ -102,6 +107,104 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
     const { data: apolices, isLoading: apolicesLoading } = useQuery<any[]>({
         queryKey: [`/api/clientes/${matchedCliente?.id}/apolices`],
         enabled: !!matchedCliente?.id,
+    });
+
+    const { data: files } = useQuery<ContactFile[]>({
+        queryKey: [`/api/contacts/${contactId}/files`],
+        enabled: !!contactId,
+    });
+
+    const { data: usersList } = useQuery<any[]>({
+        queryKey: ["/api/users"],
+    });
+
+    const userAccount = useMemo(() => {
+        if (!contact || !usersList) return null;
+        return usersList.find((u: any) => 
+            (u.contactId && u.contactId === contact.id) ||
+            (u.email && contact.email && u.email.toLowerCase().trim() === contact.email.toLowerCase().trim())
+        );
+    }, [contact, usersList]);
+
+    const [isUploading, setIsUploading] = useState(false);
+
+    const uploadFileMutation = useMutation({
+        mutationFn: async (fileData: { fileName: string; fileUrl: string; fileType?: string; fileSize?: string }) => {
+            const res = await apiRequest("POST", `/api/contacts/${contactId}/files`, fileData);
+            if (!res.ok) throw new Error("Erro ao anexar arquivo");
+            return await res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [`/api/contacts/${contactId}/files`] });
+            toast({ title: "Arquivo anexado com sucesso" });
+        },
+        onError: (err: Error) => {
+            toast({ title: "Falha ao enviar arquivo", description: err.message, variant: "destructive" });
+        },
+    });
+
+    const deleteFileMutation = useMutation({
+        mutationFn: async (fileId: number) => {
+            const res = await apiRequest("DELETE", `/api/contact-files/${fileId}`);
+            if (!res.ok) throw new Error("Erro ao excluir arquivo");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [`/api/contacts/${contactId}/files`] });
+            toast({ title: "Arquivo removido" });
+        },
+        onError: (err: Error) => {
+            toast({ title: "Falha ao remover arquivo", description: err.message, variant: "destructive" });
+        },
+    });
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const base64 = evt.target?.result as string;
+            const fileSizeFormatted = file.size > 1024 * 1024 
+                ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+                : `${Math.round(file.size / 1024)} KB`;
+
+            uploadFileMutation.mutate({
+                fileName: file.name,
+                fileUrl: base64,
+                fileType: file.type || "application/octet-stream",
+                fileSize: fileSizeFormatted,
+            }, {
+                onSettled: () => setIsUploading(false)
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const generateAccountMutation = useMutation({
+        mutationFn: async () => {
+            const res = await apiRequest("POST", `/api/contacts/${contactId}/generate-account`);
+            if (!res.ok) {
+                const body = await res.json();
+                throw new Error(body.message || "Erro ao gerar conta do cliente");
+            }
+            return await res.json();
+        },
+        onSuccess: (data: any) => {
+            toast({
+                title: "Conta gerada com sucesso!",
+                description: data.message || "E-mail enviado ao cliente com link para cadastro de senha.",
+            });
+            queryClient.invalidateQueries({ queryKey: [`/api/contacts/${contactId}`] });
+            queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Falha ao gerar conta",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
     });
 
     // Form edit state
@@ -539,10 +642,14 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                             <SheetHeader className="space-y-4">
                                 <div className="flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-4 min-w-0 flex-1">
-                                        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0
+                                        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0 overflow-hidden
                                             ${contact.type === 'individual' ? 'bg-primary' : 'bg-secondary'}
                                         `}>
-                                            {(formData.name || contact.name).charAt(0).toUpperCase()}
+                                            {userAccount?.avatar || (contact as any).avatar ? (
+                                                <img src={userAccount?.avatar || (contact as any).avatar} alt={contact.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                (formData.name || contact.name).charAt(0).toUpperCase()
+                                            )}
                                         </div>
                                         <div className="space-y-1 min-w-0 flex-1">
                                             <SheetTitle className="text-2xl font-display font-bold text-gray-900 truncate">
@@ -556,6 +663,11 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                         <><Building className="h-3 w-3 mr-1" /> Pessoa Jurídica</>
                                                     )}
                                                 </Badge>
+                                                {userAccount && (
+                                                    <Badge variant="outline" className="rounded-full px-2.5 py-0.5 font-bold text-[10px] bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1">
+                                                        <KeyRound className="h-3 w-3 text-amber-600" /> Possui Conta no Site
+                                                    </Badge>
+                                                )}
                                                 <Badge
                                                     variant="outline"
                                                     className={`rounded-full px-3 py-0.5 font-bold text-[10px] uppercase tracking-wider border ${
@@ -582,8 +694,26 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                         </div>
                                     </div>
 
-                                    {/* Action Buttons: PDF Export & Inline Edit */}
-                                    <div className="flex items-center gap-2 shrink-0">
+                                    {/* Action Buttons: Gerar Conta, PDF Export & Inline Edit */}
+                                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => generateAccountMutation.mutate()}
+                                            disabled={generateAccountMutation.isPending || !contact.email}
+                                            className={`rounded-xl font-bold shadow-sm gap-1.5 border-none text-white transition-all ${
+                                                userAccount ? "bg-slate-700 hover:bg-slate-800" : "bg-amber-500 hover:bg-amber-600"
+                                            }`}
+                                            title={contact.email ? (userAccount ? "Reenviar convite de acesso ao cliente" : "Gerar conta de cliente para acesso à Área do Cliente") : "Preencha o e-mail do contato para gerar a conta"}
+                                        >
+                                            {generateAccountMutation.isPending ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <KeyRound className="h-4 w-4" />
+                                            )}
+                                            {userAccount ? "Reenviar Convite" : "Gerar Conta"}
+                                        </Button>
+
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -807,6 +937,9 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                     <TabsList className="w-full justify-start bg-slate-100/70 p-1 h-12 rounded-xl mb-6 flex-wrap">
                                         <TabsTrigger value="cadastral" className="rounded-lg font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
                                             <FileText className="h-3.5 w-3.5 mr-1.5" /> Dados Cadastrais
+                                        </TabsTrigger>
+                                        <TabsTrigger value="files" className="rounded-lg font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+                                            <Paperclip className="h-3.5 w-3.5 mr-1.5 text-blue-600" /> Arquivos & Documentos ({files?.length || 0})
                                         </TabsTrigger>
                                         <TabsTrigger value="apolices" className="rounded-lg font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
                                             <Shield className="h-3.5 w-3.5 mr-1.5 text-emerald-600" /> Apólices ({apolices?.length || 0})
@@ -1045,6 +1178,99 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                             </p>
                                         )}
                                     </TabsContent>
+
+                                     {/* TAB FOR FILES / ANEXOS */}
+                                     <TabsContent value="files" className="space-y-4">
+                                         <Card className="border border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+                                             <CardHeader className="bg-slate-50 border-b p-4 flex flex-row items-center justify-between">
+                                                 <div>
+                                                     <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                                                         <Paperclip className="h-4 w-4 text-blue-600" />
+                                                         Documentos e Anexos do Contato
+                                                     </CardTitle>
+                                                     <p className="text-xs text-slate-500">Anexe PDFs, contratos, apólices ou fotos relacionados a este cadastro.</p>
+                                                 </div>
+                                                 <div>
+                                                     <label className="cursor-pointer">
+                                                         <Input
+                                                             type="file"
+                                                             className="hidden"
+                                                             onChange={handleFileUpload}
+                                                             disabled={isUploading || uploadFileMutation.isPending}
+                                                         />
+                                                         <Button
+                                                             type="button"
+                                                             asChild
+                                                             disabled={isUploading || uploadFileMutation.isPending}
+                                                             className="bg-primary hover:bg-primary/90 text-white font-bold rounded-xl h-9 text-xs gap-1.5 shadow-sm"
+                                                         >
+                                                             <span>
+                                                                 {isUploading || uploadFileMutation.isPending ? (
+                                                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                 ) : (
+                                                                     <Upload className="h-3.5 w-3.5" />
+                                                                 )}
+                                                                 Anexar Arquivo
+                                                             </span>
+                                                         </Button>
+                                                     </label>
+                                                 </div>
+                                             </CardHeader>
+                                             <CardContent className="p-4 space-y-3">
+                                                 {!files || files.length === 0 ? (
+                                                     <div className="text-center py-10 border-2 border-dashed rounded-xl border-slate-200 text-slate-400 space-y-2">
+                                                         <Paperclip className="h-8 w-8 mx-auto opacity-30 text-slate-500" />
+                                                         <p className="font-bold text-sm text-slate-600">Nenhum arquivo anexado a este contato.</p>
+                                                         <p className="text-xs">Clique no botão acima para selecionar e anexar um documento.</p>
+                                                     </div>
+                                                 ) : (
+                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                         {files.map((file) => (
+                                                             <div key={file.id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3 hover:border-slate-300 transition-colors">
+                                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                     <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
+                                                                         <FileText className="h-5 w-5" />
+                                                                     </div>
+                                                                     <div className="min-w-0 flex-1 space-y-0.5">
+                                                                         <p className="text-xs font-bold text-slate-800 truncate" title={file.fileName}>
+                                                                             {file.fileName}
+                                                                         </p>
+                                                                         <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                                                             <span>{file.fileSize || "—"}</span>
+                                                                             <span>&bull;</span>
+                                                                             <span>{file.createdAt ? format(new Date(file.createdAt), "dd/MM/yyyy HH:mm") : "—"}</span>
+                                                                         </div>
+                                                                     </div>
+                                                                 </div>
+                                                                 <div className="flex items-center gap-1 shrink-0">
+                                                                     <a
+                                                                         href={file.fileUrl}
+                                                                         download={file.fileName}
+                                                                         target="_blank"
+                                                                         rel="noreferrer"
+                                                                     >
+                                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg" title="Baixar/Visualizar Arquivo">
+                                                                             <Download className="h-4 w-4" />
+                                                                         </Button>
+                                                                     </a>
+                                                                     <Button
+                                                                         variant="ghost"
+                                                                         size="icon"
+                                                                         onClick={() => deleteFileMutation.mutate(file.id)}
+                                                                         disabled={deleteFileMutation.isPending}
+                                                                         className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                                                                         title="Remover Anexo"
+                                                                     >
+                                                                         <Trash2 className="h-4 w-4" />
+                                                                     </Button>
+                                                                 </div>
+                                                             </div>
+                                                         ))}
+                                                     </div>
+                                                 )}
+                                             </CardContent>
+                                         </Card>
+                                     </TabsContent>
 
                                     {/* TAB 5: TAREFAS */}
                                     <TabsContent value="tasks" className="space-y-4">

@@ -59,7 +59,24 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email"),
   avatar: text("avatar"),
+  anniversaryDate: text("anniversary_date"),
+  firstLoginToken: text("first_login_token"),
+  firstLoginTokenExpires: timestamp("first_login_token_expires"),
+  isFirstLogin: boolean("is_first_login").default(false).notNull(),
+  contactId: integer("contact_id"),
   mustChangePassword: boolean("must_change_password").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Contact Attached Files
+export const contactFiles = pgTable("contact_files", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contact_id").references(() => contacts.id, { onDelete: "cascade" }).notNull(),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileType: text("file_type"),
+  fileSize: text("file_size"),
+  uploadedBy: integer("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -80,6 +97,7 @@ export const contacts = pgTable("contacts", {
   productType: text("product_type"),          // e.g. "Auto, Saúde"
   status: text("status", { enum: ["Ativo", "Cancelado", "Prospects"] }).notNull().default("Ativo"),
   assignedTo: integer("assigned_to").references(() => users.id),
+  avatar: text("avatar"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -575,3 +593,9 @@ export type TodoistNotification = typeof todoistNotifications.$inferSelect;
 // Email Notification Log Type
 export type EmailNotificationLog = typeof emailNotificationLogs.$inferSelect;
 export type InsertEmailNotificationLog = z.infer<typeof insertEmailNotificationLogSchema>;
+
+// Contact Files Schemas and Types
+export const insertContactFileSchema = createInsertSchema(contactFiles).omit({ id: true, createdAt: true });
+export type ContactFile = typeof contactFiles.$inferSelect;
+export type InsertContactFile = z.infer<typeof insertContactFileSchema>;
+

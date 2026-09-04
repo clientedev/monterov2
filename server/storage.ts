@@ -2028,6 +2028,11 @@ export class MemStorage implements IStorage {
       email: user.email || null,
       role: user.role || "client",
       avatar: user.avatar || null,
+      anniversaryDate: user.anniversaryDate || null,
+      firstLoginToken: user.firstLoginToken || null,
+      firstLoginTokenExpires: user.firstLoginTokenExpires ? new Date(user.firstLoginTokenExpires) : null,
+      isFirstLogin: user.isFirstLogin ?? false,
+      contactId: user.contactId || null,
       mustChangePassword: user.mustChangePassword ?? false,
       createdAt: new Date(),
     };
@@ -2096,6 +2101,7 @@ export class MemStorage implements IStorage {
       assignedTo: contact.assignedTo ?? 0,
       productType: contact.productType || null,
       status: contact.status || "Ativo",
+      avatar: contact.avatar || null,
     };
     this.contacts.push(newContact);
     return newContact;

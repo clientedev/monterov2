@@ -17,7 +17,7 @@ export function ChatBubble() {
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
-        { role: 'assistant', content: 'Olá! Sou a Carol, especialista da Monteiro Corretora. Como posso ajudar com seus seguros e planos de saúde hoje?' }
+        { role: 'assistant', content: 'Olá! Sou a Carolzinha, especialista da Monteiro Corretora. Como posso ajudar com seus seguros e planos de saúde hoje?' }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -114,7 +114,7 @@ export function ChatBubble() {
                 >
                     <div className="flex items-center justify-start w-full h-full relative z-10 pl-16 pr-4">
                         <span className="text-white font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 group-hover:max-w-[200px] group-hover:opacity-100">
-                            Converse com a Carol
+                            Converse com a Carolzinha
                         </span>
                     </div>
                 </Button>
@@ -136,7 +136,7 @@ export function ChatBubble() {
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-primary" />
                     </div>
                     <div>
-                        <CardTitle className="text-base font-bold">Carol - Especialista</CardTitle>
+                        <CardTitle className="text-base font-bold">Carolzinha - Especialista</CardTitle>
                         <p className="text-xs text-primary-foreground/80 font-medium">Online e pronta para ajudar</p>
                     </div>
                 </div>
@@ -162,7 +162,7 @@ export function ChatBubble() {
                                 <div className={`max-w-[85%] rounded-2xl p-3 ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-tl-sm'}`}>
                                     {msg.role === 'assistant' && i > 0 && (
                                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
-                                            <Bot className="w-3 h-3" /> Carol
+                                            <Bot className="w-3 h-3" /> Carolzinha
                                         </div>
                                     )}
                                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>

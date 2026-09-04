@@ -103,7 +103,7 @@ export default function CustomerDashboard() {
                 </CardHeader>
                 <CardContent className="pt-6">
                   <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-                    Precisa de ajuda rápida? Nossa IA "Carol" está pronta para responder suas dúvidas sobre seguros e nossos serviços agora mesmo.
+                    Precisa de ajuda rápida? Nossa IA "Carolzinha" está pronta para responder suas dúvidas sobre seguros e nossos serviços agora mesmo.
                   </p>
                   <Button 
                     className="w-full justify-between font-bold h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl"
@@ -111,7 +111,7 @@ export default function CustomerDashboard() {
                         window.dispatchEvent(new CustomEvent('open-carol-chat'));
                     }}
                   >
-                    Falar com a Carol
+                    Falar com a Carolzinha
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </CardContent>

@@ -330,3 +330,39 @@ export async function sendBirthdayEmailToContact(email: string, name: string, ag
   return res;
 }
 
+/** Send welcome/first login account email to client */
+export async function sendClientWelcomeEmail(params: {
+  clientName: string;
+  email: string;
+  setupUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { clientName, email, setupUrl } = params;
+
+  const content = `
+    <div style="text-align: left; padding: 10px 0;">
+      <h2 style="color: #08454c; font-size: 22px; margin-bottom: 16px; font-weight: 800;">
+        Bem-vindo(a) à Monteiro Seguros & Benefícios!
+      </h2>
+      <p style="color: #334155; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">
+        Olá, <strong>${clientName}</strong>!
+      </p>
+      <p style="color: #334155; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+        Sua conta de cliente no site da <strong>Monteiro Seguros</strong> foi gerada com sucesso. Agora você tem acesso exclusivo à sua Área do Cliente, onde poderá visualizar seus produtos contratados, apólices, arquivos e documentos com total comodidade e segurança.
+      </p>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+        <p style="margin: 0 0 8px; font-weight: 700; font-size: 14px; color: #0f172a;">
+          Para ativar sua conta e cadastrar sua senha de acesso, clique no botão abaixo para criar sua senha:
+        </p>
+      </div>
+    </div>`;
+
+  const { subject, html } = {
+    subject: `🔑 Ativação de Conta — Monteiro Seguros & Benefícios`,
+    html: baseLayout(`Criar Senha de Acesso`, content, setupUrl),
+  };
+
+  const res = await sendViaResend(email, subject, html);
+  await logNotification(null, "client_welcome_email", "user", 0, res.success ? "sent" : "failed", res.error);
+  return res;
+}
+

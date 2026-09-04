@@ -10,7 +10,7 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
 import { db } from "./db";
 import { sql, eq, or, and, desc, asc } from "drizzle-orm";
-import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact } from "./email";
+import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact, sendClientWelcomeEmail } from "./email";
 import {
   insertInquirySchema,
   insertContactSchema,
@@ -38,6 +38,8 @@ import {
   apolices,
   seguradoras,
   contacts,
+  contactFiles,
+  users,
   type InsertContact,
 } from "@shared/schema";
 
@@ -886,6 +888,204 @@ export async function registerRoutes(
     }
     await storage.deleteUser(id);
     res.sendStatus(204);
+  });
+
+  // Admin: Update user anniversary date
+  app.patch("/api/admin/users/:id/anniversary", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { anniversaryDate } = req.body;
+      const id = parseInt(req.params.id);
+      const [updated] = await db
+        .update(users)
+        .set({ anniversaryDate })
+        .where(eq(users.id, id))
+        .returning();
+      if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
+      const { password: _, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao atualizar aniversário do usuário" });
+    }
+  });
+
+  // ============================================================
+  // CONTACT FILES (ANEXOS / ARQUIVOS DO CONTATO)
+  // ============================================================
+  app.get("/api/contacts/:id/files", isAuthenticated, async (req, res) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      const files = await db
+        .select()
+        .from(contactFiles)
+        .where(eq(contactFiles.contactId, contactId))
+        .orderBy(desc(contactFiles.createdAt));
+      res.json(files);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/contacts/:id/files", isAuthenticated, async (req, res) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      const { fileName, fileUrl, fileType, fileSize } = req.body;
+      if (!fileName || !fileUrl) {
+        return res.status(400).json({ message: "Nome e arquivo são obrigatórios" });
+      }
+      const currentUser = req.user as any;
+      const [newFile] = await db
+        .insert(contactFiles)
+        .values({
+          contactId,
+          fileName,
+          fileUrl,
+          fileType: fileType || null,
+          fileSize: fileSize || null,
+          uploadedBy: currentUser?.id || null,
+        })
+        .returning();
+      res.status(201).json(newFile);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/contact-files/:id", isAuthenticated, async (req, res) => {
+    try {
+      const fileId = parseInt(req.params.id);
+      await db.delete(contactFiles).where(eq(contactFiles.id, fileId));
+      res.sendStatus(204);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ============================================================
+  // GERAR CONTA DO CLIENTE & PRIMEIRO ACESSO
+  // ============================================================
+  app.post("/api/contacts/:id/generate-account", isAuthenticated, async (req, res) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      const [contact] = await db.select().from(contacts).where(eq(contacts.id, contactId));
+      if (!contact) {
+        return res.status(404).json({ message: "Contato não encontrado" });
+      }
+      if (!contact.email || !contact.email.includes("@")) {
+        return res.status(400).json({ message: "O contato precisa ter um e-mail válido cadastrado para gerar conta." });
+      }
+
+      const existingUsers = await db.select().from(users).where(eq(users.email, contact.email));
+      let clientUser = existingUsers[0];
+
+      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+      if (!clientUser) {
+        const dummyPassword = await hashPassword(Math.random().toString(36));
+        let username = contact.email.toLowerCase().trim();
+        const checkUsername = await db.select().from(users).where(eq(users.username, username));
+        if (checkUsername.length > 0) {
+          username = `${username}_${Math.floor(Math.random() * 1000)}`;
+        }
+
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            username,
+            name: contact.name,
+            email: contact.email,
+            password: dummyPassword,
+            role: "client",
+            contactId: contact.id,
+            isFirstLogin: true,
+            firstLoginToken: token,
+            firstLoginTokenExpires: tokenExpires,
+          })
+          .returning();
+        clientUser = newUser;
+      } else {
+        const [updatedUser] = await db
+          .update(users)
+          .set({
+            role: "client",
+            contactId: contact.id,
+            isFirstLogin: true,
+            firstLoginToken: token,
+            firstLoginTokenExpires: tokenExpires,
+          })
+          .where(eq(users.id, clientUser.id))
+          .returning();
+        clientUser = updatedUser;
+      }
+
+      const protocol = req.protocol || "http";
+      const host = req.get("host") || "localhost:5000";
+      const setupUrl = `${protocol}://${host}/criar-senha?token=${token}`;
+
+      await sendClientWelcomeEmail({
+        clientName: contact.name,
+        email: contact.email,
+        setupUrl,
+      });
+
+      res.json({ message: "Conta gerada com sucesso! E-mail enviado ao cliente.", user: clientUser });
+    } catch (err: any) {
+      console.error("Erro ao gerar conta do cliente:", err);
+      res.status(500).json({ message: err.message || "Erro ao gerar conta do cliente" });
+    }
+  });
+
+  app.get("/api/verify-first-login-token", async (req, res) => {
+    try {
+      const { token } = req.query;
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ valid: false, message: "Token não fornecido" });
+      }
+      const matched = await db.select().from(users).where(eq(users.firstLoginToken, token));
+      const user = matched[0];
+      if (!user) {
+        return res.status(404).json({ valid: false, message: "Link expirado ou inválido" });
+      }
+      if (user.firstLoginTokenExpires && new Date(user.firstLoginTokenExpires) < new Date()) {
+        return res.status(400).json({ valid: false, message: "Este link de primeiro acesso expirou. Solicite um novo à Monteiro Corretora." });
+      }
+      res.json({ valid: true, name: user.name, email: user.email });
+    } catch (err: any) {
+      res.status(500).json({ valid: false, message: err.message });
+    }
+  });
+
+  app.post("/api/set-first-login-password", async (req, res) => {
+    try {
+      const { token, password } = req.body;
+      if (!token || !password || password.length < 6) {
+        return res.status(400).json({ message: "A senha deve conter no mínimo 6 caracteres" });
+      }
+      const matched = await db.select().from(users).where(eq(users.firstLoginToken, token));
+      const user = matched[0];
+      if (!user) {
+        return res.status(404).json({ message: "Token de primeiro acesso inválido" });
+      }
+      const hashedPassword = await hashPassword(password);
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          password: hashedPassword,
+          isFirstLogin: false,
+          firstLoginToken: null,
+          firstLoginTokenExpires: null,
+          mustChangePassword: false,
+        })
+        .where(eq(users.id, user.id))
+        .returning();
+
+      req.login(updatedUser, (err) => {
+        if (err) return res.status(200).json({ message: "Senha cadastrada com sucesso! Faça login para prosseguir.", user: updatedUser });
+        res.json({ message: "Senha cadastrada com sucesso!", user: updatedUser });
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   // ============================================================
@@ -2320,6 +2520,13 @@ export async function registerRoutes(
       const { name, avatar } = req.body;
       const userId = (req.user as any).id;
       const updatedUser = await storage.updateUserProfile(userId, { name, avatar });
+      if (updatedUser) {
+        if (updatedUser.contactId) {
+          await db.execute(sql`UPDATE contacts SET avatar = ${avatar || null} WHERE id = ${updatedUser.contactId}`);
+        } else if (updatedUser.email) {
+          await db.execute(sql`UPDATE contacts SET avatar = ${avatar || null} WHERE email = ${updatedUser.email}`);
+        }
+      }
       res.json(updatedUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
