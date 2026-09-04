@@ -247,7 +247,8 @@ app.use((req, res, next) => {
       message TEXT NOT NULL,
       read BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT NOW()
-    )`
+    )`,
+    `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Ativo' NOT NULL;`
   ];
 
   for (const sql of startupQueries) {

@@ -78,6 +78,7 @@ export const contacts = pgTable("contacts", {
   anniversaryDate: text("anniversary_date"),  // "DD/MM/AAAA" format
   maritalStatus: text("marital_status"),      // solteiro, casado, divorciado, viuvo
   productType: text("product_type"),          // e.g. "Auto, Saúde"
+  status: text("status", { enum: ["Ativo", "Cancelado", "Prospects"] }).notNull().default("Ativo"),
   assignedTo: integer("assigned_to").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -318,7 +319,9 @@ export const insertServiceSchema = createInsertSchema(services).omit({ id: true 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 
 // Contact schema with conditional validation: responsibleName required for PJ
-export const insertContactSchema = createInsertSchema(contacts)
+export const insertContactSchema = createInsertSchema(contacts, {
+  status: z.enum(["Ativo", "Cancelado", "Prospects"]).optional().default("Ativo"),
+})
   .omit({ id: true, createdAt: true })
   .superRefine((data, ctx) => {
     if (data.type === "company" && (!data.responsibleName || data.responsibleName.trim() === "")) {

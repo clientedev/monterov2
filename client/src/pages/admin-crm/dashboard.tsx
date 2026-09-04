@@ -88,13 +88,21 @@ export default function AdminDashboard() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-baseline gap-2">
+                        <div className="flex items-baseline justify-between gap-2">
                             <div className="text-4xl font-display font-bold text-slate-900">{totalContacts}</div>
-                            <span className="text-xs font-bold text-emerald-500 flex items-center">
-                                <ArrowUpRight className="h-3 w-3 mr-0.5" /> +12%
-                            </span>
+                            <div className="flex gap-1 flex-wrap justify-end">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                    {contacts?.filter(c => (c.status || "Ativo") === "Ativo").length || 0} Ativos
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                    {contacts?.filter(c => c.status === "Prospects").length || 0} Prospects
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                                    {contacts?.filter(c => c.status === "Cancelado").length || 0} Cancelados
+                                </span>
+                            </div>
                         </div>
-                        <p className="text-xs text-slate-400 mt-1">Crescimento constante este mês</p>
+                        <p className="text-xs text-slate-400 mt-1">Base total de clientes sincronizada</p>
                     </CardContent>
                 </Card>
 

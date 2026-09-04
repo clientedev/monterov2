@@ -65,8 +65,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit2, FileDown, FileSpreadsheet, Trash2 } from "lucide-react";
+import { Edit2, FileDown, FileSpreadsheet, Trash2, Sparkles } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { ProductSelector, STANDARD_PRODUCTS } from "@/components/ProductSelector";
 
 export default function ContactsPage() {
     const { toast } = useToast();
@@ -82,6 +83,8 @@ export default function ContactsPage() {
     // ── Filters ────────────────────────────────────────────────────────────────
     const [search, setSearch] = useState("");
     const [filterType, setFilterType] = useState<string>("all");
+    const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [filterProduct, setFilterProduct] = useState<string>("all");
 
     // ── "Adicionar responsável" mini-dialog state ────────────────────────────
     const [addResponsibleOpen, setAddResponsibleOpen] = useState(false);
@@ -138,6 +141,20 @@ export default function ContactsPage() {
         },
     });
 
+    const deduplicateMutation = useMutation({
+        mutationFn: async () => {
+            const res = await apiRequest("POST", "/api/contacts/deduplicate");
+            return await res.json();
+        },
+        onSuccess: (data: any) => {
+            queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+            toast({
+                title: "Higienização de Duplicatas Concluída",
+                description: `${data.mergedCount || 0} contatos duplicados foram unificados.`,
+            });
+        },
+    });
+
     const downloadTemplate = () => {
         const template = [
             { tipo: "individual", nome: "João Silva", email: "joao@exemplo.com", telefone: "(11) 99999-9999", documento: "123.456.789-00", endereco: "Rua Exemplo, 123" },
@@ -167,34 +184,25 @@ export default function ContactsPage() {
 
     const runImport = async () => {
         setIsImporting(true);
-        let success = 0;
-        let errors = 0;
-
-        for (const row of importData as any[]) {
-            try {
-                const payload: InsertContact = {
-                    type: row.tipo === "company" ? "company" : "individual",
-                    name: row.nome || "Novo Contato",
-                    email: row.email || null,
-                    phone: row.telefone || null,
-                    document: row.documento || null,
-                    address: row.endereco || null,
-                };
-                await apiRequest("POST", "/api/contacts", payload);
-                success++;
-            } catch (err) {
-                errors++;
-            }
+        try {
+            const res = await apiRequest("POST", "/api/contacts/import", importData);
+            const data = await res.json();
+            queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+            toast({
+                title: "Importação concluída com sucesso",
+                description: `${data.created || 0} novos contatos criados, ${data.updated || 0} contatos atualizados (sem duplicatas), ${data.errors || 0} falhas.`,
+            });
+        } catch (err: any) {
+            toast({
+                title: "Falha na importação",
+                description: err.message || "Erro ao importar dados",
+                variant: "destructive",
+            });
+        } finally {
+            setIsImporting(false);
+            setImportData([]);
+            setShowImport(false);
         }
-
-        queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-        toast({
-            title: "Processamento concluído",
-            description: `${success} contatos importados, ${errors} falhas.`,
-        });
-        setIsImporting(false);
-        setImportData([]);
-        setShowImport(false);
     };
 
     const form = useForm<InsertContact>({
@@ -211,6 +219,7 @@ export default function ContactsPage() {
             anniversaryDate: "",
             maritalStatus: "",
             productType: "",
+            status: "Ativo",
         },
     });
 
@@ -329,15 +338,31 @@ export default function ContactsPage() {
         const q = search.toLowerCase().trim();
         return (contacts ?? []).filter(c => {
             const matchType = filterType === "all" || c.type === filterType;
+            const matchStatus = filterStatus === "all" || (c.status || "Ativo") === filterStatus;
+            
+            const contactProds = (c.productType || "")
+                .split(",")
+                .map(p => p.trim())
+                .concat(productsByContact.get(c.id) ?? []);
+
+            const matchProduct = filterProduct === "all" || contactProds.some(p => {
+                if (filterProduct === "Outro") {
+                    return p.toLowerCase().includes("outro") || (p && !STANDARD_PRODUCTS.includes(p as any));
+                }
+                return p.toLowerCase().includes(filterProduct.toLowerCase());
+            });
+
             const matchSearch = !q ||
                 c.name.toLowerCase().includes(q) ||
                 (c.email || "").toLowerCase().includes(q) ||
                 (c.phone || "").includes(q) ||
                 (c.document || "").includes(q) ||
-                (c.responsibleName || "").toLowerCase().includes(q);
-            return matchType && matchSearch;
+                (c.responsibleName || "").toLowerCase().includes(q) ||
+                (c.productType || "").toLowerCase().includes(q);
+
+            return matchType && matchStatus && matchProduct && matchSearch;
         });
-    }, [contacts, search, filterType]);
+    }, [contacts, search, filterType, filterStatus, filterProduct, productsByContact]);
 
     // Build options for SearchableSelect (individual contacts only, for responsível)
     const individualContactOptions = (contacts ?? [])
@@ -572,12 +597,34 @@ export default function ContactsPage() {
                                     </div>
                                     <FormField
                                         control={form.control}
+                                        name="status"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-gray-600 font-bold">Status do Cliente</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value || "Ativo"} value={field.value || "Ativo"}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="rounded-xl h-11">
+                                                            <SelectValue placeholder="Selecione o status" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="Ativo">Ativo</SelectItem>
+                                                        <SelectItem value="Prospects">Prospects</SelectItem>
+                                                        <SelectItem value="Cancelado">Cancelado</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
                                         name="productType"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-gray-600 font-bold">Tipo de Produto <span className="text-xs font-normal text-muted-foreground">(separados por vírgula)</span></FormLabel>
+                                                <FormLabel className="text-gray-600 font-bold">Produtos de Interesse / Contratados</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Ex: Auto, Saúde, Vida" className="rounded-xl h-11" {...field} value={field.value || ""} />
+                                                    <ProductSelector value={field.value || ""} onChange={field.onChange} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -639,6 +686,17 @@ export default function ContactsPage() {
 
                     <Button
                         variant="outline"
+                        onClick={() => deduplicateMutation.mutate()}
+                        disabled={deduplicateMutation.isPending}
+                        className="h-11 px-4 font-bold rounded-xl border-dashed border-2 hover:bg-amber-50 transition-all border-amber-300 text-amber-700 gap-2"
+                        title="Varrer a base e unir cadastros idênticos"
+                    >
+                        {deduplicateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-amber-500" />}
+                        Higienizar Duplicatas
+                    </Button>
+
+                    <Button
+                        variant="outline"
                         onClick={() => setShowImport(true)}
                         className="h-11 px-6 font-bold rounded-xl border-dashed border-2 hover:bg-slate-50 transition-all border-slate-300 text-slate-600"
                     >
@@ -665,13 +723,36 @@ export default function ContactsPage() {
                     )}
                 </div>
                 <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger className="w-full sm:w-44 h-10 text-sm">
+                    <SelectTrigger className="w-full sm:w-40 h-10 text-sm">
                         <SelectValue placeholder="Tipo" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Todos os tipos</SelectItem>
                         <SelectItem value="individual">Pessoa Física</SelectItem>
                         <SelectItem value="company">Pessoa Jurídica</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-full sm:w-36 h-10 text-sm">
+                        <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos os Status</SelectItem>
+                        <SelectItem value="Ativo">Ativo</SelectItem>
+                        <SelectItem value="Prospects">Prospects</SelectItem>
+                        <SelectItem value="Cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={filterProduct} onValueChange={setFilterProduct}>
+                    <SelectTrigger className="w-full sm:w-44 h-10 text-sm">
+                        <SelectValue placeholder="Produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos os Produtos</SelectItem>
+                        {STANDARD_PRODUCTS.map((prod) => (
+                            <SelectItem key={prod} value={prod}>{prod}</SelectItem>
+                        ))}
+                        <SelectItem value="Outro">Outro</SelectItem>
                     </SelectContent>
                 </Select>
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
@@ -685,6 +766,7 @@ export default function ContactsPage() {
                     <TableHeader className="bg-gray-50/80">
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="py-4 font-bold text-gray-600">Identificação</TableHead>
+                            <TableHead className="py-4 font-bold text-gray-600">Status</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Produtos / Tipo</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Responsável</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Email</TableHead>
@@ -723,6 +805,22 @@ export default function ContactsPage() {
                                                 </div>
                                                 <span className="group-hover/name:underline">{contact.name}</span>
                                             </div>
+                                        </TableCell>
+
+                                        {/* ── Status Column ──────────────────────────────────────── */}
+                                        <TableCell className="py-4">
+                                            <Badge
+                                                variant="outline"
+                                                className={`rounded-full py-0.5 px-3 font-bold text-[11px] uppercase tracking-wider border ${
+                                                    contact.status === "Ativo" || !contact.status
+                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                        : contact.status === "Prospects"
+                                                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                                                        : "bg-rose-50 text-rose-700 border-rose-200"
+                                                }`}
+                                            >
+                                                {contact.status || "Ativo"}
+                                            </Badge>
                                         </TableCell>
 
                                         {/* ── Products / type column ─────────────────────────────── */}

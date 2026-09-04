@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, Interaction, Lead, Task, InsertContact } from "@shared/schema";
+import { ProductSelector } from "@/components/ProductSelector";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -115,6 +116,7 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
         maritalStatus: "",
         productType: "",
         responsibleName: "",
+        status: "Ativo",
     });
 
     useEffect(() => {
@@ -130,6 +132,7 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                 maritalStatus: contact.maritalStatus || "",
                 productType: contact.productType || "",
                 responsibleName: contact.responsibleName || "",
+                status: contact.status || "Ativo",
             });
         }
     }, [contact]);
@@ -553,6 +556,18 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                         <><Building className="h-3 w-3 mr-1" /> Pessoa Jurídica</>
                                                     )}
                                                 </Badge>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`rounded-full px-3 py-0.5 font-bold text-[10px] uppercase tracking-wider border ${
+                                                        (contact.status || "Ativo") === "Ativo"
+                                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                            : (contact.status || "Ativo") === "Prospects"
+                                                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                                                            : "bg-rose-50 text-rose-700 border-rose-200"
+                                                    }`}
+                                                >
+                                                    Status: {contact.status || "Ativo"}
+                                                </Badge>
                                                 {age !== null && (
                                                     <Badge variant="outline" className="rounded-full px-2.5 py-0.5 font-bold text-[10px] bg-primary/10 text-primary border-none">
                                                         🎂 {age} anos
@@ -727,6 +742,23 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                 />
                                             </div>
 
+                                             <div className="space-y-1.5">
+                                                <Label className="text-xs font-bold text-slate-700">Status do Cliente</Label>
+                                                <Select
+                                                    value={formData.status}
+                                                    onValueChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
+                                                >
+                                                    <SelectTrigger className="rounded-xl h-11 bg-white">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Ativo">Ativo</SelectItem>
+                                                        <SelectItem value="Prospects">Prospects</SelectItem>
+                                                        <SelectItem value="Cancelado">Cancelado</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
                                             <div className="md:col-span-2 space-y-1.5">
                                                 <Label className="text-xs font-bold text-slate-700">Representante Legal / Responsável</Label>
                                                 <Input
@@ -738,12 +770,10 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                             </div>
 
                                             <div className="md:col-span-2 space-y-1.5">
-                                                <Label className="text-xs font-bold text-slate-700">Produtos de Interesse / Tags <span className="font-normal text-muted-foreground">(separados por vírgula)</span></Label>
-                                                <Input
+                                                <Label className="text-xs font-bold text-slate-700">Produtos de Interesse / Contratados</Label>
+                                                <ProductSelector
                                                     value={formData.productType}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, productType: e.target.value }))}
-                                                    placeholder="Ex: Auto, Saúde, Vida, Empresarial"
-                                                    className="rounded-xl h-11 bg-white"
+                                                    onChange={(val) => setFormData(prev => ({ ...prev, productType: val }))}
                                                 />
                                             </div>
                                         </div>

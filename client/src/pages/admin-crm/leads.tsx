@@ -1140,14 +1140,21 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando serviços...
                                                 </div>
                                             )}
-                                            {!servicesLoading && (!services || services.length === 0) && (
-                                                <div className="py-3 px-3 text-sm text-slate-400 text-center">Nenhum serviço cadastrado</div>
-                                            )}
-                                            {services?.map((s: any) => (
+                                            {["Plano de Saúde", "Vida", "Odonto", "Auto", "Pet", "Viagem", "Residência", "Benefícios", "Previdência"].map((prod) => (
+                                                <SelectItem key={prod} value={prod}>
+                                                    {prod}
+                                                </SelectItem>
+                                            ))}
+                                            {services?.filter((s: any) => !["Plano de Saúde", "Vida", "Odonto", "Auto", "Pet", "Viagem", "Residência", "Benefícios", "Previdência"].includes(s.title)).map((s: any) => (
                                                 <SelectItem key={s.id} value={s.title}>
                                                     {s.title}
                                                 </SelectItem>
                                             ))}
+                                            {field.value && !["Plano de Saúde", "Vida", "Odonto", "Auto", "Pet", "Viagem", "Residência", "Benefícios", "Previdência"].includes(field.value) && !services?.some((s: any) => s.title === field.value) && (
+                                                <SelectItem value={field.value}>
+                                                    {field.value}
+                                                </SelectItem>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />

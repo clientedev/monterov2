@@ -38,6 +38,7 @@ import {
   apolices,
   seguradoras,
   contacts,
+  type InsertContact,
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -413,6 +414,7 @@ export async function registerRoutes(
           phone: input.phone || null,
           document: null,
           address: null,
+          status: "Ativo",
           assignedTo: attributionId
         });
       } else if (input.phone && !contact.phone) {
@@ -484,13 +486,57 @@ export async function registerRoutes(
   app.post("/api/contacts", isTeam, async (req, res) => {
     try {
       const input = insertContactSchema.parse(req.body);
-      const contact = await storage.createContact(input);
-      res.status(201).json(contact);
+      const result = await storage.upsertContact(input);
+      res.status(result.isNew ? 201 : 200).json(result.contact);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors });
       }
       throw err;
+    }
+  });
+
+  app.post("/api/contacts/import", isTeam, async (req, res) => {
+    try {
+      const items = Array.isArray(req.body) ? req.body : [req.body];
+      let created = 0;
+      let updated = 0;
+      let errors = 0;
+
+      for (const raw of items) {
+        try {
+          const payload: InsertContact = {
+            type: raw.tipo === "company" ? "company" : "individual",
+            name: raw.nome || raw.name || "Novo Contato",
+            email: raw.email || null,
+            phone: raw.telefone || raw.phone || null,
+            document: raw.documento || raw.document || null,
+            address: raw.endereco || raw.address || null,
+            productType: raw.productType || raw.tipoProduto || raw.produtos || null,
+            status: raw.status || "Ativo",
+            responsibleName: raw.responsibleName || raw.responsavel || null,
+          };
+          const input = insertContactSchema.parse(payload);
+          const result = await storage.upsertContact(input);
+          if (result.isNew) created++;
+          else updated++;
+        } catch (e) {
+          errors++;
+        }
+      }
+
+      res.json({ success: true, created, updated, errors });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao processar importação" });
+    }
+  });
+
+  app.post("/api/contacts/deduplicate", isTeam, async (req, res) => {
+    try {
+      const result = await storage.deduplicateContacts();
+      res.json({ success: true, mergedCount: result.mergedCount });
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao higienizar duplicatas" });
     }
   });
 
@@ -938,6 +984,7 @@ export async function registerRoutes(
           phone: cliente.telefone || null,
           document: cliente.cpfCnpj || null,
           address: cliente.endereco || null,
+          status: "Ativo",
           responsibleName: type === "company" ? (cliente.nomeRepresentante || cliente.nome) : null,
           responsibleId: null,
           anniversaryDate: null,

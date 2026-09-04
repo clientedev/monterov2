@@ -131,6 +131,8 @@ export interface IStorage {
   getContacts(): Promise<Contact[]>;
   getContact(id: number): Promise<Contact | undefined>;
   createContact(contact: InsertContact): Promise<Contact>;
+  upsertContact(contact: InsertContact): Promise<{ contact: Contact; isNew: boolean }>;
+  deduplicateContacts(): Promise<{ mergedCount: number }>;
   updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact | undefined>;
   deleteContact(id: number): Promise<void>;
 
@@ -486,12 +488,161 @@ export class DatabaseStorage implements IStorage {
     return newContact;
   }
 
+  async upsertContact(contactInput: InsertContact): Promise<{ contact: Contact; isNew: boolean }> {
+    const allContacts = await db.select().from(contacts);
+    const cleanDoc = contactInput.document ? contactInput.document.replace(/\D/g, "") : "";
+    const cleanEmail = contactInput.email ? contactInput.email.trim().toLowerCase() : "";
+    const cleanName = contactInput.name ? contactInput.name.trim().toLowerCase() : "";
+    const cleanPhone = contactInput.phone ? contactInput.phone.replace(/\D/g, "") : "";
+
+    let existing: Contact | undefined;
+
+    if (cleanDoc && cleanDoc.length >= 11) {
+      existing = allContacts.find(c => c.document && c.document.replace(/\D/g, "") === cleanDoc);
+    }
+
+    if (!existing && cleanEmail) {
+      existing = allContacts.find(c => c.email && c.email.trim().toLowerCase() === cleanEmail);
+    }
+
+    if (!existing && cleanName && cleanPhone && cleanPhone.length >= 8) {
+      existing = allContacts.find(c => {
+        const cName = c.name ? c.name.trim().toLowerCase() : "";
+        const cPhone = c.phone ? c.phone.replace(/\D/g, "") : "";
+        return cName === cleanName && cPhone === cleanPhone;
+      });
+    }
+
+    if (existing) {
+      const mergedProducts = (existing.productType || "")
+        .split(",")
+        .concat((contactInput.productType || "").split(","))
+        .map((s: string) => s.trim())
+        .filter(Boolean)
+        .filter((item: string, idx: number, arr: string[]) => arr.findIndex((t: string) => t.toLowerCase() === item.toLowerCase()) === idx)
+        .join(", ");
+
+      const updatePayload: Partial<InsertContact> = {
+        type: contactInput.type || existing.type,
+        name: contactInput.name || existing.name,
+        email: contactInput.email || existing.email,
+        phone: contactInput.phone || existing.phone,
+        document: contactInput.document || existing.document,
+        address: contactInput.address || existing.address,
+        responsibleName: contactInput.responsibleName || existing.responsibleName,
+        responsibleId: contactInput.responsibleId || existing.responsibleId,
+        anniversaryDate: contactInput.anniversaryDate || existing.anniversaryDate,
+        maritalStatus: contactInput.maritalStatus || existing.maritalStatus,
+        productType: mergedProducts || existing.productType,
+        status: contactInput.status || existing.status,
+      };
+
+      const [updated] = await db.update(contacts).set(updatePayload).where(eq(contacts.id, existing.id)).returning();
+      return { contact: updated, isNew: false };
+    } else {
+      const [newContact] = await db.insert(contacts).values(contactInput).returning();
+      return { contact: newContact, isNew: true };
+    }
+  }
+
+  async deduplicateContacts(): Promise<{ mergedCount: number }> {
+    const allContacts = await db.select().from(contacts).orderBy(asc(contacts.id));
+    const groups = new Map<string, Contact[]>();
+
+    for (const c of allContacts) {
+      const cleanDoc = c.document ? c.document.replace(/\D/g, "") : "";
+      const cleanEmail = c.email ? c.email.trim().toLowerCase() : "";
+      let key = "";
+      if (cleanDoc && cleanDoc.length >= 11) {
+        key = `doc:${cleanDoc}`;
+      } else if (cleanEmail) {
+        key = `email:${cleanEmail}`;
+      } else if (c.name && c.phone) {
+        const cleanName = c.name.trim().toLowerCase();
+        const cleanPhone = c.phone.replace(/\D/g, "");
+        if (cleanPhone.length >= 8) {
+          key = `namephone:${cleanName}_${cleanPhone}`;
+        }
+      }
+
+      if (key) {
+        const existingList = groups.get(key) || [];
+        existingList.push(c);
+        groups.set(key, existingList);
+      }
+    }
+
+    let mergedCount = 0;
+
+    for (const contactList of Array.from(groups.values())) {
+      if (contactList.length <= 1) continue;
+
+      const primary = contactList[0];
+      const secondaries = contactList.slice(1);
+
+      let mergedProductsList = (primary.productType || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+      let updatedFields: Partial<InsertContact> = {};
+
+      for (const sec of secondaries) {
+        const secProds = (sec.productType || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+        for (const p of secProds) {
+          if (!mergedProductsList.some((item: string) => item.toLowerCase() === p.toLowerCase())) {
+            mergedProductsList.push(p);
+          }
+        }
+
+        if (!primary.email && sec.email) updatedFields.email = sec.email;
+        if (!primary.phone && sec.phone) updatedFields.phone = sec.phone;
+        if (!primary.document && sec.document) updatedFields.document = sec.document;
+        if (!primary.address && sec.address) updatedFields.address = sec.address;
+        if (!primary.responsibleName && sec.responsibleName) updatedFields.responsibleName = sec.responsibleName;
+        if (!primary.responsibleId && sec.responsibleId) updatedFields.responsibleId = sec.responsibleId;
+        if (!primary.anniversaryDate && sec.anniversaryDate) updatedFields.anniversaryDate = sec.anniversaryDate;
+        if (!primary.maritalStatus && sec.maritalStatus) updatedFields.maritalStatus = sec.maritalStatus;
+
+        const secId = sec.id;
+        await db.update(leads).set({ contactId: primary.id }).where(eq(leads.contactId, secId));
+        await db.update(interactions).set({ contactId: primary.id }).where(eq(interactions.contactId, secId));
+        await db.update(tasks).set({ contactId: primary.id }).where(eq(tasks.contactId, secId));
+        await db.update(prospectingChecklists).set({ contactId: primary.id }).where(eq(prospectingChecklists.contactId, secId));
+        await db.update(todoistTasks).set({ contactId: primary.id }).where(eq(todoistTasks.contactId, secId));
+        await db.update(contacts).set({ responsibleId: primary.id }).where(eq(contacts.responsibleId, secId));
+
+        await db.delete(contacts).where(eq(contacts.id, secId));
+        mergedCount++;
+      }
+
+      const mergedProducts = mergedProductsList.join(", ");
+      if (mergedProducts !== (primary.productType || "") || Object.keys(updatedFields).length > 0) {
+        updatedFields.productType = mergedProducts;
+        await db.update(contacts).set(updatedFields).where(eq(contacts.id, primary.id));
+      }
+    }
+
+    return { mergedCount };
+  }
+
   async updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact | undefined> {
     const [updated] = await db.update(contacts).set(contact).where(eq(contacts.id, id)).returning();
     return updated;
   }
 
   async deleteContact(id: number): Promise<void> {
+    const contactLeads = await db.select({ id: leads.id }).from(leads).where(eq(leads.contactId, id));
+    const leadIds = contactLeads.map(l => l.id);
+
+    if (leadIds.length > 0) {
+      await db.delete(interactions).where(or(eq(interactions.contactId, id), inArray(interactions.leadId, leadIds)));
+      await db.delete(todoistTasks).where(or(eq(todoistTasks.contactId, id), inArray(todoistTasks.leadId, leadIds)));
+    } else {
+      await db.delete(interactions).where(eq(interactions.contactId, id));
+      await db.delete(todoistTasks).where(eq(todoistTasks.contactId, id));
+    }
+
+    await db.delete(tasks).where(eq(tasks.contactId, id));
+    await db.delete(prospectingChecklists).where(eq(prospectingChecklists.contactId, id));
+    await db.update(contacts).set({ responsibleId: null, responsibleName: null }).where(eq(contacts.responsibleId, id));
+    await db.delete(leads).where(eq(leads.contactId, id));
     await db.delete(contacts).where(eq(contacts.id, id));
   }
 
@@ -1944,9 +2095,36 @@ export class MemStorage implements IStorage {
       responsibleId: contact.responsibleId || null,
       assignedTo: contact.assignedTo ?? 0,
       productType: contact.productType || null,
+      status: contact.status || "Ativo",
     };
     this.contacts.push(newContact);
     return newContact;
+  }
+
+  async upsertContact(contactInput: InsertContact): Promise<{ contact: Contact; isNew: boolean }> {
+    const cleanDoc = contactInput.document ? contactInput.document.replace(/\D/g, "") : "";
+    const cleanEmail = contactInput.email ? contactInput.email.trim().toLowerCase() : "";
+    let existing = cleanDoc && cleanDoc.length >= 11 ? this.contacts.find(c => c.document && c.document.replace(/\D/g, "") === cleanDoc) : undefined;
+    if (!existing && cleanEmail) existing = this.contacts.find(c => c.email && c.email.trim().toLowerCase() === cleanEmail);
+
+    if (existing) {
+      const mergedProducts = (existing.productType || "")
+        .split(",")
+        .concat((contactInput.productType || "").split(","))
+        .map(s => s.trim())
+        .filter(Boolean)
+        .filter((item, idx, arr) => arr.findIndex(t => t.toLowerCase() === item.toLowerCase()) === idx)
+        .join(", ");
+      const updated = await this.updateContact(existing.id, { ...contactInput, productType: mergedProducts || existing.productType });
+      return { contact: updated!, isNew: false };
+    } else {
+      const created = await this.createContact(contactInput);
+      return { contact: created, isNew: true };
+    }
+  }
+
+  async deduplicateContacts(): Promise<{ mergedCount: number }> {
+    return { mergedCount: 0 };
   }
 
   async updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact | undefined> {
