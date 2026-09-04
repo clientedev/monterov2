@@ -37,6 +37,7 @@ import {
   clientes,
   apolices,
   seguradoras,
+  produtosSeguro,
   contacts,
   contactFiles,
   users,
@@ -457,6 +458,72 @@ export async function registerRoutes(
     const userId = (req.user as any).id;
     const inquiries = await storage.getInquiriesByUserId(userId);
     res.json(inquiries);
+  });
+
+  // ============================================================
+  // ÁREA DO CLIENTE — Meus Documentos e Apólices
+  // ============================================================
+
+  // Retorna os arquivos do cliente logado (via contactId do user)
+  app.get("/api/my-files", isAuthenticated, async (req, res) => {
+    try {
+      const currentUser = req.user as any;
+      if (!currentUser.contactId) {
+        return res.json([]); // Sem contactId vinculado
+      }
+      const files = await db
+        .select()
+        .from(contactFiles)
+        .where(eq(contactFiles.contactId, currentUser.contactId))
+        .orderBy(desc(contactFiles.createdAt));
+      res.json(files);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Retorna as apólices do cliente logado (vinculadas via email no módulo de seguros)
+  app.get("/api/my-apolices", isAuthenticated, async (req, res) => {
+    try {
+      const currentUser = req.user as any;
+      // Busca cliente na tabela clientes via email do usuário
+      const userEmail = currentUser.email || currentUser.username;
+      if (!userEmail) return res.json([]);
+
+      const clienteRows = await db
+        .select()
+        .from(clientes)
+        .where(eq(clientes.email, userEmail))
+        .limit(1);
+
+      if (!clienteRows.length) return res.json([]);
+      const clienteId = clienteRows[0].id;
+
+      const apoliceList = await db
+        .select({
+          id: apolices.id,
+          numeroApolice: apolices.numeroApolice,
+          status: apolices.status,
+          inicioVigencia: apolices.inicioVigencia,
+          fimVigencia: apolices.fimVigencia,
+          premio: apolices.premio,
+          pdfApolice: apolices.pdfApolice,
+          linkFatura: apolices.linkFatura,
+          cobertura: apolices.cobertura,
+          observacoes: apolices.observacoes,
+          produtoNome: produtosSeguro.nome,
+          seguradoraNome: seguradoras.nome,
+        })
+        .from(apolices)
+        .leftJoin(produtosSeguro, eq(apolices.produtoId, produtosSeguro.id))
+        .leftJoin(seguradoras, eq(apolices.seguradoraId, seguradoras.id))
+        .where(eq(apolices.clienteId, clienteId))
+        .orderBy(desc(apolices.createdAt));
+
+      res.json(apoliceList);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
 
@@ -2463,72 +2530,80 @@ export async function registerRoutes(
   });
 
 
-  // Seed Data
-  const servicesList = await storage.getServices();
-  if (servicesList.length === 0) {
-    await storage.createService({
-      title: "Seguro Auto",
-      description: "Proteção completa para seu veículo contra roubo, colisão e terceiros.",
-      icon: "Car",
-    });
-    await storage.createService({
-      title: "Seguro de Vida",
-      description: "Garanta a segurança financeira da sua família em momentos difíceis.",
-      icon: "Heart",
-    });
-    await storage.createService({
-      title: "Plano de Saúde",
-      description: "As melhores opções de planos de saúde para você e sua família.",
-      icon: "Stethoscope",
-    });
-    await storage.createService({
-      title: "Seguro Residencial",
-      description: "Proteja seu lar contra incêndios, roubos e danos elétricos.",
-      icon: "Home",
-    });
-  }
-
-
-  const postsList = await storage.getPosts(false);
-  if (postsList.length === 0) {
-    await storage.createPost({
-      title: "Por que contratar um seguro auto?",
-      slug: "por-que-contratar-seguro-auto",
-      summary: "Descubra a importância de ter seu veículo protegido e evite dores de cabeça.",
-      content: "Ter um seguro auto é essencial para quem busca tranquilidade no trânsito...",
-      coverImage: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1000",
-      publishedAt: new Date(),
-    });
-    await storage.createPost({
-      title: "Dicas para economizar no seguro",
-      slug: "dicas-economizar-seguro",
-      summary: "Saiba como reduzir o valor do seu seguro sem perder coberturas importantes.",
-      content: "Muitas pessoas não sabem, mas pequenas atitudes podem diminuir o valor do seguro...",
-      coverImage: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1000",
-      publishedAt: new Date(),
-    });
-  }
-
-
-  // Seed Admin User
-  const existingUser = await storage.getUserByUsername("admin");
-  if (!existingUser) {
-    const hashedPassword = await hashPassword("admin123");
-    await storage.createUser({
-      username: "admin",
-      password: hashedPassword,
-      name: "Admin User",
-      role: "admin",
-    });
-  }
-
-  // Seed Produtos de Seguro
-  const existingProdutos = await storage.getProdutosSeguro();
-  if (existingProdutos.length === 0) {
-    const defaultProdutos = ["Auto", "Vida", "Saúde", "Residencial", "Empresarial", "Previdência", "Viagem", "Agrícola"];
-    for (const nome of defaultProdutos) {
-      await storage.createProdutoSeguro({ nome });
+  // Seed Data & Startup DB updates
+  try {
+    const servicesList = await storage.getServices();
+    if (servicesList.length === 0) {
+      await storage.createService({
+        title: "Seguro Auto",
+        description: "Proteção completa para seu veículo contra roubo, colisão e terceiros.",
+        icon: "Car",
+      });
+      await storage.createService({
+        title: "Seguro de Vida",
+        description: "Garanta a segurança financeira da sua família em momentos difíceis.",
+        icon: "Heart",
+      });
+      await storage.createService({
+        title: "Plano de Saúde",
+        description: "As melhores opções de planos de saúde para você e sua família.",
+        icon: "Stethoscope",
+      });
+      await storage.createService({
+        title: "Seguro Residencial",
+        description: "Proteja seu lar contra incêndios, roubos e danos elétricos.",
+        icon: "Home",
+      });
     }
+
+    const postsList = await storage.getPosts(false);
+    if (postsList.length === 0) {
+      await storage.createPost({
+        title: "Por que contratar um seguro auto?",
+        slug: "por-que-contratar-seguro-auto",
+        summary: "Descubra a importância de ter seu veículo protegido e evite dores de cabeça.",
+        content: "Ter um seguro auto é essencial para quem busca tranquilidade no trânsito...",
+        coverImage: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1000",
+        publishedAt: new Date(),
+      });
+      await storage.createPost({
+        title: "Dicas para economizar no seguro",
+        slug: "dicas-economizar-seguro",
+        summary: "Saiba como reduzir o valor do seu seguro sem perder coberturas importantes.",
+        content: "Muitas pessoas não sabem, mas pequenas atitudes podem diminuir o valor do seguro...",
+        coverImage: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1000",
+        publishedAt: new Date(),
+      });
+    }
+
+    // Seed Admin User
+    const existingUser = await storage.getUserByUsername("admin");
+    if (!existingUser) {
+      const hashedPassword = await hashPassword("admin123");
+      await storage.createUser({
+        username: "admin",
+        password: hashedPassword,
+        name: "Admin User",
+        role: "admin",
+      });
+    }
+
+    // Seed Produtos de Seguro
+    const existingProdutos = await storage.getProdutosSeguro();
+    if (existingProdutos.length === 0) {
+      const defaultProdutos = ["Auto", "Vida", "Saúde", "Residencial", "Empresarial", "Previdência", "Viagem", "Agrícola"];
+      for (const nome of defaultProdutos) {
+        await storage.createProdutoSeguro({ nome });
+      }
+    }
+
+    // Update existing users with no role to 'client'
+    await db.execute(sql`UPDATE users SET role = 'client' WHERE role IS NULL`);
+
+    // Ensure 'admin' has the admin role
+    await db.execute(sql`UPDATE users SET role = 'admin' WHERE username = 'admin'`);
+  } catch (seedErr) {
+    console.warn("Seed data / startup DB updates skipped (DB unavailable):", seedErr instanceof Error ? seedErr.message : String(seedErr));
   }
 
   app.patch("/api/user/profile", isAuthenticated, async (req, res) => {
@@ -2548,12 +2623,6 @@ export async function registerRoutes(
       res.status(400).json({ message: error.message });
     }
   });
-
-  // Update existing users with no role to 'client'
-  await db.execute(sql`UPDATE users SET role = 'client' WHERE role IS NULL`);
-
-  // Ensure 'admin' has the admin role
-  await db.execute(sql`UPDATE users SET role = 'admin' WHERE username = 'admin'`);
 
   return httpServer;
 }
