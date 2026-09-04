@@ -391,112 +391,191 @@ export default function ContactsPage() {
                                 Adicionar Contato
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[450px] rounded-2xl border-none shadow-2xl">
-                            <DialogHeader>
-                                <DialogTitle className="text-2xl font-display font-bold">{isEditing ? "Editar Contato" : "Novo Contato"}</DialogTitle>
-                                <DialogDescription className="text-xs text-muted-foreground">
+                        <DialogContent className="sm:max-w-[650px] w-full max-w-[95vw] rounded-3xl border-none shadow-2xl overflow-hidden p-0 max-h-[90vh] flex flex-col bg-white">
+                            <DialogHeader className="p-6 pb-4 bg-slate-50 border-b shrink-0">
+                                <DialogTitle className="text-2xl font-display font-bold text-gray-900">{isEditing ? "Editar Contato" : "Novo Contato"}</DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground mt-1">
                                     {isEditing ? "Altere as informações do contato abaixo e salve as alterações." : "Preencha os dados abaixo para cadastrar um novo contato."}
                                 </DialogDescription>
                             </DialogHeader>
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="type"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-gray-600 font-bold">Tipo de Cliente</FormLabel>
-                                                <Select
-                                                    onValueChange={field.onChange}
-                                                    value={field.value || "individual"}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger className="rounded-xl h-11">
-                                                            <SelectValue placeholder="Selecione o tipo" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="individual">Pessoa Física</SelectItem>
-                                                        <SelectItem value="company">Pessoa Jurídica</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {clientType === "company" ? (
-                                        <div className="flex gap-2 items-end">
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-6 space-y-5">
+                                    {/* ── Section 1: Dados do Cliente ────────────────── */}
+                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-4">
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">1. Dados do Cliente</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <FormField
                                                 control={form.control}
-                                                name="document"
+                                                name="type"
                                                 render={({ field }) => (
-                                                    <FormItem className="flex-1">
-                                                        <FormLabel className="text-gray-600 font-bold">CNPJ</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="00.000.000/0000-00"
-                                                                className="rounded-xl h-11"
-                                                                {...field}
-                                                                value={field.value || ""}
-                                                            />
-                                                        </FormControl>
+                                                    <FormItem>
+                                                        <FormLabel className="text-gray-600 font-bold">Tipo de Cliente</FormLabel>
+                                                        <Select
+                                                            onValueChange={field.onChange}
+                                                            value={field.value || "individual"}
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger className="rounded-xl h-11 bg-white">
+                                                                    <SelectValue placeholder="Selecione o tipo" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="individual">Pessoa Física (PF)</SelectItem>
+                                                                <SelectItem value="company">Pessoa Jurídica (PJ)</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                className="h-11 rounded-xl px-4 font-bold border-primary text-primary hover:bg-primary/5 mb-[2px]"
-                                                onClick={() => lookupCnpj(form.getValues("document") || "")}
-                                                disabled={isSearchingCnpj}
-                                            >
-                                                {isSearchingCnpj ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    "Buscar"
-                                                )}
-                                            </Button>
+
+                                            {clientType === "company" ? (
+                                                <div className="flex gap-2 items-end">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="document"
+                                                        render={({ field }) => (
+                                                            <FormItem className="flex-1">
+                                                                <FormLabel className="text-gray-600 font-bold">CNPJ</FormLabel>
+                                                                <FormControl>
+                                                                    <Input
+                                                                        placeholder="00.000.000/0000-00"
+                                                                        className="rounded-xl h-11 bg-white"
+                                                                        {...field}
+                                                                        value={field.value || ""}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        className="h-11 rounded-xl px-4 font-bold border-primary text-primary hover:bg-primary/5 mb-[2px] bg-white"
+                                                        onClick={() => lookupCnpj(form.getValues("document") || "")}
+                                                        disabled={isSearchingCnpj}
+                                                    >
+                                                        {isSearchingCnpj ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            "Buscar"
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <FormField
+                                                    control={form.control}
+                                                    name="document"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-gray-600 font-bold">CPF</FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    placeholder="000.000.000-00"
+                                                                    className="rounded-xl h-11 bg-white"
+                                                                    {...field}
+                                                                    value={field.value || ""}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            )}
                                         </div>
-                                    ) : (
+
                                         <FormField
                                             control={form.control}
-                                            name="document"
+                                            name="name"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-gray-600 font-bold">CPF</FormLabel>
+                                                    <FormLabel className="text-gray-600 font-bold">Nome Completo / Razão Social *</FormLabel>
                                                     <FormControl>
-                                                        <Input
-                                                            placeholder="000.000.000-00"
-                                                            className="rounded-xl h-11"
-                                                            {...field}
-                                                            value={field.value || ""}
-                                                        />
+                                                        <Input placeholder="Ex: João Silva ou Monteiro Seguros LTDA" className="rounded-xl h-11 bg-white" {...field} value={field.value || ""} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
-                                    )}
 
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-gray-600 font-bold">Nome Completo / Razão Social</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Ex: João Silva ou Monteiro Seguros LTDA" className="rounded-xl h-11" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="anniversaryDate"
+                                                render={({ field }) => {
+                                                    const age = calcAge(watchedAnniversary);
+                                                    return (
+                                                        <FormItem>
+                                                            <FormLabel className="text-gray-600 font-bold">Data Comemorativa (DD/MM/AAAA)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="Ex: 15/08/1990" className="rounded-xl h-11 bg-white" {...field} value={field.value || ""} />
+                                                            </FormControl>
+                                                            {age !== null && (
+                                                                <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                                                                    🎂 {age} anos
+                                                                </span>
+                                                            )}
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    );
+                                                }}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="maritalStatus"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-gray-600 font-bold">Estado Civil</FormLabel>
+                                                        <Select
+                                                            onValueChange={field.onChange}
+                                                            value={field.value || ""}
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger className="rounded-xl h-11 bg-white">
+                                                                    <SelectValue placeholder="Selecione" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="solteiro">Solteiro(a)</SelectItem>
+                                                                <SelectItem value="casado">Casado(a)</SelectItem>
+                                                                <SelectItem value="divorciado">Divorciado(a)</SelectItem>
+                                                                <SelectItem value="viuvo">Viúvo(a)</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="status"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-gray-600 font-bold">Status do Cliente</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value || "Ativo"}>
+                                                            <FormControl>
+                                                                <SelectTrigger className="rounded-xl h-11 bg-white">
+                                                                    <SelectValue placeholder="Selecione o status" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="Ativo">Ativo</SelectItem>
+                                                                <SelectItem value="Prospects">Prospects</SelectItem>
+                                                                <SelectItem value="Cancelado">Cancelado</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
 
+                                    {/* ── Section 2: Responsável (PJ) ────────────────── */}
                                     {clientType === "company" && (
-                                        <>
-                                            {/* ── Responsável com busca + botão de adição rápida ── */}
+                                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
+                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">2. Pessoa Responsável</h4>
                                             <FormField
                                                 control={form.control}
                                                 name="responsibleId"
@@ -506,7 +585,6 @@ export default function ContactsPage() {
                                                             <FormLabel className="text-gray-600 font-bold">
                                                                 Pessoa Responsável *
                                                             </FormLabel>
-                                                            {/* ── Botão "Adicionar responsável" ── */}
                                                             <Button
                                                                 type="button"
                                                                 variant="ghost"
@@ -531,7 +609,7 @@ export default function ContactsPage() {
                                                                 }}
                                                                 placeholder="Selecione ou pesquise um contato..."
                                                                 searchPlaceholder="Pesquisar pelo nome ou telefone..."
-                                                                triggerClassName="border-primary/20"
+                                                                triggerClassName="border-primary/20 bg-white"
                                                                 clearable
                                                             />
                                                         </FormControl>
@@ -546,132 +624,74 @@ export default function ContactsPage() {
                                                     <input type="hidden" {...field} value={field.value || ""} />
                                                 )}
                                             />
-                                        </>
+                                        </div>
                                     )}
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    {/* ── Section 3: Produtos ───────────────────────── */}
+                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                            {clientType === "company" ? "3. Produtos de Interesse" : "2. Produtos de Interesse"}
+                                        </h4>
                                         <FormField
                                             control={form.control}
-                                            name="anniversaryDate"
-                                            render={({ field }) => {
-                                                const age = calcAge(watchedAnniversary);
-                                                return (
+                                            name="productType"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <ProductSelector value={field.value || ""} onChange={field.onChange} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    {/* ── Section 4: Contato ────────────────────────── */}
+                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-4">
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                            {clientType === "company" ? "4. Meios de Contato" : "3. Meios de Contato"}
+                                        </h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="email"
+                                                render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-gray-600 font-bold">Data Comemorativa (DD/MM/AAAA)</FormLabel>
+                                                        <FormLabel className="text-gray-600 font-bold">Email</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Ex: 15/08/1990" className="rounded-xl h-11" {...field} value={field.value || ""} />
+                                                            <Input
+                                                                type="email"
+                                                                placeholder="contato@exemplo.com"
+                                                                className="rounded-xl h-11 bg-white"
+                                                                {...field}
+                                                                value={field.value || ""}
+                                                            />
                                                         </FormControl>
-                                                        {age !== null && (
-                                                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                                                                🎂 {age} anos
-                                                            </span>
-                                                        )}
                                                         <FormMessage />
                                                     </FormItem>
-                                                );
-                                            }}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="maritalStatus"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-gray-600 font-bold">Estado Civil</FormLabel>
-                                                    <Select
-                                                        onValueChange={field.onChange}
-                                                        value={field.value || ""}
-                                                    >
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="phone"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-gray-600 font-bold">Telefone / WhatsApp</FormLabel>
                                                         <FormControl>
-                                                            <SelectTrigger className="rounded-xl h-11">
-                                                                <SelectValue placeholder="Selecione" />
-                                                            </SelectTrigger>
+                                                            <Input
+                                                                placeholder="(11) 99999-9999"
+                                                                className="rounded-xl h-11 bg-white"
+                                                                {...field}
+                                                                value={field.value || ""}
+                                                            />
                                                         </FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="solteiro">Solteiro(a)</SelectItem>
-                                                            <SelectItem value="casado">Casado(a)</SelectItem>
-                                                            <SelectItem value="divorciado">Divorciado(a)</SelectItem>
-                                                            <SelectItem value="viuvo">Viúvo(a)</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
                                     </div>
-                                    <FormField
-                                        control={form.control}
-                                        name="status"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-gray-600 font-bold">Status do Cliente</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value || "Ativo"}>
-                                                    <FormControl>
-                                                        <SelectTrigger className="rounded-xl h-11">
-                                                            <SelectValue placeholder="Selecione o status" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="Ativo">Ativo</SelectItem>
-                                                        <SelectItem value="Prospects">Prospects</SelectItem>
-                                                        <SelectItem value="Cancelado">Cancelado</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="productType"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-gray-600 font-bold">Produtos de Interesse / Contratados</FormLabel>
-                                                <FormControl>
-                                                    <ProductSelector value={field.value || ""} onChange={field.onChange} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="email"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-gray-600 font-bold">Email</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="email"
-                                                            placeholder="contato@exemplo.com"
-                                                            className="rounded-xl h-11"
-                                                            {...field}
-                                                            value={field.value || ""}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="phone"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-gray-600 font-bold">Telefone</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="(11) 99999-9999"
-                                                            className="rounded-xl h-11"
-                                                            {...field}
-                                                            value={field.value || ""}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
+
                                     <Button
                                         type="submit"
                                         className="w-full h-12 rounded-xl text-lg font-bold shadow-lg shadow-primary/20"
