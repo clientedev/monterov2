@@ -234,78 +234,88 @@ export function baseLayout(params: {
 }): string {
   const { title, badge, content, buttonUrl, buttonText, logoUrl } = params;
   const logoSrc = logoUrl || `${getSiteBaseUrl()}/logo_monteiro.png`;
+  const year = new Date().getFullYear();
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #F8FAFC; padding: 40px 16px;">
+<body style="margin:0;padding:0;background-color:#EEF2F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#EEF2F7;padding:40px 16px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background-color: #FFFFFF; border-radius: 24px; overflow: hidden; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); border: 1px solid #E2E8F0;">
-          
-          <!-- BRAND HEADER WITH OFFICIAL LOGO -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #0F172A 0%, #08454C 100%); padding: 36px 40px 32px; text-align: center; border-bottom: 4px solid #10B981;">
-              <table align="center" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-                <tr>
-                  <td align="center">
-                    <div style="background-color: #FFFFFF; padding: 12px 28px; border-radius: 16px; display: inline-block; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); margin-bottom: 12px; border: 1px solid #E2E8F0;">
-                      <img src="${logoSrc}" alt="Monteiro Seguros & Benefícios" style="max-height: 55px; max-width: 240px; width: auto; height: auto; display: block; margin: 0 auto; object-fit: contain;" />
-                    </div>
-                    <div style="color: #94A3B8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; font-family: Arial, sans-serif; margin-top: 4px;">
-                      SEGUROS & BENEFÍCIOS
-                    </div>
-                  </td>
-                </tr>
-              </table>
+        <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(15,23,42,0.15);">
 
-              <h1 style="margin: 20px 0 0; color: #FFFFFF; font-size: 22px; font-weight: 800; line-height: 1.3; font-family: Arial, sans-serif;">
-                ${title}
-              </h1>
-              ${badge ? `<div style="margin-top: 10px;"><span style="background: rgba(16, 185, 129, 0.15); color: #34D399; font-size: 12px; font-weight: 700; padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.3); display: inline-block;">${badge}</span></div>` : ""}
+          <!-- TOP ACCENT BAR -->
+          <tr>
+            <td style="background:linear-gradient(90deg,#08454C 0%,#10B981 100%);height:5px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+          <!-- LOGO HEADER — clean white background so logo renders perfectly -->
+          <tr>
+            <td style="background-color:#FFFFFF;padding:32px 40px 24px;text-align:center;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">
+              <img src="${logoSrc}" alt="Monteiro Seguros &amp; Benefícios"
+                width="200"
+                style="display:block;margin:0 auto;width:200px;max-width:200px;height:auto;object-fit:contain;" />
+            </td>
+          </tr>
+
+          <!-- TITLE BAND — dark brand color with title and badge -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0F172A 0%,#08454C 100%);padding:28px 40px 28px;text-align:center;">
+              <h1 style="margin:0 0 0;color:#FFFFFF;font-size:22px;font-weight:800;line-height:1.35;font-family:Arial,sans-serif;letter-spacing:-0.3px;">${title}</h1>
+              ${badge ? `<div style="margin-top:12px;"><span style="background:rgba(16,185,129,0.2);color:#34D399;font-size:11px;font-weight:700;padding:4px 16px;border-radius:20px;border:1px solid rgba(16,185,129,0.4);display:inline-block;letter-spacing:1px;text-transform:uppercase;">${badge}</span></div>` : ""}
             </td>
           </tr>
 
           <!-- MAIN CONTENT -->
           <tr>
-            <td style="padding: 40px;">
+            <td style="background-color:#FFFFFF;padding:40px 40px 32px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">
               ${content}
             </td>
           </tr>
 
-          <!-- CALL TO ACTION BUTTON (IF PROVIDED) -->
+          <!-- CTA BUTTON -->
           ${buttonUrl && buttonText ? `
           <tr>
-            <td style="padding: 0 40px 40px;" align="center">
-              <a href="${buttonUrl}" target="_blank" 
-                 style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #10B981 100%); color: #FFFFFF; text-decoration: none; padding: 16px 36px; border-radius: 14px; font-weight: 800; font-size: 15px; font-family: Arial, sans-serif; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25); border: 1px solid #059669;">
+            <td style="background-color:#FFFFFF;padding:0 40px 40px;text-align:center;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">
+              <a href="${buttonUrl}" target="_blank"
+                 style="display:inline-block;background:linear-gradient(135deg,#059669 0%,#10B981 100%);color:#FFFFFF;text-decoration:none;padding:16px 40px;border-radius:12px;font-weight:800;font-size:15px;font-family:Arial,sans-serif;box-shadow:0 8px 24px rgba(16,185,129,0.30);letter-spacing:0.2px;">
                 ${buttonText}
               </a>
             </td>
           </tr>` : ""}
 
-          <!-- BRAND FOOTER -->
+          <!-- DIVIDER -->
           <tr>
-            <td style="background-color: #0F172A; padding: 32px 40px; text-align: center; border-top: 1px solid #1E293B;">
-              <p style="margin: 0 0 6px; color: #FFFFFF; font-size: 14px; font-weight: 800; font-family: Arial, sans-serif;">
-                Monteiro Seguros & Benefícios
+            <td style="background-color:#FFFFFF;padding:0 40px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">
+              <div style="border-top:1px solid #E2E8F0;"></div>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color:#0F172A;padding:32px 40px;text-align:center;border-radius:0 0 20px 20px;border-left:1px solid #0F172A;border-right:1px solid #0F172A;">
+              <img src="${logoSrc}" alt="Monteiro" width="120"
+                style="display:block;margin:0 auto 16px;width:120px;max-width:120px;height:auto;opacity:0.7;filter:brightness(0) invert(1);" />
+              <p style="margin:0 0 6px;color:#CBD5E1;font-size:13px;font-weight:700;font-family:Arial,sans-serif;">
+                Monteiro Seguros &amp; Benefícios
               </p>
-              <p style="margin: 0 0 16px; color: #94A3B8; font-size: 12px; line-height: 1.5; font-family: Arial, sans-serif;">
+              <p style="margin:0 0 20px;color:#64748B;font-size:12px;line-height:1.6;font-family:Arial,sans-serif;">
                 Protegendo o que mais importa para você, sua família e sua empresa.
               </p>
-              <div style="margin-bottom: 20px;">
-                <a href="https://monteiroseguros.com.br" target="_blank" style="color: #10B981; text-decoration: none; font-size: 12px; font-weight: 700; margin: 0 8px; font-family: Arial, sans-serif;">monteiroseguros.com.br</a>
-                <span style="color: #475569;">&bull;</span>
-                <a href="mailto:contato@monteiroseguros.com.br" style="color: #10B981; text-decoration: none; font-size: 12px; font-weight: 700; margin: 0 8px; font-family: Arial, sans-serif;">contato@monteiroseguros.com.br</a>
+              <div style="margin-bottom:20px;">
+                <a href="https://monteiroseguros.com.br" target="_blank"
+                   style="color:#10B981;text-decoration:none;font-size:12px;font-weight:700;margin:0 8px;font-family:Arial,sans-serif;">monteiroseguros.com.br</a>
+                <span style="color:#334155;">&nbsp;&bull;&nbsp;</span>
+                <a href="mailto:contato@monteiroseguros.com.br"
+                   style="color:#10B981;text-decoration:none;font-size:12px;font-weight:700;margin:0 8px;font-family:Arial,sans-serif;">contato@monteiroseguros.com.br</a>
               </div>
-              <p style="margin: 0; color: #64748B; font-size: 11px; font-family: Arial, sans-serif;">
-                © ${new Date().getFullYear()} Monteiro Corretora de Seguros. Todos os direitos reservados.
+              <p style="margin:0;color:#334155;font-size:11px;font-family:Arial,sans-serif;">
+                &copy; ${year} Monteiro Corretora de Seguros. Todos os direitos reservados.
               </p>
             </td>
           </tr>
