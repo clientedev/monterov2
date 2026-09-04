@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, Interaction, Lead, Task, InsertContact, ContactFile } from "@shared/schema";
 import { ProductSelector } from "@/components/ProductSelector";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -118,6 +119,41 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
         queryKey: ["/api/users"],
     });
 
+    const { data: allContacts } = useQuery<Contact[]>({
+        queryKey: ["/api/contacts"],
+        enabled: open,
+    });
+
+    const responsibleOptions = useMemo(() => {
+        const opts: { value: string; label: string; sublabel?: string; id?: number; name: string }[] = [];
+        if (usersList) {
+            usersList
+                .filter((u: any) => u.role === "admin" || u.role === "employee")
+                .forEach((u: any) => {
+                    opts.push({
+                        value: `user_${u.id}`,
+                        label: `👔 ${u.name} (Colaborador)`,
+                        sublabel: u.email ?? "Equipe Monteiro",
+                        name: u.name,
+                    });
+                });
+        }
+        if (allContacts) {
+            allContacts
+                .filter((c: any) => c.type === "individual" && c.id !== contactId)
+                .forEach((c: any) => {
+                    opts.push({
+                        value: `contact_${c.id}`,
+                        label: `👤 ${c.name} (Contato Base)`,
+                        sublabel: c.phone ?? c.email ?? undefined,
+                        id: c.id,
+                        name: c.name,
+                    });
+                });
+        }
+        return opts;
+    }, [usersList, allContacts, contactId]);
+
     const userAccount = useMemo(() => {
         if (!contact || !usersList) return null;
         return usersList.find((u: any) => 
@@ -208,7 +244,20 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
     });
 
     // Form edit state
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        name: string;
+        type: string;
+        email: string;
+        phone: string;
+        document: string;
+        address: string;
+        anniversaryDate: string;
+        maritalStatus: string;
+        productType: string;
+        responsibleName: string;
+        responsibleId: number | null;
+        status: string;
+    }>({
         name: "",
         type: "individual",
         email: "",
@@ -219,6 +268,7 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
         maritalStatus: "",
         productType: "",
         responsibleName: "",
+        responsibleId: null,
         status: "Ativo",
     });
 
@@ -235,6 +285,7 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                 maritalStatus: contact.maritalStatus || "",
                 productType: contact.productType || "",
                 responsibleName: contact.responsibleName || "",
+                responsibleId: contact.responsibleId || null,
                 status: contact.status || "Ativo",
             });
         }
@@ -889,13 +940,31 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                 </Select>
                                             </div>
 
-                                            <div className="md:col-span-2 space-y-1.5">
-                                                <Label className="text-xs font-bold text-slate-700">Representante Legal / Responsável</Label>
+                                            <div className="md:col-span-2 space-y-2 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                                <Label className="text-xs font-bold text-slate-700">Pessoa Responsável (Colaborador da Equipe ou Contato da Base)</Label>
+                                                <SearchableSelect
+                                                    options={responsibleOptions}
+                                                    value={formData.responsibleId ? (responsibleOptions.find(o => o.id === formData.responsibleId)?.value || `contact_${formData.responsibleId}`) : ""}
+                                                    onValueChange={(val) => {
+                                                        if (!val) {
+                                                            setFormData(prev => ({ ...prev, responsibleId: null, responsibleName: "" }));
+                                                            return;
+                                                        }
+                                                        const selected = responsibleOptions.find(o => o.value === val);
+                                                        if (selected) {
+                                                            setFormData(prev => ({ ...prev, responsibleId: selected.id ?? null, responsibleName: selected.name }));
+                                                        }
+                                                    }}
+                                                    placeholder="Escolha um colaborador da equipe ou cliente da base..."
+                                                    searchPlaceholder="Pesquisar por nome ou e-mail..."
+                                                    triggerClassName="border-slate-200 bg-white h-10"
+                                                    clearable
+                                                />
                                                 <Input
                                                     value={formData.responsibleName}
                                                     onChange={(e) => setFormData(prev => ({ ...prev, responsibleName: e.target.value }))}
-                                                    placeholder="Nome do representante legal (caso PJ)"
-                                                    className="rounded-xl h-11 bg-white"
+                                                    placeholder="Ou digite o nome do responsável manualmente"
+                                                    className="rounded-xl h-10 bg-white text-xs"
                                                 />
                                             </div>
 
@@ -1003,6 +1072,20 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                         <p className="text-[10px] font-bold text-gray-400 uppercase">Data Comemorativa / Nascimento</p>
                                                         <p className="text-sm font-medium text-gray-900">
                                                             {contact.anniversaryDate || "Não informada"} {age !== null && `(${age} anos)`}
+                                                        </p>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+
+                                            <Card className="border-none bg-slate-50/50">
+                                                <CardContent className="p-4 flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-primary">
+                                                        <User className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase">Pessoa Responsável</p>
+                                                        <p className="text-sm font-medium text-gray-900">
+                                                            {contact.responsibleName || "Não informada"}
                                                         </p>
                                                     </div>
                                                 </CardContent>

@@ -389,16 +389,41 @@ export default function ContactsPage() {
         });
     }, [contacts, search, filterType, filterStatus, filterProduct, productsByContact]);
 
-    // Build options for SearchableSelect (individual contacts only, for responsável)
-    const individualContactOptions = useMemo(() => {
-        return (contacts ?? [])
-            .filter((c) => c.type === "individual")
-            .map((c) => ({
-                value: String(c.id),
-                label: c.name,
-                sublabel: c.phone ?? undefined,
-            }));
-    }, [contacts]);
+    // Build options for SearchableSelect (Team Collaborators + Base Individual Contacts)
+    const responsibleOptions = useMemo(() => {
+        const opts: { value: string; label: string; sublabel?: string; id?: number; name: string }[] = [];
+
+        // 1. Team Collaborators / Staff (from usersList)
+        if (usersList) {
+            usersList
+                .filter((u) => u.role === "admin" || u.role === "employee")
+                .forEach((u) => {
+                    opts.push({
+                        value: `user_${u.id}`,
+                        label: `👔 ${u.name} (Colaborador)`,
+                        sublabel: u.email ?? "Equipe Monteiro",
+                        name: u.name,
+                    });
+                });
+        }
+
+        // 2. Individual Contacts (from contacts base)
+        if (contacts) {
+            contacts
+                .filter((c) => c.type === "individual")
+                .forEach((c) => {
+                    opts.push({
+                        value: `contact_${c.id}`,
+                        label: `👤 ${c.name} (Contato Base)`,
+                        sublabel: c.phone ?? c.email ?? undefined,
+                        id: c.id,
+                        name: c.name,
+                    });
+                });
+        }
+
+        return opts;
+    }, [usersList, contacts]);
 
     if (isLoading) {
         return (
@@ -606,60 +631,80 @@ export default function ContactsPage() {
                                         </div>
                                     </div>
 
-                                    {/* ── Section 2: Responsável (PJ) ────────────────── */}
-                                    {clientType === "company" && (
-                                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
-                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">2. Pessoa Responsável</h4>
-                                            <FormField
-                                                control={form.control}
-                                                name="responsibleId"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <div className="flex items-center justify-between">
-                                                            <FormLabel className="text-gray-600 font-bold">
-                                                                Pessoa Responsável *
-                                                            </FormLabel>
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-7 px-2 text-primary hover:bg-primary/5 text-xs font-bold gap-1"
-                                                                onClick={() => setAddResponsibleOpen(true)}
-                                                            >
-                                                                <UserPlus className="h-3.5 w-3.5" />
-                                                                Adicionar responsável
-                                                            </Button>
-                                                        </div>
-                                                        <FormControl>
-                                                            <SearchableSelect
-                                                                options={individualContactOptions}
-                                                                value={field.value?.toString() ?? ""}
-                                                                onValueChange={(val) => {
-                                                                    if (!val) return;
-                                                                    const id = parseInt(val);
-                                                                    field.onChange(id);
-                                                                    const selected = contacts?.find(c => c.id === id);
-                                                                    if (selected) form.setValue("responsibleName", selected.name);
-                                                                }}
-                                                                placeholder="Selecione ou pesquise um contato..."
-                                                                searchPlaceholder="Pesquisar pelo nome ou telefone..."
-                                                                triggerClassName="border-primary/20 bg-white"
-                                                                clearable
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="responsibleName"
-                                                render={({ field }) => (
-                                                    <input type="hidden" {...field} value={field.value || ""} />
-                                                )}
-                                            />
+                                    {/* ── Section 2: Responsável ────────────────── */}
+                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                                {clientType === "company" ? "2. Pessoa Responsável *" : "2. Pessoa Responsável (Opcional)"}
+                                            </h4>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 px-2 text-primary hover:bg-primary/5 text-xs font-bold gap-1"
+                                                onClick={() => setAddResponsibleOpen(true)}
+                                            >
+                                                <UserPlus className="h-3.5 w-3.5" />
+                                                Criar novo contato
+                                            </Button>
                                         </div>
-                                    )}
+
+                                        <FormField
+                                            control={form.control}
+                                            name="responsibleId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-gray-600 font-bold">
+                                                        Selecione um Colaborador da Equipe ou Contato da Base
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <SearchableSelect
+                                                            options={responsibleOptions}
+                                                            value={field.value ? (responsibleOptions.find(o => o.id === field.value)?.value || `contact_${field.value}`) : ""}
+                                                            onValueChange={(val) => {
+                                                                if (!val) {
+                                                                    field.onChange(null);
+                                                                    form.setValue("responsibleName", "");
+                                                                    return;
+                                                                }
+                                                                const selected = responsibleOptions.find(o => o.value === val);
+                                                                if (selected) {
+                                                                    field.onChange(selected.id ?? null);
+                                                                    form.setValue("responsibleName", selected.name);
+                                                                }
+                                                            }}
+                                                            placeholder="Escolha um colaborador ou cliente da base..."
+                                                            searchPlaceholder="Pesquisar por nome ou e-mail..."
+                                                            triggerClassName="border-primary/20 bg-white"
+                                                            clearable
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="responsibleName"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs font-bold text-slate-500">
+                                                        Nome do Responsável (Personalizado / Manual)
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="Ex: João Silva (Diretor) ou Carlos (Corretor)"
+                                                            className="rounded-xl h-10 bg-white text-xs"
+                                                            {...field}
+                                                            value={field.value || ""}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
 
                                     {/* ── Section 3: Produtos ───────────────────────── */}
                                     <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
@@ -829,7 +874,8 @@ export default function ContactsPage() {
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="py-4 font-bold text-slate-700">Contato / Nome</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">Tipo de Cliente</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">CPF / CNPJ & Responsável</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">CPF / CNPJ</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Responsável</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">E-mail / Telefone</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">Idade / Data Comem.</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">Produtos</TableHead>
@@ -840,7 +886,7 @@ export default function ContactsPage() {
                     <TableBody>
                         {filteredContacts.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center h-32 text-muted-foreground">
+                                <TableCell colSpan={9} className="text-center h-32 text-muted-foreground">
                                     <div className="flex flex-col items-center gap-2">
                                         <Users className="h-8 w-8 opacity-20" />
                                         <p>{contacts?.length === 0 ? "Nenhum contato cadastrado ainda." : "Nenhum contato encontrado com os filtros aplicados."}</p>
@@ -900,30 +946,38 @@ export default function ContactsPage() {
                                             </Badge>
                                         </TableCell>
 
-                                        {/* 3. CPF/CNPJ & Responsável (PJ) */}
+                                        {/* 3. CPF/CNPJ */}
                                         <TableCell className="text-slate-700 font-medium py-4">
-                                            <div className="flex flex-col space-y-0.5">
-                                                <span className="font-bold text-slate-800 text-xs">{contact.document || "—"}</span>
-                                                {contact.type === 'company' && (
-                                                    <div className="flex items-center gap-1">
-                                                        {contact.responsibleId ? (
-                                                            <button
-                                                                type="button"
-                                                                className="text-[11px] font-bold text-slate-700 hover:text-primary hover:underline transition-colors text-left cursor-pointer"
-                                                                onClick={() => {
-                                                                    setSelectedContactId(contact.responsibleId!);
-                                                                    setProfileOpen(true);
-                                                                }}
-                                                                title="Clique para ver o perfil do responsável"
-                                                            >
-                                                                Resp: {contact.responsibleName || "Não inf."}
-                                                            </button>
-                                                        ) : (
-                                                            <span className="text-[11px] text-slate-500">Resp: {contact.responsibleName || "Não inf."}</span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <span className="font-bold text-slate-800 text-xs">{contact.document || "—"}</span>
+                                        </TableCell>
+
+                                        {/* 4. Responsável */}
+                                        <TableCell className="text-slate-700 font-medium py-4">
+                                            {contact.responsibleName ? (
+                                                <div className="flex items-center gap-1">
+                                                    {contact.responsibleId ? (
+                                                        <button
+                                                            type="button"
+                                                            className="text-xs font-bold text-slate-800 hover:text-primary hover:underline transition-colors text-left cursor-pointer flex items-center gap-1.5"
+                                                            onClick={() => {
+                                                                setSelectedContactId(contact.responsibleId!);
+                                                                setProfileOpen(true);
+                                                            }}
+                                                            title="Clique para ver o perfil do responsável"
+                                                        >
+                                                            <User className="h-3.5 w-3.5 text-primary/70" />
+                                                            {contact.responsibleName}
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                                                            <User className="h-3.5 w-3.5 text-slate-400" />
+                                                            {contact.responsibleName}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 italic">—</span>
+                                            )}
                                         </TableCell>
 
                                         {/* 4. E-mail & Telefone */}
