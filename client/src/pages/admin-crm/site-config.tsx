@@ -23,6 +23,7 @@ import {
     Layout,
     Info,
     PhoneCall,
+    Mail,
     Image as ImageIcon,
     LayoutTemplate,
     Eye,
@@ -217,12 +218,26 @@ export default function SiteConfigPage() {
             footerText: "Oferecemos soluções premium em seguros personalizadas...",
             logoScale: 150,
             logoScaleMobile: 130,
+            smtpHost: "",
+            smtpPort: 587,
+            smtpUser: "",
+            smtpPass: "",
+            smtpFrom: "",
+            resendApiKey: "",
         },
     });
 
     useEffect(() => {
         if (settings) {
-            siteForm.reset(settings);
+            siteForm.reset({
+                ...settings,
+                smtpHost: settings.smtpHost || "",
+                smtpPort: settings.smtpPort || 587,
+                smtpUser: settings.smtpUser || "",
+                smtpPass: settings.smtpPass || "",
+                smtpFrom: settings.smtpFrom || "",
+                resendApiKey: settings.resendApiKey || "",
+            });
         }
     }, [settings, siteForm]);
 
@@ -256,7 +271,7 @@ export default function SiteConfigPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl grid grid-cols-2 md:grid-cols-5 gap-1 h-auto mb-8 border border-white/40 shadow-sm">
+                <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl grid grid-cols-2 md:grid-cols-6 gap-1 h-auto mb-8 border border-white/40 shadow-sm">
                     <TabsTrigger value="identity" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <Globe className="h-4 w-4" /> Identidade
                     </TabsTrigger>
@@ -271,6 +286,9 @@ export default function SiteConfigPage() {
                     </TabsTrigger>
                     <TabsTrigger value="contact" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <PhoneCall className="h-4 w-4" /> Contato
+                    </TabsTrigger>
+                    <TabsTrigger value="email" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
+                        <Mail className="h-4 w-4" /> Servidor de E-mail
                     </TabsTrigger>
                 </TabsList>
 
@@ -792,6 +810,125 @@ export default function SiteConfigPage() {
                                                         <FormLabel className="text-xs font-bold text-slate-500">Texto de Boas-vindas (Rodapé)</FormLabel>
                                                         <FormControl>
                                                             <Textarea {...field} className="min-h-[100px] rounded-xl border-slate-200" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* Email & SMTP TAB */}
+                        <TabsContent value="email" className="mt-0 focus-visible:outline-none">
+                            <Card className="premium-card border-none shadow-sm">
+                                <CardHeader className="bg-white border-b border-slate-100 py-8">
+                                    <CardTitle className="text-2xl font-display font-bold">Servidor de E-mail (SMTP & Resend)</CardTitle>
+                                    <CardDescription>Configure como a plataforma envia e-mails automáticos aos seus clientes (criação de conta, convites, tokens de acesso, etc.).</CardDescription>
+                                </CardHeader>
+                                <CardContent className="p-8 space-y-8">
+                                    <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-6 text-sm text-emerald-900 flex items-start gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                                            <Mail className="h-5 w-5" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h4 className="font-bold text-emerald-950">Informações do Envio</h4>
+                                            <p className="text-emerald-800 leading-relaxed">
+                                                Você pode utilizar uma chave da <strong>Resend</strong> (recomendado) ou configurar seu próprio <strong>Servidor SMTP customizado</strong> (Locaweb, Gmail Workspace, SendGrid, Hostinger, etc). Se ambos estiverem configurados, a API Resend terá preferência.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-8 md:grid-cols-2">
+                                        <div className="space-y-6">
+                                            <p className="text-sm font-black text-primary uppercase tracking-widest border-l-4 border-emerald-500 pl-3">Provedor Resend API</p>
+
+                                            <FormField
+                                                control={siteForm.control}
+                                                name="resendApiKey"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs font-bold text-slate-700">Resend API Key</FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} value={field.value || ""} type="password" placeholder="re_123456789..." className="h-12 rounded-xl border-slate-200 font-mono text-sm" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <FormField
+                                                control={siteForm.control}
+                                                name="smtpFrom"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs font-bold text-slate-700">E-mail Remetente (From)</FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} value={field.value || ""} placeholder="Monteiro Seguros <contato@monteirocorretora.com.br>" className="h-12 rounded-xl border-slate-200" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <p className="text-sm font-black text-primary uppercase tracking-widest border-l-4 border-amber-400 pl-3">Servidor SMTP Próprio</p>
+
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <FormField
+                                                    control={siteForm.control}
+                                                    name="smtpHost"
+                                                    render={({ field }) => (
+                                                        <FormItem className="col-span-2">
+                                                            <FormLabel className="text-xs font-bold text-slate-700">Host SMTP</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} value={field.value || ""} placeholder="smtp.dominio.com.br" className="h-12 rounded-xl border-slate-200" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+
+                                                <FormField
+                                                    control={siteForm.control}
+                                                    name="smtpPort"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-xs font-bold text-slate-700">Porta</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} type="number" value={field.value ?? 587} onChange={(e) => field.onChange(parseInt(e.target.value) || 587)} className="h-12 rounded-xl border-slate-200" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <FormField
+                                                control={siteForm.control}
+                                                name="smtpUser"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs font-bold text-slate-700">Usuário / E-mail SMTP</FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} value={field.value || ""} placeholder="envio@dominio.com.br" className="h-12 rounded-xl border-slate-200" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <FormField
+                                                control={siteForm.control}
+                                                name="smtpPass"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs font-bold text-slate-700">Senha SMTP</FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} value={field.value || ""} type="password" placeholder="••••••••••••" className="h-12 rounded-xl border-slate-200" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>

@@ -193,6 +193,16 @@ export const siteSettings = pgTable("site_settings", {
   linkedinUrl: text("linkedin_url"),
   taskColumns: text("task_columns"),
   leadColumns: text("lead_columns"),
+
+  // Email / SMTP Settings
+  smtpHost: text("smtp_host"),
+  smtpPort: integer("smtp_port").default(587),
+  smtpUser: text("smtp_user"),
+  smtpPass: text("smtp_pass"),
+  smtpSecure: boolean("smtp_secure").default(false),
+  smtpFrom: text("smtp_from"),
+  resendApiKey: text("resend_api_key"),
+
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 

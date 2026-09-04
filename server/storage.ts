@@ -2354,6 +2354,13 @@ export class MemStorage implements IStorage {
         instagramUrl: null,
         twitterUrl: null,
         linkedinUrl: null,
+        smtpHost: null,
+        smtpPort: 587,
+        smtpUser: null,
+        smtpPass: null,
+        smtpSecure: false,
+        smtpFrom: null,
+        resendApiKey: null,
         updatedAt: new Date(),
       };
     }

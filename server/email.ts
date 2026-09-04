@@ -4,12 +4,10 @@
  */
 
 import { db } from "./db";
-import { emailNotificationLogs, users } from "@shared/schema";
+import { emailNotificationLogs, users, siteSettings } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.RESEND_FROM || process.env.SMTP_FROM || "Monteiro Seguros <notificacoes@monteiroseguros.com.br>";
 const CRM_BASE_URL = process.env.CRM_URL || "https://monteiroseguros.com.br/admin";
 
 export type EmailEventType =
@@ -33,23 +31,38 @@ export interface EmailNotificationPayload {
   skipIfNoEmail?: boolean;
 }
 
-/** Get Nodemailer transporter if SMTP environment variables exist */
-function getSmtpTransporter() {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+/** Get email configuration from Environment Variables or Database */
+async function getEmailConfig() {
+  let host = process.env.SMTP_HOST;
+  let port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
+  let user = process.env.SMTP_USER;
+  let pass = process.env.SMTP_PASS;
+  let secure = process.env.SMTP_SECURE === "true";
+  let from = process.env.SMTP_FROM || process.env.RESEND_FROM || "Monteiro Seguros <notificacoes@monteiroseguros.com.br>";
+  let resendKey = process.env.RESEND_API_KEY;
 
-  if (host && user && pass) {
-    return nodemailer.createTransport({
-      host,
-      port,
-      secure: process.env.SMTP_SECURE === "true" || port === 465,
-      auth: { user, pass },
-      tls: { rejectUnauthorized: false },
-    });
+  if (!host && !resendKey) {
+    try {
+      const [dbConfig] = await db.select().from(siteSettings).limit(1);
+      if (dbConfig) {
+        if (dbConfig.smtpHost && dbConfig.smtpUser && dbConfig.smtpPass) {
+          host = dbConfig.smtpHost;
+          port = dbConfig.smtpPort || 587;
+          user = dbConfig.smtpUser;
+          pass = dbConfig.smtpPass;
+          secure = dbConfig.smtpSecure || false;
+          if (dbConfig.smtpFrom) from = dbConfig.smtpFrom;
+        }
+        if (dbConfig.resendApiKey) {
+          resendKey = dbConfig.resendApiKey;
+        }
+      }
+    } catch (err) {
+      console.error("[email] Erro ao buscar configurações de e-mail no DB:", err);
+    }
   }
-  return null;
+
+  return { host, port, user, pass, secure, from, resendKey };
 }
 
 /** Robust Email Dispatcher: Tries SMTP first, then Resend API, with fallback */
@@ -64,13 +77,21 @@ export async function sendEmail(params: {
     return { success: false, error: "E-mail de destino inválido." };
   }
 
-  // 1. Try Nodemailer SMTP if configured
-  const smtpTransporter = getSmtpTransporter();
-  if (smtpTransporter) {
+  const config = await getEmailConfig();
+
+  // 1. Try Nodemailer SMTP if configured (env or DB)
+  if (config.host && config.user && config.pass) {
     try {
-      const from = process.env.SMTP_FROM || process.env.SMTP_USER || FROM_EMAIL;
-      await smtpTransporter.sendMail({
-        from,
+      const transporter = nodemailer.createTransport({
+        host: config.host,
+        port: config.port,
+        secure: config.secure || config.port === 465,
+        auth: { user: config.user, pass: config.pass },
+        tls: { rejectUnauthorized: false },
+      });
+
+      await transporter.sendMail({
+        from: config.from || config.user,
         to,
         subject,
         html,
@@ -82,17 +103,17 @@ export async function sendEmail(params: {
     }
   }
 
-  // 2. Try Resend API if API Key is set
-  if (RESEND_API_KEY) {
+  // 2. Try Resend API if API Key is set (env or DB)
+  if (config.resendKey) {
     try {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
+          Authorization: `Bearer ${config.resendKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: FROM_EMAIL,
+          from: config.from,
           to: [to],
           subject,
           html,
@@ -113,7 +134,7 @@ export async function sendEmail(params: {
         const fallbackRes = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
+            Authorization: `Bearer ${config.resendKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
