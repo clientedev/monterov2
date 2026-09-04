@@ -637,9 +637,14 @@ export default function ContactsPage() {
                                             name="productType"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormControl>
-                                                        <ProductSelector value={field.value || ""} onChange={field.onChange} />
-                                                    </FormControl>
+                                                    {/* NOTE: ProductSelector must NOT be wrapped in <FormControl> because
+                                                     * FormControl uses React.cloneElement to inject onChange/aria props
+                                                     * into its direct child, causing infinite re-render loops (React #185)
+                                                     * when the child is a custom multi-value component. */}
+                                                    <ProductSelector
+                                                        value={field.value ?? ""}
+                                                        onChange={(val) => field.onChange(val)}
+                                                    />
                                                     <FormMessage />
                                                 </FormItem>
                                             )}

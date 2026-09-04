@@ -1,7 +1,5 @@
-import { useMemo } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useMemo, useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export const STANDARD_PRODUCTS = [
     "Plano de Saúde",
@@ -15,19 +13,25 @@ export const STANDARD_PRODUCTS = [
     "Previdência",
 ] as const;
 
+type StandardProduct = typeof STANDARD_PRODUCTS[number];
+
 interface ProductSelectorProps {
     value?: string | null;
     onChange: (value: string) => void;
     className?: string;
 }
 
+/**
+ * ProductSelector — fully controlled, zero-state component.
+ * Uses plain <button> elements to avoid Radix Checkbox's internal state
+ * conflicting with parent onClick, which causes React Error #185
+ * (too many re-renders) when nested inside react-hook-form's FormControl.
+ */
 export function ProductSelector({ value = "", onChange, className = "" }: ProductSelectorProps) {
-    // Derive selection state directly from controlled `value` prop
+    // Derive state purely from the controlled `value` prop — no useState/useEffect
     const { selectedStandard, isOutroSelected, outroText } = useMemo(() => {
-        const raw = value || "";
-        if (!raw) {
-            return { selectedStandard: [], isOutroSelected: false, outroText: "" };
-        }
+        const raw = (value || "").trim();
+        if (!raw) return { selectedStandard: [] as string[], isOutroSelected: false, outroText: "" };
 
         const items = raw.split(",").map((s) => s.trim()).filter(Boolean);
         const standard: string[] = [];
@@ -35,7 +39,7 @@ export function ProductSelector({ value = "", onChange, className = "" }: Produc
         let customVal = "";
 
         for (const item of items) {
-            if (STANDARD_PRODUCTS.includes(item as any)) {
+            if ((STANDARD_PRODUCTS as readonly string[]).includes(item)) {
                 standard.push(item);
             } else {
                 hasOutro = true;
@@ -46,90 +50,104 @@ export function ProductSelector({ value = "", onChange, className = "" }: Produc
         return { selectedStandard: standard, isOutroSelected: hasOutro, outroText: customVal };
     }, [value]);
 
-    const emitChange = (standards: string[], outroActive: boolean, customText: string) => {
-        const result: string[] = [...standards];
+    // Build and emit the new comma-separated string
+    const emit = (standards: string[], outroActive: boolean, customText: string) => {
+        const parts: string[] = [...standards];
         if (outroActive) {
-            const formattedOutro = customText.trim() ? `Outro: ${customText.trim()}` : "Outro";
-            result.push(formattedOutro);
+            parts.push(customText.trim() ? `Outro: ${customText.trim()}` : "Outro");
         }
-        onChange(result.join(", "));
+        onChange(parts.join(", "));
     };
 
-    const handleStandardToggle = (prod: string, checked: boolean) => {
-        let updated: string[];
-        if (checked) {
-            updated = [...selectedStandard, prod];
-        } else {
-            updated = selectedStandard.filter((p) => p !== prod);
-        }
-        emitChange(updated, isOutroSelected, outroText);
+    const toggleStandard = (prod: string) => {
+        const isChecked = selectedStandard.includes(prod);
+        const updated = isChecked
+            ? selectedStandard.filter((p) => p !== prod)
+            : [...selectedStandard, prod];
+        emit(updated, isOutroSelected, outroText);
     };
 
-    const handleOutroToggle = (checked: boolean) => {
-        emitChange(selectedStandard, checked, outroText);
+    const toggleOutro = () => {
+        emit(selectedStandard, !isOutroSelected, outroText);
     };
 
-    const handleOutroTextChange = (text: string) => {
-        emitChange(selectedStandard, isOutroSelected, text);
+    const handleOutroText = (e: React.ChangeEvent<HTMLInputElement>) => {
+        emit(selectedStandard, isOutroSelected, e.target.value);
     };
 
     return (
         <div className={`space-y-3 ${className}`}>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-slate-50/70 p-3 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50/70 p-3 rounded-xl border border-slate-200">
                 {STANDARD_PRODUCTS.map((prod) => {
-                    const isChecked = selectedStandard.includes(prod);
+                    const checked = selectedStandard.includes(prod);
                     return (
-                        <div
+                        <button
                             key={prod}
-                            className={`flex items-center space-x-2 p-2.5 rounded-xl transition-all cursor-pointer border select-none ${
-                                isChecked
-                                    ? "bg-primary/10 border-primary/30 text-primary font-bold shadow-sm"
-                                    : "bg-white border-slate-200 hover:bg-slate-100/80 text-slate-700 font-medium"
+                            type="button"
+                            onClick={() => toggleStandard(prod)}
+                            className={`flex items-center gap-2 p-2.5 rounded-xl text-left text-xs font-medium select-none transition-all border ${
+                                checked
+                                    ? "bg-primary/10 border-primary/40 text-primary font-bold shadow-sm"
+                                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                             }`}
-                            onClick={() => handleStandardToggle(prod, !isChecked)}
                         >
-                            <Checkbox
-                                checked={isChecked}
-                                tabIndex={-1}
-                                className="pointer-events-none shrink-0"
-                            />
-                            <span className="text-xs select-none truncate">
-                                {prod}
+                            {/* Custom checkbox indicator */}
+                            <span
+                                className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                    checked
+                                        ? "bg-primary border-primary"
+                                        : "bg-white border-slate-300"
+                                }`}
+                            >
+                                {checked && (
+                                    <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                )}
                             </span>
-                        </div>
+                            <span className="truncate">{prod}</span>
+                        </button>
                     );
                 })}
 
-                {/* Outro Checkbox */}
-                <div
-                    className={`flex items-center space-x-2 p-2.5 rounded-xl transition-all cursor-pointer border select-none ${
+                {/* Outro button */}
+                <button
+                    type="button"
+                    onClick={toggleOutro}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl text-left text-xs font-medium select-none transition-all border ${
                         isOutroSelected
                             ? "bg-amber-50 border-amber-300 text-amber-900 font-bold shadow-sm"
-                            : "bg-white border-slate-200 hover:bg-slate-100/80 text-slate-700 font-medium"
+                            : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                     }`}
-                    onClick={() => handleOutroToggle(!isOutroSelected)}
                 >
-                    <Checkbox
-                        checked={isOutroSelected}
-                        tabIndex={-1}
-                        className="pointer-events-none shrink-0"
-                    />
-                    <span className="text-xs select-none truncate">
-                        Outro...
+                    <span
+                        className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            isOutroSelected
+                                ? "bg-amber-500 border-amber-500"
+                                : "bg-white border-slate-300"
+                        }`}
+                    >
+                        {isOutroSelected && (
+                            <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                        )}
                     </span>
-                </div>
+                    <span className="truncate">Outro...</span>
+                </button>
             </div>
 
-            {/* Custom text input when "Outro" is checked */}
+            {/* Custom text input when "Outro" is selected */}
             {isOutroSelected && (
-                <div className="pl-1 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <Label className="text-xs font-bold text-amber-800 mb-1 block">
+                <div className="pl-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-xs font-bold text-amber-800 mb-1 block">
                         Especifique o produto "Outro":
-                    </Label>
+                    </label>
                     <Input
-                        placeholder="Digite o nome do produto (ex: Seguro Carga, RC Profissional...)"
+                        type="text"
+                        placeholder="Ex: Seguro Carga, RC Profissional..."
                         value={outroText}
-                        onChange={(e) => handleOutroTextChange(e.target.value)}
+                        onChange={handleOutroText}
                         className="rounded-xl h-10 border-amber-300 focus-visible:ring-amber-500 text-sm bg-white"
                     />
                 </div>
@@ -137,4 +155,3 @@ export function ProductSelector({ value = "", onChange, className = "" }: Produc
         </div>
     );
 }
-
