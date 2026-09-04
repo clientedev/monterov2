@@ -233,7 +233,7 @@ export function baseLayout(params: {
   logoUrl?: string;
 }): string {
   const { title, badge, content, buttonUrl, buttonText, logoUrl } = params;
-  const logoSrc = logoUrl || `${getSiteBaseUrl()}/logo_monteiro.png`;
+  const logoSrc = logoUrl || `${getSiteBaseUrl()}/logo_monteiro_transparent.png`;
   const year = new Date().getFullYear();
 
   return `<!DOCTYPE html>
@@ -254,18 +254,12 @@ export function baseLayout(params: {
             <td style="background:linear-gradient(90deg,#08454C 0%,#10B981 100%);height:5px;font-size:0;line-height:0;">&nbsp;</td>
           </tr>
 
-          <!-- LOGO HEADER — clean white background so logo renders perfectly -->
+          <!-- BRAND HEADER WITH LOGO AND TITLE — dark brand color -->
           <tr>
-            <td style="background-color:#FFFFFF;padding:32px 40px 24px;text-align:center;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">
+            <td style="background:linear-gradient(135deg,#0F172A 0%,#08454C 100%);padding:36px 40px 28px;text-align:center;">
               <img src="${logoSrc}" alt="Monteiro Seguros &amp; Benefícios"
                 width="200"
-                style="display:block;margin:0 auto;width:200px;max-width:200px;height:auto;object-fit:contain;" />
-            </td>
-          </tr>
-
-          <!-- TITLE BAND — dark brand color with title and badge -->
-          <tr>
-            <td style="background:linear-gradient(135deg,#0F172A 0%,#08454C 100%);padding:28px 40px 28px;text-align:center;">
+                style="display:block;margin:0 auto 24px;width:200px;max-width:200px;height:auto;object-fit:contain;" />
               <h1 style="margin:0 0 0;color:#FFFFFF;font-size:22px;font-weight:800;line-height:1.35;font-family:Arial,sans-serif;letter-spacing:-0.3px;">${title}</h1>
               ${badge ? `<div style="margin-top:12px;"><span style="background:rgba(16,185,129,0.2);color:#34D399;font-size:11px;font-weight:700;padding:4px 16px;border-radius:20px;border:1px solid rgba(16,185,129,0.4);display:inline-block;letter-spacing:1px;text-transform:uppercase;">${badge}</span></div>` : ""}
             </td>
