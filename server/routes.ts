@@ -10,7 +10,7 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
 import { db } from "./db";
 import { sql, eq, or, and, desc, asc } from "drizzle-orm";
-import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail } from "./email";
+import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact } from "./email";
 import {
   insertInquirySchema,
   insertContactSchema,
@@ -481,6 +481,42 @@ export async function registerRoutes(
     const contact = await storage.getContact(parseInt(req.params.id));
     if (!contact) return res.status(404).json({ message: "Contact not found" });
     res.json(contact);
+  });
+
+  app.post("/api/contacts/:id/send-birthday-email", isTeam, async (req, res) => {
+    try {
+      const contact = await storage.getContact(parseInt(req.params.id));
+      if (!contact) return res.status(404).json({ message: "Contato não encontrado" });
+      if (!contact.email) return res.status(400).json({ message: "Contato não possui e-mail cadastrado" });
+
+      let age: number | null = null;
+      if (contact.anniversaryDate) {
+        const parts = contact.anniversaryDate.split("/");
+        if (parts.length === 3) {
+          const year = parseInt(parts[2]);
+          if (year) age = new Date().getFullYear() - year;
+        }
+      }
+
+      const result = await sendBirthdayEmailToContact(contact.email, contact.name, age);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error || "Falha ao enviar e-mail comemorativo" });
+      }
+
+      // Record an interaction
+      const userId = req.isAuthenticated() ? (req.user as any).id : 1;
+      await storage.createInteraction({
+        contactId: contact.id,
+        userId,
+        type: "E-mail Aniversário",
+        description: `E-mail comemorativo de aniversário enviado com sucesso para ${contact.email}.`,
+        date: new Date(),
+      }).catch(() => {});
+
+      res.json({ success: true, message: `E-mail comemorativo enviado com sucesso para ${contact.name}!` });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Erro interno ao disparar e-mail" });
+    }
   });
 
   app.post("/api/contacts", isTeam, async (req, res) => {

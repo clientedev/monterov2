@@ -288,3 +288,45 @@ export function buildTaskAssignedEmail(params: {
     html: baseLayout("Nova Tarefa Atribuída", content, crmLink),
   };
 }
+
+/** Build commemorative birthday email */
+export function buildBirthdayEmail(params: {
+  recipientName: string;
+  age?: number | null;
+}): { subject: string; html: string } {
+  const { recipientName, age } = params;
+  const crmLink = "https://monteiroseguros.com.br";
+
+  const content = `
+    <div style="text-align: center; padding: 10px 0;">
+      <div style="font-size: 48px; margin-bottom: 12px;">🎉 🎂 🎈</div>
+      <h2 style="color: #08454c; font-size: 24px; margin-bottom: 16px; font-weight: 800;">
+        Feliz Aniversário, ${recipientName}!
+      </h2>
+      <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+        Em nome de toda a equipe da <strong>Monteiro Seguros e Benefícios</strong>, desejamos a você um dia repleto de alegrias, saúde, paz e muitas realizações! ${age ? `Parabéns pelos seus <strong>${age} anos</strong>!` : ""}
+      </p>
+      <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+        Agradecemos imensamente por sua confiança em nosso trabalho. É uma honra tê-lo(a) conosco!
+      </p>
+      <div style="background: #08454c10; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+        <p style="margin: 0; color: #08454c; font-weight: 700; font-size: 14px;">
+          🎁 Monteiro Seguros &bull; Protegendo o que mais importa para você.
+        </p>
+      </div>
+    </div>`;
+
+  return {
+    subject: `🎂 Feliz Aniversário, ${recipientName}! ✨ Monteiro Seguros`,
+    html: baseLayout(`Feliz Aniversário, ${recipientName}!`, content, crmLink),
+  };
+}
+
+/** Send birthday email directly to a contact */
+export async function sendBirthdayEmailToContact(email: string, name: string, age?: number | null): Promise<{ success: boolean; error?: string }> {
+  const { subject, html } = buildBirthdayEmail({ recipientName: name, age });
+  const res = await sendViaResend(email, subject, html);
+  await logNotification(null, "birthday_email", "contact", 0, res.success ? "sent" : "failed", res.error);
+  return res;
+}
+

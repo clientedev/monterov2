@@ -1,7 +1,34 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, Lead, Interaction, Task, User } from "@shared/schema";
-import { Users, TrendingUp, DollarSign, ArrowUpRight, BarChart, CheckSquare, MessageSquare, Target, PieChart as PieChartIcon, Activity } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+    Users,
+    TrendingUp,
+    DollarSign,
+    BarChart,
+    CheckSquare,
+    MessageSquare,
+    Target,
+    PieChart as PieChartIcon,
+    Activity,
+    Cake,
+    Mail,
+    Sparkles,
+    Loader2,
+    MessageCircle,
+    Gift
+} from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     BarChart as ReBarChart,
     Bar,
@@ -17,7 +44,23 @@ import {
     Area
 } from 'recharts';
 
+function calcAge(dateStr: string | null | undefined): number | null {
+    if (!dateStr) return null;
+    const parts = dateStr.split("/");
+    if (parts.length !== 3) return null;
+    const [day, month, year] = parts.map(Number);
+    if (!year || year < 1900 || year > new Date().getFullYear()) return null;
+    const today = new Date();
+    let age = today.getFullYear() - year;
+    if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
+    return age >= 0 ? age : null;
+}
+
 export default function AdminDashboard() {
+    const { toast } = useToast();
+    const [birthdayModalOpen, setBirthdayModalOpen] = useState(false);
+    const [sendingContactId, setSendingContactId] = useState<number | null>(null);
+
     const { data: contacts } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
     const { data: leads } = useQuery<Lead[]>({ queryKey: ["/api/leads"] });
     const { data: interactionHistory } = useQuery<Interaction[]>({ queryKey: ["/api/interactions"] });
@@ -37,6 +80,62 @@ export default function AdminDashboard() {
         if (!i.date) return false;
         return new Date(i.date).getMonth() === currentMonth;
     }).length || 0;
+
+    // ── Birthdays logic ────────────────────────────────────────────────────────
+    const today = new Date();
+    const currentMonthNum = today.getMonth() + 1; // 1-12
+    const currentDayNum = today.getDate(); // 1-31
+    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const currentMonthName = monthNames[today.getMonth()];
+
+    const monthlyBirthdayContacts = useMemo(() => {
+        if (!contacts) return [];
+        return contacts.filter(c => {
+            if (!c.anniversaryDate) return false;
+            const parts = c.anniversaryDate.split("/");
+            if (parts.length < 2) return false;
+            const m = parseInt(parts[1], 10);
+            return m === currentMonthNum;
+        }).sort((a, b) => {
+            const dayA = parseInt(a.anniversaryDate?.split("/")[0] || "0", 10);
+            const dayB = parseInt(b.anniversaryDate?.split("/")[0] || "0", 10);
+            return dayA - dayB;
+        });
+    }, [contacts, currentMonthNum]);
+
+    const todayBirthdayContacts = useMemo(() => {
+        return monthlyBirthdayContacts.filter(c => {
+            const parts = c.anniversaryDate?.split("/");
+            if (!parts || parts.length < 2) return false;
+            const d = parseInt(parts[0], 10);
+            return d === currentDayNum;
+        });
+    }, [monthlyBirthdayContacts, currentDayNum]);
+
+    const sendEmailMutation = useMutation({
+        mutationFn: async (contactId: number) => {
+            setSendingContactId(contactId);
+            const res = await apiRequest("POST", `/api/contacts/${contactId}/send-birthday-email`);
+            return await res.json();
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ["/api/interactions"] });
+            toast({
+                title: "🎂 E-mail Comemorativo Enviado!",
+                description: data.message || "E-mail de feliz aniversário disparado com sucesso.",
+            });
+        },
+        onError: (err: any) => {
+            toast({
+                title: "Falha ao enviar e-mail",
+                description: err.message || "Verifique se o serviço de e-mail está configurado.",
+                variant: "destructive",
+            });
+        },
+        onSettled: () => {
+            setSendingContactId(null);
+        }
+    });
 
     // Chart Data 1: Prospecting by User
     const prospectingByUser = users?.map(u => ({
@@ -77,6 +176,52 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Aniversariantes Banner Card ───────────────────────────────────── */}
+            <Card
+                className={`premium-card border-2 cursor-pointer transition-all hover:shadow-xl ${
+                    todayBirthdayContacts.length > 0
+                        ? "border-rose-300 bg-gradient-to-r from-rose-50/80 via-amber-50/50 to-pink-50/80 shadow-rose-100"
+                        : "border-amber-200 bg-gradient-to-r from-amber-50/60 via-orange-50/30 to-amber-50/60"
+                }`}
+                onClick={() => setBirthdayModalOpen(true)}
+            >
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                    <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        <Cake className="h-5 w-5 text-rose-500 animate-bounce" />
+                        Aniversariantes de {currentMonthName}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                        {todayBirthdayContacts.length > 0 && (
+                            <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-rose-600 text-white shadow-sm flex items-center gap-1.5 animate-pulse">
+                                <Sparkles className="h-3.5 w-3.5" /> {todayBirthdayContacts.length} {todayBirthdayContacts.length === 1 ? 'ANIVERSARIANTE HOJE!' : 'ANIVERSARIANTES HOJE!'}
+                            </span>
+                        )}
+                        <Badge variant="outline" className="rounded-full bg-white/90 text-slate-800 font-bold px-3 py-1 border-slate-300 shadow-sm">
+                            🎂 {monthlyBirthdayContacts.length} neste mês
+                        </Badge>
+                    </div>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
+                    <div>
+                        <div className="text-3xl font-display font-bold text-slate-900 flex items-center gap-2">
+                            {monthlyBirthdayContacts.length} {monthlyBirthdayContacts.length === 1 ? 'cliente faz aniversário' : 'clientes fazem aniversário'} em {currentMonthName}
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1 font-medium flex items-center gap-1.5">
+                            {todayBirthdayContacts.length > 0 ? (
+                                <span className="text-rose-600 font-bold flex items-center gap-1">
+                                    <Gift className="h-4 w-4" /> Clique para ver quem são e enviar o e-mail comemorativo de hoje!
+                                </span>
+                            ) : (
+                                <span>Clique para visualizar a lista completa do mês e preparar as felicitações.</span>
+                            )}
+                        </p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="font-bold text-rose-600 hover:bg-rose-100 rounded-xl gap-1 shrink-0 bg-white/80 border border-rose-200 shadow-sm">
+                        Ver Aniversariantes →
+                    </Button>
+                </CardContent>
+            </Card>
 
             <div className="grid gap-6 md:grid-cols-3">
                 {/* Contacts Card */}
@@ -278,6 +423,128 @@ export default function AdminDashboard() {
                     </Card>
                 </div>
             </div>
+
+            {/* ── Dialog Lista de Aniversariantes do Mês ────────────────────────── */}
+            <Dialog open={birthdayModalOpen} onOpenChange={setBirthdayModalOpen}>
+                <DialogContent className="sm:max-w-[700px] rounded-3xl border-none shadow-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 bg-gradient-to-r from-rose-500 via-pink-600 to-rose-600 text-white shrink-0">
+                        <DialogTitle className="text-2xl font-display font-bold flex items-center gap-2.5 text-white">
+                            <Cake className="h-7 w-7 text-amber-300" />
+                            Aniversariantes do Mês de {currentMonthName}
+                        </DialogTitle>
+                        <p className="text-rose-100 text-sm font-medium mt-1">
+                            {monthlyBirthdayContacts.length} {monthlyBirthdayContacts.length === 1 ? 'cliente comemora' : 'clientes comemoram'} aniversário neste mês.
+                        </p>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50/50">
+                        {monthlyBirthdayContacts.length === 0 ? (
+                            <div className="text-center py-12 text-slate-400 space-y-2">
+                                <Cake className="h-12 w-12 mx-auto opacity-30 text-rose-400" />
+                                <p className="font-bold text-slate-600">Nenhum aniversariante cadastrado para {currentMonthName}.</p>
+                                <p className="text-xs">Certifique-se de preencher a data comemorativa nos cadastros dos clientes.</p>
+                            </div>
+                        ) : (
+                            monthlyBirthdayContacts.map((contact) => {
+                                const parts = contact.anniversaryDate?.split("/");
+                                const dayStr = parts?.[0] || "";
+                                const isToday = parseInt(dayStr, 10) === currentDayNum;
+                                const age = calcAge(contact.anniversaryDate);
+                                const cleanPhone = contact.phone?.replace(/\D/g, "");
+                                const waMsg = encodeURIComponent(
+                                    `Olá, ${contact.name}! 🎉 Desejamos a você um Feliz Aniversário repleto de alegrias, saúde e sucesso! É uma honra tê-lo(a) como cliente da Monteiro Seguros e Benefícios! 🎂🎁`
+                                );
+
+                                return (
+                                    <div
+                                        key={contact.id}
+                                        className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                                            isToday
+                                                ? "bg-gradient-to-r from-rose-50 via-pink-50 to-amber-50 border-rose-300 shadow-md ring-2 ring-rose-400/30"
+                                                : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3.5 min-w-0">
+                                            <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm ${
+                                                isToday ? "bg-gradient-to-tr from-rose-500 to-amber-400" : "bg-primary/80"
+                                            }`}>
+                                                {contact.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0 space-y-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold text-slate-900 text-base truncate">{contact.name}</span>
+                                                    {isToday && (
+                                                        <Badge className="bg-rose-500 text-white font-black text-[10px] uppercase px-2 py-0.5 rounded-full animate-pulse shadow-sm">
+                                                            🥳 É HOJE!
+                                                        </Badge>
+                                                    )}
+                                                    {contact.productType && (
+                                                        <Badge variant="outline" className="bg-slate-100 text-slate-700 font-bold text-[10px] border-slate-200">
+                                                            {contact.productType.split(",")[0]}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                                                    <span className="flex items-center gap-1 font-bold text-rose-600">
+                                                        📅 Dia {dayStr} de {currentMonthName}
+                                                    </span>
+                                                    {age !== null && (
+                                                        <span className="text-slate-600 font-bold">🎂 {age} anos</span>
+                                                    )}
+                                                    {contact.email && (
+                                                        <span className="hidden md:inline text-slate-400 truncate max-w-[160px]">{contact.email}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                                            {contact.phone && cleanPhone && (
+                                                <a
+                                                    href={`https://wa.me/55${cleanPhone}?text=${waMsg}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="rounded-xl font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 text-xs h-9 px-3 gap-1.5 shadow-sm"
+                                                        title="Enviar parabéns pelo WhatsApp"
+                                                    >
+                                                        <MessageCircle className="h-4 w-4 text-emerald-600" />
+                                                        WhatsApp
+                                                    </Button>
+                                                </a>
+                                            )}
+
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                disabled={!contact.email || (sendEmailMutation.isPending && sendingContactId === contact.id)}
+                                                onClick={() => sendEmailMutation.mutate(contact.id)}
+                                                className={`rounded-xl font-bold text-xs h-9 px-3.5 gap-1.5 shadow-sm ${
+                                                    isToday
+                                                        ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200"
+                                                        : "bg-primary hover:bg-primary/90 text-white"
+                                                }`}
+                                                title={contact.email ? "Disparar e-mail de feliz aniversário" : "Contato sem e-mail"}
+                                            >
+                                                {sendEmailMutation.isPending && sendingContactId === contact.id ? (
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                ) : (
+                                                    <Mail className="h-3.5 w-3.5" />
+                                                )}
+                                                Disparar E-mail
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

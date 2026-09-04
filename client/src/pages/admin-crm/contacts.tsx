@@ -324,14 +324,6 @@ export default function ContactsPage() {
 
     const clientType = form.watch("type");
 
-    if (isLoading) {
-        return (
-            <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
-    }
-
     // ── Filtered contacts ──────────────────────────────────────────────────────
     const filteredContacts = useMemo(() => {
         const q = search.toLowerCase().trim();
@@ -363,14 +355,24 @@ export default function ContactsPage() {
         });
     }, [contacts, search, filterType, filterStatus, filterProduct, productsByContact]);
 
-    // Build options for SearchableSelect (individual contacts only, for responsível)
-    const individualContactOptions = (contacts ?? [])
-        .filter((c) => c.type === "individual")
-        .map((c) => ({
-            value: String(c.id),
-            label: c.name,
-            sublabel: c.phone ?? undefined,
-        }));
+    // Build options for SearchableSelect (individual contacts only, for responsável)
+    const individualContactOptions = useMemo(() => {
+        return (contacts ?? [])
+            .filter((c) => c.type === "individual")
+            .map((c) => ({
+                value: String(c.id),
+                label: c.name,
+                sublabel: c.phone ?? undefined,
+            }));
+    }, [contacts]);
+
+    if (isLoading) {
+        return (
+            <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -766,7 +768,7 @@ export default function ContactsPage() {
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="py-4 font-bold text-gray-600">Identificação</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Status</TableHead>
-                            <TableHead className="py-4 font-bold text-gray-600">Produtos / Tipo</TableHead>
+                            <TableHead className="py-4 font-bold text-gray-600">Produto</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Responsável</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Email</TableHead>
                             <TableHead className="py-4 font-bold text-gray-600">Telefone</TableHead>
@@ -904,7 +906,20 @@ export default function ContactsPage() {
                                                     size="sm"
                                                     className="font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg p-2"
                                                     onClick={() => {
-                                                        form.reset(contact);
+                                                        form.reset({
+                                                            type: contact.type || "individual",
+                                                            name: contact.name || "",
+                                                            email: contact.email || "",
+                                                            phone: contact.phone || "",
+                                                            document: contact.document || "",
+                                                            address: contact.address || "",
+                                                            responsibleName: contact.responsibleName || "",
+                                                            responsibleId: contact.responsibleId ?? undefined,
+                                                            anniversaryDate: contact.anniversaryDate || "",
+                                                            maritalStatus: contact.maritalStatus || "",
+                                                            productType: contact.productType || "",
+                                                            status: (contact.status as any) || "Ativo",
+                                                        });
                                                         setIsEditing(contact.id);
                                                         setOpen(true);
                                                     }}
