@@ -1022,13 +1022,29 @@ export async function registerRoutes(
       const host = req.get("host") || "localhost:5000";
       const setupUrl = `${protocol}://${host}/criar-senha?token=${token}`;
 
-      await sendClientWelcomeEmail({
+      const emailRes = await sendClientWelcomeEmail({
         clientName: contact.name,
         email: contact.email,
         setupUrl,
       });
 
-      res.json({ message: "Conta gerada com sucesso! E-mail enviado ao cliente.", user: clientUser });
+      if (emailRes.success) {
+        res.json({
+          message: `Conta gerada com sucesso! E-mail de boas-vindas enviado para ${contact.email}.`,
+          user: clientUser,
+          setupUrl,
+          emailSent: true,
+        });
+      } else {
+        console.warn(`[generate-account] E-mail não pôde ser enviado para ${contact.email}: ${emailRes.error}`);
+        res.json({
+          message: `Conta gerada com sucesso! (${emailRes.error || "Credenciais de e-mail não configuradas"}). Link de primeiro acesso para o cliente: ${setupUrl}`,
+          user: clientUser,
+          setupUrl,
+          emailSent: false,
+          emailError: emailRes.error,
+        });
+      }
     } catch (err: any) {
       console.error("Erro ao gerar conta do cliente:", err);
       res.status(500).json({ message: err.message || "Erro ao gerar conta do cliente" });
