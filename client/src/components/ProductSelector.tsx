@@ -81,47 +81,42 @@ export function ProductSelector({ value = "", onChange, className = "" }: Produc
                     return (
                         <div
                             key={prod}
-                            className={`flex items-center space-x-2 p-2 rounded-lg transition-colors cursor-pointer border ${
+                            className={`flex items-center space-x-2 p-2.5 rounded-xl transition-all cursor-pointer border select-none ${
                                 isChecked
-                                    ? "bg-primary/10 border-primary/30 text-primary font-bold"
-                                    : "bg-white border-slate-200 hover:bg-slate-100 text-slate-700 font-medium"
+                                    ? "bg-primary/10 border-primary/30 text-primary font-bold shadow-sm"
+                                    : "bg-white border-slate-200 hover:bg-slate-100/80 text-slate-700 font-medium"
                             }`}
                             onClick={() => handleStandardToggle(prod, !isChecked)}
                         >
                             <Checkbox
-                                id={`prod-${prod}`}
                                 checked={isChecked}
-                                onCheckedChange={(c) => handleStandardToggle(prod, !!c)}
-                                onClick={(e) => e.stopPropagation()}
+                                tabIndex={-1}
+                                className="pointer-events-none shrink-0"
                             />
-                            <Label
-                                htmlFor={`prod-${prod}`}
-                                className="text-xs cursor-pointer select-none truncate"
-                            >
+                            <span className="text-xs select-none truncate">
                                 {prod}
-                            </Label>
+                            </span>
                         </div>
                     );
                 })}
 
                 {/* Outro Checkbox */}
                 <div
-                    className={`flex items-center space-x-2 p-2 rounded-lg transition-colors cursor-pointer border ${
+                    className={`flex items-center space-x-2 p-2.5 rounded-xl transition-all cursor-pointer border select-none ${
                         isOutroSelected
-                            ? "bg-amber-50 border-amber-300 text-amber-900 font-bold"
-                            : "bg-white border-slate-200 hover:bg-slate-100 text-slate-700 font-medium"
+                            ? "bg-amber-50 border-amber-300 text-amber-900 font-bold shadow-sm"
+                            : "bg-white border-slate-200 hover:bg-slate-100/80 text-slate-700 font-medium"
                     }`}
                     onClick={() => handleOutroToggle(!isOutroSelected)}
                 >
                     <Checkbox
-                        id="prod-outro"
                         checked={isOutroSelected}
-                        onCheckedChange={(c) => handleOutroToggle(!!c)}
-                        onClick={(e) => e.stopPropagation()}
+                        tabIndex={-1}
+                        className="pointer-events-none shrink-0"
                     />
-                    <Label htmlFor="prod-outro" className="text-xs cursor-pointer select-none">
+                    <span className="text-xs select-none truncate">
                         Outro...
-                    </Label>
+                    </span>
                 </div>
             </div>
 
@@ -142,3 +137,4 @@ export function ProductSelector({ value = "", onChange, className = "" }: Produc
         </div>
     );
 }
+
