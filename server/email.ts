@@ -218,14 +218,22 @@ export async function sendCrmNotification(payload: EmailNotificationPayload): Pr
  * Navy (#0F172A), Teal (#08454C), Emerald (#059669 / #10B981)
  * ============================================================ */
 
+function getSiteBaseUrl(): string {
+  if (process.env.CRM_URL) return process.env.CRM_URL.replace(/\/admin\/?$/, "");
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  return "https://monteiroseguros.com.br";
+}
+
 export function baseLayout(params: {
   title: string;
   badge?: string;
   content: string;
   buttonUrl?: string;
   buttonText?: string;
+  logoUrl?: string;
 }): string {
-  const { title, badge, content, buttonUrl, buttonText } = params;
+  const { title, badge, content, buttonUrl, buttonText, logoUrl } = params;
+  const logoSrc = logoUrl || `${getSiteBaseUrl()}/logo_monteiro.png`;
 
   return `
 <!DOCTYPE html>
@@ -241,18 +249,16 @@ export function baseLayout(params: {
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background-color: #FFFFFF; border-radius: 24px; overflow: hidden; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); border: 1px solid #E2E8F0;">
           
-          <!-- BRAND HEADER WITH LOGO -->
+          <!-- BRAND HEADER WITH OFFICIAL LOGO -->
           <tr>
             <td style="background: linear-gradient(135deg, #0F172A 0%, #08454C 100%); padding: 36px 40px 32px; text-align: center; border-bottom: 4px solid #10B981;">
               <table align="center" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
                 <tr>
                   <td align="center">
-                    <div style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 50px; padding: 8px 24px; display: inline-block; margin-bottom: 12px;">
-                      <span style="color: #FFFFFF; font-size: 16px; font-weight: 800; font-family: Arial, sans-serif; text-transform: uppercase; letter-spacing: 1px;">
-                        🛡️ MONTEIRO <span style="color: #10B981;">SEGUROS</span>
-                      </span>
+                    <div style="background-color: #FFFFFF; padding: 12px 28px; border-radius: 16px; display: inline-block; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); margin-bottom: 12px; border: 1px solid #E2E8F0;">
+                      <img src="${logoSrc}" alt="Monteiro Seguros & Benefícios" style="max-height: 55px; max-width: 240px; width: auto; height: auto; display: block; margin: 0 auto; object-fit: contain;" />
                     </div>
-                    <div style="color: #94A3B8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; font-family: Arial, sans-serif;">
+                    <div style="color: #94A3B8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; font-family: Arial, sans-serif; margin-top: 4px;">
                       SEGUROS & BENEFÍCIOS
                     </div>
                   </td>
