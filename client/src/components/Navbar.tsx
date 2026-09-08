@@ -49,7 +49,7 @@ export function Navbar() {
       }}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-        <Link href="/">
+        <Link href="/" asChild>
           <a className="flex items-center group cursor-pointer">
             <div className="relative h-12 md:h-16 flex items-center overflow-visible translate-y-[2px] md:translate-y-[3px]">
               {settings?.logoBase64 ? (
@@ -90,7 +90,7 @@ export function Navbar() {
           {navLinks.map((link) => {
             const isActive = location === link.href;
             return (
-              <Link key={link.name} href={link.href}>
+              <Link key={link.name} href={link.href} asChild>
                 <a
                   className={cn(
                     "text-sm font-semibold tracking-wide transition-all duration-300 relative py-1 cursor-pointer",
@@ -108,7 +108,7 @@ export function Navbar() {
           <div className="flex items-center gap-4">
             {user ? (
               <div className="flex items-center gap-4">
-                <Link href="/profile">
+                <Link href="/profile" asChild>
                   <a className={cn(
                     "flex items-center gap-2 px-3 py-1.5 rounded-2xl transition-all duration-300 group/avatar border border-white/10 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white"
                   )} title="Meu Perfil">
@@ -121,7 +121,7 @@ export function Navbar() {
                     )}
                   </a>
                 </Link>
-                <Link href={user.role === "client" ? "/dashboard" : "/admin"}>
+                <Link href={user.role === "client" ? "/dashboard" : "/admin"} asChild>
                   <a className={cn(
                     "text-sm font-bold flex items-center gap-2 px-4 py-2.5 rounded-2xl transition-all duration-300 shadow-sm bg-[#c65f54] text-white hover:bg-[#c65f54]/90"
                   )}>
@@ -144,14 +144,14 @@ export function Navbar() {
               </div>
             ) : (
               <>
-                <Link href="/login">
+                <Link href="/login" asChild>
                   <a className={cn(
                     "text-sm font-bold cursor-pointer transition-colors duration-300 text-white hover:text-[#c65f54]"
                   )}>
                     Entrar
                   </a>
                 </Link>
-                <Link href="/contact">
+                <Link href="/contact" asChild>
                   <button className={cn(
                     "px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-500 transform hover:-translate-y-0.5 shadow-md cursor-pointer",
                     showScrolledNavbar
@@ -195,7 +195,7 @@ export function Navbar() {
         </button>
 
         {navLinks.map((link) => (
-          <Link key={link.name} href={link.href}>
+          <Link key={link.name} href={link.href} asChild>
             <a
               onClick={handleLinkClick}
               className={cn(
@@ -210,7 +210,7 @@ export function Navbar() {
 
         {user ? (
           <>
-            <Link href={user.role === "client" ? "/dashboard" : "/admin"}>
+            <Link href={user.role === "client" ? "/dashboard" : "/admin"} asChild>
               <a
                 onClick={handleLinkClick}
                 className="text-2xl font-display font-bold text-[#08454c] hover:text-[#c65f54] transition-colors cursor-pointer"
@@ -230,7 +230,7 @@ export function Navbar() {
           </>
         ) : (
           <div className="flex flex-col gap-4 w-full px-12 mt-6">
-            <Link href="/login">
+            <Link href="/login" asChild>
               <a
                 onClick={handleLinkClick}
                 className="text-center py-3.5 rounded-2xl font-bold border border-[#809ba6]/30 text-[#163b52] bg-white hover:bg-slate-50 transition-colors cursor-pointer"
@@ -238,7 +238,7 @@ export function Navbar() {
                 Entrar
               </a>
             </Link>
-            <Link href="/contact">
+            <Link href="/contact" asChild>
               <button
                 onClick={handleLinkClick}
                 className="text-center py-4 rounded-2xl font-bold bg-[#c65f54] text-white hover:bg-[#c65f54]/95 transition-all shadow-md shadow-[#c65f54]/10 cursor-pointer"

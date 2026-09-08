@@ -17,7 +17,7 @@ npm run dev
 
 The app starts on port 5000. The `npm run dev` script uses `node_modules/.bin/tsx server/index.ts` (tsx must be referenced via node_modules path, not global).
 
-Database schema is auto-synced on startup. This also applies the latest Drizzle schema before the production server starts (Railway uses `npm run start`). To push schema changes manually:
+Database schema is auto-synced on startup. This applies the latest Drizzle schema before the production server starts (`npm start` runs `npm run db:sync` first). To push schema changes manually:
 ```bash
 npm run db:push
 ```
@@ -90,3 +90,26 @@ Key tables:
 - `DATABASE_URL` — PostgreSQL connection string (provided by Replit)
 - `SESSION_SECRET` — Express session secret (set in Replit Secrets)
 - `PORT` — Server port (defaults to 5000)
+
+## Railway deployment
+
+The repository includes a committed `package-lock.json`, so Railway should install with its normal install phase and must not install dependencies again during the build.
+
+Configure the Railway service as follows:
+
+1. In **Settings → Build**, set **Build Command** to:
+   ```bash
+   npm run build
+   ```
+   Do not use `npm install && npm run build`.
+2. Set the **Start Command** to:
+   ```bash
+   npm start
+   ```
+3. Add these Railway variables before deploying:
+   - `DATABASE_URL` — the PostgreSQL connection URL for the Railway database
+   - `SESSION_SECRET` — a long random session secret
+   - `NODE_ENV=production`
+4. Deploy again from **Deploy**.
+
+`npm run build` only compiles the client and server, so it does not require a database connection. `npm start` runs `npm run db:sync` before starting the compiled server; this synchronizes the Drizzle schema using `DATABASE_URL` on each deployment/startup.

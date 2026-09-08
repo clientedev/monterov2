@@ -1,32 +1,36 @@
 # Setup Instructions
 
-To run this project locally, you need to have Node.js installed. It appears that Node.js is currently not installed or not available in your system's PATH.
+This project uses Node.js 20 and npm 10.
 
-## 1. Install Node.js
+## Run locally
 
-1.  Visit the official Node.js website: [https://nodejs.org/](https://nodejs.org/)
-2.  Download the **LTS (Long Term Support)** version recommended for most users.
-3.  Run the installer and follow the on-screen instructions.
-    *   **Important:** Ensure that the option to **"Add to PATH"** is selected during installation.
-
-## 2. Verify Installation
-
-After installation, close your current terminal/VS Code and open a new one to refresh the environment variables. Then run these commands to verify:
-
-```bash
-node -v
-npm -v
-```
-
-If these commands return version numbers, you are ready to proceed.
-
-## 3. Run the Project
-
-Once Node.js is installed, you can start the project with:
+Install dependencies and start the development server:
 
 ```bash
 npm install
 npm run dev
 ```
 
-This will install the dependencies and start the local development server.
+The app starts on port 5000. For local database-backed functionality, set
+`DATABASE_URL` and `SESSION_SECRET` before running it.
+
+## Build and production start
+
+```bash
+npm run build
+npm start
+```
+
+`npm start` synchronizes the PostgreSQL schema with Drizzle before starting
+the compiled server. The database URL must be available when this command runs.
+
+## Railway commands
+
+Use these service settings:
+
+- **Build Command:** `npm run build`
+- **Start Command:** `npm start`
+
+Railway installs dependencies before the build, so do not put `npm install` in
+the Build Command. Configure `DATABASE_URL`, `SESSION_SECRET`, and
+`NODE_ENV=production` as Railway variables.
