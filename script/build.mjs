@@ -1,9 +1,9 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import { mkdir, readFile, rm, cp } from "fs/promises";
 
-// server deps to bundle to reduce openat(2) syscalls
-// which helps cold start times
+// Server dependencies are bundled to reduce openat(2) syscalls and improve
+// cold-start times. These packages remain external in the production bundle.
 const allowlist = [
   "@google/generative-ai",
   "axios",
@@ -28,7 +28,6 @@ async function buildAll() {
   await viteBuild();
 
   console.log("building server...");
-  const { mkdir, cp } = await import("fs/promises");
   await mkdir("dist/migrations", { recursive: true });
   await cp("migrations", "dist/migrations", { recursive: true });
 
@@ -48,6 +47,7 @@ async function buildAll() {
     define: {
       "process.env.NODE_ENV": '"production"',
     },
+    external: externals,
     minify: false,
     logLevel: "info",
   });
@@ -55,9 +55,11 @@ async function buildAll() {
 }
 
 console.log("Starting build process...");
-buildAll().then(() => {
-  console.log("All builds completed successfully!");
-}).catch((err) => {
-  console.error("Build failed:", err);
-  process.exit(1);
-});
+buildAll()
+  .then(() => {
+    console.log("All builds completed successfully!");
+  })
+  .catch((err) => {
+    console.error("Build failed:", err);
+    process.exit(1);
+  });
