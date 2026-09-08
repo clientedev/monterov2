@@ -100,10 +100,22 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
     const matchedCliente = useMemo(() => {
         if (!contact || !clientes) return null;
         return clientes.find(c => 
+            (c.contactId && c.contactId === contact.id) ||
             (c.cpfCnpj && contact.document && c.cpfCnpj.replace(/\D/g, "") === contact.document.replace(/\D/g, "")) ||
-            (c.nome && contact.name && c.nome.toLowerCase().trim() === contact.name.toLowerCase().trim())
+            (c.nome && contact.name && c.nome.toLowerCase().trim() === contact.name.toLowerCase().trim() &&
+                c.telefone && contact.phone && c.telefone.replace(/\D/g, "") === contact.phone.replace(/\D/g, ""))
         );
     }, [contact, clientes]);
+
+    const { data: allContacts } = useQuery<Contact[]>({
+        queryKey: ["/api/contacts"],
+        enabled: open,
+    });
+
+    const referrals = useMemo(
+        () => (allContacts || []).filter(candidate => candidate.referredByContactId === contact?.id),
+        [allContacts, contact?.id],
+    );
 
     const { data: apolices, isLoading: apolicesLoading } = useQuery<any[]>({
         queryKey: [`/api/clientes/${matchedCliente?.id}/apolices`],
@@ -117,11 +129,6 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
 
     const { data: usersList } = useQuery<any[]>({
         queryKey: ["/api/users"],
-    });
-
-    const { data: allContacts } = useQuery<Contact[]>({
-        queryKey: ["/api/contacts"],
-        enabled: open,
     });
 
     const responsibleOptions = useMemo(() => {
@@ -254,6 +261,12 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
         anniversaryDate: string;
         maritalStatus: string;
         productType: string;
+        insurers: string;
+        contactOrigin: string;
+        isReferral: boolean;
+        referredByContactId: number | null;
+        internalResponsibleId: number | null;
+        notes: string;
         responsibleName: string;
         responsibleId: number | null;
         status: string;
@@ -267,6 +280,12 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
         anniversaryDate: "",
         maritalStatus: "",
         productType: "",
+        insurers: "",
+        contactOrigin: "",
+        isReferral: false,
+        referredByContactId: null,
+        internalResponsibleId: null,
+        notes: "",
         responsibleName: "",
         responsibleId: null,
         status: "Ativo",
@@ -284,6 +303,12 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                 anniversaryDate: contact.anniversaryDate || "",
                 maritalStatus: contact.maritalStatus || "",
                 productType: contact.productType || "",
+                insurers: contact.insurers || "",
+                contactOrigin: contact.contactOrigin || "",
+                isReferral: contact.isReferral || false,
+                referredByContactId: contact.referredByContactId || null,
+                internalResponsibleId: contact.internalResponsibleId || null,
+                notes: contact.notes || "",
                 responsibleName: contact.responsibleName || "",
                 responsibleId: contact.responsibleId || null,
                 status: contact.status || "Ativo",
@@ -306,6 +331,14 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                     endereco: data.address,
                     dataNascimento: data.anniversaryDate,
                     nomeRepresentante: data.responsibleName,
+                    anniversaryDate: data.anniversaryDate,
+                    productType: data.productType,
+                    insurers: data.insurers,
+                    contactOrigin: data.contactOrigin,
+                    isReferral: data.isReferral,
+                    referredByContactId: data.referredByContactId,
+                    internalResponsibleId: data.internalResponsibleId,
+                    observacoes: data.notes,
                 }).catch(() => {});
             }
 
@@ -888,8 +921,14 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                             <div className="space-y-1.5">
                                                 <Label className="text-xs font-bold text-slate-700">Data Comemorativa (DD/MM/AAAA)</Label>
                                                 <Input
-                                                    value={formData.anniversaryDate}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, anniversaryDate: e.target.value }))}
+                                                    type="date"
+                                                    value={formData.anniversaryDate?.match(/^\d{2}\/\d{2}\/\d{4}$/)
+                                                        ? formData.anniversaryDate.split("/").reverse().join("-")
+                                                        : formData.anniversaryDate}
+                                                    onChange={(e) => {
+                                                        const [year, month, day] = e.target.value.split("-");
+                                                        setFormData(prev => ({ ...prev, anniversaryDate: year && month && day ? `${day}/${month}/${year}` : "" }));
+                                                    }}
                                                     placeholder="15/08/1990"
                                                     className="rounded-xl h-11 bg-white"
                                                 />
@@ -973,6 +1012,66 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                 <ProductSelector
                                                     value={formData.productType}
                                                     onChange={(val) => setFormData(prev => ({ ...prev, productType: val }))}
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-bold text-slate-700">Seguradoras</Label>
+                                                <Input
+                                                    value={formData.insurers}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, insurers: e.target.value }))}
+                                                    placeholder="Ex: Porto, SulAmérica"
+                                                    className="rounded-xl h-10 bg-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-bold text-slate-700">Origem do contato</Label>
+                                                <Input
+                                                    value={formData.contactOrigin}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, contactOrigin: e.target.value }))}
+                                                    placeholder="Ex: indicação, site, evento"
+                                                    className="rounded-xl h-10 bg-white"
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2 flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 accent-primary"
+                                                    checked={formData.isReferral}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, isReferral: e.target.checked }))}
+                                                />
+                                                <Label className="text-xs font-bold text-slate-700 cursor-pointer">Indicação</Label>
+                                            </div>
+                                            {formData.isReferral && (
+                                                <div className="md:col-span-2 space-y-1.5">
+                                                    <Label className="text-xs font-bold text-slate-700">Quem indicou?</Label>
+                                                    <SearchableSelect
+                                                        options={(allContacts || []).filter(candidate => candidate.id !== contact?.id).map(candidate => ({ value: String(candidate.id), label: candidate.name }))}
+                                                        value={formData.referredByContactId ? String(formData.referredByContactId) : ""}
+                                                        onValueChange={(value) => setFormData(prev => ({ ...prev, referredByContactId: value ? Number(value) : null }))}
+                                                        placeholder="Pesquisar nos contatos por nome..."
+                                                        searchPlaceholder="Pesquisar por nome..."
+                                                        clearable
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="md:col-span-2 space-y-1.5">
+                                                <Label className="text-xs font-bold text-slate-700">Responsável interno pela empresa</Label>
+                                                <SearchableSelect
+                                                    options={(usersList || []).filter((user: any) => user.role !== "client").map((user: any) => ({ value: String(user.id), label: user.name }))}
+                                                    value={formData.internalResponsibleId ? String(formData.internalResponsibleId) : ""}
+                                                    onValueChange={(value) => setFormData(prev => ({ ...prev, internalResponsibleId: value ? Number(value) : null }))}
+                                                    placeholder="Selecionar responsável da equipe..."
+                                                    searchPlaceholder="Pesquisar por nome..."
+                                                    clearable
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2 space-y-1.5">
+                                                <Label className="text-xs font-bold text-slate-700">Observações</Label>
+                                                <textarea
+                                                    value={formData.notes}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                                                    placeholder="Anotações sobre este contato..."
+                                                    className="w-full min-h-20 rounded-xl border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                                 />
                                             </div>
                                         </div>
@@ -1115,6 +1214,89 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                             <p className="text-[10px] font-bold text-gray-400 uppercase">Produtos / Interesses</p>
                                                             <p className="text-sm font-medium text-gray-900">{contact.productType}</p>
                                                         </div>
+                                                    </CardContent>
+                                                </Card>
+                                            )}
+
+                                            {contact.insurers && (
+                                                <Card className="border-none bg-slate-50/50">
+                                                    <CardContent className="p-4 flex items-start gap-3">
+                                                        <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-indigo-600 shrink-0">
+                                                            <Shield className="h-5 w-5" />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <p className="text-[10px] font-bold text-gray-400 uppercase">Seguradoras</p>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {contact.insurers.split(",").map(insurer => insurer.trim()).filter(Boolean).map(insurer => (
+                                                                    <Badge key={insurer} className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]">{insurer}</Badge>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            )}
+
+                                            {(contact.contactOrigin || contact.isReferral) && (
+                                                <Card className="border-none bg-slate-50/50">
+                                                    <CardContent className="p-4 flex items-center gap-3">
+                                                        <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-amber-600">
+                                                            <TrendingUp className="h-5 w-5" />
+                                                        </div>
+                                                        <div className="space-y-0.5">
+                                                            <p className="text-[10px] font-bold text-gray-400 uppercase">Origem</p>
+                                                            <p className="text-sm font-medium text-gray-900">{contact.contactOrigin || "Indicação"}</p>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            )}
+
+                                            {contact.internalResponsibleId && (
+                                                <Card className="border-none bg-slate-50/50">
+                                                    <CardContent className="p-4 flex items-center gap-3">
+                                                        <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-primary">
+                                                            <User className="h-5 w-5" />
+                                                        </div>
+                                                        <div className="space-y-0.5">
+                                                            <p className="text-[10px] font-bold text-gray-400 uppercase">Responsável interno</p>
+                                                            <p className="text-sm font-medium text-gray-900">
+                                                                {usersList?.find((user: any) => user.id === contact.internalResponsibleId)?.name || "Equipe Monteiro"}
+                                                            </p>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            )}
+
+                                            {contact.notes && (
+                                                <Card className="border-none bg-slate-50/50 md:col-span-2">
+                                                    <CardContent className="p-4 flex items-start gap-3">
+                                                        <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-primary shrink-0">
+                                                            <FileText className="h-5 w-5" />
+                                                        </div>
+                                                        <div className="space-y-0.5">
+                                                            <p className="text-[10px] font-bold text-gray-400 uppercase">Observações</p>
+                                                            <p className="text-sm font-medium text-gray-900 whitespace-pre-wrap">{contact.notes}</p>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            )}
+
+                                            {(contact.referredByContactId || referrals.length > 0) && (
+                                                <Card className="border-none bg-amber-50/60 md:col-span-2">
+                                                    <CardContent className="p-4 space-y-2">
+                                                        <p className="text-[10px] font-bold text-amber-700 uppercase">Relacionamento de indicações</p>
+                                                        {contact.referredByContactId && (
+                                                            <p className="text-sm text-slate-700">
+                                                                Indicado por: <strong>{allContacts?.find(candidate => candidate.id === contact.referredByContactId)?.name || "Contato da base"}</strong>
+                                                            </p>
+                                                        )}
+                                                        {referrals.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                <span className="text-sm text-slate-700 mr-1">Indicações:</span>
+                                                                {referrals.map(referral => (
+                                                                    <Badge key={referral.id} variant="outline" className="bg-white text-amber-800 border-amber-200">{referral.name}</Badge>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </CardContent>
                                                 </Card>
                                             )}

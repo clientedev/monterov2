@@ -92,9 +92,15 @@ export const contacts = pgTable("contacts", {
   // NEW: PJ-specific fields
   responsibleName: text("responsible_name"), // Required for PJ — enforced via Zod superRefine
   responsibleId: integer("responsible_id"),
+  internalResponsibleId: integer("internal_responsible_id").references(() => users.id),
   anniversaryDate: text("anniversary_date"),  // "DD/MM/AAAA" format
   maritalStatus: text("marital_status"),      // solteiro, casado, divorciado, viuvo
   productType: text("product_type"),          // e.g. "Auto, Saúde"
+  insurers: text("insurers"),                 // comma-separated insurer names
+  contactOrigin: text("contact_origin"),
+  isReferral: boolean("is_referral").default(false).notNull(),
+  referredByContactId: integer("referred_by_contact_id"),
+  notes: text("notes"),
   status: text("status", { enum: ["Ativo", "Cancelado", "Prospects"] }).notNull().default("Ativo"),
   assignedTo: integer("assigned_to").references(() => users.id),
   avatar: text("avatar"),
@@ -270,6 +276,8 @@ export const sessions = pgTable("session", {
 // Clientes de Seguro (separado do CRM de contatos/leads)
 export const clientes = pgTable("clientes", {
   id: serial("id").primaryKey(),
+  contactId: integer("contact_id").references(() => contacts.id),
+  type: text("type", { enum: ["individual", "company"] }).notNull().default("individual"),
   nome: text("nome").notNull(),
   cpfCnpj: text("cpf_cnpj"),
   dataNascimento: text("data_nascimento"),
@@ -281,6 +289,13 @@ export const clientes = pgTable("clientes", {
   estado: text("estado"),
   observacoes: text("observacoes"),
   tags: text("tags"),
+  anniversaryDate: text("anniversary_date"),
+  productType: text("product_type"),
+  insurers: text("insurers"),
+  contactOrigin: text("contact_origin"),
+  isReferral: boolean("is_referral").default(false).notNull(),
+  referredByContactId: integer("referred_by_contact_id"),
+  internalResponsibleId: integer("internal_responsible_id").references(() => users.id),
   responsavelComercialId: integer("responsavel_comercial_id").references(() => users.id),
   nomeRepresentante: text("nome_representante"),
   telefoneRepresentante: text("telefone_representante"),
@@ -351,15 +366,7 @@ export const insertContactSchema = createInsertSchema(contacts, {
   status: z.enum(["Ativo", "Cancelado", "Prospects"]).optional().default("Ativo"),
 })
   .omit({ id: true, createdAt: true })
-  .superRefine((data, ctx) => {
-    if (data.type === "company" && (!data.responsibleName || data.responsibleName.trim() === "")) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Nome do responsável é obrigatório para Pessoa Jurídica",
-        path: ["responsibleName"],
-      });
-    }
-  });
+  ;
 
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });

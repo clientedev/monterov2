@@ -538,6 +538,38 @@ export async function registerRoutes(
   app.patch("/api/contacts/:id", isTeam, async (req, res) => {
     const contact = await storage.updateContact(parseInt(req.params.id), req.body);
     if (!contact) return res.status(404).json({ message: "Contact not found" });
+    const linkedCliente = (await storage.getClientes()).find((cliente) => {
+      if (cliente.contactId === contact.id) return true;
+      const contactDoc = (contact.document || "").replace(/\D/g, "");
+      const clientDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+      const contactName = (contact.name || "").trim().toLowerCase();
+      const clientName = (cliente.nome || "").trim().toLowerCase();
+      const contactPhone = (contact.phone || "").replace(/\D/g, "");
+      const clientPhone = (cliente.telefone || "").replace(/\D/g, "");
+      return Boolean(contactDoc && clientDoc && contactDoc === clientDoc) ||
+        Boolean(contactName === clientName && contactPhone && clientPhone && contactPhone === clientPhone);
+    });
+    if (linkedCliente) {
+      await storage.updateCliente(linkedCliente.id, {
+        contactId: contact.id,
+        type: contact.type,
+        nome: contact.name,
+        cpfCnpj: contact.document || null,
+        email: contact.email || null,
+        telefone: contact.phone || null,
+        whatsapp: contact.phone || null,
+        endereco: contact.address || null,
+        anniversaryDate: contact.anniversaryDate || null,
+        productType: contact.productType || null,
+        insurers: contact.insurers || null,
+        contactOrigin: contact.contactOrigin || null,
+        isReferral: contact.isReferral || false,
+        referredByContactId: contact.referredByContactId || null,
+        internalResponsibleId: contact.internalResponsibleId || null,
+        nomeRepresentante: contact.responsibleName || null,
+        observacoes: contact.notes || null,
+      });
+    }
     res.json(contact);
   });
 
@@ -592,6 +624,38 @@ export async function registerRoutes(
     try {
       const input = insertContactSchema.parse(req.body);
       const result = await storage.upsertContact(input);
+      const linkedCliente = (await storage.getClientes()).find((cliente) => {
+        if (cliente.contactId === result.contact.id) return true;
+        const contactDoc = (result.contact.document || "").replace(/\D/g, "");
+        const clientDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+        const contactName = (result.contact.name || "").trim().toLowerCase();
+        const clientName = (cliente.nome || "").trim().toLowerCase();
+        const contactPhone = (result.contact.phone || "").replace(/\D/g, "");
+        const clientPhone = (cliente.telefone || "").replace(/\D/g, "");
+        return Boolean(contactDoc && clientDoc && contactDoc === clientDoc) ||
+          Boolean(contactName === clientName && contactPhone && clientPhone && contactPhone === clientPhone);
+      });
+      if (linkedCliente) {
+        await storage.updateCliente(linkedCliente.id, {
+          contactId: result.contact.id,
+          type: result.contact.type,
+          nome: result.contact.name,
+          cpfCnpj: result.contact.document || null,
+          email: result.contact.email || null,
+          telefone: result.contact.phone || null,
+          whatsapp: result.contact.phone || null,
+          endereco: result.contact.address || null,
+          anniversaryDate: result.contact.anniversaryDate || null,
+          productType: result.contact.productType || null,
+          insurers: result.contact.insurers || null,
+          contactOrigin: result.contact.contactOrigin || null,
+          isReferral: result.contact.isReferral || false,
+          referredByContactId: result.contact.referredByContactId || null,
+          internalResponsibleId: result.contact.internalResponsibleId || null,
+          nomeRepresentante: result.contact.responsibleName || null,
+          observacoes: result.contact.notes || null,
+        });
+      }
       res.status(result.isNew ? 201 : 200).json(result.contact);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -1228,25 +1292,19 @@ export async function registerRoutes(
       const parsedClientData = insertClienteSchema.parse(clientData);
 
       const cleanName = (parsedClientData.nome || "").trim().toLowerCase();
-      const cleanDoc = (parsedClientData.cpfCnpj || "").trim();
-
-      let existingCliente: any = null;
-      if (cleanDoc) {
-        [existingCliente] = await db
-          .select()
-          .from(clientes)
-          .where(
-            or(
-              eq(sql`lower(nome)`, cleanName),
-              eq(clientes.cpfCnpj, cleanDoc)
-            )
-          );
-      } else if (cleanName) {
-        [existingCliente] = await db
-          .select()
-          .from(clientes)
-          .where(eq(sql`lower(nome)`, cleanName));
-      }
+      const cleanDoc = (parsedClientData.cpfCnpj || "").replace(/\D/g, "");
+      const cleanEmail = (parsedClientData.email || "").trim().toLowerCase();
+      const cleanPhone = (parsedClientData.telefone || "").replace(/\D/g, "");
+      const allClientes = await db.select().from(clientes);
+      const existingCliente = allClientes.find((candidate: any) => {
+        const candidateDoc = (candidate.cpfCnpj || "").replace(/\D/g, "");
+        const candidateName = (candidate.nome || "").trim().toLowerCase();
+        const candidateEmail = (candidate.email || "").trim().toLowerCase();
+        const candidatePhone = (candidate.telefone || "").replace(/\D/g, "");
+        if (cleanDoc && candidateDoc) return cleanDoc === candidateDoc;
+        if (cleanEmail && candidateEmail) return cleanEmail === candidateEmail;
+        return Boolean(cleanName && candidateName === cleanName && cleanPhone && candidatePhone === cleanPhone);
+      });
 
       let cliente: any = null;
 
@@ -1272,45 +1330,51 @@ export async function registerRoutes(
       }
 
       const cleanContactName = (cliente.nome || "").trim().toLowerCase();
-      const cleanContactDoc = (cliente.cpfCnpj || "").trim();
+      const cleanContactDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+      const cleanContactEmail = (cliente.email || "").trim().toLowerCase();
+      const cleanContactPhone = (cliente.telefone || "").replace(/\D/g, "");
+      const allContacts = await storage.getContacts();
+      let existingContact: any = cliente.contactId
+        ? allContacts.find((c) => c.id === cliente.contactId)
+        : allContacts.find((candidate) => {
+            const candidateDoc = (candidate.document || "").replace(/\D/g, "");
+            const candidateEmail = (candidate.email || "").trim().toLowerCase();
+            const candidatePhone = (candidate.phone || "").replace(/\D/g, "");
+            const candidateName = (candidate.name || "").trim().toLowerCase();
+            if (cleanContactDoc && candidateDoc) return cleanContactDoc === candidateDoc;
+            if (cleanContactEmail && candidateEmail) return cleanContactEmail === candidateEmail;
+            return Boolean(cleanContactName && candidateName === cleanContactName && cleanContactPhone && candidatePhone === cleanContactPhone);
+          });
 
-      let existingContact: any = null;
-      if (cleanContactDoc) {
-        [existingContact] = await db
-          .select()
-          .from(contacts)
-          .where(
-            or(
-              eq(sql`lower(name)`, cleanContactName),
-              eq(contacts.document, cleanContactDoc)
-            )
-          );
-      } else if (cleanContactName) {
-        [existingContact] = await db
-          .select()
-          .from(contacts)
-          .where(eq(sql`lower(name)`, cleanContactName));
+      const numericDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+      const type = cliente.type || (numericDoc.length > 11 ? "company" : "individual");
+      const contactPayload: any = {
+        type,
+        name: cliente.nome,
+        email: cliente.email || null,
+        phone: cliente.telefone || null,
+        document: cliente.cpfCnpj || null,
+        address: cliente.endereco || null,
+        status: "Ativo",
+        responsibleName: cliente.nomeRepresentante || null,
+        internalResponsibleId: cliente.internalResponsibleId || cliente.responsavelComercialId || null,
+        anniversaryDate: cliente.anniversaryDate || cliente.dataNascimento || null,
+        productType: cliente.productType || null,
+        insurers: cliente.insurers || null,
+        contactOrigin: cliente.contactOrigin || null,
+        isReferral: cliente.isReferral || false,
+        referredByContactId: cliente.referredByContactId || null,
+        notes: cliente.observacoes || null,
+        assignedTo: cliente.responsavelComercialId || null,
+      };
+
+      if (existingContact) {
+        existingContact = await storage.updateContact(existingContact.id, contactPayload);
+      } else {
+        existingContact = await storage.createContact(contactPayload);
       }
 
-      if (!existingContact) {
-        const numericDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
-        const type = numericDoc.length > 11 ? "company" : "individual";
-        
-        await storage.createContact({
-          type,
-          name: cliente.nome,
-          email: cliente.email || null,
-          phone: cliente.telefone || null,
-          document: cliente.cpfCnpj || null,
-          address: cliente.endereco || null,
-          status: "Ativo",
-          responsibleName: type === "company" ? (cliente.nomeRepresentante || cliente.nome) : null,
-          responsibleId: null,
-          anniversaryDate: null,
-          maritalStatus: null,
-          assignedTo: cliente.responsavelComercialId || null,
-        });
-      }
+      cliente = await storage.updateCliente(cliente.id, { contactId: existingContact.id, type });
 
       let seguradoraId: number | null = null;
       if (seguradora && String(seguradora).trim() !== "") {
@@ -1446,6 +1510,37 @@ export async function registerRoutes(
       const input = insertClienteSchema.partial().parse(req.body);
       const cliente = await storage.updateCliente(parseInt(req.params.id), input);
       if (!cliente) return res.status(404).json({ message: "Cliente não encontrado" });
+      const linkedContact = cliente.contactId
+        ? await storage.getContact(cliente.contactId)
+        : (await storage.getContacts()).find((candidate) => {
+            const doc = (candidate.document || "").replace(/\D/g, "");
+            const clientDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+            const name = (candidate.name || "").trim().toLowerCase();
+            const clientName = (cliente.nome || "").trim().toLowerCase();
+            const phone = (candidate.phone || "").replace(/\D/g, "");
+            const clientPhone = (cliente.telefone || "").replace(/\D/g, "");
+            return (clientDoc && doc && clientDoc === doc) ||
+              (name === clientName && clientPhone && phone && clientPhone === phone);
+          });
+      if (linkedContact) {
+        await storage.updateContact(linkedContact.id, {
+          type: cliente.type,
+          name: cliente.nome,
+          document: cliente.cpfCnpj || null,
+          email: cliente.email || null,
+          phone: cliente.telefone || null,
+          address: cliente.endereco || null,
+          anniversaryDate: cliente.anniversaryDate || cliente.dataNascimento || null,
+          responsibleName: cliente.nomeRepresentante || null,
+          internalResponsibleId: cliente.internalResponsibleId || cliente.responsavelComercialId || null,
+          productType: cliente.productType || null,
+          insurers: cliente.insurers || null,
+          contactOrigin: cliente.contactOrigin || null,
+          isReferral: cliente.isReferral || false,
+          referredByContactId: cliente.referredByContactId || null,
+          notes: cliente.observacoes || null,
+        });
+      }
       res.json(cliente);
     } catch (err: any) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors });

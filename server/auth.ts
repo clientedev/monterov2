@@ -42,7 +42,7 @@ export function setupAuth(app: Express) {
 
     if (app.get("env") === "production") {
         app.set("trust proxy", 1);
-        if (sessionSettings.cookie) {
+        if (sessionSettings.cookie && typeof sessionSettings.cookie !== "function") {
             sessionSettings.cookie.secure = true;
             (sessionSettings.cookie as any).sameSite = "none";
         }

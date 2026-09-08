@@ -531,9 +531,15 @@ export class DatabaseStorage implements IStorage {
         address: contactInput.address || existing.address,
         responsibleName: contactInput.responsibleName || existing.responsibleName,
         responsibleId: contactInput.responsibleId || existing.responsibleId,
+        internalResponsibleId: contactInput.internalResponsibleId || existing.internalResponsibleId,
         anniversaryDate: contactInput.anniversaryDate || existing.anniversaryDate,
         maritalStatus: contactInput.maritalStatus || existing.maritalStatus,
         productType: mergedProducts || existing.productType,
+        insurers: contactInput.insurers || existing.insurers,
+        contactOrigin: contactInput.contactOrigin || existing.contactOrigin,
+        isReferral: contactInput.isReferral ?? existing.isReferral,
+        referredByContactId: contactInput.referredByContactId || existing.referredByContactId,
+        notes: contactInput.notes || existing.notes,
         status: contactInput.status || existing.status,
       };
 
@@ -597,8 +603,14 @@ export class DatabaseStorage implements IStorage {
         if (!primary.address && sec.address) updatedFields.address = sec.address;
         if (!primary.responsibleName && sec.responsibleName) updatedFields.responsibleName = sec.responsibleName;
         if (!primary.responsibleId && sec.responsibleId) updatedFields.responsibleId = sec.responsibleId;
+        if (!primary.internalResponsibleId && sec.internalResponsibleId) updatedFields.internalResponsibleId = sec.internalResponsibleId;
         if (!primary.anniversaryDate && sec.anniversaryDate) updatedFields.anniversaryDate = sec.anniversaryDate;
         if (!primary.maritalStatus && sec.maritalStatus) updatedFields.maritalStatus = sec.maritalStatus;
+        if (!primary.insurers && sec.insurers) updatedFields.insurers = sec.insurers;
+        if (!primary.contactOrigin && sec.contactOrigin) updatedFields.contactOrigin = sec.contactOrigin;
+        if (!primary.isReferral && sec.isReferral) updatedFields.isReferral = true;
+        if (!primary.referredByContactId && sec.referredByContactId) updatedFields.referredByContactId = sec.referredByContactId;
+        if (!primary.notes && sec.notes) updatedFields.notes = sec.notes;
 
         const secId = sec.id;
         await db.update(leads).set({ contactId: primary.id }).where(eq(leads.contactId, secId));
@@ -2098,8 +2110,14 @@ export class MemStorage implements IStorage {
       maritalStatus: contact.maritalStatus || null,
       anniversaryDate: contact.anniversaryDate || null,
       responsibleId: contact.responsibleId || null,
+      internalResponsibleId: contact.internalResponsibleId || null,
       assignedTo: contact.assignedTo ?? 0,
       productType: contact.productType || null,
+      insurers: contact.insurers || null,
+      contactOrigin: contact.contactOrigin || null,
+      isReferral: contact.isReferral ?? false,
+      referredByContactId: contact.referredByContactId || null,
+      notes: contact.notes || null,
       status: contact.status || "Ativo",
       avatar: contact.avatar || null,
     };

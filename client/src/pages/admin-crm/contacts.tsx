@@ -14,6 +14,21 @@ function calcAge(dateStr: string | null | undefined): number | null {
     if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
     return age >= 0 ? age : null;
 }
+
+function toDateInputValue(value: string | null | undefined): string {
+    if (!value) return "";
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+        const [day, month, year] = value.split("/");
+        return `${year}-${month}-${day}`;
+    }
+    return value;
+}
+
+function fromDateInputValue(value: string): string {
+    if (!value) return "";
+    const [year, month, day] = value.split("-");
+    return year && month && day ? `${day}/${month}/${year}` : value;
+}
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -51,7 +66,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Users, Building, User, UserPlus, Search, X, KeyRound, Eye } from "lucide-react";
+import { Loader2, Plus, Users, Building, User, UserPlus, Search, X, KeyRound, Eye, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ContactProfile } from "@/components/ContactProfile";
 import * as XLSX from "xlsx";
@@ -242,6 +257,12 @@ export default function ContactsPage() {
         anniversaryDate: "",
         maritalStatus: "",
         productType: "",
+        insurers: "",
+        contactOrigin: "",
+        isReferral: false,
+        referredByContactId: undefined,
+        internalResponsibleId: undefined,
+        notes: "",
         status: "Ativo",
     };
 
@@ -566,9 +587,17 @@ export default function ContactsPage() {
                                                     const age = calcAge(watchedAnniversary);
                                                     return (
                                                         <FormItem>
-                                                            <FormLabel className="text-gray-600 font-bold">Data Comemorativa (DD/MM/AAAA)</FormLabel>
+                                                            <FormLabel className="text-gray-600 font-bold">Data Comemorativa</FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="Ex: 15/08/1990" className="rounded-xl h-11 bg-white" {...field} value={field.value || ""} />
+                                                                <div className="relative">
+                                                                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary pointer-events-none" />
+                                                                    <Input
+                                                                        type="date"
+                                                                        className="rounded-xl h-11 bg-white pl-10"
+                                                                        value={toDateInputValue(field.value)}
+                                                                        onChange={(event) => field.onChange(fromDateInputValue(event.target.value))}
+                                                                    />
+                                                                </div>
                                                             </FormControl>
                                                             {age !== null && (
                                                                 <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
@@ -730,7 +759,100 @@ export default function ContactsPage() {
                                         />
                                     </div>
 
-                                    {/* ── Section 4: Contato ────────────────────────── */}
+                                    {/* ── Section 4: Origem, seguradora e gestão ───── */}
+                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-4">
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Origem, seguradora e gestão</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="insurers"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-gray-600 font-bold">Seguradoras</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Ex: Porto, SulAmérica" className="rounded-xl h-11 bg-white" {...field} value={field.value || ""} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="contactOrigin"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-gray-600 font-bold">Origem do contato</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Ex: Instagram, site, evento" className="rounded-xl h-11 bg-white" {...field} value={field.value || ""} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            {clientType === "company" && (
+                                                <FormField
+                                                    control={form.control}
+                                                    name="internalResponsibleId"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-gray-600 font-bold">Responsável pela empresa</FormLabel>
+                                                            <SearchableSelect
+                                                                options={(usersList || []).filter(u => u.role !== "client").map(u => ({ value: String(u.id), label: u.name }))}
+                                                                value={field.value ? String(field.value) : ""}
+                                                                onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                                                                placeholder="Selecione alguém da equipe"
+                                                                searchPlaceholder="Pesquisar por nome..."
+                                                                clearable
+                                                            />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            )}
+                                            <FormField
+                                                control={form.control}
+                                                name="isReferral"
+                                                render={({ field }) => (
+                                                    <FormItem className="flex items-center gap-3 rounded-xl bg-white border border-slate-200 px-3 py-2.5 mt-6">
+                                                        <FormControl>
+                                                            <input type="checkbox" className="h-4 w-4 accent-primary" checked={!!field.value} onChange={e => field.onChange(e.target.checked)} />
+                                                        </FormControl>
+                                                        <FormLabel className="text-gray-700 font-bold cursor-pointer">Indicação</FormLabel>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            {form.watch("isReferral") && (
+                                                <FormField
+                                                    control={form.control}
+                                                    name="referredByContactId"
+                                                    render={({ field }) => (
+                                                        <FormItem className="sm:col-span-2">
+                                                            <FormLabel className="text-gray-600 font-bold">Quem indicou?</FormLabel>
+                                                            <SearchableSelect
+                                                                options={(contacts || []).filter(c => c.id !== isEditing).map(c => ({ value: String(c.id), label: c.name }))}
+                                                                value={field.value ? String(field.value) : ""}
+                                                                onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                                                                placeholder="Pesquisar nos contatos por nome..."
+                                                                searchPlaceholder="Pesquisar por nome..."
+                                                                clearable
+                                                            />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            )}
+                                            <FormField
+                                                control={form.control}
+                                                name="notes"
+                                                render={({ field }) => (
+                                                    <FormItem className="sm:col-span-2">
+                                                        <FormLabel className="text-gray-600 font-bold">Observações</FormLabel>
+                                                        <FormControl>
+                                                            <textarea className="w-full min-h-20 rounded-xl border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Anotações sobre este contato..." {...field} value={field.value || ""} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* ── Section 5: Contato ────────────────────────── */}
                                     <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-4">
                                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                                             {clientType === "company" ? "4. Meios de Contato" : "3. Meios de Contato"}
@@ -869,16 +991,22 @@ export default function ContactsPage() {
 
             {/* ── Contacts Table ──────────────────────────────────────────────── */}
             <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-                <Table>
+                <div className="w-full overflow-x-auto overscroll-x-contain">
+                <Table className="min-w-[1500px]">
                     <TableHeader className="bg-slate-50">
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="py-4 font-bold text-slate-700">Contato / Nome</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">Tipo de Cliente</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">CPF / CNPJ</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Responsável</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Representante</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Responsável interno</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">E-mail / Telefone</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">Idade / Data Comem.</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">Produtos</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Seguradoras</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Origem</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Indicação</TableHead>
+                            <TableHead className="py-4 font-bold text-slate-700">Observações</TableHead>
                             <TableHead className="py-4 font-bold text-slate-700">Status</TableHead>
                             <TableHead className="py-4 text-right font-bold text-slate-700">Ações</TableHead>
                         </TableRow>
@@ -886,7 +1014,7 @@ export default function ContactsPage() {
                     <TableBody>
                         {filteredContacts.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={9} className="text-center h-32 text-muted-foreground">
+                                <TableCell colSpan={14} className="text-center h-32 text-muted-foreground">
                                     <div className="flex flex-col items-center gap-2">
                                         <Users className="h-8 w-8 opacity-20" />
                                         <p>{contacts?.length === 0 ? "Nenhum contato cadastrado ainda." : "Nenhum contato encontrado com os filtros aplicados."}</p>
@@ -895,7 +1023,11 @@ export default function ContactsPage() {
                             </TableRow>
                         ) : (
                             filteredContacts.map((contact) => {
-                                const products = productsByContact.get(contact.id) ?? [];
+                                const products = Array.from(new Set(
+                                    (contact.productType || "").split(",").map(p => p.trim()).filter(Boolean)
+                                        .concat(productsByContact.get(contact.id) ?? [])
+                                ));
+                                const internalResponsible = usersList?.find(u => u.id === contact.internalResponsibleId)?.name;
                                 const matchedUser = userAccountsByContactId.get(contact.id) || (contact.email ? userAccountsByEmail.get(contact.email.toLowerCase().trim()) : null);
                                 const displayAvatar = matchedUser?.avatar || (contact as any).avatar;
                                 const age = calcAge(contact.anniversaryDate);
@@ -951,7 +1083,7 @@ export default function ContactsPage() {
                                             <span className="font-bold text-slate-800 text-xs">{contact.document || "—"}</span>
                                         </TableCell>
 
-                                        {/* 4. Responsável */}
+                                        {/* 4. Representante externo */}
                                         <TableCell className="text-slate-700 font-medium py-4">
                                             {contact.responsibleName ? (
                                                 <div className="flex items-center gap-1">
@@ -980,13 +1112,18 @@ export default function ContactsPage() {
                                             )}
                                         </TableCell>
 
-                                        {/* 4. E-mail & Telefone */}
+                                        {/* 5. Responsável interno */}
+                                        <TableCell className="py-4">
+                                            <span className="text-xs font-medium text-slate-700">{internalResponsible || "—"}</span>
+                                        </TableCell>
+
+                                        {/* 6. E-mail & Telefone */}
                                         <TableCell className="text-slate-600 py-4 text-xs space-y-0.5">
                                             <div className="font-medium text-slate-800">{contact.email || "—"}</div>
                                             <div className="text-slate-400">{contact.phone || "—"}</div>
                                         </TableCell>
 
-                                        {/* 5. Idade / Data Comemorativa */}
+                                        {/* 7. Idade / Data Comemorativa */}
                                         <TableCell className="py-4">
                                             {contact.anniversaryDate ? (
                                                 <div className="flex flex-col space-y-0.5">
@@ -1002,19 +1139,13 @@ export default function ContactsPage() {
                                             )}
                                         </TableCell>
 
-                                        {/* 6. Produtos */}
+                                        {/* 8. Produtos */}
                                         <TableCell className="py-4">
                                             <div className="flex flex-wrap gap-1 max-w-[180px]">
                                                 {products.length > 0 ? (
-                                                    products.slice(0, 2).map((prod) => (
+                                                    products.map((prod) => (
                                                         <Badge key={prod} variant="outline" className="rounded-lg py-0.5 px-2 border-none bg-primary/10 text-primary font-bold text-[10px] uppercase">
                                                             {prod}
-                                                        </Badge>
-                                                    ))
-                                                ) : contact.productType ? (
-                                                    contact.productType.split(",").map(pt => pt.trim()).filter(Boolean).slice(0, 2).map(pt => (
-                                                        <Badge key={pt} variant="outline" className="rounded-lg py-0.5 px-2 border-none bg-amber-50 text-amber-700 font-bold text-[10px] uppercase">
-                                                            {pt}
                                                         </Badge>
                                                     ))
                                                 ) : (
@@ -1023,7 +1154,34 @@ export default function ContactsPage() {
                                             </div>
                                         </TableCell>
 
-                                        {/* 7. Status */}
+                                        {/* 9. Seguradoras */}
+                                        <TableCell className="py-4">
+                                            <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                                {(contact.insurers || "").split(",").map(s => s.trim()).filter(Boolean).map(insurer => (
+                                                    <Badge key={insurer} variant="outline" className="rounded-lg py-0.5 px-2 border-none bg-indigo-50 text-indigo-700 font-bold text-[10px]">
+                                                        {insurer}
+                                                    </Badge>
+                                                ))}
+                                                {!contact.insurers && <span className="text-xs text-slate-400 italic">—</span>}
+                                            </div>
+                                        </TableCell>
+
+                                        {/* 10. Origem */}
+                                        <TableCell className="py-4 text-xs text-slate-700">{contact.contactOrigin || "—"}</TableCell>
+
+                                        {/* 11. Indicação */}
+                                        <TableCell className="py-4">
+                                            {contact.isReferral ? (
+                                                <Badge className="bg-amber-50 text-amber-800 border-amber-200 text-[10px]">Indicação</Badge>
+                                            ) : <span className="text-xs text-slate-400">—</span>}
+                                        </TableCell>
+
+                                        {/* 12. Observações */}
+                                        <TableCell className="py-4 max-w-[220px]">
+                                            <span className="block truncate text-xs text-slate-600" title={contact.notes || ""}>{contact.notes || "—"}</span>
+                                        </TableCell>
+
+                                        {/* 13. Status */}
                                         <TableCell className="py-4">
                                             <Badge
                                                 variant="outline"
@@ -1039,7 +1197,7 @@ export default function ContactsPage() {
                                             </Badge>
                                         </TableCell>
 
-                                        {/* 8. Ações */}
+                                        {/* 14. Ações */}
                                         <TableCell className="text-right py-4">
                                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Button
@@ -1071,6 +1229,12 @@ export default function ContactsPage() {
                                                             anniversaryDate: contact.anniversaryDate || "",
                                                             maritalStatus: contact.maritalStatus || "",
                                                             productType: contact.productType || "",
+                                                            insurers: contact.insurers || "",
+                                                            contactOrigin: contact.contactOrigin || "",
+                                                            isReferral: contact.isReferral || false,
+                                                            referredByContactId: contact.referredByContactId || undefined,
+                                                            internalResponsibleId: contact.internalResponsibleId || undefined,
+                                                            notes: contact.notes || "",
                                                             status: (contact.status as any) || "Ativo",
                                                         });
                                                         setIsEditing(contact.id);
@@ -1106,6 +1270,7 @@ export default function ContactsPage() {
                         )}
                     </TableBody>
                 </Table>
+                </div>
             </div>
 
             <ContactProfile

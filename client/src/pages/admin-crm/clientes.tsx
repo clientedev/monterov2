@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, Download, Upload, FileSpreadsheet, CheckCircle2, User as UserIcon, X, Filter } from "lucide-react";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
+import { ProductSelector, STANDARD_PRODUCTS } from "@/components/ProductSelector";
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
@@ -90,8 +91,11 @@ export default function ClientesPage() {
     const [importProgress, setImportProgress] = useState(0);
 
     const [formData, setFormData] = useState({
-        nome: "", cpfCnpj: "", dataNascimento: "", telefone: "", whatsapp: "",
+        type: "individual" as "individual" | "company",
+        nome: "", cpfCnpj: "", dataNascimento: "", anniversaryDate: "", telefone: "", whatsapp: "",
         email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "",
+        productType: "", insurers: "", contactOrigin: "", isReferral: false,
+        referredByContactId: "" as string, internalResponsibleId: "" as string,
         responsavelComercialId: "" as string,
         nomeRepresentante: "", telefoneRepresentante: "", emailRepresentante: "",
     });
@@ -117,7 +121,7 @@ export default function ClientesPage() {
 
     const openCreate = () => {
         setEditTarget(null);
-        setFormData({ nome: "", cpfCnpj: "", dataNascimento: "", telefone: "", whatsapp: "", email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "", responsavelComercialId: "", nomeRepresentante: "", telefoneRepresentante: "", emailRepresentante: "" });
+        setFormData({ type: "individual", nome: "", cpfCnpj: "", dataNascimento: "", anniversaryDate: "", telefone: "", whatsapp: "", email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "", productType: "", insurers: "", contactOrigin: "", isReferral: false, referredByContactId: "", internalResponsibleId: "", responsavelComercialId: "", nomeRepresentante: "", telefoneRepresentante: "", emailRepresentante: "" });
         setShowForm(true);
         setSelectedContactImport("");
     };
@@ -125,9 +129,11 @@ export default function ClientesPage() {
     const openEdit = (c: any) => {
         setEditTarget(c);
         setFormData({
+            type: c.type || ((c.cpfCnpj || "").replace(/\D/g, "").length > 11 ? "company" : "individual"),
             nome: c.nome || "",
             cpfCnpj: c.cpfCnpj || "",
             dataNascimento: c.dataNascimento || "",
+            anniversaryDate: c.anniversaryDate || "",
             telefone: c.telefone || "",
             whatsapp: c.whatsapp || "",
             email: c.email || "",
@@ -136,6 +142,12 @@ export default function ClientesPage() {
             estado: c.estado || "",
             observacoes: c.observacoes || "",
             tags: c.tags || "",
+            productType: c.productType || "",
+            insurers: c.insurers || "",
+            contactOrigin: c.contactOrigin || "",
+            isReferral: c.isReferral || false,
+            referredByContactId: c.referredByContactId ? String(c.referredByContactId) : "",
+            internalResponsibleId: c.internalResponsibleId ? String(c.internalResponsibleId) : "",
             responsavelComercialId: c.responsavelComercialId ? String(c.responsavelComercialId) : "",
             nomeRepresentante: c.nomeRepresentante || "",
             telefoneRepresentante: c.telefoneRepresentante || "",
@@ -149,6 +161,8 @@ export default function ClientesPage() {
             const body = {
                 ...formData,
                 responsavelComercialId: formData.responsavelComercialId ? parseInt(formData.responsavelComercialId) : null,
+                internalResponsibleId: formData.internalResponsibleId ? parseInt(formData.internalResponsibleId) : null,
+                referredByContactId: formData.referredByContactId ? parseInt(formData.referredByContactId) : null,
             };
             if (editTarget) {
                 const res = await apiRequest("PATCH", `/api/clientes/${editTarget.id}`, body);
@@ -431,7 +445,7 @@ export default function ClientesPage() {
 
     const hasFilters = filterSeguradora !== "all" || filterStatus !== "all";
 
-    const setField = (key: string, val: string) => setFormData(prev => ({ ...prev, [key]: val }));
+    const setField = (key: string, val: unknown) => setFormData(prev => ({ ...prev, [key]: val }));
 
     return (
         <div className="space-y-6">
@@ -569,6 +583,26 @@ export default function ClientesPage() {
                                         ))}
                                     </div>
                                 )}
+                                {c.productType && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                        {c.productType.split(",").map((product: string) => product.trim()).filter(Boolean).map((product: string) => (
+                                            <Badge key={product} className="bg-primary/10 text-primary border-primary/20 text-[10px]">{product}</Badge>
+                                        ))}
+                                    </div>
+                                )}
+                                {c.insurers && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                        {c.insurers.split(",").map((insurer: string) => insurer.trim()).filter(Boolean).map((insurer: string) => (
+                                            <Badge key={insurer} className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]">{insurer}</Badge>
+                                        ))}
+                                    </div>
+                                )}
+                                {(c.contactOrigin || c.isReferral) && (
+                                    <div className="text-xs text-amber-700 font-semibold">
+                                        Origem: {c.contactOrigin || "Indicação"}{c.isReferral ? " · indicação" : ""}
+                                    </div>
+                                )}
+                                {c.observacoes && <p className="text-xs text-gray-500 line-clamp-2">{c.observacoes}</p>}
                             </div>
 
                             {/* Card Footer */}
@@ -703,12 +737,21 @@ export default function ClientesPage() {
                                             if (!c) return;
                                             setFormData(prev => ({
                                                 ...prev,
+                                                type: c.type || prev.type,
                                                 nome: c.name || prev.nome,
                                                 cpfCnpj: c.document || prev.cpfCnpj,
                                                 telefone: c.phone || prev.telefone,
                                                 whatsapp: c.phone || prev.whatsapp,
                                                 email: c.email || prev.email,
                                                 endereco: c.address || prev.endereco,
+                                                anniversaryDate: c.anniversaryDate || prev.anniversaryDate,
+                                                productType: c.productType || prev.productType,
+                                                insurers: c.insurers || prev.insurers,
+                                                contactOrigin: c.contactOrigin || prev.contactOrigin,
+                                                isReferral: c.isReferral || prev.isReferral,
+                                                referredByContactId: c.referredByContactId ? String(c.referredByContactId) : prev.referredByContactId,
+                                                internalResponsibleId: c.internalResponsibleId ? String(c.internalResponsibleId) : prev.internalResponsibleId,
+                                                observacoes: c.notes || prev.observacoes,
                                             }));
                                         }}
                                         placeholder="Buscar contato para pré-preencher..."
@@ -717,7 +760,17 @@ export default function ClientesPage() {
                                     />
                                 </div>
                             )}
-                            <div className="col-span-2">
+                            <div>
+                                <Label>Tipo de cliente</Label>
+                                <Select value={formData.type} onValueChange={v => setField("type", v as "individual" | "company")}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="individual">Pessoa Física</SelectItem>
+                                        <SelectItem value="company">Pessoa Jurídica</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
                                 <Label>Nome *</Label>
                                 <Input value={formData.nome} onChange={e => setField("nome", e.target.value)} placeholder="Nome completo" required />
                             </div>
@@ -728,6 +781,13 @@ export default function ClientesPage() {
                             <div>
                                 <Label>Data de Nascimento</Label>
                                 <Input type="date" value={formData.dataNascimento} onChange={e => setField("dataNascimento", e.target.value)} />
+                            </div>
+                            <div>
+                                <Label>Data Comemorativa</Label>
+                                <Input type="date" value={formData.anniversaryDate?.match(/^\d{2}\/\d{2}\/\d{4}$/) ? formData.anniversaryDate.split("/").reverse().join("-") : formData.anniversaryDate} onChange={e => {
+                                    const [year, month, day] = e.target.value.split("-");
+                                    setField("anniversaryDate", year && month && day ? `${day}/${month}/${year}` : "");
+                                }} />
                             </div>
                             <div>
                                 <Label>Telefone</Label>
@@ -762,8 +822,40 @@ export default function ClientesPage() {
                                 <Label>Tags <span className="text-xs text-muted-foreground">(separadas por vírgula)</span></Label>
                                 <Input value={formData.tags} onChange={e => setField("tags", e.target.value)} placeholder="VIP, Renovação, Empresarial" />
                             </div>
+                            <div className="col-span-2 border-t pt-4 mt-2 font-semibold text-sm text-[#0F6570]">
+                                Produtos, seguradoras e origem
+                            </div>
                             <div className="col-span-2">
-                                <Label>Responsável Comercial</Label>
+                                <Label>Produtos</Label>
+                                <ProductSelector value={formData.productType} onChange={value => setField("productType", value)} />
+                            </div>
+                            <div>
+                                <Label>Seguradoras</Label>
+                                <Input value={formData.insurers} onChange={e => setField("insurers", e.target.value)} placeholder="Ex: Porto, SulAmérica" />
+                            </div>
+                            <div>
+                                <Label>Origem do contato</Label>
+                                <Input value={formData.contactOrigin} onChange={e => setField("contactOrigin", e.target.value)} placeholder="Ex: indicação, site, evento" />
+                            </div>
+                            <div className="flex items-center gap-2 rounded-xl border px-3 py-2 mt-2">
+                                <input type="checkbox" className="h-4 w-4 accent-primary" checked={formData.isReferral} onChange={e => setField("isReferral", e.target.checked)} />
+                                <Label className="cursor-pointer">Indicação</Label>
+                            </div>
+                            {formData.isReferral && (
+                                <div>
+                                    <Label>Quem indicou?</Label>
+                                    <SearchableSelect
+                                        options={(contacts ?? []).filter(c => !editTarget || c.id !== (editTarget as any).contactId).map(c => ({ value: String(c.id), label: c.name }))}
+                                        value={formData.referredByContactId}
+                                        onValueChange={v => setField("referredByContactId", v)}
+                                        placeholder="Pesquisar contato..."
+                                        searchPlaceholder="Pesquisar por nome..."
+                                        clearable
+                                    />
+                                </div>
+                            )}
+                            <div className="col-span-2">
+                                <Label>Responsável comercial</Label>
                                 <SearchableSelect
                                     options={(users ?? []).map(u => ({ value: String(u.id), label: u.name }))}
                                     value={formData.responsavelComercialId}
@@ -773,6 +865,19 @@ export default function ClientesPage() {
                                     clearable
                                 />
                             </div>
+                            {formData.type === "company" && (
+                                <div className="col-span-2">
+                                    <Label>Responsável interno pela empresa</Label>
+                                    <SearchableSelect
+                                        options={(users ?? []).filter(u => u.role !== "client").map(u => ({ value: String(u.id), label: u.name }))}
+                                        value={formData.internalResponsibleId}
+                                        onValueChange={v => setField("internalResponsibleId", v)}
+                                        placeholder="Selecionar responsável da equipe..."
+                                        searchPlaceholder="Pesquisar por nome..."
+                                        clearable
+                                    />
+                                </div>
+                            )}
                             <div className="col-span-2 border-t pt-4 mt-2 font-semibold text-sm text-[#0F6570]">
                                 Representante Legal / Contato Adicional
                             </div>

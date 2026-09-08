@@ -2,15 +2,17 @@ import { useMemo, useRef } from "react";
 import { Input } from "@/components/ui/input";
 
 export const STANDARD_PRODUCTS = [
-    "Plano de Saúde",
     "Vida",
+    "Saúde",
     "Odonto",
     "Auto",
     "Pet",
     "Viagem",
+    "Previdência",
+    "RC",
     "Residência",
     "Benefícios",
-    "Previdência",
+    "Vida Empresarial",
 ] as const;
 
 type StandardProduct = typeof STANDARD_PRODUCTS[number];
