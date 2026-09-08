@@ -93,9 +93,9 @@ export function ChatBubble() {
 
     if (!isOpen) {
         return (
-            <div className="fixed bottom-6 right-6 z-50 group">
+            <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 group">
                 {/* Speech Bubble */}
-                <div className="absolute -top-20 right-0 bg-white text-primary px-4 py-2 rounded-2xl shadow-xl font-bold text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 pointer-events-none whitespace-nowrap border-2 border-primary/10 z-30">
+                <div className="absolute -top-20 right-0 max-w-[calc(100vw-2rem)] bg-white text-primary px-4 py-2 rounded-2xl shadow-xl font-bold text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 pointer-events-none whitespace-normal text-center border-2 border-primary/10 z-30">
                     Fale comigo
                     <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white rotate-45 border-r-2 border-b-2 border-primary/10" />
                 </div>
@@ -110,10 +110,10 @@ export function ChatBubble() {
 
                 <Button
                     onClick={() => { setIsOpen(true); setIsMinimized(false); }}
-                    className="h-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300 flex items-center justify-center p-0 overflow-hidden w-16 hover:w-64 border-2 border-white/20"
+                    className="h-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300 flex items-center justify-center p-0 overflow-hidden w-16 sm:hover:w-64 border-2 border-white/20"
                 >
                     <div className="flex items-center justify-start w-full h-full relative z-10 pl-16 pr-4">
-                        <span className="text-white font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 group-hover:max-w-[200px] group-hover:opacity-100">
+                        <span className="text-white font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 sm:group-hover:max-w-[200px] sm:group-hover:opacity-100">
                             Converse com a Carolzinha
                         </span>
                     </div>
@@ -123,9 +123,9 @@ export function ChatBubble() {
     }
 
     return (
-        <Card className={`fixed right-6 z-50 shadow-2xl transition-all duration-300 flex flex-col overflow-hidden border-2 border-primary/20 ${isMinimized ? 'bottom-6 h-16 w-80' : 'bottom-6 w-96 max-h-[600px] h-[80vh]'}`}>
+        <Card className={`fixed right-3 sm:right-6 z-50 shadow-2xl transition-all duration-300 flex flex-col overflow-hidden border-2 border-primary/20 ${isMinimized ? 'bottom-4 sm:bottom-6 h-16 w-[calc(100vw-1.5rem)] max-w-80' : 'bottom-4 sm:bottom-6 w-[calc(100vw-1.5rem)] max-w-96 h-[min(80dvh,600px)] max-h-[calc(100dvh-2rem)]'}`}>
             <CardHeader className="bg-primary text-primary-foreground py-3 px-4 flex flex-row items-center justify-between shrink-0 cursor-pointer" onClick={() => setIsMinimized(!isMinimized)}>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                     <div className="relative">
                         <div className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center bg-white shrink-0 overflow-hidden">
                             <img 
@@ -135,8 +135,8 @@ export function ChatBubble() {
                         </div>
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-primary" />
                     </div>
-                    <div>
-                        <CardTitle className="text-base font-bold">Carolzinha - Especialista</CardTitle>
+                    <div className="min-w-0">
+                         <CardTitle className="text-base font-bold whitespace-normal leading-tight">Carolzinha - Especialista</CardTitle>
                         <p className="text-xs text-primary-foreground/80 font-medium">Online e pronta para ajudar</p>
                     </div>
                 </div>
@@ -159,7 +159,7 @@ export function ChatBubble() {
                     >
                         {messages.map((msg, i) => (
                             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
-                                <div className={`max-w-[85%] rounded-2xl p-3 ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-tl-sm'}`}>
+                                <div className={`min-w-0 max-w-[85%] break-words rounded-2xl p-3 ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-tl-sm'}`}>
                                     {msg.role === 'assistant' && i > 0 && (
                                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
                                             <Bot className="w-3 h-3" /> Carolzinha

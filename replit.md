@@ -17,7 +17,7 @@ npm run dev
 
 The app starts on port 5000. The `npm run dev` script uses `node_modules/.bin/tsx server/index.ts` (tsx must be referenced via node_modules path, not global).
 
-Database schema is auto-synced on startup. To push schema changes manually:
+Database schema is auto-synced on startup. This also applies the latest Drizzle schema before the production server starts (Railway uses `npm run start`). To push schema changes manually:
 ```bash
 npm run db:push
 ```
