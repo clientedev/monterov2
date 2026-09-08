@@ -110,10 +110,10 @@ export function ChatBubble() {
 
                 <Button
                     onClick={() => { setIsOpen(true); setIsMinimized(false); }}
-                    className="h-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300 flex items-center justify-center p-0 overflow-hidden w-16 sm:hover:w-64 border-2 border-white/20"
+                    className="h-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300 flex items-center justify-center p-0 overflow-hidden w-16 sm:hover:w-[290px] max-w-[calc(100vw-2rem)] border-2 border-white/20"
                 >
-                    <div className="flex items-center justify-start w-full h-full relative z-10 pl-16 pr-4">
-                        <span className="text-white font-bold whitespace-nowrap overflow-hidden transition-all duration-300 max-w-0 opacity-0 sm:group-hover:max-w-[200px] sm:group-hover:opacity-100">
+                    <div className="flex items-center justify-start w-full h-full relative z-10 pl-16 pr-5">
+                        <span className="text-white font-bold whitespace-nowrap overflow-hidden shrink-0 transition-all duration-300 max-w-0 opacity-0 sm:group-hover:max-w-none sm:group-hover:opacity-100">
                             Converse com a Carolzinha
                         </span>
                     </div>
