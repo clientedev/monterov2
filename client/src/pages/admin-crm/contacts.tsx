@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+﻿import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, InsertContact, insertContactSchema, Lead, Product, User as UserType } from "@shared/schema";
 
@@ -116,16 +116,16 @@ export const ALL_CONTACT_COLUMNS: ColumnConfig[] = [
     { id: "type", label: "Tipo de Cliente", minWidth: "150px" },
     { id: "document", label: "CPF / CNPJ", minWidth: "140px" },
     { id: "responsible", label: "Representante", minWidth: "170px" },
-    { id: "internalResponsible", label: "Responsável interno", minWidth: "170px" },
+    { id: "internalResponsible", label: "ResponsÃ¡vel interno", minWidth: "170px" },
     { id: "contact", label: "E-mail / Telefone", minWidth: "190px" },
     { id: "anniversary", label: "Idade / Data Comem.", minWidth: "150px" },
     { id: "products", label: "Produtos", minWidth: "180px" },
     { id: "insurers", label: "Seguradoras", minWidth: "170px" },
     { id: "origin", label: "Origem", minWidth: "130px" },
-    { id: "referral", label: "Indicação", minWidth: "110px" },
-    { id: "notes", label: "Observações", minWidth: "200px" },
+    { id: "referral", label: "IndicaÃ§Ã£o", minWidth: "110px" },
+    { id: "notes", label: "ObservaÃ§Ãµes", minWidth: "200px" },
     { id: "status", label: "Status", minWidth: "120px" },
-    { id: "actions", label: "Ações", minWidth: "150px", align: "right" },
+    { id: "actions", label: "AÃ§Ãµes", minWidth: "150px", align: "right" },
 ];
 
 const COLUMNS_STORAGE_KEY = "crm_contacts_column_order_v2";
@@ -165,14 +165,15 @@ export default function ContactsPage() {
     const [isImporting, setIsImporting] = useState(false);
     const [isEditing, setIsEditing] = useState<number | null>(null);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+    const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
 
-    // ── Filters ────────────────────────────────────────────────────────────────
+    // â”€â”€ Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const [search, setSearch] = useState("");
     const [filterType, setFilterType] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [filterProduct, setFilterProduct] = useState<string>("all");
 
-    // ── Column Customization State ───────────────────────────────────────────
+    // â”€â”€ Column Customization State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const [columnOrder, setColumnOrder] = useState<string[]>(loadSavedColumnOrder);
     const [hiddenColumns, setHiddenColumns] = useState<string[]>(loadSavedHiddenColumns);
     const [draggedColId, setDraggedColId] = useState<string | null>(null);
@@ -249,7 +250,7 @@ export default function ContactsPage() {
         queryKey: ["/api/leads"],
     });
 
-    // Map contactId → unique product names from their leads
+    // Map contactId â†’ unique product names from their leads
     const productsByContact = useMemo(() => {
         const map = new Map<number, string[]>();
         if (!allLeads) return map;
@@ -283,7 +284,7 @@ export default function ContactsPage() {
         onSuccess: (data: any) => {
             queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
             toast({
-                title: "Higienização de Duplicatas Concluída",
+                title: "HigienizaÃ§Ã£o de Duplicatas ConcluÃ­da",
                 description: `${data.mergedCount || 0} contatos duplicados foram unificados.`,
             });
         },
@@ -291,7 +292,7 @@ export default function ContactsPage() {
 
     const downloadTemplate = () => {
         const template = [
-            { tipo: "individual", nome: "João Silva", email: "joao@exemplo.com", telefone: "(11) 99999-9999", documento: "123.456.789-00", endereco: "Rua Exemplo, 123" },
+            { tipo: "individual", nome: "JoÃ£o Silva", email: "joao@exemplo.com", telefone: "(11) 99999-9999", documento: "123.456.789-00", endereco: "Rua Exemplo, 123" },
             { tipo: "company", nome: "Monteiro Seguros", email: "contato@monteiro.com", telefone: "(11) 4444-4444", documento: "12.345.678/0001-99", endereco: "Av. Paulista, 1000" }
         ];
         const ws = XLSX.utils.json_to_sheet(template);
@@ -323,12 +324,12 @@ export default function ContactsPage() {
             const data = await res.json();
             queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
             toast({
-                title: "Importação concluída com sucesso",
+                title: "ImportaÃ§Ã£o concluÃ­da com sucesso",
                 description: `${data.created || 0} novos contatos criados, ${data.updated || 0} contatos atualizados (sem duplicatas), ${data.errors || 0} falhas.`,
             });
         } catch (err: any) {
             toast({
-                title: "Falha na importação",
+                title: "Falha na importaÃ§Ã£o",
                 description: err.message || "Erro ao importar dados",
                 variant: "destructive",
             });
@@ -339,7 +340,7 @@ export default function ContactsPage() {
         }
     };
 
-    // ── Filtered contacts ──────────────────────────────────────────────────────
+    // â”€â”€ Filtered contacts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const filteredContacts = useMemo(() => {
         const q = search.toLowerCase().trim();
         return (contacts ?? []).filter(c => {
@@ -381,7 +382,7 @@ export default function ContactsPage() {
                 .forEach((u) => {
                     opts.push({
                         value: `user_${u.id}`,
-                        label: `👔 ${u.name} (Colaborador)`,
+                        label: `ðŸ‘” ${u.name} (Colaborador)`,
                         sublabel: u.email ?? "Equipe Monteiro",
                         name: u.name,
                     });
@@ -395,7 +396,7 @@ export default function ContactsPage() {
                 .forEach((c) => {
                     opts.push({
                         value: `contact_${c.id}`,
-                        label: `👤 ${c.name} (Contato Base)`,
+                        label: `ðŸ‘¤ ${c.name} (Contato Base)`,
                         sublabel: c.phone ?? c.email ?? undefined,
                         id: c.id,
                         name: c.name,
@@ -419,7 +420,7 @@ export default function ContactsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-display font-bold text-gray-900 tracking-tight">Base de Contatos</h2>
-                    <p className="text-muted-foreground mt-1">Gerencie pessoas físicas e jurídicas em um único lugar.</p>
+                    <p className="text-muted-foreground mt-1">Gerencie pessoas fÃ­sicas e jurÃ­dicas em um Ãºnico lugar.</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -447,7 +448,7 @@ export default function ContactsPage() {
                         onClick={() => deduplicateMutation.mutate()}
                         disabled={deduplicateMutation.isPending}
                         className="h-11 px-4 font-bold rounded-xl border-dashed border-2 hover:bg-amber-50 transition-all border-amber-300 text-amber-700 gap-2"
-                        title="Varrer a base e unir cadastros idênticos"
+                        title="Varrer a base e unir cadastros idÃªnticos"
                     >
                         {deduplicateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-amber-500" />}
                         Higienizar Duplicatas
@@ -464,7 +465,7 @@ export default function ContactsPage() {
                 </div>
             </div>
 
-            {/* ── Filter Bar ─────────────────────────────────────────────────── */}
+            {/* â”€â”€ Filter Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className="bg-white rounded-xl border p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                 <div className="relative flex-1 w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -486,8 +487,8 @@ export default function ContactsPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Todos os tipos</SelectItem>
-                        <SelectItem value="individual">Pessoa Física</SelectItem>
-                        <SelectItem value="company">Pessoa Jurídica</SelectItem>
+                        <SelectItem value="individual">Pessoa FÃ­sica</SelectItem>
+                        <SelectItem value="company">Pessoa JurÃ­dica</SelectItem>
                     </SelectContent>
                 </Select>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -514,7 +515,7 @@ export default function ContactsPage() {
                     </SelectContent>
                 </Select>
 
-                {/* ── Popover de Configuração de Colunas ───────────────────────── */}
+                {/* â”€â”€ Popover de ConfiguraÃ§Ã£o de Colunas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button
@@ -540,10 +541,10 @@ export default function ContactsPage() {
                                 size="sm"
                                 onClick={resetColumns}
                                 className="h-7 px-2 text-xs text-slate-500 hover:text-slate-900 gap-1"
-                                title="Restaurar posições originais"
+                                title="Restaurar posiÃ§Ãµes originais"
                             >
                                 <RotateCcw className="h-3 w-3" />
-                                Padrão
+                                PadrÃ£o
                             </Button>
                         </div>
                         <div className="space-y-1.5 max-h-[340px] overflow-y-auto pr-1">
@@ -600,7 +601,7 @@ export default function ContactsPage() {
                             })}
                         </div>
                         <div className="pt-3 mt-3 border-t text-[11px] text-slate-400 text-center">
-                            Dica: você também pode arrastar os cabeçalhos na própria tabela!
+                            Dica: vocÃª tambÃ©m pode arrastar os cabeÃ§alhos na prÃ³pria tabela!
                         </div>
                     </PopoverContent>
                 </Popover>
@@ -610,7 +611,7 @@ export default function ContactsPage() {
                 </span>
             </div>
 
-            {/* ── Contacts Table ──────────────────────────────────────────────── */}
+            {/* â”€â”€ Contacts Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <style>{`
                 .contacts-scrollbar::-webkit-scrollbar {
                     height: 8px;
@@ -632,6 +633,13 @@ export default function ContactsPage() {
                 .contacts-scrollbar {
                     scrollbar-width: thin;
                     scrollbar-color: #6366f1 #f1f5f9;
+                }
+                .col-sticky {
+                    position: sticky;
+                    left: 0;
+                    z-index: 10;
+                    background: inherit;
+                    box-shadow: 2px 0 6px -2px rgba(99,102,241,0.12);
                 }
             `}</style>
             <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
@@ -681,7 +689,7 @@ export default function ContactsPage() {
                                             col.align === "right" ? "text-right" : ""
                                         } ${isDragging ? "opacity-30 bg-slate-200" : ""} ${
                                             isDragOver ? "bg-primary/10 border-l-2 border-primary shadow-inner" : ""
-                                        }`}
+                                        } ${colId === "name" ? "col-sticky bg-slate-50" : ""}`}
                                         title="Arraste para reposicionar esta coluna"
                                     >
                                         <div className={`flex items-center gap-1.5 ${col.align === "right" ? "justify-end" : ""}`}>
@@ -715,15 +723,26 @@ export default function ContactsPage() {
                                 const age = calcAge(contact.anniversaryDate);
 
                                 return (
-                                    <TableRow key={contact.id} className="hover:bg-slate-50/70 transition-colors group">
+                                    <TableRow
+                                        key={contact.id}
+                                        className={`transition-colors group cursor-pointer ${
+                                            selectedRowId === contact.id
+                                                ? "bg-primary/5 ring-1 ring-inset ring-primary/20"
+                                                : "hover:bg-slate-50/70"
+                                        }`}
+                                        onClick={() => setSelectedRowId(prev => prev === contact.id ? null : contact.id)}
+                                    >
                                         {visibleColumnIds.map((colId) => {
                                             switch (colId) {
                                                 case "name":
                                                     return (
-                                                        <TableCell key="name" className="font-bold text-slate-900 py-4">
+                                                        <TableCell key="name" className={`font-bold text-slate-900 py-4 col-sticky ${
+                                                            selectedRowId === contact.id ? "bg-primary/5" : "bg-white"
+                                                        }`}>
                                                             <div
                                                                 className="flex items-center gap-3 cursor-pointer group/name text-slate-900 hover:text-primary transition-colors w-fit"
-                                                                onClick={() => {
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
                                                                     setSelectedContactId(contact.id);
                                                                     setProfileOpen(true);
                                                                 }}
@@ -760,14 +779,14 @@ export default function ContactsPage() {
                                                                     ${contact.type === 'individual' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}
                                                             >
                                                                 {contact.type === 'individual' ? <User className="h-3 w-3" /> : <Building className="h-3 w-3" />}
-                                                                {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
+                                                                {contact.type === 'individual' ? 'Pessoa FÃ­sica' : 'Pessoa JurÃ­dica'}
                                                             </Badge>
                                                         </TableCell>
                                                     );
                                                 case "document":
                                                     return (
                                                         <TableCell key="document" className="text-slate-700 font-medium py-4">
-                                                            <span className="font-bold text-slate-800 text-xs">{contact.document || "—"}</span>
+                                                            <span className="font-bold text-slate-800 text-xs">{contact.document || "â€”"}</span>
                                                         </TableCell>
                                                     );
                                                 case "responsible":
@@ -783,7 +802,7 @@ export default function ContactsPage() {
                                                                                 setSelectedContactId(contact.responsibleId!);
                                                                                 setProfileOpen(true);
                                                                             }}
-                                                                            title="Clique para ver o perfil do responsável"
+                                                                            title="Clique para ver o perfil do responsÃ¡vel"
                                                                         >
                                                                             <User className="h-3.5 w-3.5 text-primary/70" />
                                                                             {contact.responsibleName}
@@ -796,21 +815,21 @@ export default function ContactsPage() {
                                                                     )}
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-xs text-slate-400 italic">—</span>
+                                                                <span className="text-xs text-slate-400 italic">â€”</span>
                                                             )}
                                                         </TableCell>
                                                     );
                                                 case "internalResponsible":
                                                     return (
                                                         <TableCell key="internalResponsible" className="py-4">
-                                                            <span className="text-xs font-medium text-slate-700">{internalResponsible || "—"}</span>
+                                                            <span className="text-xs font-medium text-slate-700">{internalResponsible || "â€”"}</span>
                                                         </TableCell>
                                                     );
                                                 case "contact":
                                                     return (
                                                         <TableCell key="contact" className="text-slate-600 py-4 text-xs space-y-0.5">
-                                                            <div className="font-medium text-slate-800">{contact.email || "—"}</div>
-                                                            <div className="text-slate-400">{contact.phone || "—"}</div>
+                                                            <div className="font-medium text-slate-800">{contact.email || "â€”"}</div>
+                                                            <div className="text-slate-400">{contact.phone || "â€”"}</div>
                                                         </TableCell>
                                                     );
                                                 case "anniversary":
@@ -821,12 +840,12 @@ export default function ContactsPage() {
                                                                     <span className="text-xs font-semibold text-slate-700">{contact.anniversaryDate}</span>
                                                                     {age !== null && (
                                                                         <Badge variant="outline" className="w-fit py-0 px-1.5 bg-rose-50 text-rose-600 border-rose-200 font-bold text-[10px]">
-                                                                            🎂 {age} anos
+                                                                            ðŸŽ‚ {age} anos
                                                                         </Badge>
                                                                     )}
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-xs text-slate-400 italic">—</span>
+                                                                <span className="text-xs text-slate-400 italic">â€”</span>
                                                             )}
                                                         </TableCell>
                                                     );
@@ -841,7 +860,7 @@ export default function ContactsPage() {
                                                                         </Badge>
                                                                     ))
                                                                 ) : (
-                                                                    <span className="text-xs text-slate-400 italic">—</span>
+                                                                    <span className="text-xs text-slate-400 italic">â€”</span>
                                                                 )}
                                                             </div>
                                                         </TableCell>
@@ -855,28 +874,28 @@ export default function ContactsPage() {
                                                                         {insurer}
                                                                     </Badge>
                                                                 ))}
-                                                                {!contact.insurers && <span className="text-xs text-slate-400 italic">—</span>}
+                                                                {!contact.insurers && <span className="text-xs text-slate-400 italic">â€”</span>}
                                                             </div>
                                                         </TableCell>
                                                     );
                                                 case "origin":
                                                     return (
                                                         <TableCell key="origin" className="py-4 text-xs text-slate-700">
-                                                            {contact.contactOrigin || "—"}
+                                                            {contact.contactOrigin || "â€”"}
                                                         </TableCell>
                                                     );
                                                 case "referral":
                                                     return (
                                                         <TableCell key="referral" className="py-4">
                                                             {contact.isReferral ? (
-                                                                <Badge className="bg-amber-50 text-amber-800 border-amber-200 text-[10px]">Indicação</Badge>
-                                                            ) : <span className="text-xs text-slate-400">—</span>}
+                                                                <Badge className="bg-amber-50 text-amber-800 border-amber-200 text-[10px]">IndicaÃ§Ã£o</Badge>
+                                                            ) : <span className="text-xs text-slate-400">â€”</span>}
                                                         </TableCell>
                                                     );
                                                 case "notes":
                                                     return (
                                                         <TableCell key="notes" className="py-4 max-w-[220px]">
-                                                            <span className="block truncate text-xs text-slate-600" title={contact.notes || ""}>{contact.notes || "—"}</span>
+                                                            <span className="block truncate text-xs text-slate-600" title={contact.notes || ""}>{contact.notes || "â€”"}</span>
                                                         </TableCell>
                                                     );
                                                 case "status":
@@ -955,7 +974,7 @@ export default function ContactsPage() {
                 onOpenChange={setProfileOpen}
             />
 
-            {/* ── Import Dialog ───────────────────────────────────────────────── */}
+            {/* â”€â”€ Import Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <Dialog open={showImport} onOpenChange={setShowImport}>
                 <DialogContent className="sm:max-w-[600px] rounded-3xl">
                     <DialogHeader>
@@ -991,7 +1010,7 @@ export default function ContactsPage() {
                                         className="gap-2 rounded-xl font-black px-6 shadow-lg shadow-primary/20"
                                     >
                                         {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                                        Confirmar Importação
+                                        Confirmar ImportaÃ§Ã£o
                                     </Button>
                                 </div>
                                 <div className="max-h-[200px] overflow-y-auto border rounded-xl bg-slate-50/50">
@@ -1027,13 +1046,13 @@ export default function ContactsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* ── Delete Confirmation ─────────────────────────────────────────── */}
+            {/* â”€â”€ Delete Confirmation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <AlertDialog open={deleteTargetId !== null} onOpenChange={() => setDeleteTargetId(null)}>
                 <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold">Excluir Contato?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta ação removerá permanentemente o contato e todos os dados associados.
+                            Esta aÃ§Ã£o removerÃ¡ permanentemente o contato e todos os dados associados.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
