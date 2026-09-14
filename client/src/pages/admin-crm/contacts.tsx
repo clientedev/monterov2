@@ -611,8 +611,31 @@ export default function ContactsPage() {
             </div>
 
             {/* ── Contacts Table ──────────────────────────────────────────────── */}
+            <style>{`
+                .contacts-scrollbar::-webkit-scrollbar {
+                    height: 8px;
+                }
+                .contacts-scrollbar::-webkit-scrollbar-track {
+                    background: #f1f5f9;
+                    border-radius: 999px;
+                    margin: 0 12px;
+                }
+                .contacts-scrollbar::-webkit-scrollbar-thumb {
+                    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+                    border-radius: 999px;
+                    border: 2px solid #f1f5f9;
+                    transition: background 0.2s;
+                }
+                .contacts-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+                }
+                .contacts-scrollbar {
+                    scrollbar-width: thin;
+                    scrollbar-color: #6366f1 #f1f5f9;
+                }
+            `}</style>
             <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-                <div className="w-full overflow-x-auto overscroll-x-contain">
+                <div className="contacts-scrollbar w-full overflow-x-auto overscroll-x-contain pb-1">
                 <Table className="min-w-[1200px]">
                     <TableHeader className="bg-slate-50">
                         <TableRow className="hover:bg-transparent">
