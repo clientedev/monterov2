@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, InsertContact, insertContactSchema, Lead, Product, User as UserType } from "@shared/schema";
 
@@ -83,6 +83,8 @@ import {
     ArrowDown,
     GripVertical,
     RotateCcw,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -166,6 +168,10 @@ export default function ContactsPage() {
     const [isEditing, setIsEditing] = useState<number | null>(null);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
     const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
+
+    // ── Pagination ─────────────────────────────────────────────────────────────
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     // â”€â”€ Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const [search, setSearch] = useState("");
@@ -370,6 +376,18 @@ export default function ContactsPage() {
             return matchType && matchStatus && matchProduct && matchSearch;
         });
     }, [contacts, search, filterType, filterStatus, filterProduct, productsByContact]);
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, filterType, filterStatus, filterProduct]);
+
+    // ── Paginated slice ────────────────────────────────────────────────────────
+    const totalPages = Math.max(1, Math.ceil(filteredContacts.length / pageSize));
+    const paginatedContacts = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredContacts.slice(start, start + pageSize);
+    }, [filteredContacts, currentPage, pageSize]);
 
     // Build options for SearchableSelect (Team Collaborators + Base Individual Contacts)
     const responsibleOptions = useMemo(() => {
@@ -607,7 +625,7 @@ export default function ContactsPage() {
                 </Popover>
 
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {filteredContacts.length} de {contacts?.length ?? 0}
+                    {filteredContacts.length} contatos encontrados
                 </span>
             </div>
 
@@ -712,7 +730,7 @@ export default function ContactsPage() {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredContacts.map((contact) => {
+                            paginatedContacts.map((contact) => {
                                 const products = Array.from(new Set(
                                     (contact.productType || "").split(",").map(p => p.trim()).filter(Boolean)
                                         .concat(productsByContact.get(contact.id) ?? [])
@@ -967,6 +985,93 @@ export default function ContactsPage() {
                 </Table>
                 </div>
             </div>
+
+            {/* ── Pagination Bar ───────────────────────────────────────────── */}
+            {filteredContacts.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
+                    {/* Left: info + page size selector */}
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm text-slate-500">
+                            Mostrando{" "}
+                            <span className="font-semibold text-slate-800">
+                                {Math.min((currentPage - 1) * pageSize + 1, filteredContacts.length)}–{Math.min(currentPage * pageSize, filteredContacts.length)}
+                            </span>{" "}
+                            de{" "}
+                            <span className="font-semibold text-slate-800">{filteredContacts.length}</span>
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-slate-400">por página:</span>
+                            <Select
+                                value={String(pageSize)}
+                                onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}
+                            >
+                                <SelectTrigger className="h-8 w-[72px] rounded-lg border-slate-200 text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[5, 10, 25, 50, 100].map(n => (
+                                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    {/* Right: page buttons */}
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-lg"
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+
+                        {/* Page number pills */}
+                        {(() => {
+                            const pages: (number | "...")[] = [];
+                            if (totalPages <= 7) {
+                                for (let i = 1; i <= totalPages; i++) pages.push(i);
+                            } else {
+                                pages.push(1);
+                                if (currentPage > 3) pages.push("...");
+                                for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i);
+                                if (currentPage < totalPages - 2) pages.push("...");
+                                pages.push(totalPages);
+                            }
+                            return pages.map((p, idx) =>
+                                p === "..." ? (
+                                    <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-sm">…</span>
+                                ) : (
+                                    <button
+                                        key={p}
+                                        onClick={() => setCurrentPage(p as number)}
+                                        className={`h-8 min-w-[32px] px-2 rounded-lg text-sm font-semibold transition-all ${
+                                            currentPage === p
+                                                ? "bg-primary text-white shadow-sm shadow-primary/30"
+                                                : "text-slate-600 hover:bg-slate-100"
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                )
+                            );
+                        })()}
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-lg"
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             <ContactProfile
                 contactId={selectedContactId}
