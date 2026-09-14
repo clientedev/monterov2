@@ -262,14 +262,14 @@ export default function ContactsPage() {
         table.addEventListener("scroll", syncFromTable, { passive: true });
 
         const updateWidth = () => {
-            const tableEl = table.querySelector("table");
-            if (tableEl) {
-                setTableScrollWidth(Math.max(1200, tableEl.scrollWidth));
+            if (table) {
+                setTableScrollWidth(table.scrollWidth);
             }
         };
         updateWidth();
 
         const ro = new ResizeObserver(updateWidth);
+        ro.observe(table);
         const tableEl = table.querySelector("table");
         if (tableEl) ro.observe(tableEl);
 
@@ -732,14 +732,14 @@ export default function ContactsPage() {
                 {/* Top mirror scrollbar */}
                 <div
                     ref={topScrollRef}
-                    className="contacts-scrollbar w-full overflow-x-auto overflow-y-hidden pt-1 bg-slate-50/50 border-b border-slate-100"
+                    className="contacts-scrollbar w-full overflow-x-auto overflow-y-hidden bg-slate-50/80 border-b border-slate-100"
                     style={{ height: 14 }}
                 >
-                    <div style={{ width: tableScrollWidth, height: 1 }} />
+                    <div style={{ width: tableScrollWidth, minWidth: "100%", height: 1 }} />
                 </div>
                 {/* Main table scroll */}
-                <div ref={tableScrollRef} className="contacts-scrollbar w-full overflow-x-auto overscroll-x-contain pb-1">
-                <Table className="min-w-[1200px]">
+                <div ref={tableScrollRef} className="contacts-scrollbar relative w-full overflow-x-auto overscroll-x-contain pb-1">
+                <table className="w-full caption-bottom text-sm min-w-[1200px]">
                     <TableHeader className="bg-slate-50">
                         <TableRow className="hover:bg-transparent">
                             {visibleColumnIds.map((colId) => {
@@ -1059,7 +1059,7 @@ export default function ContactsPage() {
                             })
                         )}
                     </TableBody>
-                </Table>
+                </table>
                 </div>
             </div>
 
@@ -1071,7 +1071,7 @@ export default function ContactsPage() {
                         <span className="text-sm text-slate-500">
                             Mostrando{" "}
                             <span className="font-semibold text-slate-800">
-                                {Math.min((currentPage - 1) * pageSize + 1, filteredContacts.length)}–{Math.min(currentPage * pageSize, filteredContacts.length)}
+                                {Math.min((currentPage - 1) * pageSize + 1, filteredContacts.length)} - {Math.min(currentPage * pageSize, filteredContacts.length)}
                             </span>{" "}
                             de{" "}
                             <span className="font-semibold text-slate-800">{filteredContacts.length}</span>
