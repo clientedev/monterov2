@@ -38,13 +38,15 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { ContactProfile } from "@/components/ContactProfile";
+import { ContactFormModal } from "@/components/ContactFormModal";
 
 export default function InteractionsPage() {
     const { toast } = useToast();
     const [open, setOpen] = useState(false);
+    const [showContactModal, setShowContactModal] = useState(false);
     const [viewContactId, setViewContactId] = useState<number | null>(null);
 
     const { data: interactions, isLoading: interactionsLoading } = useQuery<Interaction[]>({
@@ -124,7 +126,19 @@ export default function InteractionsPage() {
                                     name="contactId"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Contato</FormLabel>
+                                            <div className="flex items-center justify-between">
+                                                <FormLabel>Contato</FormLabel>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-primary hover:bg-primary/10 text-xs font-bold gap-1"
+                                                    onClick={() => setShowContactModal(true)}
+                                                >
+                                                    <UserPlus className="h-3.5 w-3.5" />
+                                                    + Novo Contato
+                                                </Button>
+                                            </div>
                                             <Select
                                                 onValueChange={(val) => field.onChange(parseInt(val))}
                                                 defaultValue={field.value?.toString()}
@@ -285,6 +299,15 @@ export default function InteractionsPage() {
                 contactId={viewContactId}
                 open={!!viewContactId}
                 onOpenChange={(open) => !open && setViewContactId(null)}
+            />
+
+            <ContactFormModal
+                open={showContactModal}
+                onOpenChange={setShowContactModal}
+                onSuccess={(newContact) => {
+                    form.setValue("contactId", newContact.id);
+                    toast({ title: `✅ Contato "${newContact.name}" cadastrado e selecionado!` });
+                }}
             />
         </div>
     );

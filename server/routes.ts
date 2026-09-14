@@ -655,6 +655,26 @@ export async function registerRoutes(
           nomeRepresentante: result.contact.responsibleName || null,
           observacoes: result.contact.notes || null,
         });
+      } else {
+        await storage.createCliente({
+          contactId: result.contact.id,
+          type: result.contact.type,
+          nome: result.contact.name,
+          cpfCnpj: result.contact.document || null,
+          email: result.contact.email || null,
+          telefone: result.contact.phone || null,
+          whatsapp: result.contact.phone || null,
+          endereco: result.contact.address || null,
+          anniversaryDate: result.contact.anniversaryDate || null,
+          productType: result.contact.productType || null,
+          insurers: result.contact.insurers || null,
+          contactOrigin: result.contact.contactOrigin || null,
+          isReferral: result.contact.isReferral || false,
+          referredByContactId: result.contact.referredByContactId || null,
+          internalResponsibleId: result.contact.internalResponsibleId || null,
+          nomeRepresentante: result.contact.responsibleName || null,
+          observacoes: result.contact.notes || null,
+        });
       }
       res.status(result.isNew ? 201 : 200).json(result.contact);
     } catch (err) {

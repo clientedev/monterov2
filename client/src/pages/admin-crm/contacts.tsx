@@ -88,6 +88,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ContactProfile } from "@/components/ContactProfile";
+import { ContactFormModal } from "@/components/ContactFormModal";
 import * as XLSX from "xlsx";
 import {
     AlertDialog,
@@ -214,13 +215,6 @@ export default function ContactsPage() {
         return columnOrder.filter(id => !hiddenColumns.includes(id));
     }, [columnOrder, hiddenColumns]);
 
-    // ── "Adicionar responsável" mini-dialog state ────────────────────────────
-    const [addResponsibleOpen, setAddResponsibleOpen] = useState(false);
-    const [newResponsibleName, setNewResponsibleName] = useState("");
-    const [newResponsiblePhone, setNewResponsiblePhone] = useState("");
-    const [newResponsibleEmail, setNewResponsibleEmail] = useState("");
-    const [isSavingResponsible, setIsSavingResponsible] = useState(false);
-
     const { data: contacts, isLoading } = useQuery<Contact[]>({
         queryKey: ["/api/contacts"],
     });
@@ -269,20 +263,6 @@ export default function ContactsPage() {
         }
         return map;
     }, [allLeads]);
-
-    const updateMutation = useMutation({
-        mutationFn: async (data: Partial<InsertContact>) => {
-            const res = await apiRequest("PATCH", `/api/contacts/${isEditing}`, data);
-            return await res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-            toast({ title: "Contato atualizado" });
-            setOpen(false);
-            setIsEditing(null);
-            form.reset();
-        },
-    });
 
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
@@ -358,139 +338,6 @@ export default function ContactsPage() {
             setShowImport(false);
         }
     };
-    const DEFAULT_CONTACT_FORM_VALUES: InsertContact = {
-        type: "individual",
-        name: "",
-        email: "",
-        phone: "",
-        document: "",
-        address: "",
-        responsibleName: "",
-        responsibleId: undefined,
-        anniversaryDate: "",
-        maritalStatus: "",
-        productType: "",
-        insurers: "",
-        contactOrigin: "",
-        isReferral: false,
-        referredByContactId: undefined,
-        internalResponsibleId: undefined,
-        notes: "",
-        status: "Ativo",
-    };
-
-    const form = useForm<InsertContact>({
-        resolver: zodResolver(insertContactSchema),
-        defaultValues: DEFAULT_CONTACT_FORM_VALUES,
-    });
-
-    const handleOpenCreateModal = () => {
-        setIsEditing(null);
-        form.reset(DEFAULT_CONTACT_FORM_VALUES);
-        setOpen(true);
-    };
-
-    const watchedAnniversary = form.watch("anniversaryDate");
-
-    const createMutation = useMutation({
-        mutationFn: async (data: InsertContact) => {
-            const res = await apiRequest("POST", "/api/contacts", data);
-            return await res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-            toast({ title: "Contato criado com sucesso" });
-            setOpen(false);
-            form.reset();
-        },
-        onError: (error: Error) => {
-            toast({
-                title: "Falha ao criar contato",
-                description: error.message,
-                variant: "destructive",
-            });
-        },
-    });
-
-    const [isSearchingCnpj, setIsSearchingCnpj] = useState(false);
-
-    const lookupCnpj = async (rawCnpj: string) => {
-        const cnpj = rawCnpj.replace(/\D/g, "");
-        if (!cnpj || cnpj.length < 14) {
-            toast({ title: "Digite um CNPJ com 14 dígitos", description: `Você digitou ${cnpj.length} dígitos`, variant: "destructive" });
-            return;
-        }
-
-        setIsSearchingCnpj(true);
-        try {
-            const res = await fetch(`/api/proxy/cnpj/${cnpj}`);
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.message || "Erro ao consultar CNPJ");
-            }
-
-            const data = await res.json();
-            form.setValue("name", data.name || "");
-            if (data.email) form.setValue("email", data.email);
-            if (data.phone) form.setValue("phone", data.phone);
-            if (data.address) form.setValue("address", data.address);
-
-            toast({ title: "✅ Dados recuperados com sucesso!" });
-        } catch (error: any) {
-            toast({
-                title: "Falha na busca",
-                description: error.message,
-                variant: "destructive",
-            });
-        } finally {
-            setIsSearchingCnpj(false);
-        }
-    };
-
-    const onSubmit = (data: InsertContact) => {
-        if (isEditing) {
-            updateMutation.mutate(data);
-        } else {
-            createMutation.mutate(data);
-        }
-    };
-
-    // ── "Adicionar responsável" quick-create handler ──────────────────────────
-    const handleAddResponsible = async () => {
-        if (!newResponsibleName.trim()) {
-            toast({ title: "Nome é obrigatório", variant: "destructive" });
-            return;
-        }
-        setIsSavingResponsible(true);
-        try {
-            const res = await apiRequest("POST", "/api/contacts", {
-                type: "individual",
-                name: newResponsibleName.trim(),
-                phone: newResponsiblePhone.trim() || null,
-                email: newResponsibleEmail.trim() || null,
-            });
-            if (!res.ok) throw new Error((await res.json()).message || "Erro");
-            const newContact: Contact = await res.json();
-
-            await queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-
-            // Auto-select the newly created responsible
-            form.setValue("responsibleId", newContact.id);
-            form.setValue("responsibleName", newContact.name);
-
-            toast({ title: `✅ Responsável "${newContact.name}" adicionado e selecionado!` });
-            setAddResponsibleOpen(false);
-            setNewResponsibleName("");
-            setNewResponsiblePhone("");
-            setNewResponsibleEmail("");
-        } catch (error: any) {
-            toast({ title: "Erro ao criar responsável", description: error.message, variant: "destructive" });
-        } finally {
-            setIsSavingResponsible(false);
-        }
-    };
-
-    const clientType = form.watch("type");
 
     // ── Filtered contacts ──────────────────────────────────────────────────────
     const filteredContacts = useMemo(() => {
@@ -576,455 +423,24 @@ export default function ContactsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setIsEditing(null); form.reset(DEFAULT_CONTACT_FORM_VALUES); } }}>
-                        <Button 
-                            onClick={handleOpenCreateModal}
-                            className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-11 px-6 font-bold"
-                        >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Adicionar Contato
-                        </Button>
-                        <DialogContent className="sm:max-w-[650px] w-full max-w-[95vw] rounded-3xl border-none shadow-2xl overflow-hidden p-0 max-h-[90vh] flex flex-col bg-white">
-                            <DialogHeader className="p-6 pb-4 bg-slate-50 border-b shrink-0">
-                                <DialogTitle className="text-2xl font-display font-bold text-gray-900">{isEditing ? "Editar Contato" : "Novo Contato"}</DialogTitle>
-                                <DialogDescription className="text-xs text-muted-foreground mt-1">
-                                    {isEditing ? "Altere as informações do contato abaixo e salve as alterações." : "Preencha os dados abaixo para cadastrar um novo contato."}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-6 space-y-5">
-                                    {/* ── Section 1: Dados do Cliente ────────────────── */}
-                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-4">
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">1. Dados do Cliente</h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="type"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-gray-600 font-bold">Tipo de Cliente</FormLabel>
-                                                        <Select
-                                                            onValueChange={field.onChange}
-                                                            value={field.value || "individual"}
-                                                        >
-                                                            <FormControl>
-                                                                <SelectTrigger className="rounded-xl h-11 bg-white">
-                                                                    <SelectValue placeholder="Selecione o tipo" />
-                                                                </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="individual">Pessoa Física (PF)</SelectItem>
-                                                                <SelectItem value="company">Pessoa Jurídica (PJ)</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-
-                                            {clientType === "company" ? (
-                                                <div className="flex gap-2 items-end">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="document"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex-1">
-                                                                <FormLabel className="text-gray-600 font-bold">CNPJ</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        placeholder="00.000.000/0000-00"
-                                                                        className="rounded-xl h-11 bg-white"
-                                                                        {...field}
-                                                                        value={field.value || ""}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        className="h-11 rounded-xl px-4 font-bold border-primary text-primary hover:bg-primary/5 mb-[2px] bg-white"
-                                                        onClick={() => lookupCnpj(form.getValues("document") || "")}
-                                                        disabled={isSearchingCnpj}
-                                                    >
-                                                        {isSearchingCnpj ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : (
-                                                            "Buscar"
-                                                        )}
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <FormField
-                                                    control={form.control}
-                                                    name="document"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-gray-600 font-bold">CPF</FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    placeholder="000.000.000-00"
-                                                                    className="rounded-xl h-11 bg-white"
-                                                                    {...field}
-                                                                    value={field.value || ""}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            )}
-                                        </div>
-
-                                        <FormField
-                                            control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-gray-600 font-bold">Nome Completo / Razão Social *</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Ex: João Silva ou Monteiro Seguros LTDA" className="rounded-xl h-11 bg-white" {...field} value={field.value || ""} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="anniversaryDate"
-                                                render={({ field }) => {
-                                                    const age = calcAge(watchedAnniversary);
-                                                    return (
-                                                        <FormItem>
-                                                            <FormLabel className="text-gray-600 font-bold">Data Comemorativa</FormLabel>
-                                                            <FormControl>
-                                                                <div className="relative">
-                                                                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary pointer-events-none" />
-                                                                    <Input
-                                                                        type="date"
-                                                                        className="rounded-xl h-11 bg-white pl-10"
-                                                                        value={toDateInputValue(field.value)}
-                                                                        onChange={(event) => field.onChange(fromDateInputValue(event.target.value))}
-                                                                    />
-                                                                </div>
-                                                            </FormControl>
-                                                            {age !== null && (
-                                                                <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                                                                    🎂 {age} anos
-                                                                </span>
-                                                            )}
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    );
-                                                }}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="maritalStatus"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-gray-600 font-bold">Estado Civil</FormLabel>
-                                                        <Select
-                                                            onValueChange={field.onChange}
-                                                            value={field.value || ""}
-                                                        >
-                                                            <FormControl>
-                                                                <SelectTrigger className="rounded-xl h-11 bg-white">
-                                                                    <SelectValue placeholder="Selecione" />
-                                                                </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="solteiro">Solteiro(a)</SelectItem>
-                                                                <SelectItem value="casado">Casado(a)</SelectItem>
-                                                                <SelectItem value="divorciado">Divorciado(a)</SelectItem>
-                                                                <SelectItem value="viuvo">Viúvo(a)</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="status"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-gray-600 font-bold">Status do Cliente</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value || "Ativo"}>
-                                                            <FormControl>
-                                                                <SelectTrigger className="rounded-xl h-11 bg-white">
-                                                                    <SelectValue placeholder="Selecione o status" />
-                                                                </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="Ativo">Ativo</SelectItem>
-                                                                <SelectItem value="Prospects">Prospects</SelectItem>
-                                                                <SelectItem value="Cancelado">Cancelado</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* ── Section 2: Responsável ────────────────── */}
-                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                                {clientType === "company" ? "2. Pessoa Responsável *" : "2. Pessoa Responsável (Opcional)"}
-                                            </h4>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-7 px-2 text-primary hover:bg-primary/5 text-xs font-bold gap-1"
-                                                onClick={() => setAddResponsibleOpen(true)}
-                                            >
-                                                <UserPlus className="h-3.5 w-3.5" />
-                                                Criar novo contato
-                                            </Button>
-                                        </div>
-
-                                        <FormField
-                                            control={form.control}
-                                            name="responsibleId"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-gray-600 font-bold">
-                                                        Selecione um Colaborador da Equipe ou Contato da Base
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <SearchableSelect
-                                                            options={responsibleOptions}
-                                                            value={field.value ? (responsibleOptions.find(o => o.id === field.value)?.value || `contact_${field.value}`) : ""}
-                                                            onValueChange={(val) => {
-                                                                if (!val) {
-                                                                    field.onChange(null);
-                                                                    form.setValue("responsibleName", "");
-                                                                    return;
-                                                                }
-                                                                const selected = responsibleOptions.find(o => o.value === val);
-                                                                if (selected) {
-                                                                    field.onChange(selected.id ?? null);
-                                                                    form.setValue("responsibleName", selected.name);
-                                                                }
-                                                            }}
-                                                            placeholder="Escolha um colaborador ou cliente da base..."
-                                                            searchPlaceholder="Pesquisar por nome ou e-mail..."
-                                                            triggerClassName="border-primary/20 bg-white"
-                                                            clearable
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={form.control}
-                                            name="responsibleName"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs font-bold text-slate-500">
-                                                        Nome do Responsável (Personalizado / Manual)
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Ex: João Silva (Diretor) ou Carlos (Corretor)"
-                                                            className="rounded-xl h-10 bg-white text-xs"
-                                                            {...field}
-                                                            value={field.value || ""}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* ── Section 3: Produtos ───────────────────────── */}
-                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-3">
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                            {clientType === "company" ? "3. Produtos de Interesse" : "2. Produtos de Interesse"}
-                                        </h4>
-                                        <FormField
-                                            control={form.control}
-                                            name="productType"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    {/* NOTE: ProductSelector must NOT be wrapped in <FormControl> because
-                                                     * FormControl uses React.cloneElement to inject onChange/aria props
-                                                     * into its direct child, causing infinite re-render loops (React #185)
-                                                     * when the child is a custom multi-value component. */}
-                                                    <ProductSelector
-                                                        value={field.value ?? ""}
-                                                        onChange={(val) => field.onChange(val)}
-                                                    />
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* ── Section 4: Origem, seguradora e gestão ───── */}
-                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-4">
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Origem, seguradora e gestão</h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="insurers"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-gray-600 font-bold">Seguradoras</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="Ex: Porto, SulAmérica" className="rounded-xl h-11 bg-white" {...field} value={field.value || ""} />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="contactOrigin"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-gray-600 font-bold">Origem do contato</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="Ex: Instagram, site, evento" className="rounded-xl h-11 bg-white" {...field} value={field.value || ""} />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            {clientType === "company" && (
-                                                <FormField
-                                                    control={form.control}
-                                                    name="internalResponsibleId"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-gray-600 font-bold">Responsável pela empresa</FormLabel>
-                                                            <SearchableSelect
-                                                                options={(usersList || []).filter(u => u.role !== "client").map(u => ({ value: String(u.id), label: u.name }))}
-                                                                value={field.value ? String(field.value) : ""}
-                                                                onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
-                                                                placeholder="Selecione alguém da equipe"
-                                                                searchPlaceholder="Pesquisar por nome..."
-                                                                clearable
-                                                            />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            )}
-                                            <FormField
-                                                control={form.control}
-                                                name="isReferral"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex items-center gap-3 rounded-xl bg-white border border-slate-200 px-3 py-2.5 mt-6">
-                                                        <FormControl>
-                                                            <input type="checkbox" className="h-4 w-4 accent-primary" checked={!!field.value} onChange={e => field.onChange(e.target.checked)} />
-                                                        </FormControl>
-                                                        <FormLabel className="text-gray-700 font-bold cursor-pointer">Indicação</FormLabel>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            {form.watch("isReferral") && (
-                                                <FormField
-                                                    control={form.control}
-                                                    name="referredByContactId"
-                                                    render={({ field }) => (
-                                                        <FormItem className="sm:col-span-2">
-                                                            <FormLabel className="text-gray-600 font-bold">Quem indicou?</FormLabel>
-                                                            <SearchableSelect
-                                                                options={(contacts || []).filter(c => c.id !== isEditing).map(c => ({ value: String(c.id), label: c.name }))}
-                                                                value={field.value ? String(field.value) : ""}
-                                                                onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
-                                                                placeholder="Pesquisar nos contatos por nome..."
-                                                                searchPlaceholder="Pesquisar por nome..."
-                                                                clearable
-                                                            />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            )}
-                                            <FormField
-                                                control={form.control}
-                                                name="notes"
-                                                render={({ field }) => (
-                                                    <FormItem className="sm:col-span-2">
-                                                        <FormLabel className="text-gray-600 font-bold">Observações</FormLabel>
-                                                        <FormControl>
-                                                            <textarea className="w-full min-h-20 rounded-xl border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Anotações sobre este contato..." {...field} value={field.value || ""} />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* ── Section 5: Contato ────────────────────────── */}
-                                    <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-4">
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                            {clientType === "company" ? "4. Meios de Contato" : "3. Meios de Contato"}
-                                        </h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="email"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-gray-600 font-bold">Email</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                type="email"
-                                                                placeholder="contato@exemplo.com"
-                                                                className="rounded-xl h-11 bg-white"
-                                                                {...field}
-                                                                value={field.value || ""}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="phone"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-gray-600 font-bold">Telefone / WhatsApp</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="(11) 99999-9999"
-                                                                className="rounded-xl h-11 bg-white"
-                                                                {...field}
-                                                                value={field.value || ""}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <Button
-                                        type="submit"
-                                        className="w-full h-12 rounded-xl text-lg font-bold shadow-lg shadow-primary/20"
-                                        disabled={createMutation.isPending || updateMutation.isPending}
-                                    >
-                                        {(createMutation.isPending || updateMutation.isPending) && (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        )}
-                                        {isEditing ? "Salvar Alterações" : "Salvar Contato"}
-                                    </Button>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
+                    <Button 
+                        onClick={() => {
+                            setIsEditing(null);
+                            setOpen(true);
+                        }}
+                        className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-11 px-6 font-bold"
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Adicionar Contato
+                    </Button>
+                    <ContactFormModal
+                        open={open}
+                        onOpenChange={(v) => {
+                            setOpen(v);
+                            if (!v) setIsEditing(null);
+                        }}
+                        contactId={isEditing}
+                    />
 
                     <Button
                         variant="outline"
@@ -1478,50 +894,21 @@ export default function ContactsPage() {
                                                                     size="sm"
                                                                     className="h-8 w-8 text-slate-600 hover:bg-slate-100 rounded-lg p-0"
                                                                     onClick={() => {
-                                                                        form.reset({
-                                                                            type: contact.type || "individual",
-                                                                            name: contact.name || "",
-                                                                            email: contact.email || "",
-                                                                            phone: contact.phone || "",
-                                                                            document: contact.document || "",
-                                                                            address: contact.address || "",
-                                                                            responsibleName: contact.responsibleName || "",
-                                                                            responsibleId: contact.responsibleId ?? undefined,
-                                                                            anniversaryDate: contact.anniversaryDate || "",
-                                                                            maritalStatus: contact.maritalStatus || "",
-                                                                            productType: contact.productType || "",
-                                                                            insurers: contact.insurers || "",
-                                                                            contactOrigin: contact.contactOrigin || "",
-                                                                            isReferral: contact.isReferral || false,
-                                                                            referredByContactId: contact.referredByContactId || undefined,
-                                                                            internalResponsibleId: contact.internalResponsibleId || undefined,
-                                                                            notes: contact.notes || "",
-                                                                            status: (contact.status as any) || "Ativo",
-                                                                        });
                                                                         setIsEditing(contact.id);
                                                                         setOpen(true);
                                                                     }}
+                                                                    title="Editar Contato"
                                                                 >
                                                                     <Edit2 className="h-4 w-4" />
                                                                 </Button>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="font-bold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2"
+                                                                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-0"
                                                                     onClick={() => setDeleteTargetId(contact.id)}
+                                                                    title="Excluir Contato"
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="font-bold text-primary hover:bg-primary/5 rounded-lg"
-                                                                    onClick={() => {
-                                                                        setSelectedContactId(contact.id);
-                                                                        setProfileOpen(true);
-                                                                    }}
-                                                                >
-                                                                    Ver Perfil
                                                                 </Button>
                                                             </div>
                                                         </TableCell>
@@ -1544,59 +931,6 @@ export default function ContactsPage() {
                 open={profileOpen}
                 onOpenChange={setProfileOpen}
             />
-
-            {/* ── "Adicionar responsável" mini-dialog ────────────────────────── */}
-            <Dialog open={addResponsibleOpen} onOpenChange={setAddResponsibleOpen}>
-                <DialogContent className="sm:max-w-[380px] rounded-2xl border-none shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-display font-bold flex items-center gap-2">
-                            <UserPlus className="h-5 w-5 text-primary" />
-                            Novo Responsável
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3 pt-2">
-                        <p className="text-sm text-muted-foreground">
-                            Cadastre rapidamente o responsável. Ele será adicionado à base de contatos e selecionado automaticamente.
-                        </p>
-                        <div className="space-y-1">
-                            <label className="text-sm font-bold text-gray-700">Nome *</label>
-                            <Input
-                                placeholder="Nome completo"
-                                className="rounded-xl h-11"
-                                value={newResponsibleName}
-                                onChange={(e) => setNewResponsibleName(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-bold text-gray-700">Telefone</label>
-                            <Input
-                                placeholder="(11) 99999-9999"
-                                className="rounded-xl h-11"
-                                value={newResponsiblePhone}
-                                onChange={(e) => setNewResponsiblePhone(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-bold text-gray-700">Email</label>
-                            <Input
-                                type="email"
-                                placeholder="email@exemplo.com"
-                                className="rounded-xl h-11"
-                                value={newResponsibleEmail}
-                                onChange={(e) => setNewResponsibleEmail(e.target.value)}
-                            />
-                        </div>
-                        <Button
-                            className="w-full h-11 rounded-xl font-bold mt-2 shadow-lg shadow-primary/20"
-                            onClick={handleAddResponsible}
-                            disabled={isSavingResponsible}
-                        >
-                            {isSavingResponsible ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                            Salvar e Selecionar
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
 
             {/* ── Import Dialog ───────────────────────────────────────────────── */}
             <Dialog open={showImport} onOpenChange={setShowImport}>

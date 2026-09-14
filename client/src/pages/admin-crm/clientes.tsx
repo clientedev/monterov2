@@ -27,6 +27,7 @@ import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, Downloa
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
 import { ProductSelector, STANDARD_PRODUCTS } from "@/components/ProductSelector";
+import { ContactFormModal } from "@/components/ContactFormModal";
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
@@ -712,202 +713,15 @@ export default function ClientesPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Create / Edit Dialog */}
-            <Dialog open={showForm} onOpenChange={setShowForm}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>{editTarget ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={e => { e.preventDefault(); saveMutation.mutate(); }}>
-                        <div className="grid grid-cols-2 gap-4 py-2">
-                            {!editTarget && (
-                                <div className="col-span-2 bg-slate-50 rounded-xl p-3 border border-dashed border-slate-200">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Puxar da Base de Contatos (opcional)</Label>
-                                    <SearchableSelect
-                                        options={(contacts ?? []).map(c => ({
-                                            value: String(c.id),
-                                            label: c.name,
-                                            sublabel: [c.phone, c.email].filter(Boolean).join(" · ") || undefined,
-                                        }))}
-                                        value={selectedContactImport}
-                                        onValueChange={(val) => {
-                                            setSelectedContactImport(val);
-                                            if (!val) return;
-                                            const c = contacts?.find(x => String(x.id) === val);
-                                            if (!c) return;
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                type: c.type || prev.type,
-                                                nome: c.name || prev.nome,
-                                                cpfCnpj: c.document || prev.cpfCnpj,
-                                                telefone: c.phone || prev.telefone,
-                                                whatsapp: c.phone || prev.whatsapp,
-                                                email: c.email || prev.email,
-                                                endereco: c.address || prev.endereco,
-                                                anniversaryDate: c.anniversaryDate || prev.anniversaryDate,
-                                                productType: c.productType || prev.productType,
-                                                insurers: c.insurers || prev.insurers,
-                                                contactOrigin: c.contactOrigin || prev.contactOrigin,
-                                                isReferral: c.isReferral || prev.isReferral,
-                                                referredByContactId: c.referredByContactId ? String(c.referredByContactId) : prev.referredByContactId,
-                                                internalResponsibleId: c.internalResponsibleId ? String(c.internalResponsibleId) : prev.internalResponsibleId,
-                                                observacoes: c.notes || prev.observacoes,
-                                            }));
-                                        }}
-                                        placeholder="Buscar contato para pré-preencher..."
-                                        searchPlaceholder="Pesquisar por nome ou telefone..."
-                                        clearable
-                                    />
-                                </div>
-                            )}
-                            <div>
-                                <Label>Tipo de cliente</Label>
-                                <Select value={formData.type} onValueChange={v => setField("type", v as "individual" | "company")}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="individual">Pessoa Física</SelectItem>
-                                        <SelectItem value="company">Pessoa Jurídica</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label>Nome *</Label>
-                                <Input value={formData.nome} onChange={e => setField("nome", e.target.value)} placeholder="Nome completo" required />
-                            </div>
-                            <div>
-                                <Label>CPF / CNPJ</Label>
-                                <Input value={formData.cpfCnpj} onChange={e => setField("cpfCnpj", e.target.value)} placeholder="000.000.000-00" />
-                            </div>
-                            <div>
-                                <Label>Data de Nascimento</Label>
-                                <Input type="date" value={formData.dataNascimento} onChange={e => setField("dataNascimento", e.target.value)} />
-                            </div>
-                            <div>
-                                <Label>Data Comemorativa</Label>
-                                <Input type="date" value={formData.anniversaryDate?.match(/^\d{2}\/\d{2}\/\d{4}$/) ? formData.anniversaryDate.split("/").reverse().join("-") : formData.anniversaryDate} onChange={e => {
-                                    const [year, month, day] = e.target.value.split("-");
-                                    setField("anniversaryDate", year && month && day ? `${day}/${month}/${year}` : "");
-                                }} />
-                            </div>
-                            <div>
-                                <Label>Telefone</Label>
-                                <Input value={formData.telefone} onChange={e => setField("telefone", e.target.value)} placeholder="(11) 99999-9999" />
-                            </div>
-                            <div>
-                                <Label>WhatsApp</Label>
-                                <Input value={formData.whatsapp} onChange={e => setField("whatsapp", e.target.value)} placeholder="(11) 99999-9999" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label>Email</Label>
-                                <Input type="email" value={formData.email} onChange={e => setField("email", e.target.value)} placeholder="email@exemplo.com" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label>Endereço</Label>
-                                <Input value={formData.endereco} onChange={e => setField("endereco", e.target.value)} placeholder="Rua, número, bairro" />
-                            </div>
-                            <div>
-                                <Label>Cidade</Label>
-                                <Input value={formData.cidade} onChange={e => setField("cidade", e.target.value)} placeholder="São Paulo" />
-                            </div>
-                            <div>
-                                <Label>Estado</Label>
-                                <Select value={formData.estado} onValueChange={v => setField("estado", v)}>
-                                    <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
-                                    <SelectContent>
-                                        {ESTADOS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="col-span-2">
-                                <Label>Tags <span className="text-xs text-muted-foreground">(separadas por vírgula)</span></Label>
-                                <Input value={formData.tags} onChange={e => setField("tags", e.target.value)} placeholder="VIP, Renovação, Empresarial" />
-                            </div>
-                            <div className="col-span-2 border-t pt-4 mt-2 font-semibold text-sm text-[#0F6570]">
-                                Produtos, seguradoras e origem
-                            </div>
-                            <div className="col-span-2">
-                                <Label>Produtos</Label>
-                                <ProductSelector value={formData.productType} onChange={value => setField("productType", value)} />
-                            </div>
-                            <div>
-                                <Label>Seguradoras</Label>
-                                <Input value={formData.insurers} onChange={e => setField("insurers", e.target.value)} placeholder="Ex: Porto, SulAmérica" />
-                            </div>
-                            <div>
-                                <Label>Origem do contato</Label>
-                                <Input value={formData.contactOrigin} onChange={e => setField("contactOrigin", e.target.value)} placeholder="Ex: indicação, site, evento" />
-                            </div>
-                            <div className="flex items-center gap-2 rounded-xl border px-3 py-2 mt-2">
-                                <input type="checkbox" className="h-4 w-4 accent-primary" checked={formData.isReferral} onChange={e => setField("isReferral", e.target.checked)} />
-                                <Label className="cursor-pointer">Indicação</Label>
-                            </div>
-                            {formData.isReferral && (
-                                <div>
-                                    <Label>Quem indicou?</Label>
-                                    <SearchableSelect
-                                        options={(contacts ?? []).filter(c => !editTarget || c.id !== (editTarget as any).contactId).map(c => ({ value: String(c.id), label: c.name }))}
-                                        value={formData.referredByContactId}
-                                        onValueChange={v => setField("referredByContactId", v)}
-                                        placeholder="Pesquisar contato..."
-                                        searchPlaceholder="Pesquisar por nome..."
-                                        clearable
-                                    />
-                                </div>
-                            )}
-                            <div className="col-span-2">
-                                <Label>Responsável comercial</Label>
-                                <SearchableSelect
-                                    options={(users ?? []).map(u => ({ value: String(u.id), label: u.name }))}
-                                    value={formData.responsavelComercialId}
-                                    onValueChange={v => setField("responsavelComercialId", v)}
-                                    placeholder="Selecionar responsável..."
-                                    searchPlaceholder="Pesquisar por nome..."
-                                    clearable
-                                />
-                            </div>
-                            {formData.type === "company" && (
-                                <div className="col-span-2">
-                                    <Label>Responsável interno pela empresa</Label>
-                                    <SearchableSelect
-                                        options={(users ?? []).filter(u => u.role !== "client").map(u => ({ value: String(u.id), label: u.name }))}
-                                        value={formData.internalResponsibleId}
-                                        onValueChange={v => setField("internalResponsibleId", v)}
-                                        placeholder="Selecionar responsável da equipe..."
-                                        searchPlaceholder="Pesquisar por nome..."
-                                        clearable
-                                    />
-                                </div>
-                            )}
-                            <div className="col-span-2 border-t pt-4 mt-2 font-semibold text-sm text-[#0F6570]">
-                                Representante Legal / Contato Adicional
-                            </div>
-                            <div>
-                                <Label>Nome do Representante</Label>
-                                <Input value={formData.nomeRepresentante} onChange={e => setField("nomeRepresentante", e.target.value)} placeholder="Nome completo" />
-                            </div>
-                            <div>
-                                <Label>Telefone do Representante</Label>
-                                <Input value={formData.telefoneRepresentante} onChange={e => setField("telefoneRepresentante", e.target.value)} placeholder="(11) 99999-9999" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label>Email do Representante</Label>
-                                <Input type="email" value={formData.emailRepresentante} onChange={e => setField("emailRepresentante", e.target.value)} placeholder="email@exemplo.com" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label>Observações</Label>
-                                <Textarea value={formData.observacoes} onChange={e => setField("observacoes", e.target.value)} placeholder="Anotações sobre o cliente..." rows={3} />
-                            </div>
-                        </div>
-                        <DialogFooter className="mt-4">
-                            <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={saveMutation.isPending}>
-                                {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                {editTarget ? "Salvar" : "Criar Cliente"}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            <ContactFormModal
+                open={showForm}
+                onOpenChange={setShowForm}
+                contactId={(editTarget as any)?.contactId || null}
+                onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/clientes"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+                }}
+            />
 
             {/* Delete Confirm */}
             <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

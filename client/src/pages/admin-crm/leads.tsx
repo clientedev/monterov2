@@ -50,6 +50,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { cn } from "@/lib/utils";
 import { ContactProfile } from "@/components/ContactProfile";
+import { ContactFormModal } from "@/components/ContactFormModal";
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
@@ -739,32 +740,7 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Full Client Modal state (matches clientes.tsx completely)
-    const [showFullClientModal, setShowFullClientModal] = useState(false);
-    const [selectedContactImport, setSelectedContactImport] = useState("");
-    const [isSavingFullClient, setIsSavingFullClient] = useState(false);
-
-    const [clientFormData, setClientFormData] = useState({
-        nome: "",
-        cpfCnpj: "",
-        dataNascimento: "",
-        telefone: "",
-        whatsapp: "",
-        email: "",
-        endereco: "",
-        cidade: "",
-        estado: "",
-        observacoes: "",
-        tags: "",
-        responsavelComercialId: "",
-        nomeRepresentante: "",
-        telefoneRepresentante: "",
-        emailRepresentante: "",
-    });
-
-    const setClientField = (field: string, value: any) => {
-        setClientFormData(prev => ({ ...prev, [field]: value }));
-    };
+    const [showContactModal, setShowContactModal] = useState(false);
 
     const form = useForm<InsertLead>({
         resolver: zodResolver(insertLeadSchema),
@@ -845,68 +821,6 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
         );
     }, [contacts, searchQuery]);
 
-    // Save full client (same endpoint as clientes.tsx)
-    const handleSaveFullClient = async () => {
-        if (!clientFormData.nome.trim()) {
-            toast({ title: "Nome do cliente é obrigatório", variant: "destructive" });
-            return;
-        }
-        setIsSavingFullClient(true);
-        try {
-            const payload: any = {
-                ...clientFormData,
-                responsavelComercialId: clientFormData.responsavelComercialId ? parseInt(clientFormData.responsavelComercialId) : null,
-            };
-
-            const res = await apiRequest("POST", "/api/clientes", payload);
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message || "Erro ao cadastrar cliente");
-            }
-            const createdCliente = await res.json();
-
-            // Refresh contacts and clientes cache
-            await queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-            await queryClient.invalidateQueries({ queryKey: ["/api/clientes"] });
-
-            // Retrieve updated contacts list to set contactId
-            const contactsRes = await fetch("/api/contacts", { credentials: "include" });
-            let newContactId = 0;
-            if (contactsRes.ok) {
-                const latestContacts: Contact[] = await contactsRes.json();
-                const found = latestContacts.find(c => 
-                    (c.document && createdCliente.cpfCnpj && c.document.replace(/\D/g, "") === createdCliente.cpfCnpj.replace(/\D/g, "")) ||
-                    (c.name && createdCliente.nome && c.name.toLowerCase().trim() === createdCliente.nome.toLowerCase().trim())
-                );
-                if (found) newContactId = found.id;
-            }
-            if (!newContactId) {
-                newContactId = createdCliente.id;
-            }
-
-            form.setValue("contactId", newContactId);
-            setSearchQuery(createdCliente.nome);
-
-            toast({ title: `✅ Cliente "${createdCliente.nome}" cadastrado e selecionado!` });
-
-            setClientFormData({
-                nome: "", cpfCnpj: "", dataNascimento: "", telefone: "", whatsapp: "",
-                email: "", endereco: "", cidade: "", estado: "", observacoes: "", tags: "",
-                responsavelComercialId: "", nomeRepresentante: "", telefoneRepresentante: "", emailRepresentante: "",
-            });
-            setSelectedContactImport("");
-            setShowFullClientModal(false);
-        } catch (error: any) {
-            toast({
-                title: "Erro ao cadastrar cliente",
-                description: error.message,
-                variant: "destructive",
-            });
-        } finally {
-            setIsSavingFullClient(false);
-        }
-    };
-
     const handleFormSubmit = form.handleSubmit(
         (data) => {
             if (!data.contactId) {
@@ -942,7 +856,7 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                                             variant="ghost"
                                             size="sm"
                                             className="h-6 px-2 text-primary hover:bg-primary/10 text-xs font-bold gap-1"
-                                            onClick={() => setShowFullClientModal(true)}
+                                            onClick={() => setShowContactModal(true)}
                                         >
                                             <UserPlus className="h-3.5 w-3.5" />
                                             + Novo Cliente Completo
@@ -986,7 +900,7 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                                                         className="w-full text-left px-3 py-2.5 rounded-xl bg-primary/5 hover:bg-primary/10 text-primary font-bold text-xs flex items-center gap-2 transition-colors border-b border-primary/10 mb-1"
                                                         onClick={() => {
                                                             setIsDropdownOpen(false);
-                                                            setShowFullClientModal(true);
+                                                            setShowContactModal(true);
                                                         }}
                                                     >
                                                         <span className="h-5 w-5 rounded-full bg-primary text-white flex items-center justify-center text-xs font-black">+</span>
@@ -1035,7 +949,7 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                                                 type="button"
                                                 size="icon"
                                                 className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/90 text-white shrink-0 shadow-md transition-all active:scale-95"
-                                                onClick={() => setShowFullClientModal(true)}
+                                                onClick={() => setShowContactModal(true)}
                                                 title="Cadastrar Novo Cliente Completo (Com todas as informações)"
                                             >
                                                 <Plus className="h-5 w-5" />
@@ -1196,129 +1110,15 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                 </form>
             </Form>
 
-            {/* FULL CLIENT CREATION MODAL (Identical to clientes.tsx) */}
-            <Dialog open={showFullClientModal} onOpenChange={setShowFullClientModal}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-display font-bold text-slate-900">Novo Cliente</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={e => { e.preventDefault(); handleSaveFullClient(); }}>
-                        <div className="grid grid-cols-2 gap-4 py-2">
-                            <div className="col-span-2 bg-slate-50 rounded-xl p-3 border border-dashed border-slate-200">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Puxar da Base de Contatos (opcional)</Label>
-                                <SearchableSelect
-                                    options={(contacts ?? []).map((c: any) => ({
-                                        value: String(c.id),
-                                        label: c.name,
-                                        sublabel: [c.phone, c.email].filter(Boolean).join(" · ") || undefined,
-                                    }))}
-                                    value={selectedContactImport}
-                                    onValueChange={(val) => {
-                                        setSelectedContactImport(val);
-                                        if (!val) return;
-                                        const c = contacts?.find((x: any) => String(x.id) === val);
-                                        if (!c) return;
-                                        setClientFormData(prev => ({
-                                            ...prev,
-                                            nome: c.name || prev.nome,
-                                            cpfCnpj: c.document || prev.cpfCnpj,
-                                            telefone: c.phone || prev.telefone,
-                                            whatsapp: c.phone || prev.whatsapp,
-                                            email: c.email || prev.email,
-                                            endereco: c.address || prev.endereco,
-                                        }));
-                                    }}
-                                    placeholder="Buscar contato para pré-preencher..."
-                                    searchPlaceholder="Pesquisar por nome ou telefone..."
-                                    clearable
-                                />
-                            </div>
-                            <div className="col-span-2">
-                                <Label className="font-bold">Nome *</Label>
-                                <Input value={clientFormData.nome} onChange={e => setClientField("nome", e.target.value)} placeholder="Nome completo" required className="rounded-xl h-11" />
-                            </div>
-                            <div>
-                                <Label className="font-bold">CPF / CNPJ</Label>
-                                <Input value={clientFormData.cpfCnpj} onChange={e => setClientField("cpfCnpj", e.target.value)} placeholder="000.000.000-00" className="rounded-xl h-11" />
-                            </div>
-                            <div>
-                                <Label className="font-bold">Data de Nascimento</Label>
-                                <Input type="date" value={clientFormData.dataNascimento} onChange={e => setClientField("dataNascimento", e.target.value)} className="rounded-xl h-11" />
-                            </div>
-                            <div>
-                                <Label className="font-bold">Telefone</Label>
-                                <Input value={clientFormData.telefone} onChange={e => setClientField("telefone", e.target.value)} placeholder="(11) 99999-9999" className="rounded-xl h-11" />
-                            </div>
-                            <div>
-                                <Label className="font-bold">WhatsApp</Label>
-                                <Input value={clientFormData.whatsapp} onChange={e => setClientField("whatsapp", e.target.value)} placeholder="(11) 99999-9999" className="rounded-xl h-11" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label className="font-bold">Email</Label>
-                                <Input type="email" value={clientFormData.email} onChange={e => setClientField("email", e.target.value)} placeholder="email@exemplo.com" className="rounded-xl h-11" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label className="font-bold">Endereço</Label>
-                                <Input value={clientFormData.endereco} onChange={e => setClientField("endereco", e.target.value)} placeholder="Rua, número, bairro" className="rounded-xl h-11" />
-                            </div>
-                            <div>
-                                <Label className="font-bold">Cidade</Label>
-                                <Input value={clientFormData.cidade} onChange={e => setClientField("cidade", e.target.value)} placeholder="São Paulo" className="rounded-xl h-11" />
-                            </div>
-                            <div>
-                                <Label className="font-bold">Estado</Label>
-                                <Select value={clientFormData.estado} onValueChange={v => setClientField("estado", v)}>
-                                    <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="UF" /></SelectTrigger>
-                                    <SelectContent>
-                                        {ESTADOS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="col-span-2">
-                                <Label className="font-bold">Tags <span className="text-xs text-muted-foreground font-normal">(separadas por vírgula)</span></Label>
-                                <Input value={clientFormData.tags} onChange={e => setClientField("tags", e.target.value)} placeholder="VIP, Renovação, Empresarial" className="rounded-xl h-11" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label className="font-bold">Responsável Comercial</Label>
-                                <SearchableSelect
-                                    options={(users ?? []).map((u: any) => ({ value: String(u.id), label: u.name }))}
-                                    value={clientFormData.responsavelComercialId}
-                                    onValueChange={v => setClientField("responsavelComercialId", v)}
-                                    placeholder="Selecionar responsável..."
-                                    searchPlaceholder="Pesquisar por nome..."
-                                    clearable
-                                />
-                            </div>
-                            <div className="col-span-2 border-t pt-4 mt-2 font-bold text-sm text-[#0F6570]">
-                                Representante Legal / Contato Adicional
-                            </div>
-                            <div>
-                                <Label className="font-bold">Nome do Representante</Label>
-                                <Input value={clientFormData.nomeRepresentante} onChange={e => setClientField("nomeRepresentante", e.target.value)} placeholder="Nome completo" className="rounded-xl h-11" />
-                            </div>
-                            <div>
-                                <Label className="font-bold">Telefone do Representante</Label>
-                                <Input value={clientFormData.telefoneRepresentante} onChange={e => setClientField("telefoneRepresentante", e.target.value)} placeholder="(11) 99999-9999" className="rounded-xl h-11" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label className="font-bold">Email do Representante</Label>
-                                <Input type="email" value={clientFormData.emailRepresentante} onChange={e => setClientField("emailRepresentante", e.target.value)} placeholder="email@exemplo.com" className="rounded-xl h-11" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label className="font-bold">Observações</Label>
-                                <Textarea value={clientFormData.observacoes} onChange={e => setClientField("observacoes", e.target.value)} placeholder="Anotações sobre o cliente..." rows={3} className="rounded-xl" />
-                            </div>
-                        </div>
-                        <DialogFooter className="mt-4 gap-2">
-                            <Button type="button" variant="outline" onClick={() => setShowFullClientModal(false)} className="rounded-xl font-bold">Cancelar</Button>
-                            <Button type="submit" disabled={isSavingFullClient} className="rounded-xl font-bold bg-primary hover:bg-primary/90 text-white">
-                                {isSavingFullClient && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                Criar Cliente
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            <ContactFormModal
+                open={showContactModal}
+                onOpenChange={setShowContactModal}
+                onSuccess={(newContact) => {
+                    form.setValue("contactId", newContact.id);
+                    setSearchQuery(newContact.name);
+                    toast({ title: `✅ Contato "${newContact.name}" cadastrado e selecionado!` });
+                }}
+            />
         </>
     );
 }
