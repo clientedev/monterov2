@@ -40,6 +40,7 @@ import ReviewsPage from "@/pages/admin-crm/reviews";
 import ProspectingPage from "@/pages/admin-crm/prospecting";
 import CompanySearchPage from "@/pages/admin-crm/company-search";
 import TodoistModulePage from "@/pages/admin-crm/todoist";
+import NotasPage from "@/pages/admin-crm/notas";
 
 // Insurance Module Pages
 import DashboardSegurosPage from "@/pages/admin-crm/dashboard-seguros";
@@ -129,6 +130,7 @@ function Router() {
       <ProtectedAdminRoute path="/admin/prospecting" component={ProspectingPage} />
       <ProtectedAdminRoute path="/admin/company-search" component={CompanySearchPage} />
       <ProtectedAdminRoute path="/admin/todoist" component={TodoistModulePage} />
+      <ProtectedAdminRoute path="/admin/notas" component={NotasPage} />
 
       {/* Insurance Module Routes */}
       <ProtectedAdminRoute path="/admin/seguros" component={DashboardSegurosPage} />

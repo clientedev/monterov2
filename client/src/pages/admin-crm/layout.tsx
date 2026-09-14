@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, createContext } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +25,8 @@ import {
     Package,
     ShieldCheck,
     Building2,
-    Shield
+    Shield,
+    StickyNote,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSiteSettings } from "@/hooks/use-site-settings";
@@ -34,6 +35,11 @@ import { Separator } from "@/components/ui/separator";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { ForcePasswordChangeDialog } from "@/components/ForcePasswordChangeDialog";
 import { TodoistNotificationBell } from "@/components/todoist/TodoistNotificationBell";
+import { useStickyNotes } from "@/hooks/useStickyNotes";
+import { StickyNotesLayer, StickyNoteButton } from "@/components/StickyNoteWidget";
+
+// ─── Sticky Notes Context ────────────────────────────────────────────────────
+export const StickyNotesContext = createContext<ReturnType<typeof useStickyNotes> | null>(null);
 
 const WhatsAppIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -46,6 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [location, setLocation] = useLocation();
     const { settings } = useSiteSettings();
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const stickyNotes = useStickyNotes();
 
     if (!user) return null;
 
@@ -172,6 +179,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Sistema</p>
                         <nav className="space-y-1">
                             {isAdmin && <NavLink href="/admin/site-config" icon={Settings} label="Configurações Web" />}
+                            <NavLink href="/admin/notas" icon={StickyNote} label="Notas Adesivas" />
                         </nav>
                     </div>
                 </div>
@@ -234,6 +242,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
 
     return (
+        <StickyNotesContext.Provider value={stickyNotes}>
+        <StickyNotesLayer hook={stickyNotes} />
         <div className="flex flex-col lg:flex-row h-screen bg-[#0a0c10] overflow-hidden font-sans selection:bg-amber-500/30">
             {/* Mobile Header */}
             <header className="lg:hidden flex items-center justify-between bg-[#0F6570] p-4 shadow-md z-40 border-b border-white/5 shrink-0">
@@ -296,6 +306,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <WhatsAppIcon className="h-4 w-4 fill-white" /> Monteiro Conecta
                         </Button>
                     </a>
+                    <StickyNoteButton hook={stickyNotes} />
                     <TodoistNotificationBell />
                 </div>
 
@@ -309,5 +320,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <ForcePasswordChangeDialog open={!!(user as any)?.mustChangePassword} />
             </main>
         </div>
+        </StickyNotesContext.Provider>
     );
 }

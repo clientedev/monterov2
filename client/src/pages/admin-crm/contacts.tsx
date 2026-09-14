@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, InsertContact, insertContactSchema, Lead, Product, User as UserType } from "@shared/schema";
 
@@ -66,8 +66,27 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Users, Building, User, UserPlus, Search, X, KeyRound, Eye, CalendarDays } from "lucide-react";
+import {
+    Loader2,
+    Plus,
+    Users,
+    Building,
+    User,
+    UserPlus,
+    Search,
+    X,
+    KeyRound,
+    Eye,
+    CalendarDays,
+    SlidersHorizontal,
+    ArrowUp,
+    ArrowDown,
+    GripVertical,
+    RotateCcw,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ContactProfile } from "@/components/ContactProfile";
 import * as XLSX from "xlsx";
 import {
@@ -83,6 +102,57 @@ import {
 import { Edit2, FileDown, FileSpreadsheet, Trash2, Sparkles } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ProductSelector, STANDARD_PRODUCTS } from "@/components/ProductSelector";
+
+export interface ColumnConfig {
+    id: string;
+    label: string;
+    minWidth?: string;
+    align?: "left" | "right";
+}
+
+export const ALL_CONTACT_COLUMNS: ColumnConfig[] = [
+    { id: "name", label: "Contato / Nome", minWidth: "250px" },
+    { id: "type", label: "Tipo de Cliente", minWidth: "150px" },
+    { id: "document", label: "CPF / CNPJ", minWidth: "140px" },
+    { id: "responsible", label: "Representante", minWidth: "170px" },
+    { id: "internalResponsible", label: "Responsável interno", minWidth: "170px" },
+    { id: "contact", label: "E-mail / Telefone", minWidth: "190px" },
+    { id: "anniversary", label: "Idade / Data Comem.", minWidth: "150px" },
+    { id: "products", label: "Produtos", minWidth: "180px" },
+    { id: "insurers", label: "Seguradoras", minWidth: "170px" },
+    { id: "origin", label: "Origem", minWidth: "130px" },
+    { id: "referral", label: "Indicação", minWidth: "110px" },
+    { id: "notes", label: "Observações", minWidth: "200px" },
+    { id: "status", label: "Status", minWidth: "120px" },
+    { id: "actions", label: "Ações", minWidth: "150px", align: "right" },
+];
+
+const COLUMNS_STORAGE_KEY = "crm_contacts_column_order_v2";
+const HIDDEN_COLUMNS_STORAGE_KEY = "crm_contacts_hidden_columns_v2";
+
+function loadSavedColumnOrder(): string[] {
+    try {
+        const raw = localStorage.getItem(COLUMNS_STORAGE_KEY);
+        if (!raw) return ALL_CONTACT_COLUMNS.map(c => c.id);
+        const parsed: string[] = JSON.parse(raw);
+        const valid = parsed.filter(id => ALL_CONTACT_COLUMNS.some(c => c.id === id));
+        ALL_CONTACT_COLUMNS.forEach(c => {
+            if (!valid.includes(c.id)) valid.push(c.id);
+        });
+        return valid;
+    } catch {
+        return ALL_CONTACT_COLUMNS.map(c => c.id);
+    }
+}
+
+function loadSavedHiddenColumns(): string[] {
+    try {
+        const raw = localStorage.getItem(HIDDEN_COLUMNS_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+}
 
 export default function ContactsPage() {
     const { toast } = useToast();
@@ -100,6 +170,49 @@ export default function ContactsPage() {
     const [filterType, setFilterType] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [filterProduct, setFilterProduct] = useState<string>("all");
+
+    // ── Column Customization State ───────────────────────────────────────────
+    const [columnOrder, setColumnOrder] = useState<string[]>(loadSavedColumnOrder);
+    const [hiddenColumns, setHiddenColumns] = useState<string[]>(loadSavedHiddenColumns);
+    const [draggedColId, setDraggedColId] = useState<string | null>(null);
+    const [dragOverColId, setDragOverColId] = useState<string | null>(null);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(columnOrder));
+        } catch {}
+    }, [columnOrder]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(HIDDEN_COLUMNS_STORAGE_KEY, JSON.stringify(hiddenColumns));
+        } catch {}
+    }, [hiddenColumns]);
+
+    const moveColumn = (fromIndex: number, toIndex: number) => {
+        if (toIndex < 0 || toIndex >= columnOrder.length) return;
+        setColumnOrder(prev => {
+            const next = [...prev];
+            const [moved] = next.splice(fromIndex, 1);
+            next.splice(toIndex, 0, moved);
+            return next;
+        });
+    };
+
+    const toggleColumnVisibility = (colId: string) => {
+        setHiddenColumns(prev =>
+            prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]
+        );
+    };
+
+    const resetColumns = () => {
+        setColumnOrder(ALL_CONTACT_COLUMNS.map(c => c.id));
+        setHiddenColumns([]);
+    };
+
+    const visibleColumnIds = useMemo(() => {
+        return columnOrder.filter(id => !hiddenColumns.includes(id));
+    }, [columnOrder, hiddenColumns]);
 
     // ── "Adicionar responsável" mini-dialog state ────────────────────────────
     const [addResponsibleOpen, setAddResponsibleOpen] = useState(false);
@@ -984,6 +1097,98 @@ export default function ContactsPage() {
                         <SelectItem value="Outro">Outro</SelectItem>
                     </SelectContent>
                 </Select>
+
+                {/* ── Popover de Configuração de Colunas ───────────────────────── */}
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className="h-10 px-3 text-sm font-semibold rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50 gap-2 shrink-0"
+                            title="Personalizar e reordenar colunas da tabela"
+                        >
+                            <SlidersHorizontal className="h-4 w-4 text-slate-500" />
+                            <span className="hidden sm:inline">Colunas</span>
+                            <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-bold bg-slate-100 text-slate-700">
+                                {visibleColumnIds.length}/{ALL_CONTACT_COLUMNS.length}
+                            </Badge>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-84 p-4 rounded-2xl shadow-2xl border-slate-200 bg-white" align="end">
+                        <div className="flex items-center justify-between pb-3 border-b mb-3">
+                            <div>
+                                <h4 className="font-bold text-sm text-slate-900">Editar Colunas</h4>
+                                <p className="text-[11px] text-slate-500">Escolha a ordem e visibilidade</p>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={resetColumns}
+                                className="h-7 px-2 text-xs text-slate-500 hover:text-slate-900 gap-1"
+                                title="Restaurar posições originais"
+                            >
+                                <RotateCcw className="h-3 w-3" />
+                                Padrão
+                            </Button>
+                        </div>
+                        <div className="space-y-1.5 max-h-[340px] overflow-y-auto pr-1">
+                            {columnOrder.map((colId, index) => {
+                                const col = ALL_CONTACT_COLUMNS.find(c => c.id === colId);
+                                if (!col) return null;
+                                const isVisible = !hiddenColumns.includes(colId);
+                                return (
+                                    <div
+                                        key={colId}
+                                        className={`flex items-center justify-between p-2 rounded-xl text-xs transition-colors ${
+                                            isVisible ? "bg-slate-50 border border-slate-100" : "bg-slate-100/50 opacity-60"
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                            <span className="text-[10px] font-mono font-bold text-slate-400 w-4 text-center shrink-0">
+                                                {index + 1}
+                                            </span>
+                                            <Checkbox
+                                                id={`col-${colId}`}
+                                                checked={isVisible}
+                                                onCheckedChange={() => toggleColumnVisibility(colId)}
+                                                className="h-4 w-4 rounded"
+                                            />
+                                            <label
+                                                htmlFor={`col-${colId}`}
+                                                className="font-semibold text-slate-800 cursor-pointer truncate select-none"
+                                            >
+                                                {col.label}
+                                            </label>
+                                        </div>
+                                        <div className="flex items-center gap-0.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                disabled={index === 0}
+                                                onClick={() => moveColumn(index, index - 1)}
+                                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:hover:text-slate-400 rounded hover:bg-slate-200/60 transition-colors"
+                                                title="Mover para cima / esquerda"
+                                            >
+                                                <ArrowUp className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={index === columnOrder.length - 1}
+                                                onClick={() => moveColumn(index, index + 1)}
+                                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:hover:text-slate-400 rounded hover:bg-slate-200/60 transition-colors"
+                                                title="Mover para baixo / direita"
+                                            >
+                                                <ArrowDown className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="pt-3 mt-3 border-t text-[11px] text-slate-400 text-center">
+                            Dica: você também pode arrastar os cabeçalhos na própria tabela!
+                        </div>
+                    </PopoverContent>
+                </Popover>
+
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
                     {filteredContacts.length} de {contacts?.length ?? 0}
                 </span>
@@ -992,29 +1197,67 @@ export default function ContactsPage() {
             {/* ── Contacts Table ──────────────────────────────────────────────── */}
             <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                 <div className="w-full overflow-x-auto overscroll-x-contain">
-                <Table className="min-w-[1500px]">
+                <Table className="min-w-[1200px]">
                     <TableHeader className="bg-slate-50">
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className="py-4 font-bold text-slate-700">Contato / Nome</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Tipo de Cliente</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">CPF / CNPJ</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Representante</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Responsável interno</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">E-mail / Telefone</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Idade / Data Comem.</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Produtos</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Seguradoras</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Origem</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Indicação</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Observações</TableHead>
-                            <TableHead className="py-4 font-bold text-slate-700">Status</TableHead>
-                            <TableHead className="py-4 text-right font-bold text-slate-700">Ações</TableHead>
+                            {visibleColumnIds.map((colId) => {
+                                const col = ALL_CONTACT_COLUMNS.find(c => c.id === colId);
+                                if (!col) return null;
+                                const isDragging = draggedColId === colId;
+                                const isDragOver = dragOverColId === colId && !isDragging;
+                                return (
+                                    <TableHead
+                                        key={colId}
+                                        draggable
+                                        onDragStart={(e) => {
+                                            e.dataTransfer.setData("text/plain", colId);
+                                            setDraggedColId(colId);
+                                        }}
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            if (dragOverColId !== colId) setDragOverColId(colId);
+                                        }}
+                                        onDragLeave={() => {
+                                            if (dragOverColId === colId) setDragOverColId(null);
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            const sourceId = e.dataTransfer.getData("text/plain") || draggedColId;
+                                            if (sourceId && sourceId !== colId) {
+                                                const fromIdx = columnOrder.indexOf(sourceId);
+                                                const toIdx = columnOrder.indexOf(colId);
+                                                if (fromIdx !== -1 && toIdx !== -1) {
+                                                    moveColumn(fromIdx, toIdx);
+                                                }
+                                            }
+                                            setDraggedColId(null);
+                                            setDragOverColId(null);
+                                        }}
+                                        onDragEnd={() => {
+                                            setDraggedColId(null);
+                                            setDragOverColId(null);
+                                        }}
+                                        style={{ minWidth: col.minWidth }}
+                                        className={`py-4 font-bold text-slate-700 cursor-grab active:cursor-grabbing select-none transition-all ${
+                                            col.align === "right" ? "text-right" : ""
+                                        } ${isDragging ? "opacity-30 bg-slate-200" : ""} ${
+                                            isDragOver ? "bg-primary/10 border-l-2 border-primary shadow-inner" : ""
+                                        }`}
+                                        title="Arraste para reposicionar esta coluna"
+                                    >
+                                        <div className={`flex items-center gap-1.5 ${col.align === "right" ? "justify-end" : ""}`}>
+                                            <GripVertical className="h-3.5 w-3.5 text-slate-400 opacity-40 hover:opacity-100 shrink-0" />
+                                            <span>{col.label}</span>
+                                        </div>
+                                    </TableHead>
+                                );
+                            })}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredContacts.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={14} className="text-center h-32 text-muted-foreground">
+                                <TableCell colSpan={visibleColumnIds.length || 1} className="text-center h-32 text-muted-foreground">
                                     <div className="flex flex-col items-center gap-2">
                                         <Users className="h-8 w-8 opacity-20" />
                                         <p>{contacts?.length === 0 ? "Nenhum contato cadastrado ainda." : "Nenhum contato encontrado com os filtros aplicados."}</p>
@@ -1034,236 +1277,259 @@ export default function ContactsPage() {
 
                                 return (
                                     <TableRow key={contact.id} className="hover:bg-slate-50/70 transition-colors group">
-                                        {/* 1. Nome / Identificação + Badge de Conta */}
-                                        <TableCell className="font-bold text-slate-900 py-4">
-                                            <div
-                                                className="flex items-center gap-3 cursor-pointer group/name text-slate-900 hover:text-primary transition-colors w-fit"
-                                                onClick={() => {
-                                                    setSelectedContactId(contact.id);
-                                                    setProfileOpen(true);
-                                                }}
-                                                title="Clique para ver o perfil do contato"
-                                            >
-                                                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold transition-transform group-hover/name:scale-105 shrink-0 overflow-hidden shadow-sm
-                                                    ${contact.type === 'individual' ? 'bg-primary' : 'bg-secondary'}
-                                                `}>
-                                                    {displayAvatar ? (
-                                                        <img src={displayAvatar} alt={contact.name} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        contact.name.charAt(0).toUpperCase()
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                        <span className="group-hover/name:underline text-slate-900 font-bold text-sm">{contact.name}</span>
-                                                        {matchedUser && (
-                                                            <Badge className="bg-amber-50 text-amber-800 border-amber-200 font-bold text-[9px] px-1.5 py-0.2 gap-1 rounded-md">
-                                                                <KeyRound className="h-2.5 w-2.5 text-amber-600" /> Possui Conta
+                                        {visibleColumnIds.map((colId) => {
+                                            switch (colId) {
+                                                case "name":
+                                                    return (
+                                                        <TableCell key="name" className="font-bold text-slate-900 py-4">
+                                                            <div
+                                                                className="flex items-center gap-3 cursor-pointer group/name text-slate-900 hover:text-primary transition-colors w-fit"
+                                                                onClick={() => {
+                                                                    setSelectedContactId(contact.id);
+                                                                    setProfileOpen(true);
+                                                                }}
+                                                                title="Clique para ver o perfil do contato"
+                                                            >
+                                                                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold transition-transform group-hover/name:scale-105 shrink-0 overflow-hidden shadow-sm
+                                                                    ${contact.type === 'individual' ? 'bg-primary' : 'bg-secondary'}
+                                                                `}>
+                                                                    {displayAvatar ? (
+                                                                        <img src={displayAvatar} alt={contact.name} className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        contact.name.charAt(0).toUpperCase()
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                        <span className="group-hover/name:underline text-slate-900 font-bold text-sm">{contact.name}</span>
+                                                                        {matchedUser && (
+                                                                            <Badge className="bg-amber-50 text-amber-800 border-amber-200 font-bold text-[9px] px-1.5 py-0.2 gap-1 rounded-md">
+                                                                                <KeyRound className="h-2.5 w-2.5 text-amber-600" /> Possui Conta
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                    );
+                                                case "type":
+                                                    return (
+                                                        <TableCell key="type" className="py-4">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={`rounded-lg py-1 px-2.5 border-none flex items-center w-fit gap-1.5 font-bold text-[10px] uppercase tracking-wider
+                                                                    ${contact.type === 'individual' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}
+                                                            >
+                                                                {contact.type === 'individual' ? <User className="h-3 w-3" /> : <Building className="h-3 w-3" />}
+                                                                {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
                                                             </Badge>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-
-                                        {/* 2. Tipo de Cliente (PF / PJ) */}
-                                        <TableCell className="py-4">
-                                            <Badge
-                                                variant="outline"
-                                                className={`rounded-lg py-1 px-2.5 border-none flex items-center w-fit gap-1.5 font-bold text-[10px] uppercase tracking-wider
-                                                    ${contact.type === 'individual' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}
-                                            >
-                                                {contact.type === 'individual' ? <User className="h-3 w-3" /> : <Building className="h-3 w-3" />}
-                                                {contact.type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}
-                                            </Badge>
-                                        </TableCell>
-
-                                        {/* 3. CPF/CNPJ */}
-                                        <TableCell className="text-slate-700 font-medium py-4">
-                                            <span className="font-bold text-slate-800 text-xs">{contact.document || "—"}</span>
-                                        </TableCell>
-
-                                        {/* 4. Representante externo */}
-                                        <TableCell className="text-slate-700 font-medium py-4">
-                                            {contact.responsibleName ? (
-                                                <div className="flex items-center gap-1">
-                                                    {contact.responsibleId ? (
-                                                        <button
-                                                            type="button"
-                                                            className="text-xs font-bold text-slate-800 hover:text-primary hover:underline transition-colors text-left cursor-pointer flex items-center gap-1.5"
-                                                            onClick={() => {
-                                                                setSelectedContactId(contact.responsibleId!);
-                                                                setProfileOpen(true);
-                                                            }}
-                                                            title="Clique para ver o perfil do responsável"
-                                                        >
-                                                            <User className="h-3.5 w-3.5 text-primary/70" />
-                                                            {contact.responsibleName}
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                                                            <User className="h-3.5 w-3.5 text-slate-400" />
-                                                            {contact.responsibleName}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-slate-400 italic">—</span>
-                                            )}
-                                        </TableCell>
-
-                                        {/* 5. Responsável interno */}
-                                        <TableCell className="py-4">
-                                            <span className="text-xs font-medium text-slate-700">{internalResponsible || "—"}</span>
-                                        </TableCell>
-
-                                        {/* 6. E-mail & Telefone */}
-                                        <TableCell className="text-slate-600 py-4 text-xs space-y-0.5">
-                                            <div className="font-medium text-slate-800">{contact.email || "—"}</div>
-                                            <div className="text-slate-400">{contact.phone || "—"}</div>
-                                        </TableCell>
-
-                                        {/* 7. Idade / Data Comemorativa */}
-                                        <TableCell className="py-4">
-                                            {contact.anniversaryDate ? (
-                                                <div className="flex flex-col space-y-0.5">
-                                                    <span className="text-xs font-semibold text-slate-700">{contact.anniversaryDate}</span>
-                                                    {age !== null && (
-                                                        <Badge variant="outline" className="w-fit py-0 px-1.5 bg-rose-50 text-rose-600 border-rose-200 font-bold text-[10px]">
-                                                            🎂 {age} anos
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-slate-400 italic">—</span>
-                                            )}
-                                        </TableCell>
-
-                                        {/* 8. Produtos */}
-                                        <TableCell className="py-4">
-                                            <div className="flex flex-wrap gap-1 max-w-[180px]">
-                                                {products.length > 0 ? (
-                                                    products.map((prod) => (
-                                                        <Badge key={prod} variant="outline" className="rounded-lg py-0.5 px-2 border-none bg-primary/10 text-primary font-bold text-[10px] uppercase">
-                                                            {prod}
-                                                        </Badge>
-                                                    ))
-                                                ) : (
-                                                    <span className="text-xs text-slate-400 italic">—</span>
-                                                )}
-                                            </div>
-                                        </TableCell>
-
-                                        {/* 9. Seguradoras */}
-                                        <TableCell className="py-4">
-                                            <div className="flex flex-wrap gap-1 max-w-[180px]">
-                                                {(contact.insurers || "").split(",").map(s => s.trim()).filter(Boolean).map(insurer => (
-                                                    <Badge key={insurer} variant="outline" className="rounded-lg py-0.5 px-2 border-none bg-indigo-50 text-indigo-700 font-bold text-[10px]">
-                                                        {insurer}
-                                                    </Badge>
-                                                ))}
-                                                {!contact.insurers && <span className="text-xs text-slate-400 italic">—</span>}
-                                            </div>
-                                        </TableCell>
-
-                                        {/* 10. Origem */}
-                                        <TableCell className="py-4 text-xs text-slate-700">{contact.contactOrigin || "—"}</TableCell>
-
-                                        {/* 11. Indicação */}
-                                        <TableCell className="py-4">
-                                            {contact.isReferral ? (
-                                                <Badge className="bg-amber-50 text-amber-800 border-amber-200 text-[10px]">Indicação</Badge>
-                                            ) : <span className="text-xs text-slate-400">—</span>}
-                                        </TableCell>
-
-                                        {/* 12. Observações */}
-                                        <TableCell className="py-4 max-w-[220px]">
-                                            <span className="block truncate text-xs text-slate-600" title={contact.notes || ""}>{contact.notes || "—"}</span>
-                                        </TableCell>
-
-                                        {/* 13. Status */}
-                                        <TableCell className="py-4">
-                                            <Badge
-                                                variant="outline"
-                                                className={`rounded-full py-0.5 px-2.5 font-bold text-[10px] uppercase border ${
-                                                    (contact.status || "Ativo") === "Ativo"
-                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                        : (contact.status || "Ativo") === "Prospects"
-                                                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                                                        : "bg-rose-50 text-rose-700 border-rose-200"
-                                                }`}
-                                            >
-                                                {contact.status || "Ativo"}
-                                            </Badge>
-                                        </TableCell>
-
-                                        {/* 14. Ações */}
-                                        <TableCell className="text-right py-4">
-                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg p-0"
-                                                    onClick={() => {
-                                                        setSelectedContactId(contact.id);
-                                                        setProfileOpen(true);
-                                                    }}
-                                                    title="Ver Perfil Completo"
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 w-8 text-slate-600 hover:bg-slate-100 rounded-lg p-0"
-                                                    onClick={() => {
-                                                        form.reset({
-                                                            type: contact.type || "individual",
-                                                            name: contact.name || "",
-                                                            email: contact.email || "",
-                                                            phone: contact.phone || "",
-                                                            document: contact.document || "",
-                                                            address: contact.address || "",
-                                                            responsibleName: contact.responsibleName || "",
-                                                            responsibleId: contact.responsibleId ?? undefined,
-                                                            anniversaryDate: contact.anniversaryDate || "",
-                                                            maritalStatus: contact.maritalStatus || "",
-                                                            productType: contact.productType || "",
-                                                            insurers: contact.insurers || "",
-                                                            contactOrigin: contact.contactOrigin || "",
-                                                            isReferral: contact.isReferral || false,
-                                                            referredByContactId: contact.referredByContactId || undefined,
-                                                            internalResponsibleId: contact.internalResponsibleId || undefined,
-                                                            notes: contact.notes || "",
-                                                            status: (contact.status as any) || "Ativo",
-                                                        });
-                                                        setIsEditing(contact.id);
-                                                        setOpen(true);
-                                                    }}
-                                                >
-                                                    <Edit2 className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="font-bold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2"
-                                                    onClick={() => setDeleteTargetId(contact.id)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="font-bold text-primary hover:bg-primary/5 rounded-lg"
-                                                    onClick={() => {
-                                                        setSelectedContactId(contact.id);
-                                                        setProfileOpen(true);
-                                                    }}
-                                                >
-                                                    Ver Perfil
-                                                </Button>
-                                            </div>
-                                        </TableCell>
+                                                        </TableCell>
+                                                    );
+                                                case "document":
+                                                    return (
+                                                        <TableCell key="document" className="text-slate-700 font-medium py-4">
+                                                            <span className="font-bold text-slate-800 text-xs">{contact.document || "—"}</span>
+                                                        </TableCell>
+                                                    );
+                                                case "responsible":
+                                                    return (
+                                                        <TableCell key="responsible" className="text-slate-700 font-medium py-4">
+                                                            {contact.responsibleName ? (
+                                                                <div className="flex items-center gap-1">
+                                                                    {contact.responsibleId ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            className="text-xs font-bold text-slate-800 hover:text-primary hover:underline transition-colors text-left cursor-pointer flex items-center gap-1.5"
+                                                                            onClick={() => {
+                                                                                setSelectedContactId(contact.responsibleId!);
+                                                                                setProfileOpen(true);
+                                                                            }}
+                                                                            title="Clique para ver o perfil do responsável"
+                                                                        >
+                                                                            <User className="h-3.5 w-3.5 text-primary/70" />
+                                                                            {contact.responsibleName}
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                                                                            <User className="h-3.5 w-3.5 text-slate-400" />
+                                                                            {contact.responsibleName}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-slate-400 italic">—</span>
+                                                            )}
+                                                        </TableCell>
+                                                    );
+                                                case "internalResponsible":
+                                                    return (
+                                                        <TableCell key="internalResponsible" className="py-4">
+                                                            <span className="text-xs font-medium text-slate-700">{internalResponsible || "—"}</span>
+                                                        </TableCell>
+                                                    );
+                                                case "contact":
+                                                    return (
+                                                        <TableCell key="contact" className="text-slate-600 py-4 text-xs space-y-0.5">
+                                                            <div className="font-medium text-slate-800">{contact.email || "—"}</div>
+                                                            <div className="text-slate-400">{contact.phone || "—"}</div>
+                                                        </TableCell>
+                                                    );
+                                                case "anniversary":
+                                                    return (
+                                                        <TableCell key="anniversary" className="py-4">
+                                                            {contact.anniversaryDate ? (
+                                                                <div className="flex flex-col space-y-0.5">
+                                                                    <span className="text-xs font-semibold text-slate-700">{contact.anniversaryDate}</span>
+                                                                    {age !== null && (
+                                                                        <Badge variant="outline" className="w-fit py-0 px-1.5 bg-rose-50 text-rose-600 border-rose-200 font-bold text-[10px]">
+                                                                            🎂 {age} anos
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-slate-400 italic">—</span>
+                                                            )}
+                                                        </TableCell>
+                                                    );
+                                                case "products":
+                                                    return (
+                                                        <TableCell key="products" className="py-4">
+                                                            <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                                                {products.length > 0 ? (
+                                                                    products.map((prod) => (
+                                                                        <Badge key={prod} variant="outline" className="rounded-lg py-0.5 px-2 border-none bg-primary/10 text-primary font-bold text-[10px] uppercase">
+                                                                            {prod}
+                                                                        </Badge>
+                                                                    ))
+                                                                ) : (
+                                                                    <span className="text-xs text-slate-400 italic">—</span>
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                    );
+                                                case "insurers":
+                                                    return (
+                                                        <TableCell key="insurers" className="py-4">
+                                                            <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                                                {(contact.insurers || "").split(",").map(s => s.trim()).filter(Boolean).map(insurer => (
+                                                                    <Badge key={insurer} variant="outline" className="rounded-lg py-0.5 px-2 border-none bg-indigo-50 text-indigo-700 font-bold text-[10px]">
+                                                                        {insurer}
+                                                                    </Badge>
+                                                                ))}
+                                                                {!contact.insurers && <span className="text-xs text-slate-400 italic">—</span>}
+                                                            </div>
+                                                        </TableCell>
+                                                    );
+                                                case "origin":
+                                                    return (
+                                                        <TableCell key="origin" className="py-4 text-xs text-slate-700">
+                                                            {contact.contactOrigin || "—"}
+                                                        </TableCell>
+                                                    );
+                                                case "referral":
+                                                    return (
+                                                        <TableCell key="referral" className="py-4">
+                                                            {contact.isReferral ? (
+                                                                <Badge className="bg-amber-50 text-amber-800 border-amber-200 text-[10px]">Indicação</Badge>
+                                                            ) : <span className="text-xs text-slate-400">—</span>}
+                                                        </TableCell>
+                                                    );
+                                                case "notes":
+                                                    return (
+                                                        <TableCell key="notes" className="py-4 max-w-[220px]">
+                                                            <span className="block truncate text-xs text-slate-600" title={contact.notes || ""}>{contact.notes || "—"}</span>
+                                                        </TableCell>
+                                                    );
+                                                case "status":
+                                                    return (
+                                                        <TableCell key="status" className="py-4">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={`rounded-full py-0.5 px-2.5 font-bold text-[10px] uppercase border ${
+                                                                    (contact.status || "Ativo") === "Ativo"
+                                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                                        : (contact.status || "Ativo") === "Prospects"
+                                                                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                                                                        : "bg-rose-50 text-rose-700 border-rose-200"
+                                                                }`}
+                                                            >
+                                                                {contact.status || "Ativo"}
+                                                            </Badge>
+                                                        </TableCell>
+                                                    );
+                                                case "actions":
+                                                    return (
+                                                        <TableCell key="actions" className="text-right py-4">
+                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg p-0"
+                                                                    onClick={() => {
+                                                                        setSelectedContactId(contact.id);
+                                                                        setProfileOpen(true);
+                                                                    }}
+                                                                    title="Ver Perfil Completo"
+                                                                >
+                                                                    <Eye className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 w-8 text-slate-600 hover:bg-slate-100 rounded-lg p-0"
+                                                                    onClick={() => {
+                                                                        form.reset({
+                                                                            type: contact.type || "individual",
+                                                                            name: contact.name || "",
+                                                                            email: contact.email || "",
+                                                                            phone: contact.phone || "",
+                                                                            document: contact.document || "",
+                                                                            address: contact.address || "",
+                                                                            responsibleName: contact.responsibleName || "",
+                                                                            responsibleId: contact.responsibleId ?? undefined,
+                                                                            anniversaryDate: contact.anniversaryDate || "",
+                                                                            maritalStatus: contact.maritalStatus || "",
+                                                                            productType: contact.productType || "",
+                                                                            insurers: contact.insurers || "",
+                                                                            contactOrigin: contact.contactOrigin || "",
+                                                                            isReferral: contact.isReferral || false,
+                                                                            referredByContactId: contact.referredByContactId || undefined,
+                                                                            internalResponsibleId: contact.internalResponsibleId || undefined,
+                                                                            notes: contact.notes || "",
+                                                                            status: (contact.status as any) || "Ativo",
+                                                                        });
+                                                                        setIsEditing(contact.id);
+                                                                        setOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <Edit2 className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="font-bold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2"
+                                                                    onClick={() => setDeleteTargetId(contact.id)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="font-bold text-primary hover:bg-primary/5 rounded-lg"
+                                                                    onClick={() => {
+                                                                        setSelectedContactId(contact.id);
+                                                                        setProfileOpen(true);
+                                                                    }}
+                                                                >
+                                                                    Ver Perfil
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    );
+                                                default:
+                                                    return null;
+                                            }
+                                        })}
                                     </TableRow>
                                 );
                             })
