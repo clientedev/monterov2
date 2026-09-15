@@ -418,7 +418,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     Prioridade
                   </label>
                   <Select
-                    value={task.priority}
+                    value={task.priority || "P3"}
                     onValueChange={(val) => updateTaskMutation.mutate({ priority: val })}
                   >
                     <SelectTrigger className="bg-white border-slate-200 text-xs font-bold text-slate-800 rounded-xl">
@@ -464,13 +464,14 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     <User className="h-3.5 w-3.5" /> Responsável
                   </label>
                   <Select
-                    value={task.assignedTo ? String(task.assignedTo) : ""}
-                    onValueChange={(val) => updateTaskMutation.mutate({ assignedTo: parseInt(val) })}
+                    value={task.assignedTo ? String(task.assignedTo) : "unassigned"}
+                    onValueChange={(val) => updateTaskMutation.mutate({ assignedTo: val === "unassigned" ? null : parseInt(val) })}
                   >
                     <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl">
                       <SelectValue placeholder="Atribuir a..." />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-800">
+                      <SelectItem value="unassigned">Não atribuído</SelectItem>
                       {usersList.map((u: any) => (
                         <SelectItem key={u.id} value={String(u.id)}>
                           {u.name || u.username} ({u.role})
@@ -488,7 +489,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     </label>
                     <Input
                       type="date"
-                      value={task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : ""}
+                      value={task.dueDate ? String(task.dueDate).split("T")[0] : ""}
                       onChange={(e) =>
                         updateTaskMutation.mutate({ dueDate: e.target.value ? new Date(e.target.value) : null })
                       }
