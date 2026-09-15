@@ -77,7 +77,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
   });
 
   const { data: usersList = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/users"],
+    queryKey: ["/api/users"],
   });
 
   const updateTaskMutation = useMutation({

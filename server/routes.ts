@@ -930,7 +930,7 @@ export async function registerRoutes(
   });
 
   // Users Management
-  app.get("/api/users", isAdmin, async (req, res) => {
+  app.get("/api/users", isTeam, async (req, res) => {
     const result = await storage.getUsers();
     // Don't leak passwords
     res.json(result.map(({ password, ...user }) => user));
