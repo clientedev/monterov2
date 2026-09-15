@@ -472,7 +472,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-800">
                       <SelectItem value="unassigned">Não atribuído</SelectItem>
-                      {usersList.map((u: any) => (
+                      {usersList.filter((u: any) => u.role !== 'client').map((u: any) => (
                         <SelectItem key={u.id} value={String(u.id)}>
                           {u.name || u.username} ({u.role})
                         </SelectItem>

@@ -75,7 +75,7 @@ export function SearchableSelect({
             triggerClassName,
           )}
         >
-          <span className="truncate flex-1">
+          <span className="flex-1 whitespace-normal text-left break-words">
             {selected ? (
               <>
                 {selected.label}
@@ -164,7 +164,7 @@ export function SearchableSelect({
                       value === option.value ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  <span className="flex-1 truncate">{option.label}</span>
+                  <span className="flex-1 whitespace-normal break-words">{option.label}</span>
                   {option.sublabel && (
                     <span className="ml-2 text-muted-foreground text-xs shrink-0">
                       {option.sublabel}

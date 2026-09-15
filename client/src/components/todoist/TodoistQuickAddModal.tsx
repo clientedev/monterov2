@@ -179,11 +179,13 @@ export function TodoistQuickAddModal({
     };
   });
 
-  const userOptions = usersList.map((u: any) => ({
-    value: String(u.id),
-    label: u.name,
-    sublabel: u.role === 'admin' ? 'Administrador' : 'Equipe'
-  }));
+  const userOptions = usersList
+    .filter((u: any) => u.role !== 'client')
+    .map((u: any) => ({
+      value: String(u.id),
+      label: u.name,
+      sublabel: u.role === 'admin' ? 'Administrador' : 'Equipe'
+    }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
