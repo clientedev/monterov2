@@ -324,7 +324,11 @@ export class DatabaseStorage implements IStorage {
         )
       ) as any;
     }
-    return (await query.orderBy(desc(posts.publishedAt))) as any;
+    const rawList = await query.orderBy(desc(posts.publishedAt));
+    return rawList.map((p: any) => ({
+      ...p,
+      coverImage: p.coverImage && p.coverImage.startsWith("data:") ? `/api/posts/${p.id}/image` : p.coverImage,
+    })) as any;
   }
 
   async getPost(id: number): Promise<Post | undefined> {
