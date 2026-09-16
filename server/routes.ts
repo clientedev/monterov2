@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { api } from "@shared/routes";
 import { processAiChat, parseTaskWithGemini } from "./ai-service";
 import Groq from "groq-sdk";
@@ -2736,6 +2737,255 @@ export async function registerRoutes(
       res.json(updatedUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  // ============================================================
+  // EXTERNAL INTEGRATION API (WhatsApp & External CRMs)
+  // ============================================================
+
+  function cleanDigits(val: string | null | undefined): string {
+    if (!val) return "";
+    return val.replace(/\D/g, "");
+  }
+
+  function matchesPhone(inputPhone: string, cPhone: string): boolean {
+    const d1 = cleanDigits(inputPhone);
+    const d2 = cleanDigits(cPhone);
+    if (!d1 || !d2) return false;
+    if (d1 === d2) return true;
+
+    const noCc1 = d1.length >= 10 && d1.startsWith("55") ? d1.slice(2) : d1;
+    const noCc2 = d2.length >= 10 && d2.startsWith("55") ? d2.slice(2) : d2;
+    if (noCc1 === noCc2) return true;
+
+    if (noCc1.length === 11 && noCc2.length === 10) {
+      if (noCc1.slice(0, 2) === noCc2.slice(0, 2) && noCc1.slice(3) === noCc2.slice(2)) return true;
+    }
+    if (noCc2.length === 11 && noCc1.length === 10) {
+      if (noCc2.slice(0, 2) === noCc1.slice(0, 2) && noCc2.slice(3) === noCc1.slice(2)) return true;
+    }
+
+    if (d1.length >= 8 && d2.length >= 8) {
+      if (d1.endsWith(d2.slice(-8)) || d2.endsWith(d1.slice(-8))) return true;
+    }
+
+    return false;
+  }
+
+  async function getOrGenerateExternalApiKey(): Promise<string> {
+    const settings = await storage.getSiteSettings();
+    if (settings.externalApiKey && settings.externalApiKey.trim()) {
+      return settings.externalApiKey.trim();
+    }
+    const newKey = "ms_live_" + crypto.randomBytes(16).toString("hex");
+    await storage.updateSiteSettings({ ...settings, externalApiKey: newKey });
+    return newKey;
+  }
+
+  async function externalApiKeyAuth(req: any, res: any, next: any) {
+    try {
+      const validKey = await getOrGenerateExternalApiKey();
+      const apiKeyHeader = req.headers["x-api-key"] || req.headers["x-api-token"];
+      const authHeader = req.headers["authorization"];
+      const queryKey = req.query.api_key || req.query.apiKey;
+
+      let providedKey = apiKeyHeader || queryKey;
+      if (!providedKey && authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+        providedKey = authHeader.substring(7).trim();
+      }
+
+      if (!providedKey || providedKey !== validKey) {
+        return res.status(401).json({
+          success: false,
+          error: "Unauthorized: Chave de API externa inválida ou não fornecida. Informe a chave no header X-API-Key ou no parâmetro ?api_key=",
+        });
+      }
+
+      next();
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // Admin GET Settings
+  app.get("/api/v1/external/settings", isTeam, async (req, res) => {
+    try {
+      const key = await getOrGenerateExternalApiKey();
+      const settings = await storage.getSiteSettings();
+      res.json({
+        apiKey: key,
+        updatedAt: settings.updatedAt,
+        endpointUrl: `${req.protocol}://${req.get("host")}/api/v1/external/contacts/lookup`,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Admin POST Regenerate Key
+  app.post("/api/v1/external/regenerate-key", isAdmin, async (req, res) => {
+    try {
+      const settings = await storage.getSiteSettings();
+      const newKey = "ms_live_" + crypto.randomBytes(16).toString("hex");
+      await storage.updateSiteSettings({ ...settings, externalApiKey: newKey });
+      res.json({
+        apiKey: newKey,
+        message: "Nova chave de API externa gerada com sucesso! Atualize suas conexões do WhatsApp com a nova chave.",
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // External Lookup API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
+  app.get("/api/v1/external/contacts/lookup", externalApiKeyAuth, async (req, res) => {
+    try {
+      const phone = req.query.phone ? String(req.query.phone).trim() : "";
+      const document = req.query.document ? String(req.query.document).trim() : "";
+      const email = req.query.email ? String(req.query.email).trim() : "";
+
+      if (!phone && !document && !email) {
+        return res.status(400).json({
+          found: false,
+          error: "É necessário informar ao menos um parâmetro de busca: ?phone=, ?document= ou ?email=",
+        });
+      }
+
+      const allContacts = await storage.getContacts();
+      const allClientes = await storage.getClientes();
+      const allApolices = await storage.getApolices();
+      const allLeads = await storage.getLeads();
+      const allUsers = await storage.getUsers();
+      const allSeguradoras = await storage.getSeguradoras();
+      const allProdutosSeguro = await storage.getProdutosSeguro();
+
+      const cleanDocInput = cleanDigits(document);
+      const cleanEmailInput = email.toLowerCase();
+
+      let matchedContact = allContacts.find(c => {
+        if (phone && c.phone && matchesPhone(phone, c.phone)) return true;
+        if (document && c.document && cleanDigits(c.document) === cleanDocInput && cleanDocInput.length > 0) return true;
+        if (email && c.email && c.email.toLowerCase() === cleanEmailInput) return true;
+        return false;
+      });
+
+      let matchedCliente = allClientes.find(c => {
+        if (phone && (c.telefone || c.whatsapp) && (matchesPhone(phone, c.telefone || "") || matchesPhone(phone, c.whatsapp || ""))) return true;
+        if (document && c.cpfCnpj && cleanDigits(c.cpfCnpj) === cleanDocInput && cleanDocInput.length > 0) return true;
+        if (email && c.email && c.email.toLowerCase() === cleanEmailInput) return true;
+        return false;
+      });
+
+      if (matchedContact && !matchedCliente) {
+        matchedCliente = allClientes.find(c => c.contactId === matchedContact!.id || (c.cpfCnpj && cleanDigits(c.cpfCnpj) === cleanDigits(matchedContact!.document)));
+      }
+      if (matchedCliente && !matchedContact) {
+        matchedContact = allContacts.find(c => c.id === matchedCliente!.contactId || (c.document && cleanDigits(c.document) === cleanDigits(matchedCliente!.cpfCnpj)));
+      }
+
+      if (!matchedContact && !matchedCliente) {
+        return res.json({
+          found: false,
+          message: "Nenhum contato ou cliente localizado no CRM com as informações fornecidas.",
+          query: { phone, document, email }
+        });
+      }
+
+      const contactId = matchedContact?.id || matchedCliente?.contactId || null;
+      const clienteId = matchedCliente?.id || null;
+      const name = matchedContact?.name || matchedCliente?.nome || "Sem Nome";
+      const finalPhone = matchedContact?.phone || matchedCliente?.telefone || matchedCliente?.whatsapp || phone;
+      const finalEmail = matchedContact?.email || matchedCliente?.email || email;
+      const finalDoc = matchedContact?.document || matchedCliente?.cpfCnpj || document;
+      const type = matchedContact?.type || matchedCliente?.type || "individual";
+      const status = matchedContact?.status || "Ativo";
+      const anniversaryDate = matchedContact?.anniversaryDate || matchedCliente?.anniversaryDate || null;
+      const productType = matchedContact?.productType || matchedCliente?.productType || null;
+      const insurers = matchedContact?.insurers || matchedCliente?.insurers || null;
+      const contactOrigin = matchedContact?.contactOrigin || matchedCliente?.contactOrigin || null;
+      const notes = matchedContact?.notes || matchedCliente?.observacoes || null;
+      const responsibleName = matchedContact?.responsibleName || matchedCliente?.nomeRepresentante || null;
+
+      const assignedUserId = matchedContact?.assignedTo || matchedCliente?.responsavelComercialId || matchedCliente?.internalResponsibleId;
+      const assignedUser = assignedUserId ? allUsers.find(u => u.id === assignedUserId) : null;
+
+      const linkedApolices = clienteId
+        ? allApolices.filter(a => a.clienteId === clienteId)
+        : (contactId ? allApolices.filter(a => {
+            const cli = allClientes.find(c => c.id === a.clienteId);
+            return cli && cli.contactId === contactId;
+          }) : []);
+
+      const activePolicies = linkedApolices.filter(a => a.status === "ativa");
+      const totalAnnualPremium = activePolicies.reduce((sum, a) => sum + (parseFloat(a.premio || "0") || 0), 0);
+
+      const formattedPolicies = linkedApolices.map(a => {
+        const seg = allSeguradoras.find(s => s.id === a.seguradoraId);
+        const prod = allProdutosSeguro.find(p => p.id === a.produtoId);
+        return {
+          id: a.id,
+          numeroApolice: a.numeroApolice || "Sem número",
+          status: a.status,
+          seguradora: seg?.nome || "—",
+          produto: prod?.nome || "—",
+          premio: a.premio ? parseFloat(a.premio).toFixed(2) : "0.00",
+          inicioVigencia: a.inicioVigencia ? new Date(a.inicioVigencia).toISOString().split('T')[0] : null,
+          fimVigencia: a.fimVigencia ? new Date(a.fimVigencia).toISOString().split('T')[0] : null,
+        };
+      });
+
+      const linkedLeads = contactId ? allLeads.filter(l => l.contactId === contactId) : [];
+      const activeLeads = linkedLeads.filter(l => l.status !== "closed" && l.status !== "lost");
+
+      const formattedLeads = linkedLeads.map(l => ({
+        id: l.id,
+        product: l.product || "Oportunidade Comercial",
+        value: l.value ? parseFloat(l.value).toFixed(2) : "0.00",
+        status: l.status,
+        source: l.source || "CRM",
+        createdAt: l.createdAt ? new Date(l.createdAt).toISOString().split('T')[0] : null,
+      }));
+
+      return res.json({
+        found: true,
+        contact: {
+          id: contactId,
+          clienteId: clienteId,
+          type: type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
+          name,
+          phone: finalPhone,
+          email: finalEmail,
+          document: finalDoc,
+          status,
+          anniversaryDate,
+          productType,
+          insurers,
+          contactOrigin,
+          responsibleName,
+          notes,
+          assignedTo: assignedUser ? {
+            id: assignedUser.id,
+            name: assignedUser.name,
+            email: assignedUser.email,
+          } : null
+        },
+        insurance: {
+          totalPoliciesCount: linkedApolices.length,
+          activePoliciesCount: activePolicies.length,
+          totalAnnualPremiumFormatted: `R$ ${totalAnnualPremium.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          totalAnnualPremiumValue: totalAnnualPremium,
+          policies: formattedPolicies,
+        },
+        pipeline: {
+          totalDealsCount: linkedLeads.length,
+          activeDealsCount: activeLeads.length,
+          deals: formattedLeads,
+        }
+      });
+
+    } catch (err: any) {
+      res.status(500).json({ found: false, error: err.message });
     }
   });
 

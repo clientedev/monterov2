@@ -11,6 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import {
     Loader2,
     Plus,
@@ -29,9 +32,18 @@ import {
     Eye,
     Smartphone,
     Maximize,
-    Minimize
+    Minimize,
+    Key,
+    Copy,
+    Check,
+    Code,
+    Zap,
+    Play,
+    RefreshCw,
+    Search
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
+import { useLocation } from "wouter";
 import { ImageUpload } from "@/components/ImageUpload";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -193,8 +205,95 @@ function SlideDialog({
 }
 
 export default function SiteConfigPage() {
+    const { toast } = useToast();
+    const [location] = useLocation();
     const { settings, isLoadingSettings, slides, isLoadingSlides, updateSettings, isUpdatingSettings, createSlide, updateSlide, deleteSlide } = useSiteSettings();
-    const [activeTab, setActiveTab] = useState("identity");
+
+    const isHiddenApiRoute = useMemo(() => {
+        const isPath = location === "/admin/integracoes" || location === "/admin/api-keys";
+        const isSearch = typeof window !== "undefined" && (
+            window.location.search.includes("tab=api") ||
+            window.location.search.includes("tab=integracoes") ||
+            window.location.search.includes("api=true")
+        );
+        return isPath || isSearch;
+    }, [location]);
+
+    const [activeTab, setActiveTab] = useState(() => isHiddenApiRoute ? "api" : "identity");
+
+    useEffect(() => {
+        if (isHiddenApiRoute) {
+            setActiveTab("api");
+        }
+    }, [isHiddenApiRoute]);
+
+    // External WhatsApp API Integration State
+    const [externalApiData, setExternalApiData] = useState<{ apiKey: string; endpointUrl: string } | null>(null);
+    const [loadingExternalApi, setLoadingExternalApi] = useState(false);
+    const [showKey, setShowKey] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [testPhone, setTestPhone] = useState("");
+    const [testResult, setTestResult] = useState<any>(null);
+    const [testingApi, setTestingApi] = useState(false);
+
+    const fetchExternalSettings = async () => {
+        try {
+            setLoadingExternalApi(true);
+            const res = await apiRequest("GET", "/api/v1/external/settings");
+            const data = await res.json();
+            setExternalApiData(data);
+        } catch (_) {} finally {
+            setLoadingExternalApi(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchExternalSettings();
+    }, []);
+
+    const handleRegenerateKey = async () => {
+        if (!confirm("Tem certeza que deseja gerar uma nova chave de API? As conexões antigas do WhatsApp precisarão ser atualizadas com a nova chave.")) return;
+        try {
+            setLoadingExternalApi(true);
+            const res = await apiRequest("POST", "/api/v1/external/regenerate-key");
+            const data = await res.json();
+            setExternalApiData(prev => ({
+                apiKey: data.apiKey,
+                endpointUrl: prev?.endpointUrl || (window.location.origin + "/api/v1/external/contacts/lookup")
+            }));
+            toast({ title: "🔑 Nova Chave de API Gerada!", description: data.message });
+        } catch (err: any) {
+            toast({ title: "Erro ao gerar chave", description: err.message, variant: "destructive" });
+        } finally {
+            setLoadingExternalApi(false);
+        }
+    };
+
+    const handleCopyKey = () => {
+        if (!externalApiData?.apiKey) return;
+        navigator.clipboard.writeText(externalApiData.apiKey);
+        setCopied(true);
+        toast({ title: "Chave de API copiada!" });
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleTestLookup = async () => {
+        if (!testPhone.trim()) return;
+        try {
+            setTestingApi(true);
+            setTestResult(null);
+            const apiKey = externalApiData?.apiKey || "";
+            const res = await fetch(`/api/v1/external/contacts/lookup?phone=${encodeURIComponent(testPhone.trim())}`, {
+                headers: { "X-API-Key": apiKey }
+            });
+            const json = await res.json();
+            setTestResult(json);
+        } catch (err: any) {
+            setTestResult({ error: err.message });
+        } finally {
+            setTestingApi(false);
+        }
+    };
 
     const siteForm = useForm<InsertSiteSettings>({
         resolver: zodResolver(insertSiteSettingsSchema),
@@ -290,6 +389,11 @@ export default function SiteConfigPage() {
                     <TabsTrigger value="email" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <Mail className="h-4 w-4" /> Servidor de E-mail
                     </TabsTrigger>
+                    {activeTab === "api" && (
+                        <TabsTrigger value="api" className="rounded-xl data-[state=active]:bg-slate-900 data-[state=active]:text-amber-400 py-2.5 gap-2 col-span-2 md:col-span-6 bg-slate-900 text-amber-400 font-bold border border-slate-800">
+                            <Key className="h-4 w-4 text-emerald-400" /> 🔒 Acesso Direto: Área de Integração WhatsApp & API Externa
+                        </TabsTrigger>
+                    )}
                 </TabsList>
 
                 <Form {...siteForm}>
@@ -935,6 +1039,148 @@ export default function SiteConfigPage() {
                                                 )}
                                             />
                                         </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* WhatsApp & External API TAB */}
+                        <TabsContent value="api" className="mt-0 focus-visible:outline-none space-y-8">
+                            <Card className="premium-card border-none shadow-sm overflow-hidden">
+                                <CardHeader className="bg-slate-900 text-white p-6">
+                                    <div className="flex items-center justify-between flex-wrap gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                                <Key className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <CardTitle className="text-xl font-display font-bold text-white">Chave de Conexão de API Externa</CardTitle>
+                                                <CardDescription className="text-slate-300 text-xs mt-1">
+                                                    Utilize esta chave no seu sistema de gerenciamento de WhatsApp (Typebot, Evolution, N8N, Chatwoot, Z-API) para buscar os dados dos clientes.
+                                                </CardDescription>
+                                            </div>
+                                        </div>
+                                        <Badge className="bg-emerald-500 text-slate-950 font-bold px-3 py-1 rounded-full text-xs">
+                                            STATUS: ATIVA
+                                        </Badge>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-8 space-y-6">
+                                    <div className="space-y-3">
+                                        <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Chave de API do CRM (X-API-Key)</Label>
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative flex-1">
+                                                <Input
+                                                    type={showKey ? "text" : "password"}
+                                                    readOnly
+                                                    value={externalApiData?.apiKey || "Carregando chave..."}
+                                                    className="h-12 font-mono text-sm pr-16 rounded-xl bg-slate-50 border-slate-200"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowKey(!showKey)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 text-xs font-bold px-2 py-1 bg-slate-200/60 rounded-md"
+                                                >
+                                                    {showKey ? "Ocultar" : "Mostrar"}
+                                                </button>
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                onClick={handleCopyKey}
+                                                className="h-12 px-5 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm shrink-0"
+                                            >
+                                                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                                {copied ? "Copiado!" : "Copiar Chave"}
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={handleRegenerateKey}
+                                                disabled={loadingExternalApi}
+                                                className="h-12 px-4 font-bold rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 gap-2 shrink-0"
+                                                title="Gerar uma nova chave de API"
+                                            >
+                                                <RefreshCw className={`h-4 w-4 ${loadingExternalApi ? "animate-spin" : ""}`} />
+                                                Gerar Nova
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-slate-500 font-medium">
+                                            ⚠️ Mantenha esta chave em segredo. Ela concede permissão para seu sistema de WhatsApp consultar dados cadastrais, seguros e negócios do seu CRM.
+                                        </p>
+                                    </div>
+
+                                    <div className="pt-6 border-t border-slate-100 space-y-4">
+                                        <h4 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                                            <Code className="h-5 w-5 text-blue-600" />
+                                            Como Configurar no seu Sistema de WhatsApp (Webhook / Typebot / N8N)
+                                        </h4>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            <div className="p-4 rounded-2xl bg-slate-900 text-slate-100 space-y-3 text-xs font-mono overflow-x-auto">
+                                                <div className="text-amber-400 font-bold font-sans uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                                    <Zap className="h-3.5 w-3.5" /> Requisição HTTP GET (Consulta por Telefone)
+                                                </div>
+                                                <p className="text-slate-300 font-sans">
+                                                    Quando o contato falar no WhatsApp, seu fluxo deve fazer uma requisição GET para a URL abaixo passando o número:
+                                                </p>
+                                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-emerald-400 break-all">
+                                                    GET {window.location.origin}/api/v1/external/contacts/lookup?phone=11999998888
+                                                </div>
+                                                <div className="text-slate-300 font-sans font-bold mt-2">Headers necessários:</div>
+                                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-amber-300">
+                                                    X-API-Key: {externalApiData?.apiKey || "SUA_CHAVE_API"}
+                                                </div>
+                                            </div>
+
+                                            <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 space-y-3 text-xs text-slate-700 font-medium">
+                                                <div className="font-bold text-blue-900 text-sm flex items-center gap-2">
+                                                    💡 O que o seu WhatsApp receberá de volta?
+                                                </div>
+                                                <ul className="space-y-2 list-disc list-inside text-slate-600">
+                                                    <li><strong className="text-slate-900">found (true/false)</strong>: Se o cliente foi localizado no CRM.</li>
+                                                    <li><strong className="text-slate-900">contact</strong>: Nome, CPF/CNPJ, E-mail, Aniversário, Status, Consultor Responsável.</li>
+                                                    <li><strong className="text-slate-900">insurance</strong>: Lista de Apólices ativas, Seguradora, Produto e Prêmios acumulados.</li>
+                                                    <li><strong className="text-slate-900">pipeline</strong>: Negociações em aberto no funil e valores em proposta.</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Testador em Tempo Real */}
+                                    <div className="pt-6 border-t border-slate-100 space-y-4">
+                                        <h4 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                                            <Play className="h-5 w-5 text-emerald-600" />
+                                            Testador de Busca de WhatsApp em Tempo Real
+                                        </h4>
+                                        <div className="flex items-center gap-3 flex-wrap">
+                                            <Input
+                                                placeholder="Digite um número de telefone com DDD (ex: 11999998888)"
+                                                value={testPhone}
+                                                onChange={(e) => setTestPhone(e.target.value)}
+                                                className="h-12 rounded-xl border-slate-200 max-w-md flex-1"
+                                            />
+                                            <Button
+                                                type="button"
+                                                onClick={handleTestLookup}
+                                                disabled={testingApi || !testPhone.trim()}
+                                                className="h-12 px-6 font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white gap-2 shadow-sm shrink-0"
+                                            >
+                                                {testingApi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 text-amber-400" />}
+                                                Testar Consulta Externa
+                                            </Button>
+                                        </div>
+
+                                        {testResult && (
+                                            <div className="p-4 rounded-2xl bg-slate-950 text-slate-200 font-mono text-xs overflow-x-auto border border-slate-800 shadow-inner max-h-[300px]">
+                                                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 font-sans text-slate-400 text-[11px]">
+                                                    <span>RESPOSTA JSON DO SERVIDOR</span>
+                                                    <span className={testResult.found ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                                                        {testResult.found ? "✓ CONTATO ENCONTRADO" : "⚠ NÃO ENCONTRADO"}
+                                                    </span>
+                                                </div>
+                                                <pre className="text-emerald-400 whitespace-pre-wrap">{JSON.stringify(testResult, null, 2)}</pre>
+                                            </div>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>

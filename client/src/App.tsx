@@ -126,6 +126,8 @@ function Router() {
       <ProtectedAdminRoute path="/admin/users" component={UsersPage} />
       <ProtectedAdminRoute path="/admin/tasks" component={TasksPage} />
       <ProtectedAdminRoute path="/admin/site-config" component={SiteConfigPage} />
+      <ProtectedAdminRoute path="/admin/integracoes" component={SiteConfigPage} />
+      <ProtectedAdminRoute path="/admin/api-keys" component={SiteConfigPage} />
       <ProtectedAdminRoute path="/admin/reviews" component={ReviewsPage} />
       <ProtectedAdminRoute path="/admin/prospecting" component={ProspectingPage} />
       <ProtectedAdminRoute path="/admin/company-search" component={CompanySearchPage} />

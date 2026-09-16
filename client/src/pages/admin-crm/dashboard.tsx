@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Contact, Lead, Interaction, Task, User } from "@shared/schema";
+import { Contact, Lead, Interaction, Task, User, Apolice, Cliente } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import {
     Users,
     TrendingUp,
@@ -24,7 +26,19 @@ import {
     ArrowUp,
     ArrowDown,
     RotateCcw,
-    Check
+    Check,
+    GripVertical,
+    ShieldCheck,
+    Clock,
+    AlertTriangle,
+    Building2,
+    Package,
+    Globe,
+    Move,
+    Eye,
+    EyeOff,
+    Building,
+    Award
 } from "lucide-react";
 import {
     Dialog,
@@ -72,23 +86,34 @@ export interface WidgetItem {
 
 const DEFAULT_WIDGETS: WidgetItem[] = [
     { id: "aniversariantes", title: "🎂 Aniversariantes do Mês", category: "banner", visible: true },
+    { id: "apolicesMetrics", title: "🛡️ Seguros & Prêmios em Carteira", category: "metric", visible: true },
+    { id: "vencimentos30", title: "⏳ Renovações de Seguro (30d)", category: "metric", visible: true },
     { id: "totalContacts", title: "👥 Total de Contatos", category: "metric", visible: true },
+    { id: "contatosTipo", title: "🏢 Carteira PF vs PJ", category: "metric", visible: true },
     { id: "activeLeads", title: "📈 Leads no Funil", category: "metric", visible: true },
     { id: "totalValue", title: "💰 Valor em Negociação", category: "metric", visible: true },
-    { id: "pendingTasks", title: "✅ Tarefas Pendentes", category: "metric", visible: true },
+    { id: "ticketMedio", title: "💎 Ticket Médio de Oportunidades", category: "metric", visible: true },
     { id: "conversionRate", title: "🎯 Taxa de Conversão", category: "metric", visible: true },
+    { id: "pendingTasks", title: "✅ Tarefas Pendentes", category: "metric", visible: true },
+    { id: "overdueTasks", title: "⚠️ Tarefas Atrasadas / Urgentes", category: "metric", visible: true },
     { id: "monthlyInteractions", title: "💬 Interações no Mês", category: "metric", visible: true },
+    { id: "chartApolicesSeguradora", title: "🏛️ Apólices por Seguradora", category: "chart", visible: true },
+    { id: "chartApolicesProduto", title: "📦 Carteira por Produto", category: "chart", visible: true },
     { id: "chartProspecting", title: "📊 Prospecção por Consultor", category: "chart", visible: true },
     { id: "chartLeadFlow", title: "🌊 Fluxo de Novos Leads (15d)", category: "chart", visible: true },
     { id: "chartMix", title: "🥧 Mix de Atividades", category: "chart", visible: true },
+    { id: "chartOrigemContatos", title: "🌐 Origem dos Clientes", category: "chart", visible: true },
 ];
 
-const STORAGE_KEY = "montero_crm_dashboard_layout_v3";
+const STORAGE_KEY = "montero_crm_dashboard_layout_v4";
+const CHART_COLORS = ["#0F6570", "#08454c", "#c65f54", "#f59e0b", "#10b981", "#6366f1", "#ec4899", "#8b5cf6"];
 
 export default function AdminDashboard() {
     const { toast } = useToast();
+    const [, setLocation] = useLocation();
     const [birthdayModalOpen, setBirthdayModalOpen] = useState(false);
     const [customizeOpen, setCustomizeOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
     const [sendingContactId, setSendingContactId] = useState<number | null>(null);
 
     // Layout configuration state
@@ -141,19 +166,63 @@ export default function AdminDashboard() {
         saveLayout(updated);
     };
 
+    const setAllVisibility = (visible: boolean) => {
+        const updated = widgets.map(w => ({ ...w, visible }));
+        saveLayout(updated);
+    };
+
+    // Drag and Drop Handler in Modal
+    const handleModalDragEnd = (result: DropResult) => {
+        if (!result.destination) return;
+        const updated = Array.from(widgets);
+        const [moved] = updated.splice(result.source.index, 1);
+        updated.splice(result.destination.index, 0, moved);
+        saveLayout(updated);
+    };
+
+    // Drag and Drop Handler on Main Grid
+    const handleMainDragEnd = (result: DropResult) => {
+        if (!result.destination) return;
+        const visibleIndexes = widgets.map((w, i) => w.visible ? i : -1).filter(i => i !== -1);
+        const realSourceIndex = visibleIndexes[result.source.index];
+        const realDestIndex = visibleIndexes[result.destination.index];
+        if (realSourceIndex === undefined || realDestIndex === undefined) return;
+
+        const updated = Array.from(widgets);
+        const [moved] = updated.splice(realSourceIndex, 1);
+        updated.splice(realDestIndex, 0, moved);
+        saveLayout(updated);
+    };
+
+    // Data queries
     const { data: contacts } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
     const { data: leads } = useQuery<Lead[]>({ queryKey: ["/api/leads"] });
     const { data: interactionHistory } = useQuery<Interaction[]>({ queryKey: ["/api/interactions"] });
     const { data: tasks } = useQuery<Task[]>({ queryKey: ["/api/tasks"] });
     const { data: prospectingHistory } = useQuery<any[]>({ queryKey: ["/api/prospecting"] });
     const { data: users } = useQuery<User[]>({ queryKey: ["/api/users"] });
+    const { data: apolices } = useQuery<Apolice[]>({ queryKey: ["/api/apolices"] });
+    const { data: seguroStats } = useQuery<any>({ queryKey: ["/api/seguros/dashboard"] });
 
+    // Computed metrics
     const totalContacts = contacts?.length || 0;
+    const pfContacts = contacts?.filter(c => (c.type || "individual") === "individual").length || 0;
+    const pjContacts = contacts?.filter(c => c.type === "company").length || 0;
+
     const activeLeads = leads?.filter(l => l.status !== "closed" && l.status !== "lost").length || 0;
     const totalValue = leads?.reduce((acc, curr) => acc + Number(curr.value || 0), 0) || 0;
-    const pendingTasks = tasks?.filter(t => t.status !== "done").length || 0;
-
+    const ticketMedio = activeLeads > 0 ? totalValue / activeLeads : 0;
     const conversionRate = totalContacts > 0 ? ((totalContacts / (totalContacts + activeLeads)) * 100).toFixed(1) : 0;
+
+    const pendingTasks = tasks?.filter(t => t.status !== "done").length || 0;
+    
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const overdueTasks = tasks?.filter(t => {
+        if (t.status === "done") return false;
+        if (!t.dueDate) return false;
+        return new Date(t.dueDate) < todayStart;
+    }).length || 0;
 
     const currentMonth = new Date().getMonth();
     const monthlyInteractions = interactionHistory?.filter(i => {
@@ -161,12 +230,29 @@ export default function AdminDashboard() {
         return new Date(i.date).getMonth() === currentMonth;
     }).length || 0;
 
-    // ── Birthdays logic ────────────────────────────────────────────────────────
-    const today = new Date();
-    const currentMonthNum = today.getMonth() + 1; // 1-12
-    const currentDayNum = today.getDate(); // 1-31
+    // Seguros computed metrics
+    const activeApolices = apolices?.filter(a => a.status === "ativa") || [];
+    const totalApolicesAtivas = activeApolices.length;
+    const totalPremioSeguros = activeApolices.reduce((acc, curr) => acc + (parseFloat(curr.premio || "0") || 0), 0);
+
+    const now = new Date();
+    const in30 = new Date(now);
+    in30.setDate(in30.getDate() + 30);
+
+    const vencendo30List = (apolices || []).filter(a => {
+        if (a.status !== "ativa" || !a.fimVigencia) return false;
+        const fim = new Date(a.fimVigencia);
+        fim.setHours(23, 59, 59, 999);
+        return fim >= now && fim <= in30;
+    });
+    const emAtrasoApolicesList = (apolices || []).filter(a => a.status === "em_atraso");
+    const totalSegurosUrgentes = vencendo30List.length + emAtrasoApolicesList.length;
+
+    // Birthdays logic
+    const currentMonthNum = todayStart.getMonth() + 1;
+    const currentDayNum = todayStart.getDate();
     const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    const currentMonthName = monthNames[today.getMonth()];
+    const currentMonthName = monthNames[todayStart.getMonth()];
 
     const monthlyBirthdayContacts = useMemo(() => {
         const list: Array<{ id: number; name: string; email?: string | null; phone?: string | null; anniversaryDate?: string | null; productType?: string | null; isEmployee?: boolean }> = [];
@@ -260,13 +346,35 @@ export default function AdminDashboard() {
         { name: 'Notas', value: interactionHistory?.filter(i => i.type === 'note').length || 0, color: '#6366f1' },
     ].filter(d => d.value > 0);
 
+    // Chart Data 4: Seguradoras Data
+    const seguradorasData = seguroStats?.porSeguradora || [];
+
+    // Chart Data 5: Produtos Data
+    const produtosData = seguroStats?.porProduto || [];
+
+    // Chart Data 6: Origem de Contatos
+    const origensMap: Record<string, number> = {};
+    (contacts || []).forEach(c => {
+        const origin = c.contactOrigin || (c.isReferral ? "Indicação" : "Outros");
+        origensMap[origin] = (origensMap[origin] || 0) + 1;
+    });
+    const origensData = Object.entries(origensMap).map(([nome, total]) => ({ nome, total }));
+
+    // Map widget IDs to their layout col spans
+    const getWidgetSpanClass = (category: string, id: string) => {
+        if (id === "aniversariantes") return "col-span-12";
+        if (category === "banner") return "col-span-12";
+        if (category === "metric") return "col-span-12 sm:col-span-6 lg:col-span-3";
+        if (category === "chart") return "col-span-12 md:col-span-6 lg:col-span-6";
+        return "col-span-12 sm:col-span-6 lg:col-span-4";
+    };
+
     // Map widget IDs to their JSX renderer
-    const renderWidget = (id: string) => {
+    const renderWidgetContent = (id: string) => {
         switch (id) {
             case "aniversariantes":
                 return (
                     <Card
-                        key="aniversariantes"
                         className={`premium-card border-2 cursor-pointer transition-all hover:shadow-xl ${
                             todayBirthdayContacts.length > 0
                                 ? "border-rose-300 bg-gradient-to-r from-rose-50/80 via-amber-50/50 to-pink-50/80 shadow-rose-100"
@@ -312,9 +420,61 @@ export default function AdminDashboard() {
                     </Card>
                 );
 
+            case "apolicesMetrics":
+                return (
+                    <Card
+                        className="premium-card border-none overflow-hidden group cursor-pointer hover:shadow-xl transition-all"
+                        onClick={() => setLocation("/admin/apolices")}
+                    >
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                            <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Carteira de Seguros</CardTitle>
+                            <div className="h-10 w-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-colors duration-300">
+                                <ShieldCheck className="h-5 w-5" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-baseline justify-between gap-2">
+                                <div className="text-3xl font-display font-bold text-slate-900">{totalApolicesAtivas} <span className="text-xs font-normal text-slate-500">ativas</span></div>
+                                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                    R$ {totalPremioSeguros.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">Prêmio total em vigência regular</p>
+                        </CardContent>
+                    </Card>
+                );
+
+            case "vencimentos30":
+                return (
+                    <Card
+                        className={`premium-card border-none overflow-hidden group cursor-pointer hover:shadow-xl transition-all ${
+                            totalSegurosUrgentes > 0 ? "ring-2 ring-amber-400/50 bg-amber-50/30" : ""
+                        }`}
+                        onClick={() => setLocation("/admin/apolices")}
+                    >
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                            <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Renovações Seguros (30d)</CardTitle>
+                            <div className="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-colors duration-300">
+                                <Clock className="h-5 w-5" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-baseline justify-between gap-2">
+                                <div className="text-3xl font-display font-bold text-amber-600">{vencendo30List.length}</div>
+                                {emAtrasoApolicesList.length > 0 && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 animate-pulse">
+                                        {emAtrasoApolicesList.length} em atraso
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">Apólices com vigência finalizando</p>
+                        </CardContent>
+                    </Card>
+                );
+
             case "totalContacts":
                 return (
-                    <Card key="totalContacts" className="premium-card border-none overflow-hidden group">
+                    <Card className="premium-card border-none overflow-hidden group">
                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                             <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total de Contatos</CardTitle>
                             <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
@@ -323,16 +483,13 @@ export default function AdminDashboard() {
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-baseline justify-between gap-2">
-                                <div className="text-4xl font-display font-bold text-slate-900">{totalContacts}</div>
+                                <div className="text-3xl font-display font-bold text-slate-900">{totalContacts}</div>
                                 <div className="flex gap-1 flex-wrap justify-end">
                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                                         {contacts?.filter(c => (c.status || "Ativo") === "Ativo").length || 0} Ativos
                                     </span>
                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
                                         {contacts?.filter(c => c.status === "Prospects").length || 0} Prospects
-                                    </span>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
-                                        {contacts?.filter(c => c.status === "Cancelado").length || 0} Cancelados
                                     </span>
                                 </div>
                             </div>
@@ -341,9 +498,31 @@ export default function AdminDashboard() {
                     </Card>
                 );
 
+            case "contatosTipo":
+                return (
+                    <Card className="premium-card border-none overflow-hidden group">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                            <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Carteira PF vs PJ</CardTitle>
+                            <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                                <Building className="h-5 w-5" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-baseline justify-between gap-2">
+                                <div className="text-3xl font-display font-bold text-slate-900">{pfContacts} <span className="text-xs font-medium text-slate-500">PF</span></div>
+                                <div className="text-3xl font-display font-bold text-indigo-600">{pjContacts} <span className="text-xs font-medium text-indigo-500">PJ</span></div>
+                            </div>
+                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2 flex">
+                                <div className="bg-blue-500 h-full" style={{ width: totalContacts > 0 ? `${(pfContacts / totalContacts) * 100}%` : '50%' }} title="Pessoa Física" />
+                                <div className="bg-indigo-600 h-full" style={{ width: totalContacts > 0 ? `${(pjContacts / totalContacts) * 100}%` : '50%' }} title="Pessoa Jurídica" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                );
+
             case "activeLeads":
                 return (
-                    <Card key="activeLeads" className="premium-card border-none overflow-hidden group">
+                    <Card className="premium-card border-none overflow-hidden group">
                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                             <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Leads no Funil</CardTitle>
                             <div className="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-colors duration-300">
@@ -352,7 +531,7 @@ export default function AdminDashboard() {
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-baseline gap-2">
-                                <div className="text-4xl font-display font-bold text-slate-900">{activeLeads}</div>
+                                <div className="text-3xl font-display font-bold text-slate-900">{activeLeads}</div>
                                 <span className="text-xs font-bold text-amber-500 flex items-center">
                                     Em progresso
                                 </span>
@@ -364,7 +543,7 @@ export default function AdminDashboard() {
 
             case "totalValue":
                 return (
-                    <Card key="totalValue" className="premium-card border-none overflow-hidden group">
+                    <Card className="premium-card border-none overflow-hidden group">
                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                             <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Valor em Negociação</CardTitle>
                             <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
@@ -373,19 +552,37 @@ export default function AdminDashboard() {
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-baseline gap-2">
-                                <div className="text-4xl font-display font-bold text-slate-900">R$ {totalValue.toLocaleString('pt-BR')}</div>
+                                <div className="text-3xl font-display font-bold text-slate-900">R$ {totalValue.toLocaleString('pt-BR')}</div>
                             </div>
                             <p className="text-xs text-slate-400 mt-1">Potencial de conversão imediato</p>
                         </CardContent>
                     </Card>
                 );
 
+            case "ticketMedio":
+                return (
+                    <Card className="premium-card border-none overflow-hidden group">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                            <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Ticket Médio Lead</CardTitle>
+                            <div className="h-10 w-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
+                                <Award className="h-5 w-5" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-display font-bold text-slate-900">
+                                R$ {ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">Valor médio estimado por oportunidade</p>
+                        </CardContent>
+                    </Card>
+                );
+
             case "pendingTasks":
                 return (
-                    <Card key="pendingTasks" className="premium-card border-none overflow-hidden group">
+                    <Card className="premium-card border-none overflow-hidden group">
                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                             <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Tarefas Pendentes</CardTitle>
-                            <div className="h-10 w-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                            <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
                                 <CheckSquare className="h-5 w-5" />
                             </div>
                         </CardHeader>
@@ -396,9 +593,30 @@ export default function AdminDashboard() {
                     </Card>
                 );
 
+            case "overdueTasks":
+                return (
+                    <Card
+                        className={`premium-card border-none overflow-hidden group cursor-pointer hover:shadow-xl transition-all ${
+                            overdueTasks > 0 ? "bg-rose-50/50" : ""
+                        }`}
+                        onClick={() => setLocation("/admin/todoist")}
+                    >
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                            <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Tarefas Atrasadas</CardTitle>
+                            <div className="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition-colors duration-300">
+                                <AlertTriangle className="h-5 w-5" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-display font-bold text-rose-600">{overdueTasks}</div>
+                            <p className="text-xs text-slate-400 mt-1">Exigem atenção operacional urgente</p>
+                        </CardContent>
+                    </Card>
+                );
+
             case "conversionRate":
                 return (
-                    <Card key="conversionRate" className="premium-card border-none overflow-hidden group">
+                    <Card className="premium-card border-none overflow-hidden group">
                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                             <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Taxa de Conversão</CardTitle>
                             <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
@@ -414,7 +632,7 @@ export default function AdminDashboard() {
 
             case "monthlyInteractions":
                 return (
-                    <Card key="monthlyInteractions" className="premium-card border-none overflow-hidden group">
+                    <Card className="premium-card border-none overflow-hidden group">
                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                             <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Interações (Mês)</CardTitle>
                             <div className="h-10 w-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
@@ -428,9 +646,67 @@ export default function AdminDashboard() {
                     </Card>
                 );
 
+            case "chartApolicesSeguradora":
+                return (
+                    <Card className="premium-card border-none shadow-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-[#0F6570]" />
+                                Apólices por Seguradora
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[300px]">
+                            {seguradorasData.length === 0 ? (
+                                <div className="flex h-full items-center justify-center text-slate-400 text-sm">Sem dados de seguradora cadastrados.</div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ReBarChart data={seguradorasData} layout="vertical">
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                                        <XAxis type="number" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                                        <YAxis type="category" dataKey="nome" fontSize={11} tickLine={false} axisLine={false} width={110} />
+                                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                                        <Bar dataKey="total" fill="#0F6570" radius={[0, 4, 4, 0]} name="Apólices" />
+                                    </ReBarChart>
+                                </ResponsiveContainer>
+                            )}
+                        </CardContent>
+                    </Card>
+                );
+
+            case "chartApolicesProduto":
+                return (
+                    <Card className="premium-card border-none shadow-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Package className="h-4 w-4 text-emerald-600" />
+                                Carteira por Produto
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[300px]">
+                            {produtosData.length === 0 ? (
+                                <div className="flex h-full items-center justify-center text-slate-400 text-sm">Sem produtos de seguro cadastrados.</div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ReBarChart data={produtosData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                        <XAxis dataKey="nome" fontSize={11} tickLine={false} axisLine={false} />
+                                        <YAxis fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                                        <Bar dataKey="total" radius={[4, 4, 0, 0]} name="Apólices">
+                                            {produtosData.map((_: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </ReBarChart>
+                                </ResponsiveContainer>
+                            )}
+                        </CardContent>
+                    </Card>
+                );
+
             case "chartProspecting":
                 return (
-                    <Card key="chartProspecting" className="premium-card border-none shadow-xl">
+                    <Card className="premium-card border-none shadow-xl">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                 <Users className="h-4 w-4 text-blue-500" />
@@ -443,9 +719,7 @@ export default function AdminDashboard() {
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                     <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                                     <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                    />
+                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                                     <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Prospecções" />
                                 </ReBarChart>
                             </ResponsiveContainer>
@@ -455,7 +729,7 @@ export default function AdminDashboard() {
 
             case "chartLeadFlow":
                 return (
-                    <Card key="chartLeadFlow" className="premium-card border-none shadow-xl">
+                    <Card className="premium-card border-none shadow-xl">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                 <TrendingUp className="h-4 w-4 text-amber-500" />
@@ -484,7 +758,7 @@ export default function AdminDashboard() {
 
             case "chartMix":
                 return (
-                    <Card key="chartMix" className="premium-card border-none shadow-xl">
+                    <Card className="premium-card border-none shadow-xl">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                 <PieChartIcon className="h-4 w-4 text-purple-500" />
@@ -524,25 +798,61 @@ export default function AdminDashboard() {
                     </Card>
                 );
 
+            case "chartOrigemContatos":
+                return (
+                    <Card className="premium-card border-none shadow-xl">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Globe className="h-4 w-4 text-indigo-500" />
+                                Origem dos Clientes
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[300px]">
+                            {origensData.length === 0 ? (
+                                <div className="flex h-full items-center justify-center text-slate-400 text-sm">Nenhuma origem registrada.</div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ReBarChart data={origensData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                        <XAxis dataKey="nome" fontSize={11} tickLine={false} axisLine={false} />
+                                        <YAxis fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                                        <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} name="Contatos" />
+                                    </ReBarChart>
+                                </ResponsiveContainer>
+                            )}
+                        </CardContent>
+                    </Card>
+                );
+
             default:
                 return null;
         }
     };
 
-    // Filter active widgets
+    // Visible widgets list
     const visibleWidgets = widgets.filter(w => w.visible);
-    const visibleBanners = visibleWidgets.filter(w => w.category === "banner");
-    const visibleMetrics = visibleWidgets.filter(w => w.category === "metric");
-    const visibleCharts = visibleWidgets.filter(w => w.category === "chart");
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 pb-12">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-4xl font-display font-bold text-slate-900 tracking-tight">Bem-vindo, Monteiro</h2>
-                    <p className="text-slate-500 mt-2 text-lg font-medium">Aqui está um resumo do que aconteceu hoje em sua corretora.</p>
+                    <p className="text-slate-500 mt-2 text-lg font-medium">Aqui está um resumo dinâmico e personalizado do seu CRM.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <Button
+                        variant={isEditMode ? "default" : "outline"}
+                        onClick={() => setIsEditMode(!isEditMode)}
+                        className={`h-11 px-5 rounded-xl font-bold transition-all gap-2 shadow-sm ${
+                            isEditMode
+                                ? "bg-amber-500 hover:bg-amber-600 text-white ring-2 ring-amber-400/50 animate-pulse"
+                                : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
+                        }`}
+                    >
+                        <Move className="h-4 w-4" />
+                        {isEditMode ? "Concluir Arraste" : "Modo Arraste na Tela"}
+                    </Button>
                     <Button
                         variant="outline"
                         onClick={() => setCustomizeOpen(true)}
@@ -554,108 +864,232 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* Render Banners */}
-            {visibleBanners.length > 0 && (
-                <div className="space-y-6">
-                    {visibleBanners.map(w => renderWidget(w.id))}
-                </div>
-            )}
-
-            {/* Render Metric Cards Grid */}
-            {visibleMetrics.length > 0 && (
-                <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-                    {visibleMetrics.map(w => renderWidget(w.id))}
-                </div>
-            )}
-
-            {/* Render Charts Section Grid */}
-            {visibleCharts.length > 0 && (
-                <div className="pt-6 border-t border-slate-200">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Activity className="h-6 w-6 text-amber-500" />
-                        <h3 className="text-2xl font-display font-bold text-slate-900 tracking-tight text-white px-3 py-1 bg-slate-900 rounded-lg">Métricas de Performance</h3>
+            {/* Warning bar in Edit Mode */}
+            {isEditMode && (
+                <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-900 flex items-center justify-between gap-4 shadow-md animate-in fade-in duration-300">
+                    <div className="flex items-center gap-3">
+                        <Move className="h-6 w-6 text-amber-600 shrink-0" />
+                        <div>
+                            <p className="font-bold text-sm">Modo de Arraste Ativo!</p>
+                            <p className="text-xs text-amber-700">Clique e segure nas barras superiores dos cartões para reposicioná-los livremente pela tela.</p>
+                        </div>
                     </div>
-                    <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                        {visibleCharts.map(w => renderWidget(w.id))}
-                    </div>
+                    <Button
+                        size="sm"
+                        onClick={() => setIsEditMode(false)}
+                        className="bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs h-9 px-4 shrink-0 shadow-sm"
+                    >
+                        Salvar Posições
+                    </Button>
                 </div>
             )}
 
-            {/* ── Dialog Personalizar Dashboard ─────────────────────────────────── */}
+            {/* Unified Dynamic Drag and Drop Grid Layout */}
+            <DragDropContext onDragEnd={handleMainDragEnd}>
+                <Droppable droppableId="main-dashboard-grid" isDropDisabled={!isEditMode}>
+                    {(provided) => (
+                        <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className="grid grid-cols-12 gap-6"
+                        >
+                            {visibleWidgets.map((widget, idx) => (
+                                <Draggable
+                                    key={widget.id}
+                                    draggableId={widget.id}
+                                    index={idx}
+                                    isDragDisabled={!isEditMode}
+                                >
+                                    {(providedWidget, snapshot) => (
+                                        <div
+                                            ref={providedWidget.innerRef}
+                                            {...providedWidget.draggableProps}
+                                            className={`${getWidgetSpanClass(widget.category, widget.id)} transition-shadow duration-200 ${
+                                                snapshot.isDragging ? "z-50 opacity-90 scale-[1.02] shadow-2xl" : ""
+                                            }`}
+                                        >
+                                            {/* Drag Bar visible during Edit Mode */}
+                                            {isEditMode && (
+                                                <div
+                                                    {...providedWidget.dragHandleProps}
+                                                    className="bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-t-2xl flex items-center justify-between gap-2 border-b border-slate-700 cursor-grab active:cursor-grabbing select-none"
+                                                >
+                                                    <div className="flex items-center gap-2 truncate">
+                                                        <GripVertical className="h-4 w-4 text-amber-400 shrink-0" />
+                                                        <span className="truncate">{widget.title}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <span className="text-[9px] uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-extrabold">
+                                                            {widget.category}
+                                                        </span>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleVisibility(widget.id);
+                                                            }}
+                                                            className="h-6 w-6 p-0 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded"
+                                                            title="Ocultar Widget"
+                                                        >
+                                                            <EyeOff className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className={isEditMode ? "rounded-b-2xl overflow-hidden border-2 border-dashed border-amber-300 bg-amber-50/10 p-1" : ""}>
+                                                {renderWidgetContent(widget.id)}
+                                            </div>
+                                        </div>
+                                    )}
+                                </Draggable>
+                            ))}
+                            {provided.placeholder}
+                        </div>
+                    )}
+                </Droppable>
+            </DragDropContext>
+
+            {/* Empty State when all widgets are hidden */}
+            {visibleWidgets.length === 0 && (
+                <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 space-y-4">
+                    <SlidersHorizontal className="h-12 w-12 mx-auto text-slate-400" />
+                    <h3 className="text-xl font-bold text-slate-700">Todos os widgets do Dashboard estão ocultos</h3>
+                    <p className="text-slate-500 text-sm max-w-md mx-auto">
+                        Clique em "Editar Dashboard" para reativar os indicadores, métricas e gráficos desejados.
+                    </p>
+                    <Button
+                        onClick={resetLayout}
+                        className="font-bold bg-primary hover:bg-primary/90 text-white rounded-xl"
+                    >
+                        Restaurar Todos os Widgets
+                    </Button>
+                </div>
+            )}
+
+            {/* ── Dialog Personalizar Dashboard (Drag & Drop Reordering Modal) ── */}
             <Dialog open={customizeOpen} onOpenChange={setCustomizeOpen}>
-                <DialogContent className="sm:max-w-[550px] w-full max-w-[95vw] rounded-3xl border-none shadow-2xl overflow-hidden p-0 max-h-[85vh] flex flex-col bg-white">
+                <DialogContent className="sm:max-w-[600px] w-full max-w-[95vw] rounded-3xl border-none shadow-2xl overflow-hidden p-0 max-h-[85vh] flex flex-col bg-white">
                     <DialogHeader className="p-6 pb-4 bg-slate-900 text-white shrink-0">
                         <DialogTitle className="text-2xl font-display font-bold flex items-center gap-2 text-white">
                             <SlidersHorizontal className="h-6 w-6 text-amber-400" />
                             Personalizar Dashboard
                         </DialogTitle>
                         <DialogDescription className="text-xs text-slate-300 mt-1">
-                            Ative ou desative os B.Is e gráficos e altere a ordem de exibição movendo-os para cima ou para baixo.
+                            Arraste os cards para reorganizar a ordem de exibição na tela ou utilize a chave seletora para ocultar/exibir.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="p-6 overflow-y-auto flex-1 space-y-3 bg-slate-50">
-                        {widgets.map((widget, idx) => (
-                            <div
-                                key={widget.id}
-                                className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                                    widget.visible ? "bg-white border-slate-200 shadow-sm" : "bg-slate-100/70 border-slate-200 opacity-60"
-                                }`}
-                            >
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className="flex items-center gap-1 shrink-0">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            disabled={idx === 0}
-                                            onClick={() => moveWidget(idx, "up")}
-                                            className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30"
-                                            title="Mover para cima"
-                                        >
-                                            <ArrowUp className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            disabled={idx === widgets.length - 1}
-                                            onClick={() => moveWidget(idx, "down")}
-                                            className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30"
-                                            title="Mover para baixo"
-                                        >
-                                            <ArrowDown className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                    <div className="min-w-0">
-                                        <span className="font-bold text-slate-900 text-sm block truncate">{widget.title}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase">
-                                            {widget.category === "banner" ? "Banner Especial" : widget.category === "metric" ? "Métrica / BI" : "Gráfico"}
-                                        </span>
-                                    </div>
-                                </div>
+                    {/* DragDropContext inside Modal */}
+                    <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
+                        <DragDropContext onDragEnd={handleModalDragEnd}>
+                            <Droppable droppableId="modal-widgets-list">
+                                {(provided) => (
+                                    <div
+                                        ref={provided.innerRef}
+                                        {...provided.droppableProps}
+                                        className="space-y-3"
+                                    >
+                                        {widgets.map((widget, idx) => (
+                                            <Draggable key={widget.id} draggableId={widget.id} index={idx}>
+                                                {(providedWidget, snapshot) => (
+                                                    <div
+                                                        ref={providedWidget.innerRef}
+                                                        {...providedWidget.draggableProps}
+                                                        className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                                                            snapshot.isDragging
+                                                                ? "bg-amber-50 border-amber-400 shadow-xl scale-[1.02] z-50"
+                                                                : widget.visible
+                                                                ? "bg-white border-slate-200 shadow-sm hover:border-slate-300"
+                                                                : "bg-slate-100/70 border-slate-200 opacity-60"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                            {/* Drag Handle */}
+                                                            <div
+                                                                {...providedWidget.dragHandleProps}
+                                                                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-grab active:cursor-grabbing shrink-0"
+                                                                title="Segure para arrastar"
+                                                            >
+                                                                <GripVertical className="h-5 w-5" />
+                                                            </div>
 
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <Switch
-                                        checked={widget.visible}
-                                        onCheckedChange={() => toggleVisibility(widget.id)}
-                                    />
-                                </div>
-                            </div>
-                        ))}
+                                                            {/* Up/Down Quick Buttons */}
+                                                            <div className="flex items-center gap-0.5 shrink-0">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={idx === 0}
+                                                                    onClick={() => moveWidget(idx, "up")}
+                                                                    className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-slate-900 disabled:opacity-20"
+                                                                    title="Subir"
+                                                                >
+                                                                    <ArrowUp className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={idx === widgets.length - 1}
+                                                                    onClick={() => moveWidget(idx, "down")}
+                                                                    className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-slate-900 disabled:opacity-20"
+                                                                    title="Descer"
+                                                                >
+                                                                    <ArrowDown className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </div>
+
+                                                            <div className="min-w-0">
+                                                                <span className="font-bold text-slate-900 text-sm block truncate">{widget.title}</span>
+                                                                <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                                    {widget.category === "banner" ? "Banner Especial" : widget.category === "metric" ? "Métrica / BI" : "Gráfico"}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-3 shrink-0">
+                                                            <Switch
+                                                                checked={widget.visible}
+                                                                onCheckedChange={() => toggleVisibility(widget.id)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </Draggable>
+                                        ))}
+                                        {provided.placeholder}
+                                    </div>
+                                )}
+                            </Droppable>
+                        </DragDropContext>
                     </div>
 
-                    <div className="p-4 bg-white border-t border-slate-200 shrink-0 flex items-center justify-between gap-3">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={resetLayout}
-                            className="font-bold text-slate-600 hover:bg-slate-100 rounded-xl gap-1.5 text-xs"
-                        >
-                            <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
-                            Restaurar Padrão
-                        </Button>
+                    <div className="p-4 bg-white border-t border-slate-200 shrink-0 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAllVisibility(true)}
+                                className="font-bold text-slate-600 hover:bg-slate-100 rounded-xl text-xs h-8 px-2.5"
+                            >
+                                <Eye className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                                Mostrar Todos
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={resetLayout}
+                                className="font-bold text-slate-600 hover:bg-slate-100 rounded-xl text-xs h-8 px-2.5"
+                            >
+                                <RotateCcw className="h-3.5 w-3.5 mr-1 text-slate-400" />
+                                Restaurar Padrão
+                            </Button>
+                        </div>
                         <Button
                             type="button"
                             onClick={() => {

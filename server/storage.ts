@@ -2379,6 +2379,7 @@ export class MemStorage implements IStorage {
         smtpSecure: false,
         smtpFrom: null,
         resendApiKey: null,
+        externalApiKey: null,
         updatedAt: new Date(),
       };
     }

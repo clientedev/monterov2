@@ -209,6 +209,9 @@ export const siteSettings = pgTable("site_settings", {
   smtpFrom: text("smtp_from"),
   resendApiKey: text("resend_api_key"),
 
+  // External Integration API
+  externalApiKey: text("external_api_key"),
+
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
