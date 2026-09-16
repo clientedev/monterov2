@@ -246,8 +246,18 @@ export default function PostsPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => {
-                                                    setEditingPost(post);
+                                                onClick={async () => {
+                                                    try {
+                                                        const res = await fetch(`/api/posts/${post.slug}`);
+                                                        if (res.ok) {
+                                                            const full = await res.json();
+                                                            setEditingPost(full);
+                                                        } else {
+                                                            setEditingPost(post);
+                                                        }
+                                                    } catch {
+                                                        setEditingPost(post);
+                                                    }
                                                     setOpen(true);
                                                 }}
                                             >
@@ -449,10 +459,25 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                                                 const file = e.target.files?.[0];
                                                 if (!file) return;
                                                 const reader = new FileReader();
-                                                reader.onloadend = () => {
-                                                    const base64 = reader.result as string;
-                                                    const currentContent = form.getValues("content") || "";
-                                                    form.setValue("content", currentContent + `\n![imagem](${base64})\n`);
+                                                reader.onload = (event) => {
+                                                    const img = new Image();
+                                                    img.onload = () => {
+                                                        const canvas = document.createElement("canvas");
+                                                        let width = img.width;
+                                                        let height = img.height;
+                                                        const maxWidth = 1200;
+                                                        if (width > maxWidth) {
+                                                            height = Math.round((height * maxWidth) / width);
+                                                            width = maxWidth;
+                                                        }
+                                                        canvas.width = width;
+                                                        canvas.height = height;
+                                                        const ctx = canvas.getContext("2d");
+                                                        const base64 = ctx ? canvas.toDataURL("image/jpeg", 0.82) : (event.target?.result as string);
+                                                        const currentContent = form.getValues("content") || "";
+                                                        form.setValue("content", currentContent + `\n![imagem](${base64})\n`);
+                                                    };
+                                                    img.src = event.target?.result as string;
                                                 };
                                                 reader.readAsDataURL(file);
                                             }}

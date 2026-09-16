@@ -89,7 +89,7 @@ import { sql, and, desc, eq, asc, lte, or, isNull, inArray, gte, like } from "dr
 
 export interface IStorage {
   // Posts
-  getPosts(approvedOnly?: boolean): Promise<Post[]>;
+  getPosts(approvedOnly?: boolean, includeContent?: boolean): Promise<Post[]>;
   getPost(id: number): Promise<Post | undefined>;
   getPostBySlug(slug: string): Promise<Post | undefined>;
   createPost(post: InsertPost): Promise<Post>;
@@ -295,8 +295,25 @@ export class DatabaseStorage implements IStorage {
     });
   }
   // Posts
-  async getPosts(approvedOnly = true): Promise<Post[]> {
-    let query = db.select().from(posts);
+  async getPosts(approvedOnly = true, includeContent = false): Promise<Post[]> {
+    let query = db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        slug: posts.slug,
+        summary: posts.summary,
+        coverImage: posts.coverImage,
+        likes: posts.likes,
+        videoUrl: posts.videoUrl,
+        youtubeUrl: posts.youtubeUrl,
+        isApproved: posts.isApproved,
+        isFeatured: posts.isFeatured,
+        publishedAt: posts.publishedAt,
+        createdAt: posts.createdAt,
+        content: includeContent ? posts.content : sql<string>`''`,
+      })
+      .from(posts);
+
     if (approvedOnly) {
       const now = new Date();
       const gracePeriodNow = new Date(now.getTime() + 5 * 60 * 1000);
@@ -307,7 +324,7 @@ export class DatabaseStorage implements IStorage {
         )
       ) as any;
     }
-    return await query.orderBy(desc(posts.publishedAt));
+    return (await query.orderBy(desc(posts.publishedAt))) as any;
   }
 
   async getPost(id: number): Promise<Post | undefined> {

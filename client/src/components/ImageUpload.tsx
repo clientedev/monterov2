@@ -20,20 +20,60 @@ export function ImageUpload({ value, onChange, label, description }: ImageUpload
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.size > 10 * 1024 * 1024) {
-            alert("A imagem deve ter no máximo 10MB");
+        if (file.size > 20 * 1024 * 1024) {
+            alert("A imagem deve ter no máximo 20MB");
             return;
         }
 
         setIsUploading(true);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64String = reader.result as string;
-            setPreview(base64String);
-            onChange(base64String);
+        try {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    let width = img.width;
+                    let height = img.height;
+                    const maxWidth = 1200;
+                    const maxHeight = 1200;
+
+                    if (width > maxWidth || height > maxHeight) {
+                        if (width > height) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        } else {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    if (ctx) {
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.82);
+                        setPreview(compressedBase64);
+                        onChange(compressedBase64);
+                    } else {
+                        const raw = event.target?.result as string;
+                        setPreview(raw);
+                        onChange(raw);
+                    }
+                    setIsUploading(false);
+                };
+                img.onerror = () => {
+                    const raw = event.target?.result as string;
+                    setPreview(raw);
+                    onChange(raw);
+                    setIsUploading(false);
+                };
+                img.src = event.target?.result as string;
+            };
+            reader.readAsDataURL(file);
+        } catch {
             setIsUploading(false);
-        };
-        reader.readAsDataURL(file);
+        }
     };
 
     const removeImage = () => {
