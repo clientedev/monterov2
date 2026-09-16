@@ -51,6 +51,11 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
 
+  // Auto-approve existing posts in DB so all published posts show publicly
+  db.execute(sql`UPDATE posts SET is_approved = true WHERE is_approved = false OR is_approved IS NULL`).catch((err) =>
+    console.error("[POSTS] Failed to auto-approve posts on startup:", err)
+  );
+
   // AI Chat Route (Groq Cloud + Ollama Local + Intelligent DB Fallback)
   app.post("/api/chat", async (req, res) => {
     try {
@@ -262,7 +267,10 @@ export async function registerRoutes(
 
   app.post("/api/posts", isAuthenticated, async (req, res) => {
     try {
-      const input = insertPostSchema.parse(req.body);
+      const input = insertPostSchema.parse({
+        ...req.body,
+        isApproved: req.body.isApproved ?? true,
+      });
       console.log(`[POSTS] Creating new post... Payload size: ${JSON.stringify(input).length} bytes`);
       console.log(`[POSTS] Input keys: ${Object.keys(input).join(', ')}`);
       const post = await storage.createPost(input);
@@ -2680,6 +2688,7 @@ export async function registerRoutes(
         summary: "Descubra a importância de ter seu veículo protegido e evite dores de cabeça.",
         content: "Ter um seguro auto é essencial para quem busca tranquilidade no trânsito...",
         coverImage: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1000",
+        isApproved: true,
         publishedAt: new Date(),
       });
       await storage.createPost({
@@ -2688,6 +2697,7 @@ export async function registerRoutes(
         summary: "Saiba como reduzir o valor do seu seguro sem perder coberturas importantes.",
         content: "Muitas pessoas não sabem, mas pequenas atitudes podem diminuir o valor do seguro...",
         coverImage: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1000",
+        isApproved: true,
         publishedAt: new Date(),
       });
     }
@@ -2835,6 +2845,135 @@ export async function registerRoutes(
       });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
+    }
+  });
+
+  // External Create/Register Contact API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
+  app.post("/api/v1/external/contacts", externalApiKeyAuth, async (req, res) => {
+    try {
+      const {
+        name,
+        phone,
+        email,
+        document,
+        type = "individual",
+        responsibleName,
+        anniversaryDate,
+        maritalStatus,
+        productType,
+        insurers,
+        contactOrigin = "WhatsApp Integrado",
+        notes,
+        status = "Ativo",
+      } = req.body || {};
+
+      if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: "O campo 'name' (Nome do contato) é obrigatório.",
+        });
+      }
+
+      const contactPayload: InsertContact = {
+        name: name.trim(),
+        type: type === "company" ? "company" : "individual",
+        phone: phone ? String(phone).trim() : null,
+        email: email ? String(email).trim() : null,
+        document: document ? String(document).trim() : null,
+        responsibleName: responsibleName ? String(responsibleName).trim() : null,
+        anniversaryDate: anniversaryDate ? String(anniversaryDate).trim() : null,
+        maritalStatus: maritalStatus ? String(maritalStatus).trim() : null,
+        productType: productType ? String(productType).trim() : null,
+        insurers: insurers ? String(insurers).trim() : null,
+        contactOrigin: contactOrigin ? String(contactOrigin).trim() : "WhatsApp Integrado",
+        notes: notes ? String(notes).trim() : null,
+        status: status === "Cancelado" || status === "Prospects" ? status : "Ativo",
+      };
+
+      const parsed = insertContactSchema.parse(contactPayload);
+      const result = await storage.upsertContact(parsed);
+
+      // Ensure synchronization with clientes table
+      const allClientes = await storage.getClientes();
+      const linkedCliente = allClientes.find(cliente => {
+        if (cliente.contactId === result.contact.id) return true;
+        const contactDoc = (result.contact.document || "").replace(/\D/g, "");
+        const clientDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+        const contactName = (result.contact.name || "").trim().toLowerCase();
+        const clientName = (cliente.nome || "").trim().toLowerCase();
+        const contactPhone = (result.contact.phone || "").replace(/\D/g, "");
+        const clientPhone = (cliente.telefone || "").replace(/\D/g, "");
+        return Boolean(contactDoc && clientDoc && contactDoc === clientDoc) ||
+          Boolean(contactName === clientName && contactPhone && clientPhone && contactPhone === clientPhone);
+      });
+
+      if (linkedCliente) {
+        await storage.updateCliente(linkedCliente.id, {
+          contactId: result.contact.id,
+          type: result.contact.type,
+          nome: result.contact.name,
+          cpfCnpj: result.contact.document || null,
+          email: result.contact.email || null,
+          telefone: result.contact.phone || null,
+          whatsapp: result.contact.phone || null,
+          endereco: result.contact.address || null,
+          anniversaryDate: result.contact.anniversaryDate || null,
+          productType: result.contact.productType || null,
+          insurers: result.contact.insurers || null,
+          contactOrigin: result.contact.contactOrigin || null,
+          isReferral: result.contact.isReferral || false,
+          referredByContactId: result.contact.referredByContactId || null,
+          internalResponsibleId: result.contact.internalResponsibleId || null,
+          nomeRepresentante: result.contact.responsibleName || null,
+          observacoes: result.contact.notes || null,
+        });
+      } else {
+        await storage.createCliente({
+          contactId: result.contact.id,
+          type: result.contact.type,
+          nome: result.contact.name,
+          cpfCnpj: result.contact.document || null,
+          email: result.contact.email || null,
+          telefone: result.contact.phone || null,
+          whatsapp: result.contact.phone || null,
+          endereco: result.contact.address || null,
+          anniversaryDate: result.contact.anniversaryDate || null,
+          productType: result.contact.productType || null,
+          insurers: result.contact.insurers || null,
+          contactOrigin: result.contact.contactOrigin || null,
+          isReferral: result.contact.isReferral || false,
+          referredByContactId: result.contact.referredByContactId || null,
+          internalResponsibleId: result.contact.internalResponsibleId || null,
+          nomeRepresentante: result.contact.responsibleName || null,
+          observacoes: result.contact.notes || null,
+        });
+      }
+
+      return res.status(result.isNew ? 201 : 200).json({
+        success: true,
+        isNew: result.isNew,
+        message: result.isNew
+          ? "Contato cadastrado com sucesso no CRM Monteiro Seguros!"
+          : "Contato atualizado com sucesso no CRM Monteiro Seguros!",
+        contact: {
+          id: result.contact.id,
+          name: result.contact.name,
+          phone: result.contact.phone,
+          email: result.contact.email,
+          document: result.contact.document,
+          type: result.contact.type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
+          status: result.contact.status,
+          anniversaryDate: result.contact.anniversaryDate,
+          productType: result.contact.productType,
+          contactOrigin: result.contact.contactOrigin,
+          notes: result.contact.notes,
+        },
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: err.errors });
+      }
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 

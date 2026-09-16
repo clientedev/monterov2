@@ -95,6 +95,8 @@ function ProtectedClientRoute({ path, component: Component }: { path: string; co
   );
 }
 
+import ExternalRegisterContactModal from "@/pages/ExternalRegisterContactModal";
+
 function Router() {
   return (
     <Switch>
@@ -108,6 +110,7 @@ function Router() {
       <Route path="/services/:id" component={ServiceDetail} />
       <Route path="/contact" component={Contact} />
       <Route path="/criar-senha" component={CreatePasswordPage} />
+      <Route path="/embed/register-contact" component={ExternalRegisterContactModal} />
 
       {/* Customer Area */}
       <ProtectedClientRoute path="/dashboard" component={CustomerDashboard} />

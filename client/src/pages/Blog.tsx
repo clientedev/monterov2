@@ -416,10 +416,11 @@ export default function Blog() {
   });
 
   const now = new Date();
+  const gracePeriod = new Date(now.getTime() + 5 * 60 * 1000);
   const visiblePosts = posts?.filter((p) => {
     if (!p.publishedAt) return true;
     const d = new Date(p.publishedAt);
-    return !isNaN(d.getTime()) && d <= now;
+    return !isNaN(d.getTime()) && d <= gracePeriod;
   });
 
   return (

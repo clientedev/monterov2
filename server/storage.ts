@@ -299,10 +299,11 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(posts);
     if (approvedOnly) {
       const now = new Date();
+      const gracePeriodNow = new Date(now.getTime() + 5 * 60 * 1000);
       query = query.where(
         and(
           eq(posts.isApproved, true),
-          or(lte(posts.publishedAt, now), isNull(posts.publishedAt))
+          or(lte(posts.publishedAt, gracePeriodNow), isNull(posts.publishedAt))
         )
       ) as any;
     }
@@ -320,7 +321,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPost(post: InsertPost): Promise<Post> {
-    const [newPost] = await db.insert(posts).values(post).returning();
+    const postToInsert = {
+      ...post,
+      isApproved: post.isApproved ?? true,
+    };
+    const [newPost] = await db.insert(posts).values(postToInsert).returning();
     return newPost;
   }
 

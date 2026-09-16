@@ -359,7 +359,8 @@ export const insertPostSchema = createInsertSchema(posts, {
   content: z.string().min(10, "Conteúdo muito curto"),
   summary: z.string().min(5, "Resumo muito curto"),
   coverImage: z.string().min(1, "Imagem de capa obrigatória"),
-}).omit({ id: true, createdAt: true, likes: true, isApproved: true });
+  isApproved: z.boolean().optional(),
+}).omit({ id: true, createdAt: true, likes: true });
 export const insertInquirySchema = createInsertSchema(inquiries).omit({ id: true, createdAt: true });
 export const insertServiceSchema = createInsertSchema(services).omit({ id: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
