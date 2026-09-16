@@ -1013,12 +1013,13 @@ export default function ContactsPage() {
                                                 case "actions":
                                                     return (
                                                         <TableCell key="actions" className="text-right py-4">
-                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <div className="flex items-center justify-end gap-1.5">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg p-0"
-                                                                    onClick={() => {
+                                                                    className="h-8 w-8 text-primary bg-primary/10 hover:bg-primary/20 rounded-lg p-0 shadow-sm transition-all"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
                                                                         setSelectedContactId(contact.id);
                                                                         setProfileOpen(true);
                                                                     }}
@@ -1029,8 +1030,9 @@ export default function ContactsPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-8 w-8 text-slate-600 hover:bg-slate-100 rounded-lg p-0"
-                                                                    onClick={() => {
+                                                                    className="h-8 w-8 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg p-0 shadow-sm transition-all"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
                                                                         setIsEditing(contact.id);
                                                                         setOpen(true);
                                                                     }}
@@ -1041,8 +1043,11 @@ export default function ContactsPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-0"
-                                                                    onClick={() => setDeleteTargetId(contact.id)}
+                                                                    className="h-8 w-8 text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 rounded-lg p-0 shadow-sm transition-all"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setDeleteTargetId(contact.id);
+                                                                    }}
                                                                     title="Excluir Contato"
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />

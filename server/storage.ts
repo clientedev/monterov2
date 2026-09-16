@@ -12,6 +12,7 @@ import {
   interactions,
   campaigns,
   tasks,
+  contactFiles,
   clientes,
   seguradoras,
   produtosSeguro,
@@ -666,21 +667,77 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteContact(id: number): Promise<void> {
+    // 1. Find linked leads
     const contactLeads = await db.select({ id: leads.id }).from(leads).where(eq(leads.contactId, id));
     const leadIds = contactLeads.map(l => l.id);
 
-    if (leadIds.length > 0) {
-      await db.delete(interactions).where(or(eq(interactions.contactId, id), inArray(interactions.leadId, leadIds)));
-      await db.delete(todoistTasks).where(or(eq(todoistTasks.contactId, id), inArray(todoistTasks.leadId, leadIds)));
-    } else {
-      await db.delete(interactions).where(eq(interactions.contactId, id));
-      await db.delete(todoistTasks).where(eq(todoistTasks.contactId, id));
+    // 2. Find linked clientes (insurance module)
+    const contactClientes = await db.select({ id: clientes.id }).from(clientes).where(eq(clientes.contactId, id));
+    const clienteIds = contactClientes.map(c => c.id);
+
+    // 3. Find linked apolices (from linked clientes)
+    let apoliceIds: number[] = [];
+    if (clienteIds.length > 0) {
+      const clienteApolices = await db.select({ id: apolices.id }).from(apolices).where(inArray(apolices.clienteId, clienteIds));
+      apoliceIds = clienteApolices.map(a => a.id);
     }
 
+    // 4. Find all todoistTasks referencing contactId, leadIds, clienteIds, or apoliceIds
+    const todoistConditions: any[] = [eq(todoistTasks.contactId, id)];
+    if (leadIds.length > 0) todoistConditions.push(inArray(todoistTasks.leadId, leadIds));
+    if (clienteIds.length > 0) todoistConditions.push(inArray(todoistTasks.clienteId, clienteIds));
+    if (apoliceIds.length > 0) todoistConditions.push(inArray(todoistTasks.apoliceId, apoliceIds));
+
+    const linkedTodoistTasks = await db.select({ id: todoistTasks.id }).from(todoistTasks).where(or(...todoistConditions));
+    const todoistTaskIds = linkedTodoistTasks.map(t => t.id);
+
+    // 5. Delete child records of linked todoistTasks
+    if (todoistTaskIds.length > 0) {
+      await db.delete(todoistSubtasks).where(inArray(todoistSubtasks.taskId, todoistTaskIds));
+      await db.delete(todoistTaskLabels).where(inArray(todoistTaskLabels.taskId, todoistTaskIds));
+      await db.delete(todoistComments).where(inArray(todoistComments.taskId, todoistTaskIds));
+      await db.delete(todoistActivityLogs).where(inArray(todoistActivityLogs.taskId, todoistTaskIds));
+      await db.delete(todoistNotifications).where(inArray(todoistNotifications.taskId, todoistTaskIds));
+      await db.delete(todoistTasks).where(inArray(todoistTasks.id, todoistTaskIds));
+    }
+
+    // Direct deletion fallbacks for todoistTasks
+    if (leadIds.length > 0) {
+      await db.delete(todoistTasks).where(inArray(todoistTasks.leadId, leadIds));
+    }
+    if (clienteIds.length > 0) {
+      await db.delete(todoistTasks).where(inArray(todoistTasks.clienteId, clienteIds));
+    }
+    await db.delete(todoistTasks).where(eq(todoistTasks.contactId, id));
+
+    // 6. Delete apolices linked to insurance clientes
+    if (clienteIds.length > 0) {
+      await db.delete(apolices).where(inArray(apolices.clienteId, clienteIds));
+    }
+
+    // 7. Delete interactions (contactId or leadIds)
+    if (leadIds.length > 0) {
+      await db.delete(interactions).where(or(eq(interactions.contactId, id), inArray(interactions.leadId, leadIds)));
+    } else {
+      await db.delete(interactions).where(eq(interactions.contactId, id));
+    }
+
+    // 8. Delete contactFiles, tasks, prospectingChecklists
+    await db.delete(contactFiles).where(eq(contactFiles.contactId, id));
     await db.delete(tasks).where(eq(tasks.contactId, id));
     await db.delete(prospectingChecklists).where(eq(prospectingChecklists.contactId, id));
+
+    // 9. Nullify references in users and self/referral references
+    await db.update(users).set({ contactId: null }).where(eq(users.contactId, id));
     await db.update(contacts).set({ responsibleId: null, responsibleName: null }).where(eq(contacts.responsibleId, id));
+    await db.update(contacts).set({ referredByContactId: null, isReferral: false }).where(eq(contacts.referredByContactId, id));
+    await db.update(clientes).set({ referredByContactId: null, isReferral: false }).where(eq(clientes.referredByContactId, id));
+
+    // 10. Delete clientes & leads linked to this contactId
+    await db.delete(clientes).where(eq(clientes.contactId, id));
     await db.delete(leads).where(eq(leads.contactId, id));
+
+    // 11. Finally delete contact
     await db.delete(contacts).where(eq(contacts.id, id));
   }
 
@@ -718,6 +775,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLead(id: number): Promise<void> {
+    const linkedTodoistTasks = await db.select({ id: todoistTasks.id }).from(todoistTasks).where(eq(todoistTasks.leadId, id));
+    const todoistTaskIds = linkedTodoistTasks.map(t => t.id);
+
+    if (todoistTaskIds.length > 0) {
+      await db.delete(todoistSubtasks).where(inArray(todoistSubtasks.taskId, todoistTaskIds));
+      await db.delete(todoistTaskLabels).where(inArray(todoistTaskLabels.taskId, todoistTaskIds));
+      await db.delete(todoistComments).where(inArray(todoistComments.taskId, todoistTaskIds));
+      await db.delete(todoistActivityLogs).where(inArray(todoistActivityLogs.taskId, todoistTaskIds));
+      await db.delete(todoistNotifications).where(inArray(todoistNotifications.taskId, todoistTaskIds));
+      await db.delete(todoistTasks).where(inArray(todoistTasks.id, todoistTaskIds));
+    }
+
+    await db.delete(todoistTasks).where(eq(todoistTasks.leadId, id));
+    await db.delete(interactions).where(eq(interactions.leadId, id));
     await db.delete(leads).where(eq(leads.id, id));
   }
 
@@ -988,6 +1059,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCliente(id: number): Promise<void> {
+    const clienteApolices = await db.select({ id: apolices.id }).from(apolices).where(eq(apolices.clienteId, id));
+    const apoliceIds = clienteApolices.map(a => a.id);
+
+    const todoistConditions: any[] = [eq(todoistTasks.clienteId, id)];
+    if (apoliceIds.length > 0) todoistConditions.push(inArray(todoistTasks.apoliceId, apoliceIds));
+
+    const linkedTodoistTasks = await db.select({ id: todoistTasks.id }).from(todoistTasks).where(or(...todoistConditions));
+    const todoistTaskIds = linkedTodoistTasks.map(t => t.id);
+
+    if (todoistTaskIds.length > 0) {
+      await db.delete(todoistSubtasks).where(inArray(todoistSubtasks.taskId, todoistTaskIds));
+      await db.delete(todoistTaskLabels).where(inArray(todoistTaskLabels.taskId, todoistTaskIds));
+      await db.delete(todoistComments).where(inArray(todoistComments.taskId, todoistTaskIds));
+      await db.delete(todoistActivityLogs).where(inArray(todoistActivityLogs.taskId, todoistTaskIds));
+      await db.delete(todoistNotifications).where(inArray(todoistNotifications.taskId, todoistTaskIds));
+      await db.delete(todoistTasks).where(inArray(todoistTasks.id, todoistTaskIds));
+    }
+
+    await db.delete(todoistTasks).where(eq(todoistTasks.clienteId, id));
+    if (apoliceIds.length > 0) {
+      await db.delete(apolices).where(eq(apolices.clienteId, id));
+    }
     await db.delete(clientes).where(eq(clientes.id, id));
   }
 
