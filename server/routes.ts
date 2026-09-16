@@ -2857,12 +2857,19 @@ export async function registerRoutes(
         email,
         document,
         type = "individual",
+        address,
         responsibleName,
+        responsibleId,
+        responsiblePhone,
+        responsibleEmail,
+        internalResponsibleId,
         anniversaryDate,
         maritalStatus,
         productType,
         insurers,
         contactOrigin = "WhatsApp Integrado",
+        isReferral = false,
+        referredByContactId,
         notes,
         status = "Ativo",
       } = req.body || {};
@@ -2880,12 +2887,17 @@ export async function registerRoutes(
         phone: phone ? String(phone).trim() : null,
         email: email ? String(email).trim() : null,
         document: document ? String(document).trim() : null,
+        address: address ? String(address).trim() : null,
         responsibleName: responsibleName ? String(responsibleName).trim() : null,
+        responsibleId: responsibleId ? Number(responsibleId) : undefined,
+        internalResponsibleId: internalResponsibleId ? Number(internalResponsibleId) : undefined,
         anniversaryDate: anniversaryDate ? String(anniversaryDate).trim() : null,
         maritalStatus: maritalStatus ? String(maritalStatus).trim() : null,
         productType: productType ? String(productType).trim() : null,
         insurers: insurers ? String(insurers).trim() : null,
         contactOrigin: contactOrigin ? String(contactOrigin).trim() : "WhatsApp Integrado",
+        isReferral: Boolean(isReferral),
+        referredByContactId: referredByContactId ? Number(referredByContactId) : undefined,
         notes: notes ? String(notes).trim() : null,
         status: status === "Cancelado" || status === "Prospects" ? status : "Ativo",
       };
@@ -2907,46 +2919,32 @@ export async function registerRoutes(
           Boolean(contactName === clientName && contactPhone && clientPhone && contactPhone === clientPhone);
       });
 
+      const clienteDataPayload = {
+        contactId: result.contact.id,
+        type: result.contact.type,
+        nome: result.contact.name,
+        cpfCnpj: result.contact.document || null,
+        email: result.contact.email || null,
+        telefone: result.contact.phone || null,
+        whatsapp: result.contact.phone || null,
+        endereco: result.contact.address || null,
+        anniversaryDate: result.contact.anniversaryDate || null,
+        productType: result.contact.productType || null,
+        insurers: result.contact.insurers || null,
+        contactOrigin: result.contact.contactOrigin || null,
+        isReferral: result.contact.isReferral || false,
+        referredByContactId: result.contact.referredByContactId || null,
+        internalResponsibleId: result.contact.internalResponsibleId || null,
+        nomeRepresentante: result.contact.responsibleName || null,
+        telefoneRepresentante: responsiblePhone ? String(responsiblePhone).trim() : null,
+        emailRepresentante: responsibleEmail ? String(responsibleEmail).trim() : null,
+        observacoes: result.contact.notes || null,
+      };
+
       if (linkedCliente) {
-        await storage.updateCliente(linkedCliente.id, {
-          contactId: result.contact.id,
-          type: result.contact.type,
-          nome: result.contact.name,
-          cpfCnpj: result.contact.document || null,
-          email: result.contact.email || null,
-          telefone: result.contact.phone || null,
-          whatsapp: result.contact.phone || null,
-          endereco: result.contact.address || null,
-          anniversaryDate: result.contact.anniversaryDate || null,
-          productType: result.contact.productType || null,
-          insurers: result.contact.insurers || null,
-          contactOrigin: result.contact.contactOrigin || null,
-          isReferral: result.contact.isReferral || false,
-          referredByContactId: result.contact.referredByContactId || null,
-          internalResponsibleId: result.contact.internalResponsibleId || null,
-          nomeRepresentante: result.contact.responsibleName || null,
-          observacoes: result.contact.notes || null,
-        });
+        await storage.updateCliente(linkedCliente.id, clienteDataPayload);
       } else {
-        await storage.createCliente({
-          contactId: result.contact.id,
-          type: result.contact.type,
-          nome: result.contact.name,
-          cpfCnpj: result.contact.document || null,
-          email: result.contact.email || null,
-          telefone: result.contact.phone || null,
-          whatsapp: result.contact.phone || null,
-          endereco: result.contact.address || null,
-          anniversaryDate: result.contact.anniversaryDate || null,
-          productType: result.contact.productType || null,
-          insurers: result.contact.insurers || null,
-          contactOrigin: result.contact.contactOrigin || null,
-          isReferral: result.contact.isReferral || false,
-          referredByContactId: result.contact.referredByContactId || null,
-          internalResponsibleId: result.contact.internalResponsibleId || null,
-          nomeRepresentante: result.contact.responsibleName || null,
-          observacoes: result.contact.notes || null,
-        });
+        await storage.createCliente(clienteDataPayload);
       }
 
       return res.status(result.isNew ? 201 : 200).json({
@@ -2961,12 +2959,23 @@ export async function registerRoutes(
           phone: result.contact.phone,
           email: result.contact.email,
           document: result.contact.document,
+          address: result.contact.address,
           type: result.contact.type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
+          rawType: result.contact.type,
           status: result.contact.status,
           anniversaryDate: result.contact.anniversaryDate,
+          maritalStatus: result.contact.maritalStatus,
           productType: result.contact.productType,
+          insurers: result.contact.insurers,
           contactOrigin: result.contact.contactOrigin,
+          responsibleName: result.contact.responsibleName,
+          responsibleId: result.contact.responsibleId,
+          internalResponsibleId: result.contact.internalResponsibleId,
+          isReferral: result.contact.isReferral,
+          referredByContactId: result.contact.referredByContactId,
           notes: result.contact.notes,
+          createdAt: result.contact.createdAt,
+          rawContact: result.contact,
         },
       });
     } catch (err: any) {
@@ -3037,14 +3046,32 @@ export async function registerRoutes(
       const finalPhone = matchedContact?.phone || matchedCliente?.telefone || matchedCliente?.whatsapp || phone;
       const finalEmail = matchedContact?.email || matchedCliente?.email || email;
       const finalDoc = matchedContact?.document || matchedCliente?.cpfCnpj || document;
+      const address = matchedContact?.address || matchedCliente?.endereco || null;
       const type = matchedContact?.type || matchedCliente?.type || "individual";
       const status = matchedContact?.status || "Ativo";
       const anniversaryDate = matchedContact?.anniversaryDate || matchedCliente?.anniversaryDate || null;
+      const maritalStatus = matchedContact?.maritalStatus || null;
       const productType = matchedContact?.productType || matchedCliente?.productType || null;
       const insurers = matchedContact?.insurers || matchedCliente?.insurers || null;
       const contactOrigin = matchedContact?.contactOrigin || matchedCliente?.contactOrigin || null;
       const notes = matchedContact?.notes || matchedCliente?.observacoes || null;
       const responsibleName = matchedContact?.responsibleName || matchedCliente?.nomeRepresentante || null;
+      const responsiblePhone = matchedCliente?.telefoneRepresentante || null;
+      const responsibleEmail = matchedCliente?.emailRepresentante || null;
+
+      const isReferral = matchedContact?.isReferral || matchedCliente?.isReferral || false;
+      const referredByContactId = matchedContact?.referredByContactId || matchedCliente?.referredByContactId || null;
+      const referredByContact = referredByContactId ? allContacts.find(c => c.id === referredByContactId) : null;
+      const referredByContactName = referredByContact ? referredByContact.name : null;
+
+      const internalResponsibleId = matchedContact?.internalResponsibleId || matchedCliente?.internalResponsibleId || null;
+      const internalUser = internalResponsibleId ? allUsers.find(u => u.id === internalResponsibleId) : null;
+      const internalResponsibleName = internalUser ? internalUser.name : null;
+
+      const tags = matchedCliente?.tags || null;
+      const cidade = matchedCliente?.cidade || null;
+      const estado = matchedCliente?.estado || null;
+      const createdAt = matchedContact?.createdAt || matchedCliente?.createdAt || null;
 
       const assignedUserId = matchedContact?.assignedTo || matchedCliente?.responsavelComercialId || matchedCliente?.internalResponsibleId;
       const assignedUser = assignedUserId ? allUsers.find(u => u.id === assignedUserId) : null;
@@ -3092,22 +3119,39 @@ export async function registerRoutes(
           id: contactId,
           clienteId: clienteId,
           type: type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
+          rawType: type,
           name,
           phone: finalPhone,
           email: finalEmail,
           document: finalDoc,
+          address,
+          cidade,
+          estado,
           status,
           anniversaryDate,
+          maritalStatus,
           productType,
           insurers,
           contactOrigin,
           responsibleName,
+          responsibleId: matchedContact?.responsibleId || null,
+          responsiblePhone,
+          responsibleEmail,
+          internalResponsibleId,
+          internalResponsibleName,
+          isReferral,
+          referredByContactId,
+          referredByContactName,
           notes,
+          tags,
+          createdAt,
           assignedTo: assignedUser ? {
             id: assignedUser.id,
             name: assignedUser.name,
             email: assignedUser.email,
-          } : null
+          } : null,
+          rawContact: matchedContact || null,
+          rawCliente: matchedCliente || null,
         },
         insurance: {
           totalPoliciesCount: linkedApolices.length,

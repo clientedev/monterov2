@@ -23,6 +23,7 @@ export default function ExternalRegisterContactModal() {
     phone: initialPhone,
     email: initialEmail,
     document: initialDocument,
+    address: "",
     type: initialType,
     responsibleName: "",
     anniversaryDate: "",
@@ -185,6 +186,18 @@ export default function ExternalRegisterContactModal() {
                 className="rounded-xl h-10 text-xs"
               />
             </div>
+          </div>
+
+          {/* Endereço Completo */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700">Endereço Completo</label>
+            <Input
+              name="address"
+              placeholder="Rua, Número, Bairro, Cidade, UF, CEP"
+              value={formState.address}
+              onChange={handleChange}
+              className="rounded-xl h-10 text-xs"
+            />
           </div>
 
           {/* Documento (CPF/CNPJ) & Aniversário */}
