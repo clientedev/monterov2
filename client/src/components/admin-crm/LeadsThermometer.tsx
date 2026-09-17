@@ -433,14 +433,62 @@ export default function LeadsThermometer() {
                                 </Select>
                             </div>
 
-                            {/* Palavra-chave opcional */}
-                            <div className="space-y-1.5">
-                                <Label className="text-slate-700 font-bold text-xs uppercase tracking-wider">Filtro Específico (Opcional)</Label>
+                            {/* Filtro Específico / Nicho de Atuação */}
+                            <div className="space-y-2">
+                                <Label className="text-slate-700 font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                                    <span>Nicho de Atuação / Palavra-Chave</span>
+                                    <span className="text-[10px] text-slate-400 font-normal lowercase">Seleção ou Digitação</span>
+                                </Label>
+
+                                {/* Dropdown de Nichos Pré-definidos */}
+                                <Select
+                                    onValueChange={(val) => {
+                                        if (val === "custom") {
+                                            setCustomQuery("");
+                                        } else {
+                                            setCustomQuery(val);
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger className="bg-white border-slate-200 text-xs">
+                                        <SelectValue placeholder="Selecione um Nicho Recomendado..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        <SelectItem value="custom" className="font-semibold text-amber-600">
+                                            ✏️ Digitar filtro personalizado...
+                                        </SelectItem>
+                                        <SelectItem value="Advocacia">🏢 Advocacia & Escritórios Jurídicos</SelectItem>
+                                        <SelectItem value="Contabilidade">📊 Contabilidade & Consultorias</SelectItem>
+                                        <SelectItem value="Tecnologia">💻 TI, Software & Startups</SelectItem>
+                                        <SelectItem value="Marketing">📢 Agências de Marketing & Mídia</SelectItem>
+                                        <SelectItem value="Indústria">🏭 Indústrias & Fábricas</SelectItem>
+                                        <SelectItem value="Transportadora">🚛 Transportadoras & Frotas</SelectItem>
+                                        <SelectItem value="Logística">📦 Logística & Depósitos</SelectItem>
+                                        <SelectItem value="Construtora">🏗️ Construtoras & Engenharia</SelectItem>
+                                        <SelectItem value="Clínica Médica">🏥 Clínicas Médicas & Hospitais</SelectItem>
+                                        <SelectItem value="Dentista">🦷 Odontologia & Dentistas</SelectItem>
+                                        <SelectItem value="Academia">💪 Academias & Fitness</SelectItem>
+                                        <SelectItem value="Restaurante">🍽️ Restaurantes & Gastronomia</SelectItem>
+                                        <SelectItem value="Padaria">🥐 Padarias & Confeitarias</SelectItem>
+                                        <SelectItem value="Bar">🍸 Bares & Pubs</SelectItem>
+                                        <SelectItem value="Supermercado">🛒 Supermercados & Mercados</SelectItem>
+                                        <SelectItem value="Loja de Roupas">👗 Vestuário & Moda</SelectItem>
+                                        <SelectItem value="Farmácia">💊 Farmácias & Manipulação</SelectItem>
+                                        <SelectItem value="Pet Shop">🐶 Pet Shops & Veterinárias</SelectItem>
+                                        <SelectItem value="Oficina Mecânica">🚗 Oficinas Mecânicas & Auto</SelectItem>
+                                        <SelectItem value="Hotel">🏨 Hotéis & Pousadas</SelectItem>
+                                        <SelectItem value="Salão de Beleza">✂️ Salões de Beleza & Estética</SelectItem>
+                                        <SelectItem value="Escola">🎓 Escolas & Cursos</SelectItem>
+                                        <SelectItem value="Imobiliária">🏠 Imobiliárias & Corretores</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Campo para Escrever Livremente */}
                                 <Input
-                                    placeholder="Ex: Indústria, Restaurante, Advocacia"
+                                    placeholder="Ou digite livremente ex: Hamburgueria, Drogaria..."
                                     value={customQuery}
                                     onChange={(e) => setCustomQuery(e.target.value)}
-                                    className="bg-white border-slate-200"
+                                    className="bg-white border-slate-200 text-xs"
                                 />
                             </div>
 

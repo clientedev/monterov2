@@ -2801,63 +2801,123 @@ export async function registerRoutes(
 
       if (isGooglePlacesActive) {
         try {
-          // 1. Try Places API (New)
-          const newApiUrl = `https://places.googleapis.com/v1/places:searchText`;
-          const newApiRes = await fetch(newApiUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Goog-Api-Key": googleApiKey,
-              "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.location",
-            },
-            body: JSON.stringify({
-              textQuery: queryText,
-              languageCode: "pt-BR",
-            }),
-            signal: AbortSignal.timeout(15000),
-          });
+          // Geocode location to get center lat/lng
+          let centerLat = -23.5505;
+          let centerLng = -46.6333;
+          try {
+            const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${googleApiKey}`;
+            const geoRes = await fetch(geoUrl, { signal: AbortSignal.timeout(5000) });
+            if (geoRes.ok) {
+              const geoData: any = await geoRes.json();
+              if (geoData.results?.[0]?.geometry?.location) {
+                centerLat = geoData.results[0].geometry.location.lat;
+                centerLng = geoData.results[0].geometry.location.lng;
+              }
+            }
+          } catch (e) {
+            // ignore geocoding failure, fallback to default center
+          }
 
-          if (newApiRes.ok) {
-            const newApiData: any = await newApiRes.json();
-            const placesList = newApiData.places || [];
-            for (const place of placesList) {
-              results.push({
-                placeId: place.id || `place_${Math.random()}`,
-                name: place.displayName?.text || "Empresa Identificada",
-                address: place.formattedAddress || location,
-                phone: place.nationalPhoneNumber || "",
-                website: place.websiteUri || "",
-                location: place.location ? { lat: place.location.latitude, lng: place.location.longitude } : { lat: -23.5505, lng: -46.6333 },
-                rating: place.rating || null,
-                userRatingsTotal: place.userRatingCount || 0,
-                businessStatus: "OPERATIONAL",
-                types: [],
+          const radiusMeters = Math.min(Number(radiusKm) * 1000, 50000);
+          const baseTerm = customQuery ? customQuery.trim() : productType;
+          const productKeywords = PRODUCT_MAP[productType]?.queryKeywords || ["empresa", "comercio", "servicos"];
+          
+          // Generate subquery terms to maximize discovery
+          const subQueryTerms = Array.from(new Set([
+            `${baseTerm} em ${location}`,
+            `${baseTerm} centro em ${location}`,
+            `${baseTerm} grande em ${location}`,
+            `${baseTerm} corporativo em ${location}`,
+            ...productKeywords.map(kw => `${kw} ${baseTerm} em ${location}`),
+          ])).slice(0, 6);
+
+          const placesMap = new Map<string, any>();
+
+          // 1. Try Places API (New - REST) with location bias
+          for (const subQuery of subQueryTerms) {
+            try {
+              const newApiUrl = `https://places.googleapis.com/v1/places:searchText`;
+              const newApiRes = await fetch(newApiUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Goog-Api-Key": googleApiKey,
+                  "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.location,places.types",
+                },
+                body: JSON.stringify({
+                  textQuery: subQuery,
+                  languageCode: "pt-BR",
+                  pageSize: 20,
+                  locationBias: {
+                    circle: {
+                      center: { latitude: centerLat, longitude: centerLng },
+                      radius: radiusMeters,
+                    },
+                  },
+                }),
+                signal: AbortSignal.timeout(8000),
               });
+
+              if (newApiRes.ok) {
+                const newApiData: any = await newApiRes.json();
+                const placesList = newApiData.places || [];
+                for (const place of placesList) {
+                  const id = place.id || `${place.displayName?.text}_${place.formattedAddress}`;
+                  if (!placesMap.has(id)) {
+                    placesMap.set(id, {
+                      placeId: id,
+                      name: place.displayName?.text || "Empresa Identificada",
+                      address: place.formattedAddress || location,
+                      phone: place.nationalPhoneNumber || "",
+                      website: place.websiteUri || "",
+                      location: place.location ? { lat: place.location.latitude, lng: place.location.longitude } : { lat: centerLat, lng: centerLng },
+                      rating: place.rating || null,
+                      userRatingsTotal: place.userRatingCount || 0,
+                      businessStatus: "OPERATIONAL",
+                      types: place.types || [],
+                    });
+                  }
+                }
+              }
+            } catch (err: any) {
+              // ignore single subquery failure
             }
           }
 
+          results = Array.from(placesMap.values());
+
           // 2. Fallback to Legacy Places API if New Places API returned empty results
           if (results.length === 0) {
-            const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(queryText)}&key=${googleApiKey}&language=pt-BR`;
-            const placesRes = await fetch(placesUrl, { signal: AbortSignal.timeout(10000) });
-            if (placesRes.ok) {
-              const placesData: any = await placesRes.json();
-              const placesList = placesData.results || [];
-              for (const place of placesList.slice(0, 20)) {
-                results.push({
-                  placeId: place.place_id,
-                  name: place.name,
-                  address: place.formatted_address || location,
-                  phone: "",
-                  website: "",
-                  location: place.geometry?.location || { lat: -23.5505, lng: -46.6333 },
-                  rating: place.rating || null,
-                  userRatingsTotal: place.user_ratings_total || 0,
-                  businessStatus: place.business_status || "OPERATIONAL",
-                  types: place.types || [],
-                });
+            for (const subQuery of subQueryTerms.slice(0, 3)) {
+              try {
+                const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(subQuery)}&key=${googleApiKey}&language=pt-BR`;
+                const placesRes = await fetch(placesUrl, { signal: AbortSignal.timeout(8000) });
+                if (placesRes.ok) {
+                  const placesData: any = await placesRes.json();
+                  const placesList = placesData.results || [];
+                  for (const place of placesList) {
+                    const id = place.place_id || `${place.name}_${place.formatted_address}`;
+                    if (!placesMap.has(id)) {
+                      placesMap.set(id, {
+                        placeId: id,
+                        name: place.name,
+                        address: place.formatted_address || location,
+                        phone: "",
+                        website: "",
+                        location: place.geometry?.location || { lat: centerLat, lng: centerLng },
+                        rating: place.rating || null,
+                        userRatingsTotal: place.user_ratings_total || 0,
+                        businessStatus: place.business_status || "OPERATIONAL",
+                        types: place.types || [],
+                      });
+                    }
+                  }
+                }
+              } catch (e) {
+                // ignore
               }
             }
+            results = Array.from(placesMap.values());
           }
         } catch (err: any) {
           console.error("[LeadsThermometer] Google Places fetch error:", err.message);
