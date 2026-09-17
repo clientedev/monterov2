@@ -2693,45 +2693,62 @@ export async function registerRoutes(
       if (isGooglePlacesActive) {
         try {
           const queryText = `${searchTerms[0]} em ${location}`;
-          const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(queryText)}&key=${googleApiKey}&language=pt-BR`;
-          const placesRes = await fetch(placesUrl, { signal: AbortSignal.timeout(15000) });
-          if (placesRes.ok) {
-            const placesData: any = await placesRes.json();
-            const placesList = placesData.results || [];
-            
-            for (const place of placesList.slice(0, 20)) {
-              let phone = "";
-              let website = "";
-              let fullAddress = place.formatted_address || location;
+          // 1. Try Places API (New)
+          const newApiUrl = `https://places.googleapis.com/v1/places:searchText`;
+          const newApiRes = await fetch(newApiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": googleApiKey,
+              "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.location",
+            },
+            body: JSON.stringify({
+              textQuery: queryText,
+              languageCode: "pt-BR",
+            }),
+            signal: AbortSignal.timeout(15000),
+          });
 
-              if (place.place_id) {
-                try {
-                  const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=formatted_phone_number,international_phone_number,website&key=${googleApiKey}&language=pt-BR`;
-                  const detRes = await fetch(detailsUrl, { signal: AbortSignal.timeout(5000) });
-                  if (detRes.ok) {
-                    const detData: any = await detRes.json();
-                    if (detData.result) {
-                      phone = detData.result.formatted_phone_number || detData.result.international_phone_number || "";
-                      website = detData.result.website || "";
-                    }
-                  }
-                } catch (e) {
-                  // ignored
-                }
-              }
-
+          if (newApiRes.ok) {
+            const newApiData: any = await newApiRes.json();
+            const placesList = newApiData.places || [];
+            for (const place of placesList) {
               results.push({
-                placeId: place.place_id,
-                name: place.name,
-                address: fullAddress,
-                phone: phone,
-                website: website,
-                location: place.geometry?.location || { lat: -23.5505, lng: -46.6333 },
+                placeId: place.id || `place_${Math.random()}`,
+                name: place.displayName?.text || "Empresa Identificada",
+                address: place.formattedAddress || location,
+                phone: place.nationalPhoneNumber || "",
+                website: place.websiteUri || "",
+                location: place.location ? { lat: place.location.latitude, lng: place.location.longitude } : { lat: -23.5505, lng: -46.6333 },
                 rating: place.rating || null,
-                userRatingsTotal: place.user_ratings_total || 0,
-                businessStatus: place.business_status || "OPERATIONAL",
-                types: place.types || [],
+                userRatingsTotal: place.userRatingCount || 0,
+                businessStatus: "OPERATIONAL",
+                types: [],
               });
+            }
+          }
+
+          // 2. Fallback to Legacy Places API if New Places API returned empty results
+          if (results.length === 0) {
+            const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(queryText)}&key=${googleApiKey}&language=pt-BR`;
+            const placesRes = await fetch(placesUrl, { signal: AbortSignal.timeout(10000) });
+            if (placesRes.ok) {
+              const placesData: any = await placesRes.json();
+              const placesList = placesData.results || [];
+              for (const place of placesList.slice(0, 20)) {
+                results.push({
+                  placeId: place.place_id,
+                  name: place.name,
+                  address: place.formatted_address || location,
+                  phone: "",
+                  website: "",
+                  location: place.geometry?.location || { lat: -23.5505, lng: -46.6333 },
+                  rating: place.rating || null,
+                  userRatingsTotal: place.user_ratings_total || 0,
+                  businessStatus: place.business_status || "OPERATIONAL",
+                  types: place.types || [],
+                });
+              }
             }
           }
         } catch (err: any) {
