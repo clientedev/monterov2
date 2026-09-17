@@ -220,6 +220,7 @@ export async function registerRoutes(
     const requestAll = req.query.all === "true" || req.query.admin === "true";
     const approvedOnly = !(isAdminUser && requestAll);
     const posts = await storage.getPosts(approvedOnly);
+    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=120, stale-while-revalidate=600");
     res.json(posts);
   });
 
@@ -235,6 +236,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: 'Post not found' });
       }
     }
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
     res.json(post);
   });
 

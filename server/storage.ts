@@ -312,15 +312,26 @@ export class DatabaseStorage implements IStorage {
       tableName: 'session'
     });
   }
+  private postsCache: Map<string, { data: Post[]; expiresAt: number }> = new Map();
+  private invalidatePostsCache() {
+    this.postsCache.clear();
+  }
+
   // Posts
   async getPosts(approvedOnly = true, includeContent = false): Promise<Post[]> {
+    const cacheKey = `${approvedOnly}_${includeContent}`;
+    const cached = this.postsCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data;
+    }
+
     let query = db
       .select({
         id: posts.id,
         title: posts.title,
         slug: posts.slug,
         summary: posts.summary,
-        coverImage: posts.coverImage,
+        coverImage: sql<string>`CASE WHEN ${posts.coverImage} LIKE 'data:%' THEN '/api/posts/' || ${posts.id} || '/image' ELSE ${posts.coverImage} END`,
         likes: posts.likes,
         videoUrl: posts.videoUrl,
         youtubeUrl: posts.youtubeUrl,
@@ -343,23 +354,33 @@ export class DatabaseStorage implements IStorage {
       ) as any;
     }
     const rawList = await query.orderBy(desc(posts.publishedAt));
-    return rawList.map((p: any) => ({
+    const result = rawList.map((p: any) => ({
       ...p,
       coverImage: p.coverImage && p.coverImage.startsWith("data:") ? `/api/posts/${p.id}/image` : p.coverImage,
     })) as any;
+
+    this.postsCache.set(cacheKey, { data: result, expiresAt: Date.now() + 60_000 });
+    return result;
   }
 
   async getPost(id: number): Promise<Post | undefined> {
     const [post] = await db.select().from(posts).where(eq(posts.id, id));
+    if (post && post.coverImage && post.coverImage.startsWith("data:")) {
+      post.coverImage = `/api/posts/${post.id}/image`;
+    }
     return post;
   }
 
   async getPostBySlug(slug: string): Promise<Post | undefined> {
     const [post] = await db.select().from(posts).where(eq(posts.slug, slug));
+    if (post && post.coverImage && post.coverImage.startsWith("data:")) {
+      post.coverImage = `/api/posts/${post.id}/image`;
+    }
     return post;
   }
 
   async createPost(post: InsertPost): Promise<Post> {
+    this.invalidatePostsCache();
     const postToInsert = {
       ...post,
       isApproved: post.isApproved ?? true,
@@ -369,15 +390,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined> {
+    this.invalidatePostsCache();
     const [updated] = await db.update(posts).set(post).where(eq(posts.id, id)).returning();
     return updated;
   }
 
   async deletePost(id: number): Promise<void> {
+    this.invalidatePostsCache();
     await db.delete(posts).where(eq(posts.id, id));
   }
 
   async likePost(id: number): Promise<Post | undefined> {
+    this.invalidatePostsCache();
     const [updated] = await db
       .update(posts)
       .set({ likes: sql`${posts.likes} + 1` })
@@ -387,6 +411,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async approvePost(id: number): Promise<Post | undefined> {
+    this.invalidatePostsCache();
     const [updated] = await db
       .update(posts)
       .set({ isApproved: true })

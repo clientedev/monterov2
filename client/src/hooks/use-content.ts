@@ -11,7 +11,8 @@ export function usePosts() {
       if (!Array.isArray(data)) return [];
       return data as any[];
     },
-    staleTime: 30_000,
+    staleTime: 120_000,
+    gcTime: 600_000,
     retry: 2,
   });
 }
@@ -26,6 +27,8 @@ export function usePost(slug: string) {
       if (!res.ok) throw new Error("Failed to fetch post");
       return api.posts.get.responses[200].parse(await res.json());
     },
+    staleTime: 120_000,
+    gcTime: 600_000,
     enabled: !!slug,
   });
 }
