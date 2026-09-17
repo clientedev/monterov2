@@ -56,8 +56,12 @@ export default function LeadsThermometer() {
     const [radiusKm, setRadiusKm] = useState("10");
     const [productType, setProductType] = useState("Plano de Saúde");
     const [customQuery, setCustomQuery] = useState("");
-    
-    const [searchPayload, setSearchPayload] = useState<any>(null);
+    const [searchPayload, setSearchPayload] = useState<any>({
+        location: "São Paulo, SP",
+        radiusKm: 10,
+        productType: "Plano de Saúde",
+        customQuery: "",
+    });
     const [savedLeadsMap, setSavedLeadsMap] = useState<Record<string, boolean>>({});
     const [enrichedLeadsMap, setEnrichedLeadsMap] = useState<Record<string, any>>({});
 

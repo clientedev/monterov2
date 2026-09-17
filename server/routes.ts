@@ -2687,12 +2687,10 @@ export async function registerRoutes(
         },
       };
 
-      const matchedProduct = PRODUCT_MAP[productType] || PRODUCT_MAP["Plano de Saúde"];
-      const searchTerms = customQuery ? [customQuery] : matchedProduct.queryKeywords;
+      const queryText = customQuery ? `${customQuery} em ${location}` : `${productType} em ${location}`;
 
       if (isGooglePlacesActive) {
         try {
-          const queryText = `${searchTerms[0]} em ${location}`;
           // 1. Try Places API (New)
           const newApiUrl = `https://places.googleapis.com/v1/places:searchText`;
           const newApiRes = await fetch(newApiUrl, {
@@ -2761,7 +2759,8 @@ export async function registerRoutes(
         const reqCity = location.includes(",") ? location.split(",")[0].trim() : location;
         
         try {
-          const publicSearchUrl = `${req.protocol}://${req.get("host")}/api/proxy/companies/search?state=${encodeURIComponent(reqState)}&city=${encodeURIComponent(reqCity)}&q=${encodeURIComponent(searchTerms[0])}`;
+          const searchTerm = customQuery || productType;
+          const publicSearchUrl = `${req.protocol}://${req.get("host")}/api/proxy/companies/search?state=${encodeURIComponent(reqState)}&city=${encodeURIComponent(reqCity)}&q=${encodeURIComponent(searchTerm)}`;
           const pubRes = await fetch(publicSearchUrl, { headers: { cookie: req.headers.cookie || "" }, signal: AbortSignal.timeout(15000) });
           if (pubRes.ok) {
             const pubData: any[] = await pubRes.json();
