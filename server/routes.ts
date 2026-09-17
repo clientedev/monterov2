@@ -414,24 +414,17 @@ export async function registerRoutes(
       // Save the inquiry for the user's history
       const inquiry = await storage.createInquiry({ ...input, userId });
 
-      // Integration with CRM: Check for contact and create Lead
-      const contacts = await storage.getContacts();
-      let contact = contacts.find(c => c.email === input.email);
-      
-      if (!contact) {
-        contact = await storage.createContact({
-          type: "individual",
-          name: input.name,
-          email: input.email,
-          phone: input.phone || null,
-          document: null,
-          address: null,
-          status: "Ativo",
-          assignedTo: attributionId
-        });
-      } else if (input.phone && !contact.phone) {
-        await storage.updateContact(contact.id, { phone: input.phone });
-      }
+      // Integration with CRM: Check/upsert contact and create Lead
+      const { contact } = await storage.upsertContact({
+        type: "individual",
+        name: input.name,
+        email: input.email || null,
+        phone: input.phone || null,
+        document: null,
+        address: null,
+        status: "Ativo",
+        assignedTo: attributionId,
+      });
 
       const lead = await storage.createLead({
         contactId: contact.id,
@@ -1400,7 +1393,8 @@ export async function registerRoutes(
       if (existingContact) {
         existingContact = await storage.updateContact(existingContact.id, contactPayload);
       } else {
-        existingContact = await storage.createContact(contactPayload);
+        const result = await storage.upsertContact(contactPayload);
+        existingContact = result.contact;
       }
 
       cliente = await storage.updateCliente(cliente.id, { contactId: existingContact.id, type });

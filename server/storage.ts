@@ -88,6 +88,16 @@ import {
 } from "@shared/schema";
 import { sql, and, desc, eq, asc, lte, or, isNull, inArray, gte, like } from "drizzle-orm";
 
+export function normalizePhone(phone: string | null | undefined): string {
+  if (!phone) return "";
+  let digits = phone.replace(/\D/g, "");
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+    digits = digits.slice(2);
+  }
+  digits = digits.replace(/^0+/, "");
+  return digits.length >= 8 ? digits : "";
+}
+
 export interface IStorage {
   // Posts
   getPosts(approvedOnly?: boolean, includeContent?: boolean): Promise<Post[]>;
@@ -520,23 +530,37 @@ export class DatabaseStorage implements IStorage {
     const cleanDoc = contactInput.document ? contactInput.document.replace(/\D/g, "") : "";
     const cleanEmail = contactInput.email ? contactInput.email.trim().toLowerCase() : "";
     const cleanName = contactInput.name ? contactInput.name.trim().toLowerCase() : "";
-    const cleanPhone = contactInput.phone ? contactInput.phone.replace(/\D/g, "") : "";
+    const normPhone = normalizePhone(contactInput.phone);
 
     let existing: Contact | undefined;
 
+    // 1. Match by Document (CPF/CNPJ)
     if (cleanDoc && cleanDoc.length >= 11) {
       existing = allContacts.find(c => c.document && c.document.replace(/\D/g, "") === cleanDoc);
     }
 
+    // 2. Match by Email
     if (!existing && cleanEmail) {
       existing = allContacts.find(c => c.email && c.email.trim().toLowerCase() === cleanEmail);
     }
 
-    if (!existing && cleanName && cleanPhone && cleanPhone.length >= 8) {
+    // 3. Match by Normalized Phone (DDD + last 8 digits or exact match)
+    if (!existing && normPhone && normPhone.length >= 10) {
+      const pDdd = normPhone.slice(0, 2);
+      const pLast8 = normPhone.slice(-8);
+      existing = allContacts.find(c => {
+        const cNorm = normalizePhone(c.phone);
+        if (!cNorm || cNorm.length < 10) return false;
+        return cNorm === normPhone || (cNorm.slice(0, 2) === pDdd && cNorm.slice(-8) === pLast8);
+      });
+    }
+
+    // 4. Match by Name + Phone
+    if (!existing && cleanName && normPhone && normPhone.length >= 8) {
       existing = allContacts.find(c => {
         const cName = c.name ? c.name.trim().toLowerCase() : "";
-        const cPhone = c.phone ? c.phone.replace(/\D/g, "") : "";
-        return cName === cleanName && cPhone === cleanPhone;
+        const cNorm = normalizePhone(c.phone);
+        return cName === cleanName && (cNorm === normPhone || cNorm.slice(-8) === normPhone.slice(-8));
       });
     }
 
@@ -580,29 +604,80 @@ export class DatabaseStorage implements IStorage {
 
   async deduplicateContacts(): Promise<{ mergedCount: number }> {
     const allContacts = await db.select().from(contacts).orderBy(asc(contacts.id));
-    const groups = new Map<string, Contact[]>();
+    if (allContacts.length <= 1) return { mergedCount: 0 };
+
+    // Disjoint Set Union (Union-Find) to group all transitive duplicate contacts
+    const parent = new Map<number, number>();
+    for (const c of allContacts) parent.set(c.id, c.id);
+
+    const find = (i: number): number => {
+      let root = i;
+      while (root !== parent.get(root)!) {
+        root = parent.get(root)!;
+      }
+      let curr = i;
+      while (curr !== root) {
+        const nxt = parent.get(curr)!;
+        parent.set(curr, root);
+        curr = nxt;
+      }
+      return root;
+    };
+
+    const union = (i: number, j: number) => {
+      const rootI = find(i);
+      const rootJ = find(j);
+      if (rootI !== rootJ) {
+        if (rootI < rootJ) parent.set(rootJ, rootI);
+        else parent.set(rootI, rootJ);
+      }
+    };
+
+    const docMap = new Map<string, number>();
+    const emailMap = new Map<string, number>();
+    const phoneMap = new Map<string, number>();
+    const namePhoneMap = new Map<string, number>();
 
     for (const c of allContacts) {
       const cleanDoc = c.document ? c.document.replace(/\D/g, "") : "";
       const cleanEmail = c.email ? c.email.trim().toLowerCase() : "";
-      let key = "";
+      const cleanName = c.name ? c.name.trim().toLowerCase() : "";
+      const normPhone = normalizePhone(c.phone);
+
+      // Match 1: Document (CPF/CNPJ)
       if (cleanDoc && cleanDoc.length >= 11) {
-        key = `doc:${cleanDoc}`;
-      } else if (cleanEmail) {
-        key = `email:${cleanEmail}`;
-      } else if (c.name && c.phone) {
-        const cleanName = c.name.trim().toLowerCase();
-        const cleanPhone = c.phone.replace(/\D/g, "");
-        if (cleanPhone.length >= 8) {
-          key = `namephone:${cleanName}_${cleanPhone}`;
-        }
+        if (docMap.has(cleanDoc)) union(docMap.get(cleanDoc)!, c.id);
+        else docMap.set(cleanDoc, c.id);
       }
 
-      if (key) {
-        const existingList = groups.get(key) || [];
-        existingList.push(c);
-        groups.set(key, existingList);
+      // Match 2: Email
+      if (cleanEmail) {
+        if (emailMap.has(cleanEmail)) union(emailMap.get(cleanEmail)!, c.id);
+        else emailMap.set(cleanEmail, c.id);
       }
+
+      // Match 3: Phone (DDD + last 8 digits)
+      if (normPhone && normPhone.length >= 10) {
+        const phoneKey = `${normPhone.slice(0, 2)}_${normPhone.slice(-8)}`;
+        if (phoneMap.has(phoneKey)) union(phoneMap.get(phoneKey)!, c.id);
+        else phoneMap.set(phoneKey, c.id);
+      }
+
+      // Match 4: Name + Phone
+      if (cleanName && normPhone && normPhone.length >= 8) {
+        const npKey = `${cleanName}_${normPhone.slice(-8)}`;
+        if (namePhoneMap.has(npKey)) union(namePhoneMap.get(npKey)!, c.id);
+        else namePhoneMap.set(npKey, c.id);
+      }
+    }
+
+    // Group contacts by root parent ID
+    const groups = new Map<number, Contact[]>();
+    for (const c of allContacts) {
+      const rootId = find(c.id);
+      const list = groups.get(rootId) || [];
+      list.push(c);
+      groups.set(rootId, list);
     }
 
     let mergedCount = 0;
@@ -610,6 +685,7 @@ export class DatabaseStorage implements IStorage {
     for (const contactList of Array.from(groups.values())) {
       if (contactList.length <= 1) continue;
 
+      contactList.sort((a, b) => a.id - b.id);
       const primary = contactList[0];
       const secondaries = contactList.slice(1);
 
@@ -641,11 +717,16 @@ export class DatabaseStorage implements IStorage {
 
         const secId = sec.id;
         await db.update(leads).set({ contactId: primary.id }).where(eq(leads.contactId, secId));
+        await db.update(clientes).set({ contactId: primary.id }).where(eq(clientes.contactId, secId));
         await db.update(interactions).set({ contactId: primary.id }).where(eq(interactions.contactId, secId));
         await db.update(tasks).set({ contactId: primary.id }).where(eq(tasks.contactId, secId));
+        await db.update(contactFiles).set({ contactId: primary.id }).where(eq(contactFiles.contactId, secId));
         await db.update(prospectingChecklists).set({ contactId: primary.id }).where(eq(prospectingChecklists.contactId, secId));
         await db.update(todoistTasks).set({ contactId: primary.id }).where(eq(todoistTasks.contactId, secId));
+        await db.update(users).set({ contactId: primary.id }).where(eq(users.contactId, secId));
         await db.update(contacts).set({ responsibleId: primary.id }).where(eq(contacts.responsibleId, secId));
+        await db.update(contacts).set({ referredByContactId: primary.id }).where(eq(contacts.referredByContactId, secId));
+        await db.update(clientes).set({ referredByContactId: primary.id }).where(eq(clientes.referredByContactId, secId));
 
         await db.delete(contacts).where(eq(contacts.id, secId));
         mergedCount++;
@@ -2247,8 +2328,33 @@ export class MemStorage implements IStorage {
   async upsertContact(contactInput: InsertContact): Promise<{ contact: Contact; isNew: boolean }> {
     const cleanDoc = contactInput.document ? contactInput.document.replace(/\D/g, "") : "";
     const cleanEmail = contactInput.email ? contactInput.email.trim().toLowerCase() : "";
-    let existing = cleanDoc && cleanDoc.length >= 11 ? this.contacts.find(c => c.document && c.document.replace(/\D/g, "") === cleanDoc) : undefined;
-    if (!existing && cleanEmail) existing = this.contacts.find(c => c.email && c.email.trim().toLowerCase() === cleanEmail);
+    const cleanName = contactInput.name ? contactInput.name.trim().toLowerCase() : "";
+    const normPhone = normalizePhone(contactInput.phone);
+
+    let existing: Contact | undefined;
+
+    if (cleanDoc && cleanDoc.length >= 11) {
+      existing = this.contacts.find(c => c.document && c.document.replace(/\D/g, "") === cleanDoc);
+    }
+    if (!existing && cleanEmail) {
+      existing = this.contacts.find(c => c.email && c.email.trim().toLowerCase() === cleanEmail);
+    }
+    if (!existing && normPhone && normPhone.length >= 10) {
+      const pDdd = normPhone.slice(0, 2);
+      const pLast8 = normPhone.slice(-8);
+      existing = this.contacts.find(c => {
+        const cNorm = normalizePhone(c.phone);
+        if (!cNorm || cNorm.length < 10) return false;
+        return cNorm === normPhone || (cNorm.slice(0, 2) === pDdd && cNorm.slice(-8) === pLast8);
+      });
+    }
+    if (!existing && cleanName && normPhone && normPhone.length >= 8) {
+      existing = this.contacts.find(c => {
+        const cName = c.name ? c.name.trim().toLowerCase() : "";
+        const cNorm = normalizePhone(c.phone);
+        return cName === cleanName && (cNorm === normPhone || cNorm.slice(-8) === normPhone.slice(-8));
+      });
+    }
 
     if (existing) {
       const mergedProducts = (existing.productType || "")
