@@ -85,6 +85,9 @@ import {
   type TodoistAutomation,
   type InsertTodoistAutomation,
   type TodoistNotification,
+  leadThermometerHistory,
+  type LeadThermometerHistory,
+  type InsertLeadThermometerHistory,
 } from "@shared/schema";
 import { sql, and, desc, eq, asc, lte, or, isNull, inArray, gte, like } from "drizzle-orm";
 
@@ -292,6 +295,10 @@ export interface IStorage {
   markTodoistNotificationRead(id: number): Promise<void>;
 
   getTodoistDashboardStats(userId: number): Promise<any>;
+
+  // Lead Thermometer
+  createLeadThermometerRecord(record: InsertLeadThermometerHistory): Promise<LeadThermometerHistory>;
+  getLeadThermometerHistory(userId?: number): Promise<LeadThermometerHistory[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1998,6 +2005,18 @@ export class DatabaseStorage implements IStorage {
       },
     };
   }
+
+  async createLeadThermometerRecord(record: InsertLeadThermometerHistory): Promise<LeadThermometerHistory> {
+    const [inserted] = await db.insert(leadThermometerHistory).values(record).returning();
+    return inserted;
+  }
+
+  async getLeadThermometerHistory(userId?: number): Promise<LeadThermometerHistory[]> {
+    if (userId) {
+      return await db.select().from(leadThermometerHistory).where(eq(leadThermometerHistory.userId, userId)).orderBy(desc(leadThermometerHistory.createdAt));
+    }
+    return await db.select().from(leadThermometerHistory).orderBy(desc(leadThermometerHistory.createdAt));
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -2786,6 +2805,28 @@ export class MemStorage implements IStorage {
   async getTodoistNotifications(userId: number): Promise<TodoistNotification[]> { return []; }
   async markTodoistNotificationRead(id: number): Promise<void> {}
   async getTodoistDashboardStats(userId: number): Promise<any> { return { myTasks: { todayCount: 0, overdueCount: 0, upcomingCount: 0, completedTodayCount: 0, totalPending: 0 }, priorityCounts: { P1: 0, P2: 0, P3: 0, P4: 0 }, crmIntelligence: { leadsWithoutContactCount: 0, leadsWithoutContact: [], staleLeadsCount: 0, staleLeads: [] } }; }
+  async createLeadThermometerRecord(record: InsertLeadThermometerHistory): Promise<LeadThermometerHistory> {
+    return {
+      id: Math.floor(Math.random() * 100000),
+      userId: record.userId || null,
+      location: record.location,
+      radiusKm: record.radiusKm,
+      productType: record.productType,
+      leadName: record.leadName,
+      phone: record.phone || null,
+      email: record.email || null,
+      document: record.document || null,
+      address: record.address || null,
+      website: record.website || null,
+      score: record.score,
+      temperature: record.temperature,
+      reason: record.reason,
+      savedToCrm: record.savedToCrm || false,
+      contactId: record.contactId || null,
+      createdAt: new Date(),
+    };
+  }
+  async getLeadThermometerHistory(userId?: number): Promise<LeadThermometerHistory[]> { return []; }
 }
 
 export const storage = new DatabaseStorage();

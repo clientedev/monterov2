@@ -22,6 +22,9 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Flame } from "lucide-react";
+import LeadsThermometer from "@/components/admin-crm/LeadsThermometer";
 
 export default function CompanySearchPage() {
     const { toast } = useToast();
@@ -197,16 +200,34 @@ export default function CompanySearchPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-display font-bold text-slate-900 tracking-tight">
-                        Prospecção Inteligente
+                        Prospecção Inteligente & Termômetro
                     </h2>
                     <p className="text-slate-500 mt-2 font-medium">
-                        Consulta instantânea de empresas ativas na base da Receita Federal.
+                        Ferramentas avançadas de busca de mercado, qualificação de leads e consulta na Receita Federal.
                     </p>
                 </div>
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 shadow-lg shadow-amber-500/20 flex items-center justify-center">
-                    <Target className="h-7 w-7 text-white" />
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-red-500 via-amber-500 to-orange-400 shadow-lg shadow-orange-500/20 flex items-center justify-center">
+                    <Flame className="h-7 w-7 text-white" />
                 </div>
             </div>
+
+            <Tabs defaultValue="thermometer" className="w-full space-y-6">
+                <TabsList className="bg-slate-100 p-1.5 rounded-xl gap-2 h-auto flex flex-wrap border border-slate-200">
+                    <TabsTrigger value="thermometer" className="h-11 px-5 font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 gap-2">
+                        <Flame className="w-4 h-4 text-red-500 fill-red-500" />
+                        Termômetro de Leads
+                    </TabsTrigger>
+                    <TabsTrigger value="cnpj" className="h-11 px-5 font-bold rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 gap-2">
+                        <Building2 className="w-4 h-4 text-amber-500" />
+                        Prospecção CNPJ (Receita Federal)
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="thermometer" className="focus-visible:outline-none">
+                    <LeadsThermometer />
+                </TabsContent>
+
+                <TabsContent value="cnpj" className="space-y-8 focus-visible:outline-none">
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Filtros */}
@@ -428,6 +449,8 @@ export default function CompanySearchPage() {
                     )}
                 </div>
             )}
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

@@ -2647,6 +2647,320 @@ export async function registerRoutes(
     return res.json(results);
   });
 
+  // -----------------------------------------------------------------------
+  // Termômetro de Leads API Endpoints
+  // -----------------------------------------------------------------------
+  app.post("/api/leads-thermometer/search", isTeam, async (req, res) => {
+    try {
+      const { location = "São Paulo, SP", radiusKm = 10, productType = "Plano de Saúde", customQuery = "" } = req.body || {};
+
+      const googleApiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+      const isGooglePlacesActive = Boolean(googleApiKey && googleApiKey.trim() !== "");
+
+      let results: any[] = [];
+
+      const PRODUCT_MAP: Record<string, { queryKeywords: string[]; targetNiche: string; cnaeHint: string }> = {
+        "Plano de Saúde": {
+          queryKeywords: ["empresa", "escritorio", "clinica", "consultoria", "tecnologia"],
+          targetNiche: "Saúde & Corporativo",
+          cnaeHint: "Saúde / PME / Corporativo",
+        },
+        "Seguro de Vida": {
+          queryKeywords: ["contabilidade", "advocacia", "transporte", "industria", "construtora"],
+          targetNiche: "Vida & Benefícios",
+          cnaeHint: "Serviços Profissionais / Transporte",
+        },
+        "Seguro Auto / Frota": {
+          queryKeywords: ["transportadora", "locadora de veiculos", "logistica", "comercio", "distribuidora"],
+          targetNiche: "Automotivo & Frotas",
+          cnaeHint: "Transporte / Logística / Auto",
+        },
+        "Seguro Empresarial": {
+          queryKeywords: ["industria", "restaurante", "loja", "deposito", "supermercado", "oficina"],
+          targetNiche: "Patrimonial & Empresarial",
+          cnaeHint: "Comércio / Indústria / Serviços",
+        },
+        "Responsabilidade Civil": {
+          queryKeywords: ["construtora", "engenharia", "medico", "agencia", "escritorio de advocacia"],
+          targetNiche: "RC Profissional",
+          cnaeHint: "Construção / Serviços Profissionais",
+        },
+      };
+
+      const matchedProduct = PRODUCT_MAP[productType] || PRODUCT_MAP["Plano de Saúde"];
+      const searchTerms = customQuery ? [customQuery] : matchedProduct.queryKeywords;
+
+      if (isGooglePlacesActive) {
+        try {
+          const queryText = `${searchTerms[0]} em ${location}`;
+          const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(queryText)}&key=${googleApiKey}&language=pt-BR`;
+          const placesRes = await fetch(placesUrl, { signal: AbortSignal.timeout(15000) });
+          if (placesRes.ok) {
+            const placesData: any = await placesRes.json();
+            const placesList = placesData.results || [];
+            
+            for (const place of placesList.slice(0, 20)) {
+              let phone = "";
+              let website = "";
+              let fullAddress = place.formatted_address || location;
+
+              if (place.place_id) {
+                try {
+                  const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=formatted_phone_number,international_phone_number,website&key=${googleApiKey}&language=pt-BR`;
+                  const detRes = await fetch(detailsUrl, { signal: AbortSignal.timeout(5000) });
+                  if (detRes.ok) {
+                    const detData: any = await detRes.json();
+                    if (detData.result) {
+                      phone = detData.result.formatted_phone_number || detData.result.international_phone_number || "";
+                      website = detData.result.website || "";
+                    }
+                  }
+                } catch (e) {
+                  // ignored
+                }
+              }
+
+              results.push({
+                placeId: place.place_id,
+                name: place.name,
+                address: fullAddress,
+                phone: phone,
+                website: website,
+                location: place.geometry?.location || { lat: -23.5505, lng: -46.6333 },
+                rating: place.rating || null,
+                userRatingsTotal: place.user_ratings_total || 0,
+                businessStatus: place.business_status || "OPERATIONAL",
+                types: place.types || [],
+              });
+            }
+          }
+        } catch (err: any) {
+          console.error("[LeadsThermometer] Google Places fetch error:", err.message);
+        }
+      }
+
+      if (results.length === 0) {
+        const reqState = location.includes(",") ? location.split(",")[1].trim() : "SP";
+        const reqCity = location.includes(",") ? location.split(",")[0].trim() : location;
+        
+        try {
+          const publicSearchUrl = `${req.protocol}://${req.get("host")}/api/proxy/companies/search?state=${encodeURIComponent(reqState)}&city=${encodeURIComponent(reqCity)}&q=${encodeURIComponent(searchTerms[0])}`;
+          const pubRes = await fetch(publicSearchUrl, { headers: { cookie: req.headers.cookie || "" }, signal: AbortSignal.timeout(15000) });
+          if (pubRes.ok) {
+            const pubData: any[] = await pubRes.json();
+            results = pubData.map((item: any) => ({
+              placeId: `cnpj_${item.cnpj || Math.random()}`,
+              name: item.razao_social || item.nome_fantasia,
+              document: item.cnpj || "",
+              address: [item.logradouro, item.numero, item.bairro, item.municipio, item.uf].filter(Boolean).join(", "),
+              phone: item.ddd_telefone_1 || "",
+              email: item.email || "",
+              website: "",
+              location: { lat: item.lat || -23.5505, lng: item.lng || -46.6333 },
+              rating: 4.5,
+              userRatingsTotal: 12,
+              businessStatus: "OPERATIONAL",
+              cnae: item.cnae_principal_descricao || "",
+            }));
+          }
+        } catch (err: any) {
+          console.error("[LeadsThermometer] Public proxy fallback error:", err.message);
+        }
+      }
+
+      const scoredResults = results.map((item) => {
+        let score = 40;
+        const reasons: string[] = [];
+
+        if (item.phone) {
+          score += 15;
+          reasons.push("Telefone direto confirmado");
+        } else {
+          reasons.push("Sem telefone público");
+        }
+
+        if (item.website) {
+          score += 15;
+          reasons.push("Presença digital ativa (Website)");
+        }
+
+        if (item.document) {
+          score += 10;
+          reasons.push("CNPJ regularizado na Receita");
+        }
+
+        score += 20;
+        reasons.push(`Perfil compatível para ${productType}`);
+
+        if (item.userRatingsTotal && item.userRatingsTotal > 5) {
+          score += 10;
+          reasons.push(`Alta atividade com ${item.userRatingsTotal} avaliações`);
+        } else {
+          score += 5;
+        }
+
+        score = Math.min(100, Math.max(10, score));
+
+        let temperature: "frio" | "morno" | "quente" = "morno";
+        if (score >= 70) temperature = "quente";
+        else if (score < 40) temperature = "frio";
+
+        const reasonText = `${reasons.join(". ")}. Lead identificado no raio de ${radiusKm}km para ${productType}.`;
+
+        return {
+          ...item,
+          score,
+          temperature,
+          reason: reasonText,
+          productType,
+        };
+      });
+
+      scoredResults.sort((a, b) => b.score - a.score);
+
+      res.json({
+        success: true,
+        isGooglePlacesActive,
+        noticeMessage: !isGooglePlacesActive
+          ? "Modo de busca pública ativado. Para obter dados em tempo real da API do Google Places, configure a variável GOOGLE_PLACES_API_KEY no arquivo .env do servidor."
+          : null,
+        results: scoredResults,
+      });
+    } catch (err: any) {
+      console.error("[LeadsThermometer] Error in search route:", err);
+      res.status(500).json({ message: "Erro ao processar busca no Termômetro de Leads" });
+    }
+  });
+
+  app.post("/api/leads-thermometer/enrich", isTeam, async (req, res) => {
+    try {
+      const { name, document, phone } = req.body || {};
+      let cleanDoc = document ? String(document).replace(/\D/g, "") : "";
+
+      if (cleanDoc && cleanDoc.length === 14) {
+        const proxyUrl = `${req.protocol}://${req.get("host")}/api/proxy/companies/${cleanDoc}`;
+        const pRes = await fetch(proxyUrl, { headers: { cookie: req.headers.cookie || "" }, signal: AbortSignal.timeout(10000) });
+        if (pRes.ok) {
+          const [data] = await pRes.json();
+          return res.json({
+            success: true,
+            enriched: {
+              document: data.cnpj,
+              name: data.razao_social || data.nome_fantasia || name,
+              email: data.email || null,
+              phone: data.ddd_telefone_1 || phone || null,
+              address: [data.logradouro, data.numero, data.bairro, data.municipio, data.uf].filter(Boolean).join(", "),
+              cnae: data.cnae_principal_descricao || null,
+            },
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        enriched: {
+          document: cleanDoc || null,
+          name: name || "Empresa Identificada",
+          email: null,
+          phone: phone || null,
+          address: null,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: "Erro ao enriquecer dados do lead" });
+    }
+  });
+
+  app.post("/api/leads-thermometer/save-crm", isTeam, async (req, res) => {
+    try {
+      const {
+        leadName,
+        phone,
+        email,
+        document,
+        address,
+        website,
+        productType = "Plano de Saúde",
+        score = 75,
+        temperature = "quente",
+        reason = "",
+        location = "Brasil",
+        radiusKm = 10,
+      } = req.body || {};
+
+      if (!leadName || typeof leadName !== "string" || !leadName.trim()) {
+        return res.status(400).json({ message: "Nome do lead é obrigatório." });
+      }
+
+      const userId = (req.user as any)?.id || 1;
+      const isCompany = Boolean((document && document.replace(/\D/g, "").length > 11) || website || !phone);
+
+      const contactPayload: InsertContact = {
+        name: leadName.trim(),
+        type: isCompany ? "company" : "individual",
+        phone: phone ? String(phone).trim() : null,
+        email: email ? String(email).trim() : null,
+        document: document ? String(document).trim() : null,
+        address: address ? String(address).trim() : null,
+        productType: productType,
+        contactOrigin: "Termômetro de Leads",
+        notes: `[Termômetro de Leads - Score: ${score}/100 (${temperature.toUpperCase()})]\nMotivo: ${reason}\nWebsite: ${website || "N/A"}`,
+        status: "Ativo",
+      };
+
+      const parsedContact = insertContactSchema.parse(contactPayload);
+      const result = await storage.upsertContact(parsedContact);
+
+      const leadOpportunity = await storage.createLead({
+        contactId: result.contact.id,
+        status: "new",
+        source: "Termômetro de Leads",
+        product: productType,
+        notes: `[Termômetro de Leads] Score: ${score}/100 (${temperature.toUpperCase()}) - ${reason}`,
+        assignedTo: userId,
+      });
+
+      await storage.createLeadThermometerRecord({
+        userId,
+        location: String(location),
+        radiusKm: Number(radiusKm) || 10,
+        productType: String(productType),
+        leadName: leadName.trim(),
+        phone: phone ? String(phone).trim() : null,
+        email: email ? String(email).trim() : null,
+        document: document ? String(document).trim() : null,
+        address: address ? String(address).trim() : null,
+        website: website ? String(website).trim() : null,
+        score: Number(score) || 50,
+        temperature: String(temperature),
+        reason: String(reason),
+        savedToCrm: true,
+        contactId: result.contact.id,
+      });
+
+      res.status(201).json({
+        success: true,
+        isNewContact: result.isNew,
+        contact: result.contact,
+        lead: leadOpportunity,
+        message: result.isNew ? "Lead e Contato criados no CRM com sucesso!" : "Contato existente atualizado e novo Lead associado!",
+      });
+    } catch (err: any) {
+      console.error("[LeadsThermometer] Save to CRM error:", err);
+      res.status(500).json({ message: "Erro ao salvar lead no CRM" });
+    }
+  });
+
+  app.get("/api/leads-thermometer/history", isTeam, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const history = await storage.getLeadThermometerHistory(userId);
+      res.json(history);
+    } catch (err: any) {
+      res.status(500).json({ message: "Erro ao buscar histórico do Termômetro de Leads" });
+    }
+  });
+
 
   // Seed Data & Startup DB updates
   try {

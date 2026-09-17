@@ -620,3 +620,29 @@ export const insertContactFileSchema = createInsertSchema(contactFiles).omit({ i
 export type ContactFile = typeof contactFiles.$inferSelect;
 export type InsertContactFile = z.infer<typeof insertContactFileSchema>;
 
+// Lead Thermometer History Table & Schemas
+export const leadThermometerHistory = pgTable("lead_thermometer_history", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  location: text("location").notNull(),
+  radiusKm: integer("radius_km").notNull(),
+  productType: text("product_type").notNull(),
+  leadName: text("lead_name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  document: text("document"),
+  address: text("address"),
+  website: text("website"),
+  score: integer("score").notNull(),
+  temperature: text("temperature").notNull(),
+  reason: text("reason").notNull(),
+  savedToCrm: boolean("saved_to_crm").default(false).notNull(),
+  contactId: integer("contact_id").references(() => contacts.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLeadThermometerHistorySchema = createInsertSchema(leadThermometerHistory).omit({ id: true, createdAt: true });
+export type LeadThermometerHistory = typeof leadThermometerHistory.$inferSelect;
+export type InsertLeadThermometerHistory = z.infer<typeof insertLeadThermometerHistorySchema>;
+
+
