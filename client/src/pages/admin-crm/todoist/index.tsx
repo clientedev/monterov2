@@ -436,13 +436,15 @@ export default function TodoistModulePage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white border-gray-200 text-slate-900">
-                        <SelectItem value="all">Todos os Usuários</SelectItem>
+                        <SelectItem value="all">Todos os Funcionários</SelectItem>
                         <SelectItem value="me">Minhas Tarefas (Eu)</SelectItem>
-                        {usersList.map((u: any) => (
-                          <SelectItem key={u.id} value={String(u.id)}>
-                            {u.name || u.username} ({u.role})
-                          </SelectItem>
-                        ))}
+                        {usersList
+                          .filter((u: any) => u.role !== "client")
+                          .map((u: any) => (
+                            <SelectItem key={u.id} value={String(u.id)}>
+                              {u.name || u.username} ({u.role === "admin" ? "Admin" : "Funcionário"})
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
