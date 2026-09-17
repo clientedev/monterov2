@@ -2359,6 +2359,116 @@ export async function registerRoutes(
     }
   });
 
+  // Auto-Discover CNPJ for Lead by Name & Region
+  app.get("/api/proxy/companies/discover", isAuthenticated, async (req, res) => {
+    try {
+      const { q, name, city, state, address, document } = req.query;
+      const searchName = (q as string || name as string || "").trim();
+      let cleanDoc = document ? String(document).replace(/\D/g, "") : "";
+
+      // If valid 14-digit CNPJ provided, fetch directly from company proxy
+      if (cleanDoc && cleanDoc.length === 14) {
+        const proxyUrl = `${req.protocol}://${req.get("host")}/api/proxy/companies/${cleanDoc}`;
+        const pRes = await fetch(proxyUrl, { headers: { cookie: req.headers.cookie || "" }, signal: AbortSignal.timeout(10000) });
+        if (pRes.ok) {
+          const arr = await pRes.json();
+          const data = Array.isArray(arr) ? arr[0] : arr;
+          if (data && data.cnpj) {
+            return res.json(data);
+          }
+        }
+      }
+
+      const rawAddr = (address as string || "");
+      const reqState = (state as string || rawAddr.match(/\b([A-Z]{2})\b/)?.[1] || "SP").toUpperCase();
+      const reqCity = (city as string || rawAddr.split(",")[0] || "São Paulo").trim();
+
+      const cleanName = searchName
+        .replace(/\b(unidade|filial|matriz|loja|unid|un)\b.*$/gi, "")
+        .replace(/[-_]/g, " ")
+        .trim();
+
+      const coreName = cleanName
+        .replace(/\b(seguros|corretora|ltda|s\/a|s\.a\.)\b/gi, "")
+        .trim();
+
+      const searchQueries = Array.from(new Set([
+        `${cleanName} ${reqCity} cnpj`,
+        `${coreName} ${reqCity} cnpj`,
+        `${cleanName} ${reqState} cnpj`,
+        `${cleanName} cnpj`,
+      ])).filter(s => s.trim().length > 3);
+
+      const foundCnpjs: string[] = [];
+
+      for (const query of searchQueries) {
+        if (foundCnpjs.length >= 3) break;
+        try {
+          const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+          const searchRes = await fetch(searchUrl, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            },
+            signal: AbortSignal.timeout(6000),
+          });
+
+          if (searchRes.ok) {
+            const html = await searchRes.text();
+            const matches = html.match(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g) || [];
+            for (const m of matches) {
+              const c = m.replace(/\D/g, "");
+              if (c.length === 14 && !foundCnpjs.includes(c)) {
+                foundCnpjs.push(c);
+              }
+            }
+          }
+        } catch (e: any) {
+          // ignore query error
+        }
+      }
+
+      // Verify candidates with Receita Federal / CNPJ APIs
+      for (const candidateCnpj of foundCnpjs.slice(0, 4)) {
+        try {
+          const proxyUrl = `${req.protocol}://${req.get("host")}/api/proxy/companies/${candidateCnpj}`;
+          const pRes = await fetch(proxyUrl, { headers: { cookie: req.headers.cookie || "" }, signal: AbortSignal.timeout(6000) });
+          if (pRes.ok) {
+            const arr = await pRes.json();
+            const data = Array.isArray(arr) ? arr[0] : arr;
+            if (data && data.cnpj) {
+              data.discoveredAuto = true;
+              return res.json(data);
+            }
+          }
+        } catch (e) {
+          // try next candidate
+        }
+      }
+
+      // Fallback: return lead metadata structure with empty CNPJ
+      return res.json({
+        razao_social: searchName || "Empresa Identificada",
+        nome_fantasia: searchName,
+        cnpj: "",
+        logradouro: rawAddr,
+        numero: "",
+        bairro: "",
+        municipio: reqCity,
+        uf: reqState,
+        cep: "",
+        cnae_principal_descricao: "Empresa Localizada no Termômetro",
+        ddd_telefone_1: "",
+        email: "",
+        discoveredAuto: false,
+      });
+    } catch (err: any) {
+      console.error("[DiscoverCNPJ] Error:", err);
+      res.status(500).json({ message: "Erro ao buscar dados do CNPJ." });
+    }
+  });
+
   // Company Search Proxy (Filtered by region and CNAE)
   app.get("/api/proxy/companies/search", isAuthenticated, async (req, res) => {
     const { state, city, cnae, q, neighborhood, cityId } = req.query;

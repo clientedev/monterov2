@@ -204,21 +204,53 @@ export default function LeadsThermometer() {
         setSelectedLeadForCnpj(lead);
         setCnpjModalData(null);
         setCnpjModalOpen(true);
+        setIsLoadingCnpjModal(true);
 
         const cleanDoc = lead.document ? lead.document.replace(/\D/g, "") : "";
-        if (cleanDoc && cleanDoc.length === 14) {
-            setIsLoadingCnpjModal(true);
-            try {
-                const res = await apiRequest("GET", `/api/proxy/companies/${cleanDoc}`);
-                if (res.ok) {
-                    const [data] = await res.json();
-                    setCnpjModalData(data);
-                }
-            } catch (err) {
-                console.error("Error fetching CNPJ data:", err);
-            } finally {
-                setIsLoadingCnpjModal(false);
+        try {
+            const city = locationInput.includes(",") ? locationInput.split(",")[0].trim() : locationInput;
+            const state = locationInput.includes(",") ? locationInput.split(",")[1].trim() : "SP";
+
+            const params = new URLSearchParams({
+                q: lead.name,
+                city,
+                state,
+                address: lead.address || "",
+            });
+            if (cleanDoc && cleanDoc.length === 14) {
+                params.set("document", cleanDoc);
             }
+
+            const res = await apiRequest("GET", `/api/proxy/companies/discover?${params.toString()}`);
+            if (res.ok) {
+                const data = await res.json();
+                setCnpjModalData(data);
+
+                if (data.cnpj && data.cnpj.replace(/\D/g, "").length === 14) {
+                    const foundDoc = data.cnpj;
+                    lead.document = foundDoc;
+                    setEnrichedLeadsMap(prev => ({
+                        ...prev,
+                        [lead.placeId]: {
+                            ...(prev[lead.placeId] || {}),
+                            document: foundDoc,
+                            name: data.razao_social || data.nome_fantasia || lead.name,
+                            address: [data.logradouro, data.numero, data.bairro, data.municipio, data.uf].filter(Boolean).join(", ") || lead.address,
+                            phone: data.ddd_telefone_1 || lead.phone || null,
+                            email: data.email || lead.email || null,
+                        }
+                    }));
+                }
+            }
+        } catch (err) {
+            console.error("Error discovering CNPJ data:", err);
+            toast({
+                title: "Erro ao consultar dados",
+                description: "Não foi possível carregar os dados automaticamente.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsLoadingCnpjModal(false);
         }
     };
 
@@ -610,9 +642,9 @@ export default function LeadsThermometer() {
                     {isLoadingCnpjModal ? (
                         <div className="flex flex-col items-center justify-center py-12">
                             <Loader2 className="h-8 w-8 text-amber-500 animate-spin mb-2" />
-                            <p className="text-xs text-slate-500 font-medium">Consultando base da Receita Federal...</p>
+                            <p className="text-xs text-slate-500 font-medium">Consultando base da Receita Federal e Descoberta de CNPJ...</p>
                         </div>
-                    ) : cnpjModalData ? (
+                    ) : cnpjModalData?.cnpj ? (
                         <div className="space-y-4 text-xs">
                             {/* Status Header */}
                             <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
@@ -620,9 +652,16 @@ export default function LeadsThermometer() {
                                     <h4 className="font-bold text-sm uppercase text-slate-900">{cnpjModalData.razao_social || cnpjModalData.nome_fantasia}</h4>
                                     <p className="text-[11px] text-slate-500">CNPJ: <span className="font-mono font-bold text-slate-700">{cnpjModalData.cnpj}</span></p>
                                 </div>
-                                <Badge className="bg-emerald-500 text-white font-bold text-[10px]">
-                                    SITUAÇÃO ATIVA
-                                </Badge>
+                                <div className="flex items-center gap-1.5">
+                                    {cnpjModalData.discoveredAuto && (
+                                        <Badge className="bg-amber-500 text-white font-bold text-[10px]">
+                                            ✨ AUTO-DESCOBERTO
+                                        </Badge>
+                                    )}
+                                    <Badge className="bg-emerald-500 text-white font-bold text-[10px]">
+                                        SITUAÇÃO ATIVA
+                                    </Badge>
+                                </div>
                             </div>
 
                             {/* Details Grid */}
@@ -637,23 +676,26 @@ export default function LeadsThermometer() {
                                 </div>
                                 <div>
                                     <span className="text-[10px] font-bold uppercase text-slate-400 block">Telefone Principal</span>
-                                    <span className="font-semibold text-slate-800">{cnpjModalData.ddd_telefone_1 || "Não informado"}</span>
+                                    <span className="font-semibold text-slate-800">{cnpjModalData.ddd_telefone_1 || selectedLeadForCnpj?.phone || "Não informado"}</span>
                                 </div>
                                 <div>
                                     <span className="text-[10px] font-bold uppercase text-slate-400 block">E-mail Institucional</span>
-                                    <span className="font-semibold text-slate-800">{cnpjModalData.email || "Não informado"}</span>
+                                    <span className="font-semibold text-slate-800">{cnpjModalData.email || selectedLeadForCnpj?.email || "Não informado"}</span>
                                 </div>
                                 <div className="col-span-2">
                                     <span className="text-[10px] font-bold uppercase text-slate-400 block">Logradouro / Endereço</span>
-                                    <span className="font-semibold text-slate-800">{[cnpjModalData.logradouro, cnpjModalData.numero, cnpjModalData.bairro, cnpjModalData.cep].filter(Boolean).join(", ")}</span>
+                                    <span className="font-semibold text-slate-800">{[cnpjModalData.logradouro, cnpjModalData.numero, cnpjModalData.bairro, cnpjModalData.cep].filter(Boolean).join(", ") || selectedLeadForCnpj?.address || "Não informado"}</span>
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="p-6 text-center bg-slate-50 rounded-xl space-y-3">
-                            <Info className="h-8 w-8 text-amber-500 mx-auto" />
-                            <p className="text-xs text-slate-600 font-medium">
-                                Nenhuma consulta automática encontrada pelo CNPJ informado. Digite o CNPJ para buscar os dados diretamente:
+                        <div className="p-6 text-center bg-slate-50 rounded-xl space-y-4">
+                            <div className="flex items-center justify-center gap-2 text-slate-800 font-bold text-sm">
+                                <Building2 className="h-5 w-5 text-amber-500" />
+                                {selectedLeadForCnpj?.name}
+                            </div>
+                            <p className="text-xs text-slate-600 font-medium max-w-md mx-auto">
+                                CNPJ não foi localizado automaticamente para esta empresa na região ({locationInput}). Insira o CNPJ manualmente para consultar a Receita Federal:
                             </p>
                             <div className="flex gap-2 max-w-sm mx-auto">
                                 <Input
@@ -665,8 +707,25 @@ export default function LeadsThermometer() {
                                             try {
                                                 const res = await apiRequest("GET", `/api/proxy/companies/${clean}`);
                                                 if (res.ok) {
-                                                    const [data] = await res.json();
-                                                    setCnpjModalData(data);
+                                                    const arr = await res.json();
+                                                    const data = Array.isArray(arr) ? arr[0] : arr;
+                                                    if (data && data.cnpj) {
+                                                        setCnpjModalData(data);
+                                                        if (selectedLeadForCnpj) {
+                                                            selectedLeadForCnpj.document = data.cnpj;
+                                                            setEnrichedLeadsMap(prev => ({
+                                                                ...prev,
+                                                                [selectedLeadForCnpj.placeId]: {
+                                                                    ...(prev[selectedLeadForCnpj.placeId] || {}),
+                                                                    document: data.cnpj,
+                                                                    name: data.razao_social || data.nome_fantasia || selectedLeadForCnpj.name,
+                                                                    address: [data.logradouro, data.numero, data.bairro, data.municipio, data.uf].filter(Boolean).join(", ") || selectedLeadForCnpj.address,
+                                                                    phone: data.ddd_telefone_1 || selectedLeadForCnpj.phone || null,
+                                                                    email: data.email || selectedLeadForCnpj.email || null,
+                                                                }
+                                                            }));
+                                                        }
+                                                    }
                                                 }
                                             } catch (err) {
                                                 // ignore
