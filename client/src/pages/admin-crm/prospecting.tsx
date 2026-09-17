@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, Task } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,14 @@ export default function ProspectingPage() {
     const [interestLevel, setInterestLevel] = useState<string>("medium");
     const [notes, setNotes] = useState("");
     const [nextContactDate, setNextContactDate] = useState("");
+
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const contactIdParam = searchParams.get("contactId");
+        if (contactIdParam) {
+            setSelectedContactId(contactIdParam);
+        }
+    }, []);
 
     const { data: contacts } = useQuery<Contact[]>({
         queryKey: ["/api/contacts"]

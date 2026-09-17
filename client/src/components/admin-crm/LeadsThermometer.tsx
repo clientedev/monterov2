@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
@@ -21,13 +24,19 @@ import {
     Plus,
     Loader2,
     Sparkles,
-    AlertCircle,
     CheckCircle2,
     Info,
     Mail,
     Map as MapIcon,
-    ShieldCheck,
-    Compass
+    Compass,
+    PhoneCall,
+    TrendingUp,
+    FileText,
+    ExternalLink,
+    Building,
+    UserCheck,
+    Calendar,
+    ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -52,24 +61,41 @@ interface ThermometerLead {
 
 export default function LeadsThermometer() {
     const { toast } = useToast();
+    const [, setLocation] = useLocation();
+    
     const [locationInput, setLocationInput] = useState("São Paulo, SP");
     const [radiusKm, setRadiusKm] = useState("10");
     const [productType, setProductType] = useState("Plano de Saúde");
     const [customQuery, setCustomQuery] = useState("");
+    
     const [searchPayload, setSearchPayload] = useState<any>({
         location: "São Paulo, SP",
         radiusKm: 10,
         productType: "Plano de Saúde",
         customQuery: "",
     });
-    const [savedLeadsMap, setSavedLeadsMap] = useState<Record<string, boolean>>({});
+    
+    const [savedLeadsMap, setSavedLeadsMap] = useState<Record<string, number>>({});
     const [enrichedLeadsMap, setEnrichedLeadsMap] = useState<Record<string, any>>({});
+
+    // CNPJ Details Modal State
+    const [cnpjModalOpen, setCnpjModalOpen] = useState(false);
+    const [selectedLeadForCnpj, setSelectedLeadForCnpj] = useState<ThermometerLead | null>(null);
+    const [cnpjModalData, setCnpjModalData] = useState<any | null>(null);
+    const [isLoadingCnpjModal, setIsLoadingCnpjModal] = useState(false);
+
+    // Quick Prospecting Modal State
+    const [prospectingModalOpen, setProspectingModalOpen] = useState(false);
+    const [activeProspectingContact, setActiveProspectingContact] = useState<{ id: number; name: string; phone?: string; email?: string } | null>(null);
+    const [callOutcome, setCallOutcome] = useState("connected");
+    const [interestLevel, setInterestLevel] = useState("high");
+    const [prospectingNotes, setProspectingNotes] = useState("");
 
     const mapRef = useRef<HTMLDivElement>(null);
     const leafletMapRef = useRef<any>(null);
 
     // Query for Thermometer Search
-    const { data: searchData, isLoading, error } = useQuery<{
+    const { data: searchData, isLoading } = useQuery<{
         success: boolean;
         isGooglePlacesActive: boolean;
         noticeMessage?: string;
@@ -127,7 +153,6 @@ export default function LeadsThermometer() {
             const lat = lead.location?.lat || centerLat;
             const lng = lead.location?.lng || centerLng;
 
-            // Define marker color based on thermometer score
             let markerBg = "#3b82f6"; // Blue (Frio)
             if (lead.temperature === "quente") markerBg = "#ef4444"; // Red (Quente)
             else if (lead.temperature === "morno") markerBg = "#f59e0b"; // Yellow/Amber (Morno)
@@ -174,26 +199,31 @@ export default function LeadsThermometer() {
         });
     };
 
-    // Enrich Lead Mutation
-    const enrichMutation = useMutation({
-        mutationFn: async (lead: ThermometerLead) => {
-            const res = await apiRequest("POST", "/api/leads-thermometer/enrich", {
-                name: lead.name,
-                document: lead.document,
-                phone: lead.phone,
-            });
-            return res.json();
-        },
-        onSuccess: (data: any, lead: ThermometerLead) => {
-            if (data.enriched) {
-                setEnrichedLeadsMap(prev => ({ ...prev, [lead.placeId]: data.enriched }));
-                toast({ title: "Dados Enriquecidos", description: `Informações atualizadas para ${lead.name}.` });
-            }
-        },
-    });
+    // Puxar CNPJ Handler & Modal Trigger
+    const handleFetchCnpjModal = async (lead: ThermometerLead) => {
+        setSelectedLeadForCnpj(lead);
+        setCnpjModalData(null);
+        setCnpjModalOpen(true);
 
-    // Save to CRM Mutation
-    const saveCrmMutation = useMutation({
+        const cleanDoc = lead.document ? lead.document.replace(/\D/g, "") : "";
+        if (cleanDoc && cleanDoc.length === 14) {
+            setIsLoadingCnpjModal(true);
+            try {
+                const res = await apiRequest("GET", `/api/proxy/companies/${cleanDoc}`);
+                if (res.ok) {
+                    const [data] = await res.json();
+                    setCnpjModalData(data);
+                }
+            } catch (err) {
+                console.error("Error fetching CNPJ data:", err);
+            } finally {
+                setIsLoadingCnpjModal(false);
+            }
+        }
+    };
+
+    // Save & Start Prospecting Mutation
+    const startProspectingMutation = useMutation({
         mutationFn: async (lead: ThermometerLead) => {
             const enriched = enrichedLeadsMap[lead.placeId] || {};
             const res = await apiRequest("POST", "/api/leads-thermometer/save-crm", {
@@ -213,15 +243,49 @@ export default function LeadsThermometer() {
             return res.json();
         },
         onSuccess: (data: any, lead: ThermometerLead) => {
-            setSavedLeadsMap(prev => ({ ...prev, [lead.placeId]: true }));
-            queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-            queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-            toast({
-                title: "Adicionado ao CRM",
-                description: data.message || `${lead.name} foi adicionado com sucesso ao CRM.`,
-            });
+            const contactId = data.contact?.id;
+            if (contactId) {
+                setSavedLeadsMap(prev => ({ ...prev, [lead.placeId]: contactId }));
+                setActiveProspectingContact({
+                    id: contactId,
+                    name: data.contact?.name || lead.name,
+                    phone: data.contact?.phone || lead.phone,
+                    email: data.contact?.email || lead.email,
+                });
+                setProspectingModalOpen(true);
+                queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+                toast({
+                    title: "Lead Salvo & Enviado para Prospecção",
+                    description: `${lead.name} pronto para prospecção ativa.`,
+                });
+            }
         },
     });
+
+    // Save Call Log Mutation
+    const saveProspectingLogMutation = useMutation({
+        mutationFn: async (data: any) => {
+            const res = await apiRequest("POST", "/api/prospecting", data);
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/prospecting"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/interactions"] });
+            setProspectingModalOpen(false);
+            toast({ title: "Prospecção Registrada", description: "Resultado da ligação salvo com sucesso!" });
+        }
+    });
+
+    const handleSaveProspectingLog = () => {
+        if (!activeProspectingContact) return;
+        saveProspectingLogMutation.mutate({
+            contactId: activeProspectingContact.id,
+            callOutcome,
+            interestLevel,
+            notes: prospectingNotes || `Prospecção iniciada via Termômetro de Leads (${productType}).`,
+        });
+    };
 
     const renderTemperatureBadge = (temperature: string, score: number) => {
         if (temperature === "quente") {
@@ -258,7 +322,7 @@ export default function LeadsThermometer() {
                         Termômetro de Leads
                     </h3>
                     <p className="text-slate-500 mt-1 font-medium text-sm">
-                        Identifique potenciais clientes e empresas na sua região com pontuação de intenção de compra (0 a 100).
+                        Identifique potenciais clientes na sua região, consulte dados de CNPJ e inicie prospecções diretas.
                     </p>
                 </div>
                 <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-red-500 via-amber-500 to-orange-400 shadow-lg shadow-orange-500/20 flex items-center justify-center">
@@ -386,7 +450,7 @@ export default function LeadsThermometer() {
                                 Oportunidades Identificadas ({results.length})
                             </h4>
                             <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                Leads ordenados da maior pontuação para a menor pontuação de interesse.
+                                Leads ordenados por intenção de compra. Puxe o CNPJ ou inicie a prospecção direto do card.
                             </p>
                         </div>
                     </div>
@@ -402,7 +466,7 @@ export default function LeadsThermometer() {
                         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                             {results.map((lead, idx) => {
                                 const enriched = enrichedLeadsMap[lead.placeId];
-                                const isSaved = savedLeadsMap[lead.placeId];
+                                const savedContactId = savedLeadsMap[lead.placeId];
 
                                 return (
                                     <Card key={lead.placeId || idx} className="premium-card hover:-translate-y-1 transition-all duration-300 border-none shadow-lg group relative overflow-hidden flex flex-col justify-between">
@@ -479,40 +543,42 @@ export default function LeadsThermometer() {
                                                 </p>
                                             </div>
 
-                                            {/* Action Buttons */}
-                                            <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
-                                                {!enriched && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => enrichMutation.mutate(lead)}
-                                                        disabled={enrichMutation.isPending}
-                                                        className="w-full text-xs text-amber-700 hover:bg-amber-50 h-8 font-semibold"
-                                                    >
-                                                        {enrichMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1 text-amber-500" />}
-                                                        Enriquecer CNPJ / E-mail
-                                                    </Button>
-                                                )}
+                                            {/* Action Buttons: Puxar CNPJ + Iniciar Prospecção */}
+                                            <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleFetchCnpjModal(lead)}
+                                                    className="w-full text-xs font-bold text-slate-700 hover:bg-amber-50 border-slate-200 h-9"
+                                                >
+                                                    <FileText className="w-3.5 h-3.5 mr-1 text-amber-500" />
+                                                    Puxar CNPJ
+                                                </Button>
 
                                                 <Button
-                                                    onClick={() => saveCrmMutation.mutate(lead)}
-                                                    disabled={isSaved || saveCrmMutation.isPending}
-                                                    className={cn(
-                                                        "w-full h-9 font-bold text-xs rounded-lg transition-all shadow-sm",
-                                                        isSaved
-                                                            ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                                            : "bg-slate-900 text-white hover:bg-slate-800"
-                                                    )}
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        if (savedContactId) {
+                                                            setActiveProspectingContact({
+                                                                id: savedContactId,
+                                                                name: lead.name,
+                                                                phone: lead.phone,
+                                                                email: lead.email,
+                                                            });
+                                                            setProspectingModalOpen(true);
+                                                        } else {
+                                                            startProspectingMutation.mutate(lead);
+                                                        }
+                                                    }}
+                                                    disabled={startProspectingMutation.isPending}
+                                                    className="w-full h-9 font-bold text-xs bg-gradient-to-r from-red-600 via-amber-600 to-amber-500 hover:opacity-90 text-white shadow-sm rounded-lg"
                                                 >
-                                                    {isSaved ? (
-                                                        <>
-                                                            <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                                                            Salvo no CRM
-                                                        </>
+                                                    {startProspectingMutation.isPending ? (
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                                     ) : (
                                                         <>
-                                                            <Plus className="w-3.5 h-3.5 mr-1.5" />
-                                                            Adicionar ao CRM
+                                                            <PhoneCall className="w-3.5 h-3.5 mr-1" />
+                                                            Prospecção
                                                         </>
                                                     )}
                                                 </Button>
@@ -525,6 +591,209 @@ export default function LeadsThermometer() {
                     )}
                 </div>
             )}
+
+            {/* Modal: Puxar CNPJ & Dados da Empresa */}
+            <Dialog open={cnpjModalOpen} onOpenChange={setCnpjModalOpen}>
+                <DialogContent className="max-w-2xl bg-white p-6 rounded-2xl shadow-2xl border-none">
+                    <DialogHeader>
+                        <div className="flex items-center gap-2">
+                            <Building className="h-5 w-5 text-amber-500" />
+                            <DialogTitle className="text-lg font-bold text-slate-900">
+                                Dados da Receita Federal / CNPJ
+                            </DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs text-slate-500">
+                            Consulta completa de situação cadastral e detalhes corporativos.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {isLoadingCnpjModal ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 text-amber-500 animate-spin mb-2" />
+                            <p className="text-xs text-slate-500 font-medium">Consultando base da Receita Federal...</p>
+                        </div>
+                    ) : cnpjModalData ? (
+                        <div className="space-y-4 text-xs">
+                            {/* Status Header */}
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <h4 className="font-bold text-sm uppercase text-slate-900">{cnpjModalData.razao_social || cnpjModalData.nome_fantasia}</h4>
+                                    <p className="text-[11px] text-slate-500">CNPJ: <span className="font-mono font-bold text-slate-700">{cnpjModalData.cnpj}</span></p>
+                                </div>
+                                <Badge className="bg-emerald-500 text-white font-bold text-[10px]">
+                                    SITUAÇÃO ATIVA
+                                </Badge>
+                            </div>
+
+                            {/* Details Grid */}
+                            <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-xl border border-slate-100">
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase text-slate-400 block">CNAE Principal</span>
+                                    <span className="font-semibold text-slate-800">{cnpjModalData.cnae_principal_descricao || "Não informado"}</span>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Município / UF</span>
+                                    <span className="font-semibold text-slate-800">{cnpjModalData.municipio} / {cnpjModalData.uf}</span>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Telefone Principal</span>
+                                    <span className="font-semibold text-slate-800">{cnpjModalData.ddd_telefone_1 || "Não informado"}</span>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase text-slate-400 block">E-mail Institucional</span>
+                                    <span className="font-semibold text-slate-800">{cnpjModalData.email || "Não informado"}</span>
+                                </div>
+                                <div className="col-span-2">
+                                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Logradouro / Endereço</span>
+                                    <span className="font-semibold text-slate-800">{[cnpjModalData.logradouro, cnpjModalData.numero, cnpjModalData.bairro, cnpjModalData.cep].filter(Boolean).join(", ")}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="p-6 text-center bg-slate-50 rounded-xl space-y-3">
+                            <Info className="h-8 w-8 text-amber-500 mx-auto" />
+                            <p className="text-xs text-slate-600 font-medium">
+                                Nenhuma consulta automática encontrada pelo CNPJ informado. Digite o CNPJ para buscar os dados diretamente:
+                            </p>
+                            <div className="flex gap-2 max-w-sm mx-auto">
+                                <Input
+                                    placeholder="00.000.000/0000-00"
+                                    onChange={async (e) => {
+                                        const clean = e.target.value.replace(/\D/g, "");
+                                        if (clean.length === 14) {
+                                            setIsLoadingCnpjModal(true);
+                                            try {
+                                                const res = await apiRequest("GET", `/api/proxy/companies/${clean}`);
+                                                if (res.ok) {
+                                                    const [data] = await res.json();
+                                                    setCnpjModalData(data);
+                                                }
+                                            } catch (err) {
+                                                // ignore
+                                            } finally {
+                                                setIsLoadingCnpjModal(false);
+                                            }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        {selectedLeadForCnpj && (
+                            <Button
+                                onClick={() => {
+                                    setCnpjModalOpen(false);
+                                    startProspectingMutation.mutate(selectedLeadForCnpj);
+                                }}
+                                className="bg-gradient-to-r from-red-600 to-amber-600 text-white font-bold text-xs"
+                            >
+                                <PhoneCall className="w-3.5 h-3.5 mr-1" />
+                                Iniciar Prospecção com Este Lead
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal: Célula de Prospecção Rápida */}
+            <Dialog open={prospectingModalOpen} onOpenChange={setProspectingModalOpen}>
+                <DialogContent className="max-w-lg bg-white p-6 rounded-2xl shadow-2xl border-none">
+                    <DialogHeader>
+                        <div className="flex items-center gap-2">
+                            <PhoneCall className="h-5 w-5 text-red-500" />
+                            <DialogTitle className="text-lg font-bold text-slate-900">
+                                Prospecção Ativa: {activeProspectingContact?.name}
+                            </DialogTitle>
+                        </div>
+                        <DialogDescription className="text-xs text-slate-500">
+                            Registre o resultado da chamada e defina o próximo passo comercial.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 text-xs pt-2">
+                        <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 space-y-1">
+                            <div className="font-bold text-amber-900">{activeProspectingContact?.name}</div>
+                            {activeProspectingContact?.phone && (
+                                <div className="font-semibold text-slate-700 flex items-center gap-1">
+                                    <Phone className="w-3 h-3 text-emerald-600" /> {activeProspectingContact.phone}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Resultado da Chamada */}
+                        <div className="space-y-1.5">
+                            <Label className="text-slate-700 font-bold text-xs">Resultado da Chamada</Label>
+                            <Select value={callOutcome} onValueChange={setCallOutcome}>
+                                <SelectTrigger className="bg-white">
+                                    <SelectValue placeholder="Selecione o resultado" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="connected">Conectado (Falou com decisor)</SelectItem>
+                                    <SelectItem value="no_answer">Sem Atendimento</SelectItem>
+                                    <SelectItem value="busy">Ocupado</SelectItem>
+                                    <SelectItem value="wrong_number">Número Errado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Nível de Interesse */}
+                        <div className="space-y-1.5">
+                            <Label className="text-slate-700 font-bold text-xs">Nível de Interesse</Label>
+                            <Select value={interestLevel} onValueChange={setInterestLevel}>
+                                <SelectTrigger className="bg-white">
+                                    <SelectValue placeholder="Selecione o interesse" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="high">🔥 Alto (Agendar Proposta)</SelectItem>
+                                    <SelectItem value="medium">☀️ Médio (Acompanhamento)</SelectItem>
+                                    <SelectItem value="low">❄️ Baixo (Sem interesse imediato)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Notas da Conversa */}
+                        <div className="space-y-1.5">
+                            <Label className="text-slate-700 font-bold text-xs">Observações da Prospecção</Label>
+                            <Textarea
+                                placeholder="Descreva os detalhes da conversa, horários sugeridos ou necessidades do cliente..."
+                                value={prospectingNotes}
+                                onChange={(e) => setProspectingNotes(e.target.value)}
+                                className="bg-white min-h-[80px]"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setProspectingModalOpen(false);
+                                if (activeProspectingContact?.id) {
+                                    setLocation(`/admin/prospecting?contactId=${activeProspectingContact.id}`);
+                                }
+                            }}
+                            className="text-xs font-semibold text-slate-700"
+                        >
+                            Abrir Célula Completa <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+
+                        <Button
+                            onClick={handleSaveProspectingLog}
+                            disabled={saveProspectingLogMutation.isPending}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                        >
+                            {saveProspectingLogMutation.isPending ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                            ) : (
+                                <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                            )}
+                            Salvar Prospecção
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
