@@ -500,14 +500,18 @@ export default function LeadsPage() {
                                                                 snapshot.isDraggingOver ? "bg-slate-200/30" : ""
                                                             )}
                                                         >
-                                                            {leads?.filter(l => l.status === column.id && (
-                                                                search === "" ||
-                                                                getContactForLead(l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
-                                                            ) && (
-                                                                selectedResponsible === "all" ||
-                                                                (selectedResponsible === "unassigned" ? !l.assignedTo : String(l.assignedTo) === String(selectedResponsible))
-                                                            )).map((lead, index) => (
-                                                                <Draggable key={lead.id} draggableId={lead.id.toString()} index={index}>
+                                                            {leads?.filter(l => {
+                                                                const isDirectMatch = l.status === column.id;
+                                                                const isUnmappedFallback = (l.status === "Ativo" || l.status === "ativo" || !columns.some((c: any) => c.id === l.status)) && (column.id === "new" || index === 0);
+                                                                return (isDirectMatch || isUnmappedFallback) && (
+                                                                    search === "" ||
+                                                                    getContactForLead(l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
+                                                                ) && (
+                                                                    selectedResponsible === "all" ||
+                                                                    (selectedResponsible === "unassigned" ? !l.assignedTo : String(l.assignedTo) === String(selectedResponsible))
+                                                                );
+                                                            }).map((lead, leadIdx) => (
+                                                                <Draggable key={lead.id} draggableId={lead.id.toString()} index={leadIdx}>
                                                                     {(provided, snapshot) => (
                                                                         <div
                                                                             ref={provided.innerRef}

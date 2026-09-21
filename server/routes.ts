@@ -737,6 +737,17 @@ export async function registerRoutes(
   app.get("/api/leads", isTeam, async (req, res) => {
     const contactId = req.query.contactId ? parseInt(req.query.contactId as string) : undefined;
     const leads = await storage.getLeads(contactId);
+
+    // Auto-normalize any existing leads with "Ativo" / "ativo" to "new"
+    for (const l of leads) {
+      if (l.status === "Ativo" || l.status === "ativo") {
+        l.status = "new";
+        storage.updateLeadStatus(l.id, "new").catch((err) => {
+          console.error("[Leads] Erro ao normalizar status do lead:", err);
+        });
+      }
+    }
+
     res.json(leads);
   });
 
@@ -3520,12 +3531,40 @@ export async function registerRoutes(
   function mapDealStatusToPipelineStage(status: string | null | undefined): string {
     if (!status || typeof status !== "string") return "new";
     const s = status.trim().toLowerCase();
-    if (s === "cotação" || s === "cotacao" || s === "novo" || s === "novo lead" || s === "new" || s === "enviar cotação" || s === "enviar cotacao") return "new";
-    if (s === "qualificado" || s === "em negociação" || s === "em negociacao" || s === "negociação" || s === "negociacao" || s === "qualified" || s === "revisão agendada" || s === "revisao agendada") return "qualified";
+    if (
+      s === "cotação" ||
+      s === "cotacao" ||
+      s === "novo" ||
+      s === "novo lead" ||
+      s === "new" ||
+      s === "enviar cotação" ||
+      s === "enviar cotacao" ||
+      s === "ativo" ||
+      s === "active"
+    ) return "new";
+    if (
+      s === "qualificado" ||
+      s === "em negociação" ||
+      s === "em negociacao" ||
+      s === "negociação" ||
+      s === "negociacao" ||
+      s === "qualified" ||
+      s === "revisão agendada" ||
+      s === "revisao agendada"
+    ) return "qualified";
     if (s === "proposta" || s === "proposta enviada" || s === "proposal") return "proposal";
-    if (s === "fechado" || s === "fechado / ganho" || s === "fechado/ganho" || s === "ganho" || s === "implantado" || s === "implemented" || s === "closed") return "implemented";
+    if (
+      s === "fechado" ||
+      s === "fechado / ganho" ||
+      s === "fechado/ganho" ||
+      s === "ganho" ||
+      s === "implantado" ||
+      s === "implemented" ||
+      s === "closed"
+    ) return "implemented";
     if (s === "perdido" || s === "cancelado" || s === "cancelled" || s === "lost") return "cancelled";
-    return status;
+    if (["new", "qualified", "proposal", "cancelled", "implemented"].includes(status)) return status;
+    return "new";
   }
 
   // Passo 2: Na rota POST /api/v1/external/contacts do CRM
@@ -4041,6 +4080,8 @@ export async function registerRoutes(
 
       const formattedLeads = linkedLeads.map(l => {
         const numVal = parseCurrencyToNumber(l.value) || 0;
+        const normalizedStatus = (l.status === "Ativo" || l.status === "ativo" || !l.status) ? "new" : l.status;
+        const stageLabel = normalizedStatus === "new" ? "Novo Lead" : (normalizedStatus === "qualified" ? "Qualificado" : (normalizedStatus === "proposal" ? "Proposta" : (normalizedStatus === "implemented" ? "Implantado" : (normalizedStatus === "cancelled" ? "Cancelado" : normalizedStatus))));
         return {
           id: l.id,
           product: l.product || "Oportunidade Comercial",
@@ -4049,8 +4090,9 @@ export async function registerRoutes(
           valueFormatted: l.value
             ? (String(l.value).startsWith("R$") ? String(l.value) : `R$ ${numVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
             : 'R$ 0,00',
-          status: l.status || 'Enviar Cotação',
-          stage: l.status || 'Enviar Cotação',
+          status: normalizedStatus,
+          stage: stageLabel,
+          stageId: normalizedStatus,
           source: l.source || "CRM",
           notes: l.notes,
           createdAt: l.createdAt ? new Date(l.createdAt).toISOString().split('T')[0] : null,
