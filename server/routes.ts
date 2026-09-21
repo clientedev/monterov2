@@ -3499,69 +3499,68 @@ export async function registerRoutes(
     return map[key] || clean;
   }
 
+  // Passo 1: Helper de Conversão de Moeda no CRM
+  // Converte "3.500,00", "R$ 3.500,00" ou número em Float válido (3500.00)
+  function parseCurrencyToNumber(val: any): number | null {
+    if (val === null || val === undefined || val === '') return null;
+    if (typeof val === 'number') return isNaN(val) ? null : val;
+    if (typeof val === 'string') {
+      let clean = val.replace(/[R$\s]/g, '').trim();
+      if (!clean) return null;
+      if (clean.includes(',')) {
+        clean = clean.replace(/\./g, '').replace(',', '.');
+      }
+      const num = parseFloat(clean);
+      return isNaN(num) ? null : num;
+    }
+    return null;
+  }
+
   // Helper to map external deal status to CRM pipeline stage IDs
   function mapDealStatusToPipelineStage(status: string | null | undefined): string {
     if (!status || typeof status !== "string") return "new";
     const s = status.trim().toLowerCase();
-    if (s === "cotação" || s === "cotacao" || s === "novo" || s === "novo lead" || s === "new") return "new";
-    if (s === "qualificado" || s === "em negociação" || s === "em negociacao" || s === "negociação" || s === "negociacao" || s === "qualified") return "qualified";
+    if (s === "cotação" || s === "cotacao" || s === "novo" || s === "novo lead" || s === "new" || s === "enviar cotação" || s === "enviar cotacao") return "new";
+    if (s === "qualificado" || s === "em negociação" || s === "em negociacao" || s === "negociação" || s === "negociacao" || s === "qualified" || s === "revisão agendada" || s === "revisao agendada") return "qualified";
     if (s === "proposta" || s === "proposta enviada" || s === "proposal") return "proposal";
     if (s === "fechado" || s === "fechado / ganho" || s === "fechado/ganho" || s === "ganho" || s === "implantado" || s === "implemented" || s === "closed") return "implemented";
     if (s === "perdido" || s === "cancelado" || s === "cancelled" || s === "lost") return "cancelled";
     return status;
   }
 
-  // Core handler to upsert contact & optionally create opportunity
+  // Passo 2: Na rota POST /api/v1/external/contacts do CRM
+  // Core handler to upsert contact & optionally create opportunity & policy
   async function handleExternalContactAndOpportunity(req: any, res: any) {
     try {
-      const {
-        name,
-        phone,
-        email,
-        document,
-        type = "individual",
-        address,
-        responsibleName,
-        responsibleId,
-        responsiblePhone,
-        responsibleEmail,
-        internalResponsibleId,
-        anniversaryDate,
-        maritalStatus,
-        productType,
-        insurers,
-        contactOrigin = "WhatsApp Integrado",
-        isReferral = false,
-        referredByContactId,
-        notes,
-        status = "Ativo",
-      } = req.body || {};
+      const body = req.body || {};
 
+      // 1. Telefone e Nome
       const inputPhone =
-        phone ??
-        req.body?.telefone ??
-        req.body?.celular ??
-        req.body?.whatsapp ??
-        req.body?.numero ??
+        body.phone ??
+        body.telefone ??
+        body.whatsapp ??
+        body.celular ??
+        body.numero ??
         "";
       const rawPhone = inputPhone !== undefined && inputPhone !== null
-        ? String(inputPhone).replace(/@.+$/, "").trim()
+        ? String(inputPhone).replace(/@.+$/, "").replace(/\D/g, "").trim()
         : "";
 
       const inputName =
-        name ??
-        req.body?.nome ??
-        req.body?.nomeContato ??
-        req.body?.contactName ??
+        body.name ??
+        body.nome ??
+        body.fullName ??
+        body.nomeContato ??
+        body.contactName ??
         "";
       let contactName = inputName ? String(inputName).trim() : "";
 
       const inputDoc =
-        document ??
-        req.body?.documento ??
-        req.body?.cpf ??
-        req.body?.cnpj ??
-        req.body?.cpfCnpj ??
+        body.document ??
+        body.documento ??
+        body.cpf ??
+        body.cnpj ??
+        body.cpfCnpj ??
         "";
       const rawDoc = inputDoc ? String(inputDoc).trim() : "";
 
@@ -3588,26 +3587,25 @@ export async function registerRoutes(
       }
 
       if (!contactName) {
-        return res.status(400).json({
-          success: false,
-          error: "O campo 'name' (Nome do contato) ou 'phone' (Telefone) é obrigatório.",
-        });
+        contactName = "Contato";
       }
 
-      // Extract and normalize product names (Auto, Saúde, Vida, Residencial, Empresarial, Odonto, Consórcio, Previdência, Fiança Locaticia, Responsabilidade Civil, Viagem, Pet)
-      const rawProductInput =
-        req.body?.dealProduct ??
-        req.body?.deal_product ??
-        req.body?.product ??
-        req.body?.produto ??
-        req.body?.produtos ??
-        req.body?.products ??
-        productType ??
+      // 2. Produto (Alimenta a coluna de produtos da base de contatos)
+      const produtos =
+        body.produtos ??
+        body.produto ??
+        body.product ??
+        (Array.isArray(body.products) ? body.products.join(', ') : null) ??
+        body.dealProduct ??
+        body.deal?.product ??
+        body.pipeline?.product ??
+        body.productType ??
         null;
+
       let finalProductList: string[] = [];
 
-      if (rawProductInput) {
-        const parts = String(rawProductInput).split(",").map((s: string) => s.trim()).filter(Boolean);
+      if (produtos) {
+        const parts = String(produtos).split(",").map((s: string) => s.trim()).filter(Boolean);
         for (const p of parts) {
           const norm = normalizeBackendProductName(p);
           if (norm && !finalProductList.includes(norm)) {
@@ -3628,19 +3626,70 @@ export async function registerRoutes(
         }
       }
 
-      const finalProductType = finalProductList.length > 0 ? finalProductList.join(", ") : (productType ? String(productType).trim() : null);
+      const finalProductType = finalProductList.length > 0
+        ? finalProductList.join(", ")
+        : (produtos ? String(produtos).trim() : null);
 
-      // Resolve responsible employee for internal assignment
+      // 3. Valores Numéricos Tratados
+      const dealVal = parseCurrencyToNumber(
+        body.deal?.value ??
+        body.pipeline?.value ??
+        body.dealValue ??
+        body.valor ??
+        body.value
+      );
+      const premiumVal = parseCurrencyToNumber(
+        body.insurance?.premiumValue ??
+        body.premiumValue ??
+        body.premio ??
+        body.valorPremio
+      );
+
+      // 4. Etapa do Funil (Pipeline)
+      const dealStageRaw =
+        body.deal?.status ??
+        body.pipeline?.status ??
+        body.dealStatus ??
+        body.etapa ??
+        body.stage ??
+        body.statusDeal ??
+        'Enviar Cotação';
+      const dealStage = mapDealStatusToPipelineStage(dealStageRaw);
+
+      const dealProduct =
+        body.deal?.product ??
+        body.pipeline?.product ??
+        body.dealProduct ??
+        produtos ??
+        'Seguro';
+      const oppProduct = normalizeBackendProductName(dealProduct);
+
+      // Endereço completo
+      const zipCode = body.zipCode || body.cep || "";
+      const addressStreet = body.address || body.rua || "";
+      const addressNumber = body.number || body.numero || "";
+      const neighborhood = body.neighborhood || body.bairro || "";
+      const city = body.city || body.cidade || "";
+      const state = body.state || body.uf || "";
+
+      let fullAddress = addressStreet;
+      if (addressNumber) fullAddress = fullAddress ? `${fullAddress}, ${addressNumber}` : addressNumber;
+      if (neighborhood) fullAddress = fullAddress ? `${fullAddress} - ${neighborhood}` : neighborhood;
+      if (city) fullAddress = fullAddress ? `${fullAddress}, ${city}` : city;
+      if (state) fullAddress = fullAddress ? `${fullAddress} - ${state}` : state;
+      if (zipCode) fullAddress = fullAddress ? `${fullAddress} (CEP: ${zipCode})` : `CEP: ${zipCode}`;
+
+      // Responsável
       const allUsers = await storage.getUsers();
       const staffUsers = allUsers.filter(u => u.role === "admin" || u.role === "employee");
 
       const rawResp =
-        req.body?.assignedTo ??
-        req.body?.assigned_to ??
-        internalResponsibleId ??
-        responsibleId ??
-        req.body?.responsavelId ??
-        req.body?.consultorId ??
+        body.assignedTo ??
+        body.assigned_to ??
+        body.internalResponsibleId ??
+        body.responsibleId ??
+        body.responsavelId ??
+        body.consultorId ??
         null;
 
       let resolvedAssignedTo: number | undefined = undefined;
@@ -3648,39 +3697,40 @@ export async function registerRoutes(
         const numResp = Number(rawResp);
         const matchStaff = staffUsers.find(u => u.id === numResp);
         if (matchStaff) resolvedAssignedTo = matchStaff.id;
-      } else if (req.body?.responsavel || responsibleName || req.body?.consultor) {
-        const queryName = String(req.body?.responsavel || responsibleName || req.body?.consultor).trim().toLowerCase();
+      } else if (body.responsavel || body.responsibleName || body.consultor) {
+        const queryName = String(body.responsavel || body.responsibleName || body.consultor).trim().toLowerCase();
         const matchStaff = staffUsers.find(u => u.name.toLowerCase().includes(queryName) || (u.email && u.email.toLowerCase() === queryName));
         if (matchStaff) resolvedAssignedTo = matchStaff.id;
       }
 
+      // 5. Salva / Atualiza o Contato no CRM
       const contactPayload: InsertContact = {
         name: contactName,
-        type: type === "company" ? "company" : "individual",
+        type: body.type === "company" ? "company" : "individual",
         phone: rawPhone || null,
-        email: email ? String(email).trim() : null,
+        email: body.email ? String(body.email).trim() : null,
         document: rawDoc || null,
-        address: address ? String(address).trim() : null,
-        responsibleName: responsibleName ? String(responsibleName).trim() : null,
-        responsibleId: responsibleId ? Number(responsibleId) : undefined,
-        internalResponsibleId: resolvedAssignedTo || (internalResponsibleId ? Number(internalResponsibleId) : undefined),
-        anniversaryDate: anniversaryDate ? String(anniversaryDate).trim() : null,
-        maritalStatus: maritalStatus ? String(maritalStatus).trim() : null,
-        productType: finalProductType,
-        insurers: insurers ? String(insurers).trim() : null,
-        contactOrigin: contactOrigin ? String(contactOrigin).trim() : "WhatsApp Integrado",
-        isReferral: Boolean(isReferral),
-        referredByContactId: referredByContactId ? Number(referredByContactId) : undefined,
-        notes: (notes || req.body?.observacoes) ? String(notes || req.body?.observacoes).trim() : null,
-        status: status === "Cancelado" || status === "Prospects" ? status : "Ativo",
+        address: fullAddress || null,
+        responsibleName: body.responsibleName ? String(body.responsibleName).trim() : null,
+        responsibleId: body.responsibleId ? Number(body.responsibleId) : undefined,
+        internalResponsibleId: resolvedAssignedTo || (body.internalResponsibleId ? Number(body.internalResponsibleId) : undefined),
+        anniversaryDate: body.anniversaryDate ? String(body.anniversaryDate).trim() : null,
+        maritalStatus: body.maritalStatus ? String(body.maritalStatus).trim() : null,
+        productType: finalProductType, // <-- Grava na coluna de produtos da base de contatos!
+        insurers: body.insurers ? String(body.insurers).trim() : null,
+        contactOrigin: body.contactOrigin ? String(body.contactOrigin).trim() : "WhatsApp Integrado",
+        isReferral: Boolean(body.isReferral),
+        referredByContactId: body.referredByContactId ? Number(body.referredByContactId) : undefined,
+        notes: (body.notes || body.observacoes) ? String(body.notes || body.observacoes).trim() : null,
+        status: body.status === "Cancelado" || body.status === "Prospects" ? body.status : "Ativo",
       };
 
       const parsed = insertContactSchema.parse(contactPayload);
       const result = await storage.upsertContact(parsed);
 
-      // Ensure synchronization with clientes table
+      // Sincronização com clientes
       const allClientes = await storage.getClientes();
-      const linkedCliente = allClientes.find(cliente => {
+      let linkedCliente = allClientes.find(cliente => {
         if (cliente.contactId === result.contact.id) return true;
         const contactDoc = cleanDigits(result.contact.document);
         const clientDoc = cleanDigits(cliente.cpfCnpj);
@@ -3700,7 +3750,9 @@ export async function registerRoutes(
         email: result.contact.email || null,
         telefone: result.contact.phone || null,
         whatsapp: result.contact.phone || null,
-        endereco: result.contact.address || null,
+        endereco: fullAddress || result.contact.address || null,
+        cidade: city || null,
+        estado: state || null,
         anniversaryDate: result.contact.anniversaryDate || null,
         productType: result.contact.productType || null,
         insurers: result.contact.insurers || null,
@@ -3709,18 +3761,18 @@ export async function registerRoutes(
         referredByContactId: result.contact.referredByContactId || null,
         internalResponsibleId: result.contact.internalResponsibleId || null,
         nomeRepresentante: result.contact.responsibleName || null,
-        telefoneRepresentante: responsiblePhone ? String(responsiblePhone).trim() : null,
-        emailRepresentante: responsibleEmail ? String(responsibleEmail).trim() : null,
+        telefoneRepresentante: body.responsiblePhone ? String(body.responsiblePhone).trim() : null,
+        emailRepresentante: body.responsibleEmail ? String(body.responsibleEmail).trim() : null,
         observacoes: result.contact.notes || null,
       };
 
       if (linkedCliente) {
         await storage.updateCliente(linkedCliente.id, clienteDataPayload);
       } else {
-        await storage.createCliente(clienteDataPayload);
+        linkedCliente = await storage.createCliente(clienteDataPayload);
       }
 
-      // Check if caller wants to create an Opportunity in Leads & Pipeline
+      // 6. Grava a Oportunidade no Funil de Vendas (LEADS & Pipeline)
       const isOpportunityEndpoint =
         req.path.includes("opportunities") ||
         req.path.includes("leads") ||
@@ -3729,60 +3781,35 @@ export async function registerRoutes(
 
       const shouldCreateOpportunity = Boolean(
         isOpportunityEndpoint ||
-        req.body?.dealProduct ||
-        req.body?.deal_product ||
-        req.body?.product ||
-        req.body?.produto ||
-        req.body?.createOpportunity === true ||
-        req.body?.createOpportunity === "true" ||
-        req.body?.createLead === true ||
-        req.body?.createLead === "true" ||
-        req.body?.criarOportunidade === true ||
-        req.body?.criarOportunidade === "true" ||
-        req.body?.deal ||
-        req.body?.opportunity ||
-        req.body?.pipeline ||
-        req.body?.dealValue !== undefined ||
-        req.body?.dealStatus !== undefined
+        body.dealProduct ||
+        body.pipeline ||
+        body.deal ||
+        body.dealValue !== undefined ||
+        body.valor !== undefined ||
+        body.value !== undefined ||
+        body.createOpportunity === true ||
+        body.createOpportunity === "true" ||
+        body.createLead === true ||
+        body.createLead === "true" ||
+        body.criarOportunidade === true ||
+        body.criarOportunidade === "true"
       );
 
       let createdLead: any = null;
       if (shouldCreateOpportunity) {
-        const oppProduct = normalizeBackendProductName(
-          req.body?.dealProduct ||
-          req.body?.deal_product ||
-          req.body?.product ||
-          req.body?.produto ||
-          finalProductList[0] ||
-          "Oportunidade Comercial"
-        );
-
-        const rawDealValue = req.body?.dealValue ?? req.body?.value ?? req.body?.valor ?? req.body?.leadValue ?? null;
-        const formattedDealValue = rawDealValue !== null && rawDealValue !== undefined && String(rawDealValue).trim()
-          ? String(rawDealValue).replace(/[R$\s]/g, "").trim()
-          : null;
-
-        const oppStage = mapDealStatusToPipelineStage(
-          req.body?.dealStatus ||
-          req.body?.statusDeal ||
-          req.body?.status ||
-          req.body?.stage ||
-          "new"
-        );
-
-        const oppNotes = req.body?.dealNotes || req.body?.notes || req.body?.opportunityNotes || req.body?.observacoes || null;
-
         createdLead = await storage.createLead({
           contactId: result.contact.id,
           product: oppProduct || "Oportunidade Comercial",
-          status: oppStage,
-          source: contactOrigin || "WhatsApp Integrado",
-          value: formattedDealValue,
-          notes: oppNotes ? String(oppNotes).trim() : null,
+          status: dealStage,
+          source: body.contactOrigin || "WhatsApp Integrado",
+          value: dealVal !== null ? dealVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : null,
+          notes: (body.notes || body.observacoes || body.dealNotes || body.opportunityNotes)
+            ? String(body.notes || body.observacoes || body.dealNotes || body.opportunityNotes).trim()
+            : null,
           assignedTo: resolvedAssignedTo || undefined,
         });
 
-        // Trigger Todoist automations
+        // Disparar automações Todoist
         try {
           await storage.triggerTodoistAutomations('new_lead', {
             leadId: createdLead.id,
@@ -3792,8 +3819,29 @@ export async function registerRoutes(
         } catch (_) {}
       }
 
+      // 7. Se veio Apólice com número e prêmio:
+      let createdPolicy: any = null;
+      const policyNumber = body.insurance?.policyNumber || body.policyNumber;
+      if (policyNumber && linkedCliente) {
+        try {
+          const expDate = body.insurance?.expirationDate || body.expirationDate;
+          createdPolicy = await storage.createApolice({
+            clienteId: linkedCliente.id,
+            numeroApolice: String(policyNumber).trim(),
+            premio: premiumVal !== null ? `R$ ${premiumVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : (body.premiumValue || body.premio || null),
+            fimVigencia: expDate ? new Date(expDate) : undefined,
+            status: "ativa",
+            observacoes: body.insurance?.notes || body.notes || "Apólice registrada via WhatsApp",
+          });
+        } catch (e) {
+          console.error("[External API] Erro ao gravar apólice:", e);
+        }
+      }
+
       return res.status(result.isNew ? 201 : 200).json({
+        ok: true,
         success: true,
+        contactId: result.contact.id,
         isNew: result.isNew,
         message: createdLead
           ? "Contato e Oportunidade registrados com sucesso no CRM e enviados para o LEADS & Pipeline!"
@@ -3807,10 +3855,11 @@ export async function registerRoutes(
           email: result.contact.email,
           document: result.contact.document,
           address: result.contact.address,
+          status: result.contact.status,
+          produtos: result.contact.productType, // <-- coluna produtos da tela base
+          anniversaryDate: result.contact.anniversaryDate,
           type: result.contact.type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
           rawType: result.contact.type,
-          status: result.contact.status,
-          anniversaryDate: result.contact.anniversaryDate,
           maritalStatus: result.contact.maritalStatus,
           productType: result.contact.productType,
           insurers: result.contact.insurers,
@@ -3818,22 +3867,24 @@ export async function registerRoutes(
           responsibleName: result.contact.responsibleName,
           responsibleId: result.contact.responsibleId,
           internalResponsibleId: result.contact.internalResponsibleId,
-          isReferral: result.contact.isReferral,
-          referredByContactId: result.contact.referredByContactId,
           notes: result.contact.notes,
           createdAt: result.contact.createdAt,
           rawContact: result.contact,
         },
+        products: result.contact.productType
+          ? result.contact.productType.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : [],
         lead: createdLead,
         opportunity: createdLead,
         deal: createdLead,
+        policy: createdPolicy,
         pipelineUrl: "/admin/leads",
       });
     } catch (err: any) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ success: false, error: err.errors });
+        return res.status(400).json({ ok: false, success: false, error: err.errors });
       }
-      res.status(500).json({ success: false, error: err.message });
+      res.status(500).json({ ok: false, success: false, error: err.message });
     }
   }
 
@@ -3856,20 +3907,22 @@ export async function registerRoutes(
     "/api/v1/crm/deal",
   ], externalApiKeyAuth, handleExternalContactAndOpportunity);
 
+  // Passo 3: Na rota GET /api/v1/external/contacts/lookup do CRM
   // External Lookup API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
   app.get([
     "/api/v1/external/contacts/lookup",
     "/api/external/contacts/lookup",
   ], externalApiKeyAuth, async (req, res) => {
     try {
-      const phone = req.query.phone ? String(req.query.phone).trim() : "";
+      const rawPhoneQuery = req.query.phone ? String(req.query.phone).trim() : "";
+      const phone = rawPhoneQuery.replace(/\D/g, "");
       const document = req.query.document ? String(req.query.document).trim() : "";
       const email = req.query.email ? String(req.query.email).trim() : "";
 
       if (!phone && !document && !email) {
         return res.status(400).json({
           found: false,
-          error: "É necessário informar ao menos um parâmetro de busca: ?phone=, ?document= ou ?email=",
+          error: "Telefone obrigatório ou informe ?document= ou ?email=",
         });
       }
 
@@ -3957,35 +4010,54 @@ export async function registerRoutes(
           }) : []);
 
       const activePolicies = linkedApolices.filter(a => a.status === "ativa");
-      const totalAnnualPremium = activePolicies.reduce((sum, a) => sum + (parseFloat(a.premio || "0") || 0), 0);
+      const totalAnnualPremium = activePolicies.reduce((sum, a) => sum + (parseCurrencyToNumber(a.premio) || 0), 0);
 
       const formattedPolicies = linkedApolices.map(a => {
         const seg = allSeguradoras.find(s => s.id === a.seguradoraId);
         const prod = allProdutosSeguro.find(p => p.id === a.produtoId);
+        const pNumVal = parseCurrencyToNumber(a.premio) || 0;
         return {
           id: a.id,
+          product: prod?.nome || a.numeroApolice || "Seguro",
+          insurer: seg?.nome || "Seguradora",
+          policyNumber: a.numeroApolice || "Sem número",
           numeroApolice: a.numeroApolice || "Sem número",
+          premiumValue: pNumVal,
+          premio: a.premio ? (parseCurrencyToNumber(a.premio)?.toFixed(2) || "0.00") : "0.00",
+          premiumValueFormatted: a.premio
+            ? (String(a.premio).startsWith("R$") ? String(a.premio) : `R$ ${pNumVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
+            : undefined,
           status: a.status,
           seguradora: seg?.nome || "—",
           produto: prod?.nome || "—",
-          premio: a.premio ? parseFloat(a.premio).toFixed(2) : "0.00",
+          expirationDate: a.fimVigencia ? new Date(a.fimVigencia).toISOString().split('T')[0] : undefined,
           inicioVigencia: a.inicioVigencia ? new Date(a.inicioVigencia).toISOString().split('T')[0] : null,
           fimVigencia: a.fimVigencia ? new Date(a.fimVigencia).toISOString().split('T')[0] : null,
         };
       });
 
       const linkedLeads = contactId ? allLeads.filter(l => l.contactId === contactId) : [];
-      const activeLeads = linkedLeads.filter(l => l.status !== "closed" && l.status !== "lost");
+      const activeLeads = linkedLeads.filter(l => l.status !== "closed" && l.status !== "lost" && l.status !== "cancelled");
 
-      const formattedLeads = linkedLeads.map(l => ({
-        id: l.id,
-        product: l.product || "Oportunidade Comercial",
-        value: l.value ? parseFloat(l.value).toFixed(2) : "0.00",
-        status: l.status,
-        source: l.source || "CRM",
-        createdAt: l.createdAt ? new Date(l.createdAt).toISOString().split('T')[0] : null,
-      }));
+      const formattedLeads = linkedLeads.map(l => {
+        const numVal = parseCurrencyToNumber(l.value) || 0;
+        return {
+          id: l.id,
+          product: l.product || "Oportunidade Comercial",
+          title: l.product || "Oportunidade Comercial",
+          value: numVal,
+          valueFormatted: l.value
+            ? (String(l.value).startsWith("R$") ? String(l.value) : `R$ ${numVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
+            : 'R$ 0,00',
+          status: l.status || 'Enviar Cotação',
+          stage: l.status || 'Enviar Cotação',
+          source: l.source || "CRM",
+          notes: l.notes,
+          createdAt: l.createdAt ? new Date(l.createdAt).toISOString().split('T')[0] : null,
+        };
+      });
 
+      // Monta resposta compatível com o Whats
       return res.json({
         found: true,
         contact: {
@@ -4000,7 +4072,10 @@ export async function registerRoutes(
           address,
           cidade,
           estado,
+          city: cidade,
+          state: estado,
           status,
+          produtos: productType, // <-- coluna produtos da tela base
           anniversaryDate,
           maritalStatus,
           productType,
@@ -4026,17 +4101,21 @@ export async function registerRoutes(
           rawContact: matchedContact || null,
           rawCliente: matchedCliente || null,
         },
+        // Array de produtos
+        products: productType ? productType.split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+        // Pipeline com os negócios e valores
+        pipeline: {
+          totalDealsCount: linkedLeads.length,
+          activeDealsCount: activeLeads.length || linkedLeads.length,
+          deals: formattedLeads,
+        },
+        // Apólices ativas
         insurance: {
           totalPoliciesCount: linkedApolices.length,
           activePoliciesCount: activePolicies.length,
           totalAnnualPremiumFormatted: `R$ ${totalAnnualPremium.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
           totalAnnualPremiumValue: totalAnnualPremium,
           policies: formattedPolicies,
-        },
-        pipeline: {
-          totalDealsCount: linkedLeads.length,
-          activeDealsCount: activeLeads.length,
-          deals: formattedLeads,
         }
       });
 
