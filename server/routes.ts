@@ -3836,26 +3836,44 @@ export async function registerRoutes(
 
       let createdLead: any = null;
       if (shouldCreateOpportunity) {
-        createdLead = await storage.createLead({
-          contactId: result.contact.id,
-          product: oppProduct || "Oportunidade Comercial",
-          status: dealStage,
-          source: body.contactOrigin || "WhatsApp Integrado",
-          value: dealVal !== null ? dealVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : null,
-          notes: (body.notes || body.observacoes || body.dealNotes || body.opportunityNotes)
-            ? String(body.notes || body.observacoes || body.dealNotes || body.opportunityNotes).trim()
-            : null,
-          assignedTo: resolvedAssignedTo || undefined,
-        });
+        const allExistingLeads = await storage.getLeads();
+        const existingLead = allExistingLeads.find(l =>
+          l.contactId === result.contact.id &&
+          (l.product || "").trim().toLowerCase() === (oppProduct || "Oportunidade Comercial").trim().toLowerCase() &&
+          l.status !== "closed" && l.status !== "lost" && l.status !== "cancelled"
+        );
 
-        // Disparar automações Todoist
-        try {
-          await storage.triggerTodoistAutomations('new_lead', {
-            leadId: createdLead.id,
-            contactId: createdLead.contactId,
-            assignedUserId: (req.user as any)?.id || createdLead.assignedTo || undefined,
+        if (existingLead) {
+          createdLead = await storage.updateLead(existingLead.id, {
+            status: dealStage,
+            value: dealVal !== null ? dealVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : existingLead.value,
+            notes: (body.notes || body.observacoes || body.dealNotes || body.opportunityNotes)
+              ? String(body.notes || body.observacoes || body.dealNotes || body.opportunityNotes).trim()
+              : existingLead.notes,
+            assignedTo: resolvedAssignedTo || existingLead.assignedTo,
           });
-        } catch (_) {}
+        } else {
+          createdLead = await storage.createLead({
+            contactId: result.contact.id,
+            product: oppProduct || "Oportunidade Comercial",
+            status: dealStage,
+            source: body.contactOrigin || "WhatsApp Integrado",
+            value: dealVal !== null ? dealVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : null,
+            notes: (body.notes || body.observacoes || body.dealNotes || body.opportunityNotes)
+              ? String(body.notes || body.observacoes || body.dealNotes || body.opportunityNotes).trim()
+              : null,
+            assignedTo: resolvedAssignedTo || undefined,
+          });
+
+          // Disparar automações Todoist
+          try {
+            await storage.triggerTodoistAutomations('new_lead', {
+              leadId: createdLead.id,
+              contactId: createdLead.contactId,
+              assignedUserId: (req.user as any)?.id || createdLead.assignedTo || undefined,
+            });
+          } catch (_) {}
+        }
       }
 
       // 7. Se veio Apólice com número e prêmio:
@@ -4075,7 +4093,17 @@ export async function registerRoutes(
         };
       });
 
-      const linkedLeads = contactId ? allLeads.filter(l => l.contactId === contactId) : [];
+      const rawLinkedLeads = contactId ? allLeads.filter(l => l.contactId === contactId) : [];
+      // Deduplica negociações para nunca multiplicar na tela
+      const seenLeads = new Set<string>();
+      const linkedLeads = rawLinkedLeads.filter(l => {
+        const prod = (l.product || "Oportunidade Comercial").trim().toLowerCase();
+        const stg = (l.status || "").trim().toLowerCase();
+        const key = `${prod}_${stg}`;
+        if (seenLeads.has(key)) return false;
+        seenLeads.add(key);
+        return true;
+      });
       const activeLeads = linkedLeads.filter(l => l.status !== "closed" && l.status !== "lost" && l.status !== "cancelled");
 
       const formattedLeads = linkedLeads.map(l => {
