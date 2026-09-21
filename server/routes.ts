@@ -3344,8 +3344,71 @@ export async function registerRoutes(
     }
   });
 
-  // External Create/Register Contact API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
-  app.post("/api/v1/external/contacts", externalApiKeyAuth, async (req, res) => {
+  // Helper to normalize the 12 standard product names
+  function normalizeBackendProductName(name: string | null | undefined): string {
+    if (!name || typeof name !== "string") return "";
+    const clean = name.trim();
+    const key = clean.toLowerCase();
+    const map: Record<string, string> = {
+      "auto": "Auto",
+      "seguro auto": "Auto",
+      "automóvel": "Auto",
+      "automovel": "Auto",
+      "saúde": "Saúde",
+      "saude": "Saúde",
+      "plano de saúde": "Saúde",
+      "plano de saude": "Saúde",
+      "vida": "Vida",
+      "seguro de vida": "Vida",
+      "residencial": "Residencial",
+      "residência": "Residencial",
+      "residencia": "Residencial",
+      "seguro residencial": "Residencial",
+      "empresarial": "Empresarial",
+      "vida empresarial": "Empresarial",
+      "seguro empresarial": "Empresarial",
+      "odonto": "Odonto",
+      "odontológico": "Odonto",
+      "odontologico": "Odonto",
+      "plano odontológico": "Odonto",
+      "plano odontologico": "Odonto",
+      "consórcio": "Consórcio",
+      "consorcio": "Consórcio",
+      "previdência": "Previdência",
+      "previdencia": "Previdência",
+      "previdência privada": "Previdência",
+      "previdencia privada": "Previdência",
+      "fiança locatícia": "Fiança Locaticia",
+      "fianca locaticia": "Fiança Locaticia",
+      "fiança locaticia": "Fiança Locaticia",
+      "fianca locatícia": "Fiança Locaticia",
+      "fiança": "Fiança Locaticia",
+      "fianca": "Fiança Locaticia",
+      "responsabilidade civil": "Responsabilidade Civil",
+      "rc": "Responsabilidade Civil",
+      "seguro rc": "Responsabilidade Civil",
+      "viagem": "Viagem",
+      "seguro viagem": "Viagem",
+      "pet": "Pet",
+      "seguro pet": "Pet",
+    };
+    return map[key] || clean;
+  }
+
+  // Helper to map external deal status to CRM pipeline stage IDs
+  function mapDealStatusToPipelineStage(status: string | null | undefined): string {
+    if (!status || typeof status !== "string") return "new";
+    const s = status.trim().toLowerCase();
+    if (s === "cotação" || s === "cotacao" || s === "novo" || s === "novo lead" || s === "new") return "new";
+    if (s === "qualificado" || s === "em negociação" || s === "em negociacao" || s === "negociação" || s === "negociacao" || s === "qualified") return "qualified";
+    if (s === "proposta" || s === "proposta enviada" || s === "proposal") return "proposal";
+    if (s === "fechado" || s === "fechado / ganho" || s === "fechado/ganho" || s === "ganho" || s === "implantado" || s === "implemented" || s === "closed") return "implemented";
+    if (s === "perdido" || s === "cancelado" || s === "cancelled" || s === "lost") return "cancelled";
+    return status;
+  }
+
+  // Core handler to upsert contact & optionally create opportunity
+  async function handleExternalContactAndOpportunity(req: any, res: any) {
     try {
       const {
         name,
@@ -3370,17 +3433,70 @@ export async function registerRoutes(
         status = "Ativo",
       } = req.body || {};
 
-      if (!name || typeof name !== "string" || !name.trim()) {
+      const rawPhone = phone ? String(phone).trim() : "";
+      let contactName = name ? String(name).trim() : "";
+
+      const allExistingContacts = await storage.getContacts();
+
+      // If name is not provided, look for an existing contact by phone or document
+      if (!contactName) {
+        if (rawPhone) {
+          const match = allExistingContacts.find(c => c.phone && matchesPhone(rawPhone, c.phone));
+          if (match) {
+            contactName = match.name;
+          }
+        }
+        if (!contactName && document) {
+          const docClean = cleanDigits(document);
+          const match = allExistingContacts.find(c => c.document && cleanDigits(c.document) === docClean);
+          if (match) {
+            contactName = match.name;
+          }
+        }
+        if (!contactName && rawPhone) {
+          contactName = `Contato WhatsApp (${rawPhone})`;
+        }
+      }
+
+      if (!contactName) {
         return res.status(400).json({
           success: false,
-          error: "O campo 'name' (Nome do contato) é obrigatório.",
+          error: "O campo 'name' (Nome do contato) ou 'phone' (Telefone) é obrigatório.",
         });
       }
 
+      // Extract and normalize product names (Auto, Saúde, Vida, Residencial, Empresarial, Odonto, Consórcio, Previdência, Fiança Locaticia, Responsabilidade Civil, Viagem, Pet)
+      const rawProductInput = req.body.dealProduct || req.body.product || req.body.produto || req.body.produtos || req.body.products || productType || null;
+      let finalProductList: string[] = [];
+
+      if (rawProductInput) {
+        const parts = String(rawProductInput).split(",").map((s: string) => s.trim()).filter(Boolean);
+        for (const p of parts) {
+          const norm = normalizeBackendProductName(p);
+          if (norm && !finalProductList.includes(norm)) {
+            finalProductList.push(norm);
+          }
+        }
+      }
+
+      // Preserve existing products if contact already exists
+      const existingMatch = rawPhone ? allExistingContacts.find(c => c.phone && matchesPhone(rawPhone, c.phone)) : null;
+      if (existingMatch && existingMatch.productType) {
+        const existingParts = existingMatch.productType.split(",").map((s: string) => s.trim()).filter(Boolean);
+        for (const ep of existingParts) {
+          const norm = normalizeBackendProductName(ep);
+          if (norm && !finalProductList.includes(norm)) {
+            finalProductList.push(norm);
+          }
+        }
+      }
+
+      const finalProductType = finalProductList.length > 0 ? finalProductList.join(", ") : (productType ? String(productType).trim() : null);
+
       const contactPayload: InsertContact = {
-        name: name.trim(),
+        name: contactName,
         type: type === "company" ? "company" : "individual",
-        phone: phone ? String(phone).trim() : null,
+        phone: rawPhone || null,
         email: email ? String(email).trim() : null,
         document: document ? String(document).trim() : null,
         address: address ? String(address).trim() : null,
@@ -3389,7 +3505,7 @@ export async function registerRoutes(
         internalResponsibleId: internalResponsibleId ? Number(internalResponsibleId) : undefined,
         anniversaryDate: anniversaryDate ? String(anniversaryDate).trim() : null,
         maritalStatus: maritalStatus ? String(maritalStatus).trim() : null,
-        productType: productType ? String(productType).trim() : null,
+        productType: finalProductType,
         insurers: insurers ? String(insurers).trim() : null,
         contactOrigin: contactOrigin ? String(contactOrigin).trim() : "WhatsApp Integrado",
         isReferral: Boolean(isReferral),
@@ -3405,14 +3521,14 @@ export async function registerRoutes(
       const allClientes = await storage.getClientes();
       const linkedCliente = allClientes.find(cliente => {
         if (cliente.contactId === result.contact.id) return true;
-        const contactDoc = (result.contact.document || "").replace(/\D/g, "");
-        const clientDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
-        const contactName = (result.contact.name || "").trim().toLowerCase();
-        const clientName = (cliente.nome || "").trim().toLowerCase();
-        const contactPhone = (result.contact.phone || "").replace(/\D/g, "");
-        const clientPhone = (cliente.telefone || "").replace(/\D/g, "");
+        const contactDoc = cleanDigits(result.contact.document);
+        const clientDoc = cleanDigits(cliente.cpfCnpj);
+        const cName = (result.contact.name || "").trim().toLowerCase();
+        const cliName = (cliente.nome || "").trim().toLowerCase();
+        const contactPhone = cleanDigits(result.contact.phone);
+        const clientPhone = cleanDigits(cliente.telefone);
         return Boolean(contactDoc && clientDoc && contactDoc === clientDoc) ||
-          Boolean(contactName === clientName && contactPhone && clientPhone && contactPhone === clientPhone);
+          Boolean(cName === cliName && contactPhone && clientPhone && contactPhone === clientPhone);
       });
 
       const clienteDataPayload = {
@@ -3443,12 +3559,75 @@ export async function registerRoutes(
         await storage.createCliente(clienteDataPayload);
       }
 
+      // Check if caller wants to create an Opportunity in Leads & Pipeline
+      const shouldCreateOpportunity = Boolean(
+        req.body.dealProduct ||
+        req.body.createOpportunity === true ||
+        req.body.createOpportunity === "true" ||
+        req.body.createLead === true ||
+        req.body.createLead === "true" ||
+        req.body.criarOportunidade === true ||
+        req.body.criarOportunidade === "true" ||
+        req.body.deal ||
+        req.body.opportunity ||
+        req.body.pipeline ||
+        req.body.dealValue !== undefined ||
+        req.body.dealStatus !== undefined
+      );
+
+      let createdLead: any = null;
+      if (shouldCreateOpportunity) {
+        const oppProduct = normalizeBackendProductName(
+          req.body.dealProduct ||
+          req.body.product ||
+          req.body.produto ||
+          finalProductList[0] ||
+          "Oportunidade Comercial"
+        );
+
+        const rawDealValue = req.body.dealValue ?? req.body.value ?? req.body.valor ?? req.body.leadValue ?? null;
+        const formattedDealValue = rawDealValue !== null && rawDealValue !== undefined && String(rawDealValue).trim()
+          ? String(rawDealValue).replace(/[R$\s]/g, "").trim()
+          : null;
+
+        const oppStage = mapDealStatusToPipelineStage(
+          req.body.dealStatus ||
+          req.body.statusDeal ||
+          req.body.status ||
+          req.body.stage ||
+          "new"
+        );
+
+        const oppNotes = req.body.dealNotes || req.body.notes || req.body.opportunityNotes || req.body.observacoes || null;
+
+        createdLead = await storage.createLead({
+          contactId: result.contact.id,
+          product: oppProduct || "Oportunidade Comercial",
+          status: oppStage,
+          source: contactOrigin || "WhatsApp Integrado",
+          value: formattedDealValue,
+          notes: oppNotes ? String(oppNotes).trim() : null,
+          assignedTo: internalResponsibleId ? Number(internalResponsibleId) : undefined,
+        });
+
+        // Trigger Todoist automations
+        try {
+          await storage.triggerTodoistAutomations('new_lead', {
+            leadId: createdLead.id,
+            contactId: createdLead.contactId,
+            assignedUserId: (req.user as any)?.id || createdLead.assignedTo || undefined,
+          });
+        } catch (_) {}
+      }
+
       return res.status(result.isNew ? 201 : 200).json({
         success: true,
         isNew: result.isNew,
-        message: result.isNew
-          ? "Contato cadastrado com sucesso no CRM Monteiro Seguros!"
-          : "Contato atualizado com sucesso no CRM Monteiro Seguros!",
+        message: createdLead
+          ? "Contato e Oportunidade registrados com sucesso no CRM e enviados para o LEADS & Pipeline!"
+          : (result.isNew
+            ? "Contato cadastrado com sucesso no CRM Monteiro Seguros!"
+            : "Contato atualizado com sucesso no CRM Monteiro Seguros!"),
         contact: {
           id: result.contact.id,
           name: result.contact.name,
@@ -3473,6 +3652,10 @@ export async function registerRoutes(
           createdAt: result.contact.createdAt,
           rawContact: result.contact,
         },
+        lead: createdLead,
+        opportunity: createdLead,
+        deal: createdLead,
+        pipelineUrl: "/admin/leads",
       });
     } catch (err: any) {
       if (err instanceof z.ZodError) {
@@ -3480,7 +3663,18 @@ export async function registerRoutes(
       }
       res.status(500).json({ success: false, error: err.message });
     }
-  });
+  }
+
+  // External Create/Register Contact API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
+  app.post("/api/v1/external/contacts", externalApiKeyAuth, handleExternalContactAndOpportunity);
+
+  // External Create Opportunity API (Direct endpoints supporting external WhatsApp crmService)
+  app.post([
+    "/api/v1/external/opportunities",
+    "/api/v1/external/leads",
+    "/api/contacts/crm-deal",
+    "/api/v1/external/contacts/crm-deal",
+  ], externalApiKeyAuth, handleExternalContactAndOpportunity);
 
   // External Lookup API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
   app.get("/api/v1/external/contacts/lookup", externalApiKeyAuth, async (req, res) => {

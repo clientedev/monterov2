@@ -1144,6 +1144,34 @@ export default function SiteConfigPage() {
                                                 </ul>
                                             </div>
                                         </div>
+
+                                        {/* POST Criar Contato & Oportunidade */}
+                                        <div className="p-4 rounded-2xl bg-slate-900 text-slate-100 space-y-3 text-xs font-mono overflow-x-auto">
+                                            <div className="text-emerald-400 font-bold font-sans uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                                <Zap className="h-3.5 w-3.5" /> Requisição HTTP POST (Criar Contato &amp; Enviar Oportunidade para LEADS &amp; Pipeline)
+                                            </div>
+                                            <p className="text-slate-300 font-sans">
+                                                Para registrar novos contatos ou enviar uma cotação/negociação diretamente para o funil:
+                                            </p>
+                                            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-emerald-400 break-all">
+                                                POST {window.location.origin}/api/v1/external/contacts (ou /api/contacts/crm-deal)
+                                            </div>
+                                            <div className="text-slate-300 font-sans font-bold mt-2">Exemplo de Payload JSON:</div>
+                                            <pre className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-amber-300 overflow-x-auto text-[11px]">
+{`{
+  "name": "Nome do Cliente",
+  "phone": "11999998888",
+  "dealProduct": "Auto",
+  "dealValue": "1500.00",
+  "dealStatus": "Cotação",
+  "notes": "Cliente solicitou cotação no WhatsApp",
+  "createOpportunity": true
+}`}
+                                            </pre>
+                                            <p className="text-slate-400 font-sans text-[11px]">
+                                                ✨ <strong>12 Produtos Padronizados:</strong> Auto, Saúde, Vida, Residencial, Empresarial, Odonto, Consórcio, Previdência, Fiança Locaticia, Responsabilidade Civil, Viagem, Pet.
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* Testador em Tempo Real */}

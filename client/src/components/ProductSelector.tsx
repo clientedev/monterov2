@@ -2,20 +2,66 @@ import { useMemo, useRef } from "react";
 import { Input } from "@/components/ui/input";
 
 export const STANDARD_PRODUCTS = [
-    "Vida",
-    "Saúde",
-    "Odonto",
     "Auto",
-    "Pet",
-    "Viagem",
+    "Saúde",
+    "Vida",
+    "Residencial",
+    "Empresarial",
+    "Odonto",
+    "Consórcio",
     "Previdência",
-    "RC",
-    "Residência",
-    "Benefícios",
-    "Vida Empresarial",
+    "Fiança Locaticia",
+    "Responsabilidade Civil",
+    "Viagem",
+    "Pet",
 ] as const;
 
-type StandardProduct = typeof STANDARD_PRODUCTS[number];
+export type StandardProduct = typeof STANDARD_PRODUCTS[number];
+
+export const PRODUCT_SYNONYMS: Record<string, StandardProduct> = {
+    "rc": "Responsabilidade Civil",
+    "responsabilidade civil": "Responsabilidade Civil",
+    "residência": "Residencial",
+    "residencia": "Residencial",
+    "residencial": "Residencial",
+    "vida empresarial": "Empresarial",
+    "empresarial": "Empresarial",
+    "fiança locatícia": "Fiança Locaticia",
+    "fianca locaticia": "Fiança Locaticia",
+    "fiança locaticia": "Fiança Locaticia",
+    "fianca locatícia": "Fiança Locaticia",
+    "consorcio": "Consórcio",
+    "consórcio": "Consórcio",
+    "saúde": "Saúde",
+    "saude": "Saúde",
+    "plano de saúde": "Saúde",
+    "plano de saude": "Saúde",
+    "vida": "Vida",
+    "seguro de vida": "Vida",
+    "odonto": "Odonto",
+    "odontológico": "Odonto",
+    "odontologico": "Odonto",
+    "plano odontológico": "Odonto",
+    "auto": "Auto",
+    "seguro auto": "Auto",
+    "automóvel": "Auto",
+    "automovel": "Auto",
+    "pet": "Pet",
+    "seguro pet": "Pet",
+    "viagem": "Viagem",
+    "seguro viagem": "Viagem",
+    "previdência": "Previdência",
+    "previdencia": "Previdência",
+    "previdência privada": "Previdência",
+    "previdencia privada": "Previdência",
+};
+
+export function normalizeProductName(name: string): string {
+    if (!name) return "";
+    const clean = name.trim();
+    const key = clean.toLowerCase();
+    return PRODUCT_SYNONYMS[key] || clean;
+}
 
 interface ProductSelectorProps {
     value?: string | null;
@@ -41,8 +87,9 @@ export function ProductSelector({ value = "", onChange, className = "" }: Produc
         let customVal = "";
 
         for (const item of items) {
-            if ((STANDARD_PRODUCTS as readonly string[]).includes(item)) {
-                standard.push(item);
+            const normalized = normalizeProductName(item);
+            if ((STANDARD_PRODUCTS as readonly string[]).includes(normalized)) {
+                if (!standard.includes(normalized)) standard.push(normalized);
             } else {
                 hasOutro = true;
                 customVal = item.replace(/^Outro:\s*/i, "");

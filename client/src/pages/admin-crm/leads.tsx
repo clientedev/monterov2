@@ -51,6 +51,7 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import { cn } from "@/lib/utils";
 import { ContactProfile } from "@/components/ContactProfile";
 import { ContactFormModal } from "@/components/ContactFormModal";
+import { STANDARD_PRODUCTS } from "@/components/ProductSelector";
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
@@ -1049,17 +1050,17 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando serviços...
                                                 </div>
                                             )}
-                                            {["Plano de Saúde", "Vida", "Odonto", "Auto", "Pet", "Viagem", "Residência", "Benefícios", "Previdência"].map((prod) => (
+                                            {STANDARD_PRODUCTS.map((prod) => (
                                                 <SelectItem key={prod} value={prod}>
                                                     {prod}
                                                 </SelectItem>
                                             ))}
-                                            {services?.filter((s: any) => !["Plano de Saúde", "Vida", "Odonto", "Auto", "Pet", "Viagem", "Residência", "Benefícios", "Previdência"].includes(s.title)).map((s: any) => (
+                                            {services?.filter((s: any) => !(STANDARD_PRODUCTS as readonly string[]).includes(s.title)).map((s: any) => (
                                                 <SelectItem key={s.id} value={s.title}>
                                                     {s.title}
                                                 </SelectItem>
                                             ))}
-                                            {field.value && !["Plano de Saúde", "Vida", "Odonto", "Auto", "Pet", "Viagem", "Residência", "Benefícios", "Previdência"].includes(field.value) && !services?.some((s: any) => s.title === field.value) && (
+                                            {field.value && !(STANDARD_PRODUCTS as readonly string[]).includes(field.value as any) && !services?.some((s: any) => s.title === field.value) && (
                                                 <SelectItem value={field.value}>
                                                     {field.value}
                                                 </SelectItem>

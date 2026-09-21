@@ -102,7 +102,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit2, FileDown, FileSpreadsheet, Trash2, Sparkles } from "lucide-react";
+import { Edit2, FileDown, FileSpreadsheet, Trash2, Sparkles, TrendingUp, DollarSign, ArrowRight } from "lucide-react";
+import { useLocation } from "wouter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ProductSelector, STANDARD_PRODUCTS } from "@/components/ProductSelector";
 
@@ -168,6 +169,16 @@ export default function ContactsPage() {
     const [isEditing, setIsEditing] = useState<number | null>(null);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
     const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
+
+    // ── Opportunity Creation Modal ──────────────────────────────────────────────
+    const [, setLocation] = useLocation();
+    const [oppModalOpen, setOppModalOpen] = useState(false);
+    const [oppTargetContact, setOppTargetContact] = useState<Contact | null>(null);
+    const [oppProduct, setOppProduct] = useState<string>("Auto");
+    const [oppStage, setOppStage] = useState<string>("new");
+    const [oppValue, setOppValue] = useState<string>("");
+    const [oppNotes, setOppNotes] = useState<string>("");
+    const [creatingOpp, setCreatingOpp] = useState<boolean>(false);
 
     // ── Pagination ─────────────────────────────────────────────────────────────
     const [currentPage, setCurrentPage] = useState(1);
@@ -335,6 +346,55 @@ export default function ContactsPage() {
             setDeleteTargetId(null);
         },
     });
+
+    const handleOpenOppModal = (contact: Contact) => {
+        setOppTargetContact(contact);
+        const contactProds = (contact.productType || "").split(",").map(p => p.trim()).filter(Boolean);
+        setOppProduct(contactProds[0] || STANDARD_PRODUCTS[0]);
+        setOppStage("new");
+        setOppValue("");
+        setOppNotes("");
+        setOppModalOpen(true);
+    };
+
+    const handleCreateOpportunity = async (goToPipeline = false) => {
+        if (!oppTargetContact) return;
+        setCreatingOpp(true);
+        try {
+            const cleanVal = oppValue.replace(/[R$\s]/g, "").trim();
+            await apiRequest("POST", "/api/leads", {
+                contactId: oppTargetContact.id,
+                product: oppProduct || "Oportunidade Comercial",
+                status: oppStage || "new",
+                source: oppTargetContact.contactOrigin || "Base de Contatos",
+                value: cleanVal || null,
+                notes: oppNotes || null,
+                assignedTo: oppTargetContact.internalResponsibleId || undefined,
+            });
+
+            queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+
+            toast({
+                title: "🎯 Oportunidade Criada com Sucesso!",
+                description: `Oportunidade de ${oppProduct} criada no Funil para ${oppTargetContact.name}.`,
+            });
+
+            setOppModalOpen(false);
+
+            if (goToPipeline) {
+                setLocation("/admin/leads");
+            }
+        } catch (err: any) {
+            toast({
+                title: "Erro ao criar oportunidade",
+                description: err.message || "Tente novamente.",
+                variant: "destructive",
+            });
+        } finally {
+            setCreatingOpp(false);
+        }
+    };
 
     const deduplicateMutation = useMutation({
         mutationFn: async () => {
@@ -1017,6 +1077,18 @@ export default function ContactsPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
+                                                                    className="h-8 w-8 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 rounded-lg p-0 shadow-sm transition-all"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleOpenOppModal(contact);
+                                                                    }}
+                                                                    title="Criar Oportunidade no Funil (LEADS & Pipeline)"
+                                                                >
+                                                                    <TrendingUp className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
                                                                     className="h-8 w-8 text-primary bg-primary/10 hover:bg-primary/20 rounded-lg p-0 shadow-sm transition-all"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
@@ -1230,6 +1302,130 @@ export default function ContactsPage() {
                             </div>
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Criar Oportunidade Dialog ────────────────────────────────────────── */}
+            <Dialog open={oppModalOpen} onOpenChange={setOppModalOpen}>
+                <DialogContent className="sm:max-w-[480px] rounded-3xl p-6 border-none shadow-2xl">
+                    <DialogHeader className="space-y-1">
+                        <DialogTitle className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-emerald-600" />
+                            Criar Oportunidade no Funil (LEADS &amp; Pipeline)
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-slate-500">
+                            Registre uma nova negociação ou cotação diretamente no pipeline de vendas.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {oppTargetContact && (
+                        <div className="space-y-4 pt-2">
+                            {/* Target Contact Info Card */}
+                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Contato</span>
+                                    <strong className="text-sm font-bold text-slate-900">{oppTargetContact.name}</strong>
+                                    {oppTargetContact.phone && (
+                                        <p className="text-xs text-slate-500">{oppTargetContact.phone}</p>
+                                    )}
+                                </div>
+                                <Badge className="bg-emerald-100 text-emerald-800 border-none font-bold text-xs py-1 px-2.5 rounded-xl">
+                                    {oppTargetContact.type === "company" ? "PJ" : "PF"}
+                                </Badge>
+                            </div>
+
+                            {/* Product Selector */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-700">Produto / Ramo</label>
+                                <Select value={oppProduct} onValueChange={setOppProduct}>
+                                    <SelectTrigger className="h-11 rounded-xl text-sm font-semibold border-slate-200">
+                                        <SelectValue placeholder="Selecione o produto..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {STANDARD_PRODUCTS.map((prod) => (
+                                            <SelectItem key={prod} value={prod} className="font-semibold text-xs">
+                                                {prod}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Stage Selector & Estimated Value */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700">Etapa Inicial do Funil</label>
+                                    <Select value={oppStage} onValueChange={setOppStage}>
+                                        <SelectTrigger className="h-11 rounded-xl text-xs font-semibold border-slate-200">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="new" className="text-xs font-semibold">Novo Lead / Cotação</SelectItem>
+                                            <SelectItem value="qualified" className="text-xs font-semibold">Qualificado / Em Negociação</SelectItem>
+                                            <SelectItem value="proposal" className="text-xs font-semibold">Proposta Enviada</SelectItem>
+                                            <SelectItem value="implemented" className="text-xs font-semibold">Fechado / Ganho</SelectItem>
+                                            <SelectItem value="cancelled" className="text-xs font-semibold">Cancelado / Perdido</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700">Valor Estimado (R$)</label>
+                                    <div className="relative">
+                                        <DollarSign className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <Input
+                                            placeholder="0,00"
+                                            value={oppValue}
+                                            onChange={(e) => setOppValue(e.target.value)}
+                                            className="h-11 rounded-xl pl-9 text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Notes */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-700">Observações / Detalhes da Cotação</label>
+                                <textarea
+                                    rows={2}
+                                    placeholder="Informações adicionais para a equipe comercial..."
+                                    value={oppNotes}
+                                    onChange={(e) => setOppNotes(e.target.value)}
+                                    className="w-full rounded-xl border border-input bg-white p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                />
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setOppModalOpen(false)}
+                                    className="h-11 rounded-xl font-bold text-xs order-2 sm:order-1"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="button"
+                                    disabled={creatingOpp}
+                                    onClick={() => handleCreateOpportunity(false)}
+                                    className="h-11 rounded-xl font-bold text-xs bg-slate-900 hover:bg-slate-800 text-white order-1 sm:order-2 flex-1"
+                                >
+                                    {creatingOpp ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
+                                    Criar Oportunidade
+                                </Button>
+                                <Button
+                                    type="button"
+                                    disabled={creatingOpp}
+                                    onClick={() => handleCreateOpportunity(true)}
+                                    className="h-11 rounded-xl font-bold text-xs bg-emerald-700 hover:bg-emerald-800 text-white order-1 sm:order-3 flex-1 gap-1.5 shadow-lg shadow-emerald-700/20"
+                                >
+                                    {creatingOpp ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
+                                    Criar &amp; Ir para o Pipeline
+                                    <ArrowRight className="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
 
