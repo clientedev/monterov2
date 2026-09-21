@@ -117,6 +117,10 @@ export default function LeadsPage() {
         queryKey: ["/api/users"],
     });
 
+    const staffUsers = useMemo(() => {
+        return (users || []).filter((u: any) => u.role === "admin" || u.role === "employee");
+    }, [users]);
+
     const getResponsibleUser = (userId?: number | null) => {
         if (!userId) return null;
         return users?.find(u => u.id === userId) || null;
@@ -319,8 +323,9 @@ export default function LeadsPage() {
                                 <SelectValue placeholder="Todos" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all" className="font-bold text-xs">Todos</SelectItem>
-                                {users?.map((u) => (
+                                <SelectItem value="all" className="font-bold text-xs">Todos os Funcionários</SelectItem>
+                                <SelectItem value="unassigned" className="text-xs font-bold text-amber-600">Não atribuído</SelectItem>
+                                {staffUsers.map((u) => (
                                     <SelectItem key={u.id} value={u.id.toString()} className="text-xs font-medium">
                                         {u.name}
                                     </SelectItem>
@@ -364,7 +369,7 @@ export default function LeadsPage() {
                             <div className="p-6 overflow-y-auto flex-1 box-border">
                                 <LeadForm
                                     contacts={contacts || []}
-                                    users={users || []}
+                                    users={staffUsers}
                                     columns={columns}
                                     initialData={editingLeadId ? leads?.find(l => l.id === editingLeadId) : undefined}
                                     onSubmit={(data: InsertLead) => {
@@ -500,7 +505,7 @@ export default function LeadsPage() {
                                                                 getContactForLead(l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
                                                             ) && (
                                                                 selectedResponsible === "all" ||
-                                                                String(l.assignedTo) === String(selectedResponsible)
+                                                                (selectedResponsible === "unassigned" ? !l.assignedTo : String(l.assignedTo) === String(selectedResponsible))
                                                             )).map((lead, index) => (
                                                                 <Draggable key={lead.id} draggableId={lead.id.toString()} index={index}>
                                                                     {(provided, snapshot) => (
@@ -969,17 +974,20 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                         name="assignedTo"
                         render={({ field }) => (
                             <FormItem className="w-full min-w-0">
-                                <FormLabel className="text-gray-600 font-bold">Responsável pela Venda</FormLabel>
+                                <FormLabel className="text-gray-600 font-bold">Responsável pela Venda (Funcionário)</FormLabel>
                                 <Select
-                                    onValueChange={(val) => field.onChange(val ? parseInt(val) : null)}
-                                    value={field.value ? field.value.toString() : ""}
+                                    onValueChange={(val) => field.onChange(!val || val === "none" ? null : parseInt(val))}
+                                    value={field.value ? field.value.toString() : "none"}
                                 >
                                     <FormControl className="w-full min-w-0">
                                         <SelectTrigger className="rounded-xl h-11 w-full min-w-0">
-                                            <SelectValue placeholder="Selecione o responsável..." />
+                                            <SelectValue placeholder="Selecione o funcionário responsável..." />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
+                                        <SelectItem value="none" className="text-slate-500 italic text-xs">
+                                            Nenhum responsável (Não atribuído)
+                                        </SelectItem>
                                         {users?.map((u: any) => (
                                             <SelectItem key={u.id} value={u.id.toString()}>
                                                 <div className="flex items-center gap-2">
@@ -987,6 +995,9 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                                                         {u.name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <span>{u.name}</span>
+                                                    {u.role === "admin" && (
+                                                        <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">Admin</span>
+                                                    )}
                                                 </div>
                                             </SelectItem>
                                         ))}

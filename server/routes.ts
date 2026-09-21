@@ -3279,32 +3279,117 @@ export async function registerRoutes(
     return false;
   }
 
-  async function getOrGenerateExternalApiKey(): Promise<string> {
-    const settings = await storage.getSiteSettings();
-    if (settings.externalApiKey && settings.externalApiKey.trim()) {
-      return settings.externalApiKey.trim();
+  function cleanApiKey(val: unknown): string {
+    if (!val) return "";
+    let str = "";
+    if (Array.isArray(val)) {
+      str = String(val[0] || "");
+    } else {
+      str = String(val);
     }
-    const newKey = "ms_live_" + crypto.randomBytes(16).toString("hex");
-    await storage.updateSiteSettings({ ...settings, externalApiKey: newKey });
-    return newKey;
+    return str.trim().replace(/^["']+|["']+$/g, "").trim();
+  }
+
+  async function getValidExternalApiKeys(): Promise<Set<string>> {
+    const validKeys = new Set<string>();
+
+    // 1. Check environment variables
+    const envKey1 = cleanApiKey(process.env.CRM_API_KEY);
+    if (envKey1) validKeys.add(envKey1);
+    const envKey2 = cleanApiKey(process.env.EXTERNAL_API_KEY);
+    if (envKey2) validKeys.add(envKey2);
+    const envKey3 = cleanApiKey(process.env.API_KEY);
+    if (envKey3) validKeys.add(envKey3);
+    const envKey4 = cleanApiKey(process.env.CRM_KEY);
+    if (envKey4) validKeys.add(envKey4);
+
+    // 2. Check site settings from DB
+    try {
+      const settings = await storage.getSiteSettings();
+      if (settings?.externalApiKey && settings.externalApiKey.trim()) {
+        const parts = settings.externalApiKey.split(",").map(cleanApiKey).filter(Boolean);
+        for (const p of parts) {
+          validKeys.add(p);
+        }
+      } else if (validKeys.size === 0) {
+        // If no keys configured at all, generate one and save it
+        const newKey = "ms_live_" + crypto.randomBytes(16).toString("hex");
+        await storage.updateSiteSettings({ ...settings, externalApiKey: newKey });
+        validKeys.add(newKey);
+      }
+    } catch (e) {
+      console.error("[External API Auth] Error loading settings:", e);
+    }
+
+    return validKeys;
+  }
+
+  async function getPrimaryExternalApiKey(): Promise<string> {
+    const keys = await getValidExternalApiKeys();
+    try {
+      const settings = await storage.getSiteSettings();
+      if (settings?.externalApiKey && settings.externalApiKey.trim()) {
+        return cleanApiKey(settings.externalApiKey.split(",")[0]);
+      }
+    } catch (_) {}
+    for (const k of Array.from(keys)) {
+      if (k) return k;
+    }
+    return "ms_live_" + crypto.randomBytes(16).toString("hex");
+  }
+
+  async function getOrGenerateExternalApiKey(): Promise<string> {
+    return await getPrimaryExternalApiKey();
   }
 
   async function externalApiKeyAuth(req: any, res: any, next: any) {
     try {
-      const validKey = await getOrGenerateExternalApiKey();
-      const apiKeyHeader = req.headers["x-api-key"] || req.headers["x-api-token"];
-      const authHeader = req.headers["authorization"];
-      const queryKey = req.query.api_key || req.query.apiKey;
+      const validKeys = await getValidExternalApiKeys();
 
-      let providedKey = apiKeyHeader || queryKey;
-      if (!providedKey && authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
-        providedKey = authHeader.substring(7).trim();
+      // Check all header variations
+      const rawHeader =
+        req.headers["x-api-key"] ||
+        req.headers["x-apikey"] ||
+        req.headers["crm-api-key"] ||
+        req.headers["x-crm-api-key"] ||
+        req.headers["crm_api_key"] ||
+        req.headers["api-key"] ||
+        req.headers["apikey"] ||
+        req.headers["x-api-token"] ||
+        req.headers["x-authorization"];
+
+      const authHeader = req.headers["authorization"];
+      const queryKey =
+        req.query.api_key ||
+        req.query.apiKey ||
+        req.query.crm_api_key ||
+        req.query.crmApiKey ||
+        req.query.key ||
+        req.query.token;
+
+      const bodyKey =
+        req.body?.apiKey ||
+        req.body?.api_key ||
+        req.body?.crmApiKey ||
+        req.body?.CRM_API_KEY ||
+        req.body?.crm_api_key ||
+        req.body?.key;
+
+      let extractedKey = cleanApiKey(rawHeader || queryKey || bodyKey);
+
+      if (!extractedKey && authHeader && typeof authHeader === "string") {
+        if (authHeader.startsWith("Bearer ")) {
+          extractedKey = cleanApiKey(authHeader.substring(7));
+        } else {
+          extractedKey = cleanApiKey(authHeader);
+        }
       }
 
-      if (!providedKey || providedKey !== validKey) {
+      if (!extractedKey || !validKeys.has(extractedKey)) {
+        console.warn(`[External API] 401 Unauthorized attempt on ${req.method} ${req.originalUrl}. Provided key: "${extractedKey ? extractedKey.slice(0, 4) + '...' : '(none)'}". Valid keys count: ${validKeys.size}`);
         return res.status(401).json({
           success: false,
-          error: "Unauthorized: Chave de API externa inválida ou não fornecida. Informe a chave no header X-API-Key ou no parâmetro ?api_key=",
+          error: "Unauthorized: Chave de API externa inválida ou não fornecida. Informe a chave no header X-API-Key (ou crm-api-key), Authorization Bearer, ou ?api_key=",
         });
       }
 
@@ -3338,6 +3423,25 @@ export async function registerRoutes(
       res.json({
         apiKey: newKey,
         message: "Nova chave de API externa gerada com sucesso! Atualize suas conexões do WhatsApp com a nova chave.",
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Admin POST Set Custom Key
+  app.post(["/api/v1/external/set-key", "/api/v1/external/key"], isAdmin, async (req, res) => {
+    try {
+      const { apiKey } = req.body;
+      const cleanKey = cleanApiKey(apiKey);
+      if (!cleanKey || cleanKey.length < 6) {
+        return res.status(400).json({ message: "A chave de API deve conter pelo menos 6 caracteres." });
+      }
+      const settings = await storage.getSiteSettings();
+      await storage.updateSiteSettings({ ...settings, externalApiKey: cleanKey });
+      res.json({
+        apiKey: cleanKey,
+        message: "Chave de API externa personalizada salva com sucesso!",
       });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -3433,8 +3537,33 @@ export async function registerRoutes(
         status = "Ativo",
       } = req.body || {};
 
-      const rawPhone = phone ? String(phone).trim() : "";
-      let contactName = name ? String(name).trim() : "";
+      const inputPhone =
+        phone ??
+        req.body?.telefone ??
+        req.body?.celular ??
+        req.body?.whatsapp ??
+        req.body?.numero ??
+        "";
+      const rawPhone = inputPhone !== undefined && inputPhone !== null
+        ? String(inputPhone).replace(/@.+$/, "").trim()
+        : "";
+
+      const inputName =
+        name ??
+        req.body?.nome ??
+        req.body?.nomeContato ??
+        req.body?.contactName ??
+        "";
+      let contactName = inputName ? String(inputName).trim() : "";
+
+      const inputDoc =
+        document ??
+        req.body?.documento ??
+        req.body?.cpf ??
+        req.body?.cnpj ??
+        req.body?.cpfCnpj ??
+        "";
+      const rawDoc = inputDoc ? String(inputDoc).trim() : "";
 
       const allExistingContacts = await storage.getContacts();
 
@@ -3446,8 +3575,8 @@ export async function registerRoutes(
             contactName = match.name;
           }
         }
-        if (!contactName && document) {
-          const docClean = cleanDigits(document);
+        if (!contactName && rawDoc) {
+          const docClean = cleanDigits(rawDoc);
           const match = allExistingContacts.find(c => c.document && cleanDigits(c.document) === docClean);
           if (match) {
             contactName = match.name;
@@ -3466,7 +3595,15 @@ export async function registerRoutes(
       }
 
       // Extract and normalize product names (Auto, Saúde, Vida, Residencial, Empresarial, Odonto, Consórcio, Previdência, Fiança Locaticia, Responsabilidade Civil, Viagem, Pet)
-      const rawProductInput = req.body.dealProduct || req.body.product || req.body.produto || req.body.produtos || req.body.products || productType || null;
+      const rawProductInput =
+        req.body?.dealProduct ??
+        req.body?.deal_product ??
+        req.body?.product ??
+        req.body?.produto ??
+        req.body?.produtos ??
+        req.body?.products ??
+        productType ??
+        null;
       let finalProductList: string[] = [];
 
       if (rawProductInput) {
@@ -3493,16 +3630,40 @@ export async function registerRoutes(
 
       const finalProductType = finalProductList.length > 0 ? finalProductList.join(", ") : (productType ? String(productType).trim() : null);
 
+      // Resolve responsible employee for internal assignment
+      const allUsers = await storage.getUsers();
+      const staffUsers = allUsers.filter(u => u.role === "admin" || u.role === "employee");
+
+      const rawResp =
+        req.body?.assignedTo ??
+        req.body?.assigned_to ??
+        internalResponsibleId ??
+        responsibleId ??
+        req.body?.responsavelId ??
+        req.body?.consultorId ??
+        null;
+
+      let resolvedAssignedTo: number | undefined = undefined;
+      if (rawResp !== null && rawResp !== undefined && !isNaN(Number(rawResp))) {
+        const numResp = Number(rawResp);
+        const matchStaff = staffUsers.find(u => u.id === numResp);
+        if (matchStaff) resolvedAssignedTo = matchStaff.id;
+      } else if (req.body?.responsavel || responsibleName || req.body?.consultor) {
+        const queryName = String(req.body?.responsavel || responsibleName || req.body?.consultor).trim().toLowerCase();
+        const matchStaff = staffUsers.find(u => u.name.toLowerCase().includes(queryName) || (u.email && u.email.toLowerCase() === queryName));
+        if (matchStaff) resolvedAssignedTo = matchStaff.id;
+      }
+
       const contactPayload: InsertContact = {
         name: contactName,
         type: type === "company" ? "company" : "individual",
         phone: rawPhone || null,
         email: email ? String(email).trim() : null,
-        document: document ? String(document).trim() : null,
+        document: rawDoc || null,
         address: address ? String(address).trim() : null,
         responsibleName: responsibleName ? String(responsibleName).trim() : null,
         responsibleId: responsibleId ? Number(responsibleId) : undefined,
-        internalResponsibleId: internalResponsibleId ? Number(internalResponsibleId) : undefined,
+        internalResponsibleId: resolvedAssignedTo || (internalResponsibleId ? Number(internalResponsibleId) : undefined),
         anniversaryDate: anniversaryDate ? String(anniversaryDate).trim() : null,
         maritalStatus: maritalStatus ? String(maritalStatus).trim() : null,
         productType: finalProductType,
@@ -3510,7 +3671,7 @@ export async function registerRoutes(
         contactOrigin: contactOrigin ? String(contactOrigin).trim() : "WhatsApp Integrado",
         isReferral: Boolean(isReferral),
         referredByContactId: referredByContactId ? Number(referredByContactId) : undefined,
-        notes: notes ? String(notes).trim() : null,
+        notes: (notes || req.body?.observacoes) ? String(notes || req.body?.observacoes).trim() : null,
         status: status === "Cancelado" || status === "Prospects" ? status : "Ativo",
       };
 
@@ -3560,45 +3721,56 @@ export async function registerRoutes(
       }
 
       // Check if caller wants to create an Opportunity in Leads & Pipeline
+      const isOpportunityEndpoint =
+        req.path.includes("opportunities") ||
+        req.path.includes("leads") ||
+        req.path.includes("deal") ||
+        Boolean(req.originalUrl && req.originalUrl.includes("deal"));
+
       const shouldCreateOpportunity = Boolean(
-        req.body.dealProduct ||
-        req.body.createOpportunity === true ||
-        req.body.createOpportunity === "true" ||
-        req.body.createLead === true ||
-        req.body.createLead === "true" ||
-        req.body.criarOportunidade === true ||
-        req.body.criarOportunidade === "true" ||
-        req.body.deal ||
-        req.body.opportunity ||
-        req.body.pipeline ||
-        req.body.dealValue !== undefined ||
-        req.body.dealStatus !== undefined
+        isOpportunityEndpoint ||
+        req.body?.dealProduct ||
+        req.body?.deal_product ||
+        req.body?.product ||
+        req.body?.produto ||
+        req.body?.createOpportunity === true ||
+        req.body?.createOpportunity === "true" ||
+        req.body?.createLead === true ||
+        req.body?.createLead === "true" ||
+        req.body?.criarOportunidade === true ||
+        req.body?.criarOportunidade === "true" ||
+        req.body?.deal ||
+        req.body?.opportunity ||
+        req.body?.pipeline ||
+        req.body?.dealValue !== undefined ||
+        req.body?.dealStatus !== undefined
       );
 
       let createdLead: any = null;
       if (shouldCreateOpportunity) {
         const oppProduct = normalizeBackendProductName(
-          req.body.dealProduct ||
-          req.body.product ||
-          req.body.produto ||
+          req.body?.dealProduct ||
+          req.body?.deal_product ||
+          req.body?.product ||
+          req.body?.produto ||
           finalProductList[0] ||
           "Oportunidade Comercial"
         );
 
-        const rawDealValue = req.body.dealValue ?? req.body.value ?? req.body.valor ?? req.body.leadValue ?? null;
+        const rawDealValue = req.body?.dealValue ?? req.body?.value ?? req.body?.valor ?? req.body?.leadValue ?? null;
         const formattedDealValue = rawDealValue !== null && rawDealValue !== undefined && String(rawDealValue).trim()
           ? String(rawDealValue).replace(/[R$\s]/g, "").trim()
           : null;
 
         const oppStage = mapDealStatusToPipelineStage(
-          req.body.dealStatus ||
-          req.body.statusDeal ||
-          req.body.status ||
-          req.body.stage ||
+          req.body?.dealStatus ||
+          req.body?.statusDeal ||
+          req.body?.status ||
+          req.body?.stage ||
           "new"
         );
 
-        const oppNotes = req.body.dealNotes || req.body.notes || req.body.opportunityNotes || req.body.observacoes || null;
+        const oppNotes = req.body?.dealNotes || req.body?.notes || req.body?.opportunityNotes || req.body?.observacoes || null;
 
         createdLead = await storage.createLead({
           contactId: result.contact.id,
@@ -3607,7 +3779,7 @@ export async function registerRoutes(
           source: contactOrigin || "WhatsApp Integrado",
           value: formattedDealValue,
           notes: oppNotes ? String(oppNotes).trim() : null,
-          assignedTo: internalResponsibleId ? Number(internalResponsibleId) : undefined,
+          assignedTo: resolvedAssignedTo || undefined,
         });
 
         // Trigger Todoist automations
@@ -3666,18 +3838,29 @@ export async function registerRoutes(
   }
 
   // External Create/Register Contact API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
-  app.post("/api/v1/external/contacts", externalApiKeyAuth, handleExternalContactAndOpportunity);
+  app.post([
+    "/api/v1/external/contacts",
+    "/api/external/contacts",
+  ], externalApiKeyAuth, handleExternalContactAndOpportunity);
 
   // External Create Opportunity API (Direct endpoints supporting external WhatsApp crmService)
   app.post([
     "/api/v1/external/opportunities",
+    "/api/external/opportunities",
     "/api/v1/external/leads",
+    "/api/external/leads",
     "/api/contacts/crm-deal",
     "/api/v1/external/contacts/crm-deal",
+    "/api/external/contacts/crm-deal",
+    "/api/crm/deal",
+    "/api/v1/crm/deal",
   ], externalApiKeyAuth, handleExternalContactAndOpportunity);
 
   // External Lookup API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
-  app.get("/api/v1/external/contacts/lookup", externalApiKeyAuth, async (req, res) => {
+  app.get([
+    "/api/v1/external/contacts/lookup",
+    "/api/external/contacts/lookup",
+  ], externalApiKeyAuth, async (req, res) => {
     try {
       const phone = req.query.phone ? String(req.query.phone).trim() : "";
       const document = req.query.document ? String(req.query.document).trim() : "";

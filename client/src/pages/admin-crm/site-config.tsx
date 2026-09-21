@@ -40,7 +40,8 @@ import {
     Zap,
     Play,
     RefreshCw,
-    Search
+    Search,
+    Edit3
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -235,6 +236,8 @@ export default function SiteConfigPage() {
     const [testPhone, setTestPhone] = useState("");
     const [testResult, setTestResult] = useState<any>(null);
     const [testingApi, setTestingApi] = useState(false);
+    const [isEditingKey, setIsEditingKey] = useState(false);
+    const [customKeyInput, setCustomKeyInput] = useState("");
 
     const fetchExternalSettings = async () => {
         try {
@@ -242,7 +245,31 @@ export default function SiteConfigPage() {
             const res = await apiRequest("GET", "/api/v1/external/settings");
             const data = await res.json();
             setExternalApiData(data);
+            setCustomKeyInput(data?.apiKey || "");
         } catch (_) {} finally {
+            setLoadingExternalApi(false);
+        }
+    };
+
+    const handleSaveCustomKey = async () => {
+        const cleanKey = customKeyInput.trim();
+        if (!cleanKey || cleanKey.length < 6) {
+            toast({ title: "Chave inválida", description: "A chave deve ter pelo menos 6 caracteres.", variant: "destructive" });
+            return;
+        }
+        try {
+            setLoadingExternalApi(true);
+            const res = await apiRequest("POST", "/api/v1/external/set-key", { apiKey: cleanKey });
+            const data = await res.json();
+            setExternalApiData(prev => ({
+                apiKey: data.apiKey,
+                endpointUrl: prev?.endpointUrl || (window.location.origin + "/api/v1/external/contacts/lookup")
+            }));
+            setIsEditingKey(false);
+            toast({ title: "🔑 Chave de API Atualizada!", description: data.message });
+        } catch (err: any) {
+            toast({ title: "Erro ao salvar chave", description: err.message, variant: "destructive" });
+        } finally {
             setLoadingExternalApi(false);
         }
     };
@@ -1068,44 +1095,89 @@ export default function SiteConfigPage() {
                                 <CardContent className="p-8 space-y-6">
                                     <div className="space-y-3">
                                         <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Chave de API do CRM (X-API-Key)</Label>
-                                        <div className="flex items-center gap-2">
-                                            <div className="relative flex-1">
+                                        {isEditingKey ? (
+                                            <div className="flex items-center gap-2">
                                                 <Input
-                                                    type={showKey ? "text" : "password"}
-                                                    readOnly
-                                                    value={externalApiData?.apiKey || "Carregando chave..."}
-                                                    className="h-12 font-mono text-sm pr-16 rounded-xl bg-slate-50 border-slate-200"
+                                                    type="text"
+                                                    value={customKeyInput}
+                                                    onChange={(e) => setCustomKeyInput(e.target.value)}
+                                                    placeholder="Cole ou digite sua chave personalizada (ex: CRM_API_KEY do seu .env)"
+                                                    className="h-12 font-mono text-sm rounded-xl bg-white border-primary focus-visible:ring-primary flex-1"
                                                 />
-                                                <button
+                                                <Button
                                                     type="button"
-                                                    onClick={() => setShowKey(!showKey)}
-                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 text-xs font-bold px-2 py-1 bg-slate-200/60 rounded-md"
+                                                    onClick={handleSaveCustomKey}
+                                                    disabled={loadingExternalApi}
+                                                    className="h-12 px-5 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm shrink-0"
                                                 >
-                                                    {showKey ? "Ocultar" : "Mostrar"}
-                                                </button>
+                                                    <Save className="h-4 w-4" />
+                                                    Salvar Chave
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setIsEditingKey(false);
+                                                        setCustomKeyInput(externalApiData?.apiKey || "");
+                                                    }}
+                                                    className="h-12 px-4 font-bold rounded-xl border-slate-200 text-slate-700 shrink-0"
+                                                >
+                                                    Cancelar
+                                                </Button>
                                             </div>
-                                            <Button
-                                                type="button"
-                                                onClick={handleCopyKey}
-                                                className="h-12 px-5 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm shrink-0"
-                                            >
-                                                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                                                {copied ? "Copiado!" : "Copiar Chave"}
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={handleRegenerateKey}
-                                                disabled={loadingExternalApi}
-                                                className="h-12 px-4 font-bold rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 gap-2 shrink-0"
-                                                title="Gerar uma nova chave de API"
-                                            >
-                                                <RefreshCw className={`h-4 w-4 ${loadingExternalApi ? "animate-spin" : ""}`} />
-                                                Gerar Nova
-                                            </Button>
-                                        </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <div className="relative flex-1">
+                                                    <Input
+                                                        type={showKey ? "text" : "password"}
+                                                        readOnly
+                                                        value={externalApiData?.apiKey || "Carregando chave..."}
+                                                        className="h-12 font-mono text-sm pr-16 rounded-xl bg-slate-50 border-slate-200"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowKey(!showKey)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 text-xs font-bold px-2 py-1 bg-slate-200/60 rounded-md"
+                                                    >
+                                                        {showKey ? "Ocultar" : "Mostrar"}
+                                                    </button>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    onClick={handleCopyKey}
+                                                    className="h-12 px-5 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm shrink-0"
+                                                >
+                                                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                                    {copied ? "Copiado!" : "Copiar Chave"}
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setCustomKeyInput(externalApiData?.apiKey || "");
+                                                        setIsEditingKey(true);
+                                                    }}
+                                                    className="h-12 px-4 font-bold rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 gap-2 shrink-0"
+                                                    title="Editar ou colar uma chave personalizada pré-existente"
+                                                >
+                                                    <Edit3 className="h-4 w-4" />
+                                                    Editar Chave
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={handleRegenerateKey}
+                                                    disabled={loadingExternalApi}
+                                                    className="h-12 px-4 font-bold rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 gap-2 shrink-0"
+                                                    title="Gerar uma nova chave de API aleatória"
+                                                >
+                                                    <RefreshCw className={`h-4 w-4 ${loadingExternalApi ? "animate-spin" : ""}`} />
+                                                    Gerar Nova
+                                                </Button>
+                                            </div>
+                                        )}
                                         <p className="text-xs text-slate-500 font-medium">
-                                            ⚠️ Mantenha esta chave em segredo. Ela concede permissão para seu sistema de WhatsApp consultar dados cadastrais, seguros e negócios do seu CRM.
+                                            ⚠️ Mantenha esta chave em segredo. Ela concede permissão para seu sistema de WhatsApp consultar dados cadastrais, seguros e enviar negociações diretamente para o funil LEADS & Pipeline.
                                         </p>
                                     </div>
 
