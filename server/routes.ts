@@ -416,7 +416,7 @@ export async function registerRoutes(
       // Save the inquiry for the user's history
       const inquiry = await storage.createInquiry({ ...input, userId });
 
-      // Integration with CRM: Check/upsert contact and create Lead
+      // Integration with CRM: Salva/atualiza o contato e registra o histórico, SEM criar oportunidade no pipeline automaticamente
       const { contact } = await storage.upsertContact({
         type: "individual",
         name: input.name,
@@ -426,23 +426,15 @@ export async function registerRoutes(
         address: null,
         status: "Ativo",
         assignedTo: attributionId,
-      });
-
-      const lead = await storage.createLead({
-        contactId: contact.id,
-        status: "new",
-        value: null,
-        source: "Website Inquérito",
-        notes: `Mensagem: ${input.message}`,
+        notes: `Mensagem enviada pelo formulário do site: ${input.message}`,
       });
 
       await storage.createInteraction({
         contactId: contact.id,
-        leadId: lead.id,
         userId: attributionId,
         type: "Web Inquiry",
-        description: `Cliente solicitou cotação pelo site: ${input.message}`,
-        date: new Date()
+        description: `Contato recebido pelo site: ${input.message}`,
+        date: new Date(),
       });
 
       res.status(201).json(inquiry);
