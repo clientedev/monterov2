@@ -110,6 +110,7 @@ export default function LeadsThermometer() {
     const [selectedLeadForCnpj, setSelectedLeadForCnpj] = useState<ThermometerLead | null>(null);
     const [cnpjModalData, setCnpjModalData] = useState<any | null>(null);
     const [isLoadingCnpjModal, setIsLoadingCnpjModal] = useState(false);
+    const [manualCnpjInput, setManualCnpjInput] = useState("");
 
     // Quick Prospecting Modal State
     const [prospectingModalOpen, setProspectingModalOpen] = useState(false);
@@ -275,6 +276,10 @@ export default function LeadsThermometer() {
         setCnpjModalData(null);
         setCnpjModalOpen(true);
         setIsLoadingCnpjModal(true);
+
+        // Pré-preenche com CNPJ já conhecido (do enrichedLeadsMap ou do lead)
+        const existingDoc = enrichedLeadsMap[lead.placeId]?.document || lead.document || "";
+        setManualCnpjInput(existingDoc);
 
         const cleanDoc = lead.document ? lead.document.replace(/\D/g, "") : "";
         try {
@@ -1632,13 +1637,16 @@ export default function LeadsThermometer() {
                                 {selectedLeadForCnpj?.name}
                             </div>
                             <p className="text-xs text-slate-600 font-medium max-w-md mx-auto">
-                                CNPJ não foi localizado automaticamente para esta empresa na região ({locationInput}). Insira o CNPJ manualmente para consultar a Receita Federal:
+                                CNPJ não foi localizado automaticamente. Confirme ou insira o CNPJ para consultar a Receita Federal:
                             </p>
                             <div className="flex gap-2 max-w-sm mx-auto">
                                 <Input
                                     placeholder="00.000.000/0000-00"
+                                    value={manualCnpjInput}
                                     onChange={async (e) => {
-                                        const clean = e.target.value.replace(/\D/g, "");
+                                        const raw = e.target.value;
+                                        setManualCnpjInput(raw);
+                                        const clean = raw.replace(/\D/g, "");
                                         if (clean.length === 14) {
                                             setIsLoadingCnpjModal(true);
                                             try {
@@ -1672,6 +1680,44 @@ export default function LeadsThermometer() {
                                         }
                                     }}
                                 />
+                                {manualCnpjInput && manualCnpjInput.replace(/\D/g, "").length === 14 && (
+                                    <Button
+                                        size="sm"
+                                        className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                                        onClick={async () => {
+                                            const clean = manualCnpjInput.replace(/\D/g, "");
+                                            setIsLoadingCnpjModal(true);
+                                            try {
+                                                const res = await apiRequest("GET", `/api/proxy/companies/${clean}`);
+                                                if (res.ok) {
+                                                    const arr = await res.json();
+                                                    const data = Array.isArray(arr) ? arr[0] : arr;
+                                                    if (data && data.cnpj) {
+                                                        setCnpjModalData(data);
+                                                        if (selectedLeadForCnpj) {
+                                                            selectedLeadForCnpj.document = data.cnpj;
+                                                            setEnrichedLeadsMap(prev => ({
+                                                                ...prev,
+                                                                [selectedLeadForCnpj.placeId]: {
+                                                                    ...(prev[selectedLeadForCnpj.placeId] || {}),
+                                                                    document: data.cnpj,
+                                                                    name: data.razao_social || data.nome_fantasia || selectedLeadForCnpj.name,
+                                                                    address: [data.logradouro, data.numero, data.bairro, data.municipio, data.uf].filter(Boolean).join(", ") || selectedLeadForCnpj.address,
+                                                                    phone: data.ddd_telefone_1 || selectedLeadForCnpj.phone || null,
+                                                                    email: data.email || selectedLeadForCnpj.email || null,
+                                                                }
+                                                            }));
+                                                        }
+                                                    }
+                                                }
+                                            } catch (err) { /* ignore */ } finally {
+                                                setIsLoadingCnpjModal(false);
+                                            }
+                                        }}
+                                    >
+                                        <Search className="w-3.5 h-3.5 mr-1" /> Buscar
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     )}
