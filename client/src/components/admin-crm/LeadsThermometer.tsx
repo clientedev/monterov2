@@ -95,6 +95,7 @@ export default function LeadsThermometer() {
     const [savedLeadsMap, setSavedLeadsMap] = useState<Record<string, number>>({});
     const [enrichedLeadsMap, setEnrichedLeadsMap] = useState<Record<string, any>>({});
     const [dismissedLeads, setDismissedLeads] = useState<Set<string>>(new Set());
+    const [companySearchFilter, setCompanySearchFilter] = useState("");
 
     const dismissLead = (placeId: string) => {
         setDismissedLeads(prev => new Set(Array.from(prev).concat(placeId)));
@@ -180,6 +181,23 @@ export default function LeadsThermometer() {
     const allResults = searchData?.results || [];
     const results = allResults.filter(l => !dismissedLeads.has(l.placeId));
 
+    // Filtro em tempo real por nome da empresa, razão social, CNPJ ou endereço
+    const filteredResults = results.filter((lead) => {
+        if (!companySearchFilter.trim()) return true;
+        const q = companySearchFilter.toLowerCase().trim();
+        const cleanQDigits = q.replace(/\D/g, "");
+        const enriched = enrichedLeadsMap[lead.placeId];
+
+        const nameMatch = lead.name?.toLowerCase().includes(q);
+        const corpMatch = lead.corporateName?.toLowerCase().includes(q);
+        const enrichedNameMatch = enriched?.name?.toLowerCase().includes(q) || enriched?.razao_social?.toLowerCase().includes(q);
+        const docRaw = lead.document || enriched?.document || enriched?.cnpj || "";
+        const docMatch = (cleanQDigits.length >= 3 && docRaw.replace(/\D/g, "").includes(cleanQDigits)) || docRaw.toLowerCase().includes(q);
+        const addressMatch = lead.address?.toLowerCase().includes(q) || enriched?.address?.toLowerCase().includes(q);
+
+        return Boolean(nameMatch || corpMatch || enrichedNameMatch || docMatch || addressMatch);
+    });
+
     // Lazily initialize Leaflet Map
     useEffect(() => {
         if (!mapRef.current || leafletMapRef.current) return;
@@ -205,7 +223,7 @@ export default function LeadsThermometer() {
 
     // Update map pins according to lead temperature
     useEffect(() => {
-        if (!leafletMapRef.current || !results || results.length === 0) return;
+        if (!leafletMapRef.current || !filteredResults || filteredResults.length === 0) return;
         const { map, L } = leafletMapRef.current;
 
         // Clear existing markers
@@ -213,12 +231,12 @@ export default function LeadsThermometer() {
             if (layer instanceof L.Marker) map.removeLayer(layer);
         });
 
-        const firstLead = results[0];
+        const firstLead = filteredResults[0];
         const centerLat = firstLead.location?.lat || -23.5505;
         const centerLng = firstLead.location?.lng || -46.6333;
         map.flyTo([centerLat, centerLng], 12, { duration: 1.5 });
 
-        results.forEach((lead) => {
+        filteredResults.forEach((lead) => {
             const lat = lead.location?.lat || centerLat;
             const lng = lead.location?.lng || centerLng;
 
@@ -253,7 +271,7 @@ export default function LeadsThermometer() {
             `;
             marker.bindPopup(popupContent);
         });
-    }, [results]);
+    }, [filteredResults]);
 
     const handleSearch = () => {
         if (!locationInput.trim()) {
@@ -261,6 +279,7 @@ export default function LeadsThermometer() {
             return;
         }
         setCurrentPage(1);
+        setCompanySearchFilter("");
         setSelectedLeads({});
         setSearchPayload({
             location: locationInput.trim(),
@@ -445,8 +464,8 @@ export default function LeadsThermometer() {
     const countWithPhone = selectedLeadsList.filter(l => l.phone && l.phone.replace(/\D/g, "").length >= 8).length;
 
     // Paginação
-    const totalPages = Math.max(1, Math.ceil(results.length / pageSize));
-    const paginatedResults = results.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    const totalPages = Math.max(1, Math.ceil(filteredResults.length / pageSize));
+    const paginatedResults = filteredResults.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     // Handlers de Disparo
     const handleSendEmailDispatch = async () => {
@@ -872,10 +891,10 @@ export default function LeadsThermometer() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleSelectAllResults(results)}
+                                    onClick={() => handleSelectAllResults(filteredResults)}
                                     className="text-xs font-semibold h-8 border-slate-200"
                                 >
-                                    Todos ({results.length})
+                                    Todos ({filteredResults.length})
                                 </Button>
 
                                 {countSelected > 0 && (
@@ -911,6 +930,68 @@ export default function LeadsThermometer() {
                             </div>
                         )}
                     </div>
+
+                    {/* Barra de Pesquisa de Empresas + Filtros Rápidos de Quantidade (até 100) */}
+                    {!isLoading && results.length > 0 && (
+                        <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-sm">
+                            <div className="relative flex-1 w-full">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input
+                                    placeholder="Buscar empresa por nome, razão social, CNPJ ou endereço..."
+                                    value={companySearchFilter}
+                                    onChange={(e) => {
+                                        setCompanySearchFilter(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="pl-10 pr-9 h-10 bg-slate-50/70 border-slate-200 focus:bg-white text-xs text-slate-800 placeholder:text-slate-400 rounded-lg w-full transition-all"
+                                />
+                                {companySearchFilter && (
+                                    <button
+                                        onClick={() => {
+                                            setCompanySearchFilter("");
+                                            setCurrentPage(1);
+                                        }}
+                                        title="Limpar pesquisa"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-xs transition-all font-bold"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
+                                <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+                                    {companySearchFilter ? (
+                                        <span>Filtrados: <b className="text-slate-900">{filteredResults.length}</b> de {results.length}</span>
+                                    ) : (
+                                        <span>Total: <b className="text-slate-900">{results.length}</b> empresas</span>
+                                    )}
+                                </span>
+
+                                {/* Atalhos Rápidos de Quantidade por Página (9, 25, 50, 100) */}
+                                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs font-semibold">
+                                    <span className="px-1.5 text-[10px] text-slate-500 uppercase tracking-wider hidden lg:inline">Exibir:</span>
+                                    {[9, 25, 50, 100].map((size) => (
+                                        <button
+                                            key={size}
+                                            onClick={() => {
+                                                setPageSize(size);
+                                                setCurrentPage(1);
+                                            }}
+                                            className={cn(
+                                                "px-2 py-0.5 rounded text-[11px] font-bold transition-all",
+                                                pageSize === size
+                                                    ? "bg-white text-rose-600 shadow-sm"
+                                                    : "text-slate-600 hover:text-slate-900"
+                                            )}
+                                        >
+                                            {size}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Active Selection Summary Bar */}
                     {countSelected > 0 && (
@@ -979,7 +1060,28 @@ export default function LeadsThermometer() {
                         </div>
                     )}
 
-                    {!isLoading && results.length > 0 && (
+                    {!isLoading && results.length > 0 && filteredResults.length === 0 && (
+                        <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-200 space-y-3 my-4">
+                            <Building2 className="w-10 h-10 text-slate-300 mx-auto" />
+                            <h4 className="text-sm font-bold text-slate-700">Nenhuma empresa encontrada para "{companySearchFilter}"</h4>
+                            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                                Tente buscar por outro termo ou limpe o filtro para ver todas as {results.length} empresas identificadas.
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setCompanySearchFilter("");
+                                    setCurrentPage(1);
+                                }}
+                                className="text-xs font-semibold border-slate-200"
+                            >
+                                Limpar Filtro de Busca
+                            </Button>
+                        </div>
+                    )}
+
+                    {!isLoading && filteredResults.length > 0 && (
                         <>
                             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                                 {paginatedResults.map((lead, idx) => {
@@ -1050,29 +1152,42 @@ export default function LeadsThermometer() {
                                                             <span className="truncate">{enriched?.phone || lead.phone}</span>
                                                         </div>
                                                     ) : (
-                                                        <div className="text-[10px] text-slate-400 italic">Telefone público não detectado</div>
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 italic">
+                                                            <Phone className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                                                            <span>Telefone não informado</span>
+                                                        </div>
                                                     )}
 
                                                     {(enriched?.email || lead.email) ? (
-                                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-700 font-medium truncate">
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-700 font-semibold">
                                                             <Mail className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                                                            <span className="truncate font-mono">{enriched?.email || lead.email}</span>
+                                                            <span className="truncate">{enriched?.email || lead.email}</span>
                                                         </div>
                                                     ) : (
-                                                        <div className="text-[10px] text-slate-400 italic">E-mail corporativo não detectado</div>
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 italic">
+                                                            <Mail className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                                                            <span>E-mail não localizado</span>
+                                                        </div>
                                                     )}
 
-                                                    {/* CNPJ — preenchido automaticamente após "Puxar CNPJ" */}
-                                                    {(() => {
-                                                        const cnpj = enriched?.document || lead.document;
-                                                        if (!cnpj) return null;
-                                                        return (
-                                                            <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold font-mono bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                                                <span className="tracking-wide">{cnpj}</span>
-                                                            </div>
-                                                        );
-                                                    })()}
+                                                    {/* CNPJ Info Row */}
+                                                    {(enriched?.document || lead.document) ? (
+                                                        <div className="flex items-center justify-between text-[11px] bg-emerald-50 text-emerald-800 px-2 py-1 rounded border border-emerald-200 font-medium">
+                                                            <span className="font-semibold flex items-center gap-1">
+                                                                <FileText className="w-3 h-3 text-emerald-600" />
+                                                                CNPJ:
+                                                            </span>
+                                                            <span className="font-mono font-bold">{enriched?.document || lead.document}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-between text-[11px] bg-slate-50 text-slate-500 px-2 py-1 rounded border border-slate-100">
+                                                            <span className="flex items-center gap-1">
+                                                                <FileText className="w-3 h-3 text-slate-400" />
+                                                                CNPJ:
+                                                            </span>
+                                                            <span className="italic text-[10px]">Pendente de busca</span>
+                                                        </div>
+                                                    )}
 
                                                     {lead.website && (
                                                         <div className="flex items-center gap-1.5 text-[11px] text-blue-600 font-medium truncate">
@@ -1114,8 +1229,8 @@ export default function LeadsThermometer() {
                                                                 setActiveProspectingContact({
                                                                     id: savedContactId,
                                                                     name: lead.name,
-                                                                    phone: lead.phone,
-                                                                    email: lead.email,
+                                                                    phone: enriched?.phone || lead.phone,
+                                                                    email: enriched?.email || lead.email,
                                                                 });
                                                                 setProspectingModalOpen(true);
                                                             } else {
@@ -1145,7 +1260,7 @@ export default function LeadsThermometer() {
                             {totalPages > 1 && (
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 pb-2 border-t border-slate-200">
                                     <div className="text-xs text-slate-500 font-medium">
-                                        Exibindo <b>{(currentPage - 1) * pageSize + 1}</b> a <b>{Math.min(currentPage * pageSize, results.length)}</b> de <b>{results.length}</b> oportunidades
+                                        Exibindo <b>{(currentPage - 1) * pageSize + 1}</b> a <b>{Math.min(currentPage * pageSize, filteredResults.length)}</b> de <b>{filteredResults.length}</b> {companySearchFilter ? `oportunidades (de ${results.length} total)` : "oportunidades"}
                                     </div>
 
                                     <div className="flex items-center gap-1.5">
@@ -1195,7 +1310,7 @@ export default function LeadsThermometer() {
                                             Próxima <ChevronRight className="w-4 h-4 ml-1" />
                                         </Button>
 
-                                        {/* Page Size Selector */}
+                                        {/* Page Size Selector (Supports up to 100) */}
                                         <Select
                                             value={String(pageSize)}
                                             onValueChange={(val) => {
@@ -1203,7 +1318,7 @@ export default function LeadsThermometer() {
                                                 setCurrentPage(1);
                                             }}
                                         >
-                                            <SelectTrigger className="h-8 w-20 text-xs bg-white border-slate-200 ml-2">
+                                            <SelectTrigger className="h-8 min-w-[5.5rem] text-xs bg-white border-slate-200 ml-2">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -1211,6 +1326,8 @@ export default function LeadsThermometer() {
                                                 <SelectItem value="9">9 / pág</SelectItem>
                                                 <SelectItem value="15">15 / pág</SelectItem>
                                                 <SelectItem value="30">30 / pág</SelectItem>
+                                                <SelectItem value="50">50 / pág</SelectItem>
+                                                <SelectItem value="100">100 / pág</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

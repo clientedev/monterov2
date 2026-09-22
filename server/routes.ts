@@ -3174,19 +3174,28 @@ export async function registerRoutes(
           const baseTerm = customQuery ? customQuery.trim() : productType;
           const productKeywords = PRODUCT_MAP[productType]?.queryKeywords || ["empresa", "comercio", "servicos"];
           
-          // Generate subquery terms to maximize discovery
+          // Generate subquery terms to maximize discovery up to 100 companies
           const subQueryTerms = Array.from(new Set([
             `${baseTerm} em ${location}`,
             `${baseTerm} centro em ${location}`,
-            `${baseTerm} grande em ${location}`,
             `${baseTerm} corporativo em ${location}`,
+            `${baseTerm} comercial em ${location}`,
+            `${baseTerm} grande em ${location}`,
+            `${baseTerm} zona sul em ${location}`,
+            `${baseTerm} zona norte em ${location}`,
+            `${baseTerm} zona oeste em ${location}`,
+            `${baseTerm} zona leste em ${location}`,
+            `${baseTerm} avenida em ${location}`,
+            ...productKeywords.map(kw => `${kw} em ${location}`),
             ...productKeywords.map(kw => `${kw} ${baseTerm} em ${location}`),
-          ])).slice(0, 6);
+            ...productKeywords.map(kw => `${baseTerm} ${kw} em ${location}`),
+          ])).slice(0, 12);
 
           const placesMap = new Map<string, any>();
 
           // 1. Try Places API (New - REST) with location bias
           for (const subQuery of subQueryTerms) {
+            if (placesMap.size >= 100) break;
             try {
               const newApiUrl = `https://places.googleapis.com/v1/places:searchText`;
               const newApiRes = await fetch(newApiUrl, {
@@ -3229,6 +3238,7 @@ export async function registerRoutes(
                       types: place.types || [],
                     });
                   }
+                  if (placesMap.size >= 100) break;
                 }
               }
             } catch (err: any) {
@@ -3236,11 +3246,12 @@ export async function registerRoutes(
             }
           }
 
-          results = Array.from(placesMap.values());
+          results = Array.from(placesMap.values()).slice(0, 100);
 
           // 2. Fallback to Legacy Places API if New Places API returned empty results
           if (results.length === 0) {
-            for (const subQuery of subQueryTerms.slice(0, 3)) {
+            for (const subQuery of subQueryTerms.slice(0, 6)) {
+              if (placesMap.size >= 100) break;
               try {
                 const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(subQuery)}&key=${googleApiKey}&language=pt-BR`;
                 const placesRes = await fetch(placesUrl, { signal: AbortSignal.timeout(8000) });
@@ -3263,13 +3274,14 @@ export async function registerRoutes(
                         types: place.types || [],
                       });
                     }
+                    if (placesMap.size >= 100) break;
                   }
                 }
               } catch (e) {
                 // ignore
               }
             }
-            results = Array.from(placesMap.values());
+            results = Array.from(placesMap.values()).slice(0, 100);
           }
         } catch (err: any) {
           console.error("[LeadsThermometer] Google Places fetch error:", err.message);
@@ -3286,7 +3298,7 @@ export async function registerRoutes(
           const pubRes = await fetch(publicSearchUrl, { headers: { cookie: req.headers.cookie || "" }, signal: AbortSignal.timeout(15000) });
           if (pubRes.ok) {
             const pubData: any[] = await pubRes.json();
-            results = pubData.map((item: any) => ({
+            results = pubData.slice(0, 100).map((item: any) => ({
               placeId: `cnpj_${item.cnpj || Math.random()}`,
               name: item.razao_social || item.nome_fantasia,
               document: item.cnpj || "",
@@ -3306,9 +3318,9 @@ export async function registerRoutes(
         }
       }
 
-            // Auto-enriquecimento integrado de CNPJ, email e telefone direto no script de busca
+      // Auto-enriquecimento integrado de CNPJ, email e telefone direto no script de busca
       try {
-        const leadsToEnrich = results.slice(0, 15);
+        const leadsToEnrich = results.slice(0, 25);
         await Promise.allSettled(
           leadsToEnrich.map(async (item) => {
             if (!item.document || !item.email) {
