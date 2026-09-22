@@ -276,6 +276,12 @@ export default function LeadsThermometer() {
                 state,
                 address: lead.address || "",
             });
+            if (lead.website) {
+                params.set("website", lead.website);
+            }
+            if (lead.phone) {
+                params.set("phone", lead.phone);
+            }
             if (cleanDoc && cleanDoc.length === 14) {
                 params.set("document", cleanDoc);
             }
@@ -285,15 +291,20 @@ export default function LeadsThermometer() {
                 const data = await res.json();
                 setCnpjModalData(data);
 
-                if (data.cnpj && data.cnpj.replace(/\D/g, "").length === 14) {
-                    const foundDoc = data.cnpj;
-                    lead.document = foundDoc;
+                if (data.cnpj || data.email || data.ddd_telefone_1) {
+                    if (data.cnpj) lead.document = data.cnpj;
+                    if (data.email) lead.email = data.email;
+                    if (data.ddd_telefone_1 && !lead.phone) lead.phone = data.ddd_telefone_1;
+                    if (data.razao_social && data.razao_social !== lead.name) {
+                        lead.corporateName = data.razao_social;
+                    }
+
                     setEnrichedLeadsMap(prev => ({
                         ...prev,
                         [lead.placeId]: {
                             ...(prev[lead.placeId] || {}),
-                            document: foundDoc,
-                            name: data.razao_social || data.nome_fantasia || lead.name,
+                            document: data.cnpj || prev[lead.placeId]?.document || lead.document,
+                            name: data.razao_social || data.nome_fantasia || lead.corporateName || lead.name,
                             address: [data.logradouro, data.numero, data.bairro, data.municipio, data.uf].filter(Boolean).join(", ") || lead.address,
                             phone: data.ddd_telefone_1 || lead.phone || null,
                             email: data.email || lead.email || null,
@@ -304,8 +315,8 @@ export default function LeadsThermometer() {
         } catch (err) {
             console.error("Error discovering CNPJ data:", err);
             toast({
-                title: "Erro ao consultar dados",
-                description: "Não foi possível carregar os dados automaticamente.",
+                title: "Aviso na consulta",
+                description: "Não foi possível identificar todos os dados automaticamente.",
                 variant: "destructive",
             });
         } finally {
@@ -1182,7 +1193,7 @@ export default function LeadsThermometer() {
 
             {/* Sticky Floating Bottom Bar for Fast Action */}
             {countSelected > 0 && !isDrawerOpen && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <div className="bg-slate-900/95 backdrop-blur text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4">
                         <div className="flex items-center gap-2 text-xs">
                             <span className="font-black text-rose-400 flex items-center gap-1">
@@ -1214,7 +1225,7 @@ export default function LeadsThermometer() {
 
             {/* Gavetinha de Disparos & Grupos de Leads (Sheet Drawer) */}
             <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl overflow-y-auto p-6 bg-slate-50/50">
+                <SheetContent side="right" className="z-[99999] w-full sm:max-w-xl md:max-w-2xl overflow-y-auto p-6 bg-white shadow-2xl">
                     <SheetHeader className="pb-4 border-b border-slate-200">
                         <div className="flex items-center gap-2">
                             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-rose-600 to-amber-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
@@ -1527,7 +1538,7 @@ export default function LeadsThermometer() {
 
             {/* Modal: Puxar CNPJ & Dados da Empresa */}
             <Dialog open={cnpjModalOpen} onOpenChange={setCnpjModalOpen}>
-                <DialogContent className="max-w-2xl bg-white p-6 rounded-2xl shadow-2xl border-none">
+                <DialogContent className="z-[99999] max-w-2xl bg-white p-6 rounded-2xl shadow-2xl border-none">
                     <DialogHeader>
                         <div className="flex items-center gap-2">
                             <Building className="h-5 w-5 text-amber-500" />
@@ -1659,7 +1670,7 @@ export default function LeadsThermometer() {
 
             {/* Modal: Célula de Prospecção Rápida */}
             <Dialog open={prospectingModalOpen} onOpenChange={setProspectingModalOpen}>
-                <DialogContent className="max-w-lg bg-white p-6 rounded-2xl shadow-2xl border-none">
+                <DialogContent className="z-[99999] max-w-lg bg-white p-6 rounded-2xl shadow-2xl border-none">
                     <DialogHeader>
                         <div className="flex items-center gap-2">
                             <PhoneCall className="h-5 w-5 text-red-500" />

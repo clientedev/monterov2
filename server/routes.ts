@@ -2417,6 +2417,319 @@ export async function registerRoutes(
     }
   });
 
+  // -----------------------------------------------------------------------
+  // Direct CNPJ Lookup & Multi-Source Intelligence Engine
+  // -----------------------------------------------------------------------
+  async function unifiedCnpjLookup(cnpj: string) {
+    const cleanDoc = String(cnpj).replace(/\D/g, "");
+    if (cleanDoc.length !== 14) return null;
+
+    const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+    // 1. Try publica.cnpj.ws
+    try {
+      const res = await fetch(`https://publica.cnpj.ws/cnpj/${cleanDoc}`, {
+        headers: { "User-Agent": ua, "Accept": "application/json" },
+        signal: AbortSignal.timeout(4500),
+      });
+      if (res.ok) {
+        const d: any = await res.json();
+        const est = d.estabelecimento || {};
+        const ender = est.logradouro ? est : (d.endereco || {});
+        const cityData = ender.cidade || {};
+        const stateData = ender.estado || {};
+        return {
+          cnpj: cleanDoc,
+          razao_social: d.razao_social || d.nome || est.nome_fantasia || "",
+          nome_fantasia: est.nome_fantasia || d.nome_fantasia || d.razao_social || "",
+          email: est.email || d.email || null,
+          ddd_telefone_1: est.ddd1 && est.telefone1 ? `(${est.ddd1}) ${est.telefone1}` : (d.ddd_telefone_1 || d.telefone || null),
+          logradouro: ender.logradouro || "",
+          numero: ender.numero || "",
+          bairro: ender.bairro || "",
+          municipio: cityData.nome || ender.municipio || "",
+          uf: stateData.sigla || ender.uf || "",
+          cep: ender.cep || "",
+          cnae_principal_descricao: d.cnae_fiscal_descricao || est.atividade_principal?.classe_descricao || "",
+          source: "publica.cnpj.ws",
+        };
+      }
+    } catch (e) {}
+
+    // 2. Try ReceitaWS (excellent for corporate emails and phones)
+    try {
+      const res = await fetch(`https://receitaws.com.br/v1/cnpj/${cleanDoc}`, {
+        headers: { "User-Agent": ua },
+        signal: AbortSignal.timeout(4500),
+      });
+      if (res.ok) {
+        const d: any = await res.json();
+        if (d.status !== "ERROR" && (d.nome || d.fantasia)) {
+          return {
+            cnpj: cleanDoc,
+            razao_social: d.nome || d.fantasia,
+            nome_fantasia: d.fantasia || d.nome,
+            email: d.email || null,
+            ddd_telefone_1: d.telefone || null,
+            logradouro: d.logradouro || "",
+            numero: d.numero || "",
+            bairro: d.bairro || "",
+            municipio: d.municipio || "",
+            uf: d.uf || "",
+            cep: d.cep || "",
+            cnae_principal_descricao: d.atividade_principal?.[0]?.text || "",
+            source: "ReceitaWS",
+          };
+        }
+      }
+    } catch (e) {}
+
+    // 3. Try MinhaReceita
+    try {
+      const res = await fetch(`https://minhareceita.org/${cleanDoc}`, {
+        headers: { "User-Agent": ua },
+        signal: AbortSignal.timeout(4500),
+      });
+      if (res.ok) {
+        const d: any = await res.json();
+        return {
+          cnpj: cleanDoc,
+          razao_social: d.razao_social || d.nome_fantasia,
+          nome_fantasia: d.nome_fantasia || d.razao_social,
+          email: d.email || null,
+          ddd_telefone_1: d.ddd_telefone_1 || null,
+          logradouro: d.logradouro || "",
+          numero: d.numero || "",
+          bairro: d.bairro || "",
+          municipio: d.municipio || "",
+          uf: d.uf || "",
+          cep: d.cep || "",
+          cnae_principal_descricao: d.cnae_fiscal_descricao || "",
+          source: "MinhaReceita",
+        };
+      }
+    } catch (e) {}
+
+    // 4. Try BrasilAPI
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanDoc}`, {
+        headers: { "User-Agent": ua, "Accept": "application/json" },
+        signal: AbortSignal.timeout(4500),
+      });
+      if (res.ok) {
+        const d: any = await res.json();
+        return {
+          cnpj: cleanDoc,
+          razao_social: d.razao_social || d.nome_fantasia,
+          nome_fantasia: d.nome_fantasia || d.razao_social,
+          email: d.email || null,
+          ddd_telefone_1: d.ddd_telefone_1 ? `(${d.ddd_telefone_1.slice(0, 2)}) ${d.ddd_telefone_1.slice(2)}` : null,
+          logradouro: d.logradouro || "",
+          numero: d.numero || "",
+          bairro: d.bairro || "",
+          municipio: d.municipio || "",
+          uf: d.uf || "",
+          cep: d.cep || "",
+          cnae_principal_descricao: d.cnae_fiscal_descricao || "",
+          source: "BrasilAPI",
+        };
+      }
+    } catch (e) {}
+
+    return null;
+  }
+
+  // Multi-Source Discovery Engine for Company CNPJ, Email, Phone and Address
+  async function discoverCnpjAndEmail(
+    companyName: string,
+    locationStr: string,
+    existingWebsite?: string,
+    existingPhone?: string,
+    existingDoc?: string
+  ) {
+    let cleanDoc = existingDoc ? String(existingDoc).replace(/\D/g, "") : "";
+    if (cleanDoc.length === 14) {
+      const full = await unifiedCnpjLookup(cleanDoc);
+      if (full) {
+        return {
+          document: full.cnpj,
+          corporateName: full.razao_social || full.nome_fantasia || companyName,
+          email: full.email,
+          phone: full.ddd_telefone_1 || existingPhone || null,
+          address: [full.logradouro, full.numero, full.bairro, full.municipio, full.uf].filter(Boolean).join(", "),
+          cnae: full.cnae_principal_descricao,
+          discoveredAuto: false,
+          source: full.source,
+        };
+      }
+    }
+
+    const city = (locationStr || "São Paulo").split(",")[0]?.trim();
+    const cleanName = (companyName || "")
+      .replace(/\b(unidade|filial|matriz|loja|unid|un)\b.*$/gi, "")
+      .replace(/[-_]/g, " ")
+      .trim();
+    const coreName = cleanName.replace(/\b(seguros|corretora|ltda|s\/a|s\.a\.)\b/gi, "").trim();
+
+    let candidateCnpj: string | null = null;
+    let candidateEmail: string | null = null;
+    let candidateWebsite = existingWebsite || "";
+
+    const candidateDomains: string[] = [];
+    if (candidateWebsite) {
+      try {
+        const u = new URL(candidateWebsite.startsWith("http") ? candidateWebsite : `https://${candidateWebsite}`);
+        const h = u.hostname.replace(/^www\./, "").toLowerCase();
+        candidateDomains.push(h);
+      } catch (e) {}
+    }
+
+    const slug1 = coreName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+    const slug2 = cleanName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+    if (slug1 && slug1.length >= 3) {
+      candidateDomains.push(`${slug1}.com.br`);
+    }
+    if (slug2 && slug2.length >= 3 && slug2 !== slug1) {
+      candidateDomains.push(`${slug2}.com.br`);
+    }
+
+    // 1. RDAP Registro.br lookup
+    for (const dom of candidateDomains) {
+      if (candidateCnpj) break;
+      if (!dom.endsWith(".br")) continue;
+      try {
+        const rdapRes = await fetch(`https://rdap.registro.br/domain/${encodeURIComponent(dom)}`, {
+          headers: { "Accept": "application/json" },
+          signal: AbortSignal.timeout(3500),
+        });
+        if (rdapRes.ok) {
+          const d: any = await rdapRes.json();
+          const ent = d.entities?.find((e: any) => e.publicIds?.some((p: any) => p.type === "cnpj") || (e.handle && e.handle.length === 14));
+          const pub = ent?.publicIds?.find((p: any) => p.type === "cnpj")?.identifier;
+          const found = pub ? pub.replace(/\D/g, "") : (ent?.handle && ent.handle.length === 14 ? ent.handle : null);
+          if (found && found.length === 14) {
+            candidateCnpj = found;
+          }
+          for (const e of d.entities || []) {
+            const vcard = e.vcardArray?.[1] || [];
+            const emailEntry = vcard.find((v: any) => v[0] === "email");
+            if (emailEntry && emailEntry[3] && !candidateEmail) {
+              candidateEmail = emailEntry[3];
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. Direct website scraping for CNPJ and email
+    if (candidateWebsite && (!candidateCnpj || !candidateEmail)) {
+      try {
+        const siteUrl = candidateWebsite.startsWith("http") ? candidateWebsite : `https://${candidateWebsite}`;
+        const siteRes = await fetch(siteUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html",
+          },
+          signal: AbortSignal.timeout(4000),
+        });
+        if (siteRes.ok) {
+          const html = await siteRes.text();
+          if (!candidateCnpj) {
+            const m = html.match(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/);
+            if (m) candidateCnpj = m[0].replace(/\D/g, "");
+          }
+          if (!candidateEmail) {
+            const emails = (html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [])
+              .filter(e => !e.includes("sentry") && !e.includes("wix") && !e.includes("schema") && !e.endsWith(".png") && !e.endsWith(".jpg") && !e.endsWith(".webp"));
+            if (emails[0]) candidateEmail = emails[0];
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 3. Fallback: Search Places for website if missing
+    const googleApiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+    if (!candidateCnpj && googleApiKey && !candidateWebsite) {
+      try {
+        const newApiUrl = `https://places.googleapis.com/v1/places:searchText`;
+        const pRes = await fetch(newApiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": googleApiKey,
+            "X-Goog-FieldMask": "places.displayName,places.websiteUri,places.nationalPhoneNumber",
+          },
+          body: JSON.stringify({
+            textQuery: `${cleanName} ${city}`,
+            languageCode: "pt-BR",
+            pageSize: 1,
+          }),
+          signal: AbortSignal.timeout(5000),
+        });
+        if (pRes.ok) {
+          const pData: any = await pRes.json();
+          const place = pData.places?.[0];
+          if (place?.websiteUri) {
+            candidateWebsite = place.websiteUri;
+            if (!existingPhone && place.nationalPhoneNumber) {
+              existingPhone = place.nationalPhoneNumber;
+            }
+            try {
+              const u = new URL(candidateWebsite);
+              const dom = u.hostname.replace(/^www\./, "").toLowerCase();
+              if (dom.endsWith(".br")) {
+                const rdapRes = await fetch(`https://rdap.registro.br/domain/${dom}`, { headers: { "Accept": "application/json" }, signal: AbortSignal.timeout(3500) });
+                if (rdapRes.ok) {
+                  const d: any = await rdapRes.json();
+                  const ent = d.entities?.find((e: any) => e.publicIds?.some((p: any) => p.type === "cnpj") || (e.handle && e.handle.length === 14));
+                  const pub = ent?.publicIds?.find((p: any) => p.type === "cnpj")?.identifier;
+                  if (pub) candidateCnpj = pub.replace(/\D/g, "");
+                  else if (ent?.handle && ent.handle.length === 14) candidateCnpj = ent.handle;
+                  for (const e of d.entities || []) {
+                    const vcard = e.vcardArray?.[1] || [];
+                    const emailEntry = vcard.find((v: any) => v[0] === "email");
+                    if (emailEntry && emailEntry[3] && !candidateEmail) candidateEmail = emailEntry[3];
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 4. If CNPJ resolved, fetch full Receita Federal details
+    if (candidateCnpj && candidateCnpj.length === 14) {
+      const full = await unifiedCnpjLookup(candidateCnpj);
+      if (full) {
+        return {
+          document: candidateCnpj,
+          corporateName: full.razao_social || full.nome_fantasia || companyName,
+          email: full.email || candidateEmail || null,
+          phone: full.ddd_telefone_1 || existingPhone || null,
+          address: [full.logradouro, full.numero, full.bairro, full.municipio, full.uf].filter(Boolean).join(", "),
+          cnae: full.cnae_principal_descricao,
+          discoveredAuto: true,
+          source: full.source,
+        };
+      }
+    }
+
+    if (candidateEmail || candidateCnpj) {
+      return {
+        document: candidateCnpj || null,
+        corporateName: companyName,
+        email: candidateEmail || null,
+        phone: existingPhone || null,
+        address: locationStr,
+        cnae: null,
+        discoveredAuto: true,
+      };
+    }
+
+    return null;
+  }
+
   // Direct CNPJ Lookup Proxy
   app.get("/api/proxy/companies/:cnpj", isAuthenticated, async (req, res) => {
     const cnpj = req.params.cnpj.replace(/\D/g, "");
@@ -2425,38 +2738,12 @@ export async function registerRoutes(
     }
 
     try {
-      const url = `https://publica.cnpj.ws/cnpj/${cnpj}`;
-      const apiRes = await fetch(url, {
-        headers: { "Accept": "application/json", "User-Agent": "MonteiroSeguros/1.0" },
-        signal: AbortSignal.timeout(10000),
-      });
-
-      if (!apiRes.ok) {
-        return res.status(apiRes.status).json({ message: "Empresa não encontrada ou erro na API" });
+      const full = await unifiedCnpjLookup(cnpj);
+      if (!full) {
+        return res.status(404).json({ message: "Empresa não encontrada ou erro na API" });
       }
 
-      const data: any = await apiRes.json();
-      const est = data.estabelecimento || {};
-      const ender = est.logradouro ? est : (data.endereco || {});
-      const cityData = ender.cidade || {};
-      const stateData = ender.estado || {};
-
-      const formatted = {
-        razao_social: data.razao_social || data.nome || est.nome_fantasia || "",
-        nome_fantasia: est.nome_fantasia || data.nome_fantasia || "",
-        cnpj: data.cnpj || est.cnpj || cnpj,
-        logradouro: ender.logradouro || data.logradouro || "",
-        numero: ender.numero || data.numero || "",
-        bairro: ender.bairro || data.bairro || "",
-        municipio: cityData.nome || ender.municipio || data.municipio || "",
-        uf: stateData.sigla || ender.uf || data.uf || "",
-        cep: ender.cep || data.cep || "",
-        cnae_principal_descricao: data.cnae_fiscal_descricao || est.atividade_principal?.classe_descricao || data.atividade_principal?.[0]?.text || "",
-        ddd_telefone_1: est.ddd1 && est.telefone1 ? `(${est.ddd1}) ${est.telefone1}` : (data.ddd_telefone_1 || data.telefone || est.telefone || ""),
-        email: est.email || data.email || "",
-      };
-
-      res.json([formatted]); // Return as array for compatibility with the frontend table
+      res.json([full]);
     } catch (e: any) {
       res.status(500).json({ message: `Erro ao buscar CNPJ: ${e.message}` });
     }
@@ -2465,92 +2752,39 @@ export async function registerRoutes(
   // Auto-Discover CNPJ for Lead by Name & Region
   app.get("/api/proxy/companies/discover", isAuthenticated, async (req, res) => {
     try {
-      const { q, name, city, state, address, document } = req.query;
+      const { q, name, city, state, address, document, website, phone } = req.query;
       const searchName = (q as string || name as string || "").trim();
-      let cleanDoc = document ? String(document).replace(/\D/g, "") : "";
-
-      // If valid 14-digit CNPJ provided, fetch directly from company proxy
-      if (cleanDoc && cleanDoc.length === 14) {
-        const proxyUrl = `${req.protocol}://${req.get("host")}/api/proxy/companies/${cleanDoc}`;
-        const pRes = await fetch(proxyUrl, { headers: { cookie: req.headers.cookie || "" }, signal: AbortSignal.timeout(10000) });
-        if (pRes.ok) {
-          const arr = await pRes.json();
-          const data = Array.isArray(arr) ? arr[0] : arr;
-          if (data && data.cnpj) {
-            return res.json(data);
-          }
-        }
-      }
-
       const rawAddr = (address as string || "");
-      const reqState = (state as string || rawAddr.match(/\b([A-Z]{2})\b/)?.[1] || "SP").toUpperCase();
       const reqCity = (city as string || rawAddr.split(",")[0] || "São Paulo").trim();
+      const reqState = (state as string || rawAddr.match(/\b([A-Z]{2})\b/)?.[1] || "SP").toUpperCase();
+      const locationStr = `${reqCity}, ${reqState}`;
 
-      const cleanName = searchName
-        .replace(/\b(unidade|filial|matriz|loja|unid|un)\b.*$/gi, "")
-        .replace(/[-_]/g, " ")
-        .trim();
+      const discovered = await discoverCnpjAndEmail(
+        searchName,
+        locationStr,
+        (website as string) || "",
+        (phone as string) || "",
+        (document as string) || ""
+      );
 
-      const coreName = cleanName
-        .replace(/\b(seguros|corretora|ltda|s\/a|s\.a\.)\b/gi, "")
-        .trim();
-
-      const searchQueries = Array.from(new Set([
-        `${cleanName} ${reqCity} cnpj`,
-        `${coreName} ${reqCity} cnpj`,
-        `${cleanName} ${reqState} cnpj`,
-        `${cleanName} cnpj`,
-      ])).filter(s => s.trim().length > 3);
-
-      const foundCnpjs: string[] = [];
-
-      for (const query of searchQueries) {
-        if (foundCnpjs.length >= 3) break;
-        try {
-          const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-          const searchRes = await fetch(searchUrl, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-              "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-            },
-            signal: AbortSignal.timeout(6000),
-          });
-
-          if (searchRes.ok) {
-            const html = await searchRes.text();
-            const matches = html.match(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g) || [];
-            for (const m of matches) {
-              const c = m.replace(/\D/g, "");
-              if (c.length === 14 && !foundCnpjs.includes(c)) {
-                foundCnpjs.push(c);
-              }
-            }
-          }
-        } catch (e: any) {
-          // ignore query error
-        }
+      if (discovered) {
+        return res.json({
+          razao_social: discovered.corporateName,
+          nome_fantasia: discovered.corporateName,
+          cnpj: discovered.document || "",
+          logradouro: discovered.address || rawAddr,
+          numero: "",
+          bairro: "",
+          municipio: reqCity,
+          uf: reqState,
+          cep: "",
+          cnae_principal_descricao: discovered.cnae || "Atividade Comercial",
+          ddd_telefone_1: discovered.phone || "",
+          email: discovered.email || "",
+          discoveredAuto: discovered.discoveredAuto,
+        });
       }
 
-      // Verify candidates with Receita Federal / CNPJ APIs
-      for (const candidateCnpj of foundCnpjs.slice(0, 4)) {
-        try {
-          const proxyUrl = `${req.protocol}://${req.get("host")}/api/proxy/companies/${candidateCnpj}`;
-          const pRes = await fetch(proxyUrl, { headers: { cookie: req.headers.cookie || "" }, signal: AbortSignal.timeout(6000) });
-          if (pRes.ok) {
-            const arr = await pRes.json();
-            const data = Array.isArray(arr) ? arr[0] : arr;
-            if (data && data.cnpj) {
-              data.discoveredAuto = true;
-              return res.json(data);
-            }
-          }
-        } catch (e) {
-          // try next candidate
-        }
-      }
-
-      // Fallback: return lead metadata structure with empty CNPJ
       return res.json({
         razao_social: searchName || "Empresa Identificada",
         nome_fantasia: searchName,
@@ -2562,7 +2796,7 @@ export async function registerRoutes(
         uf: reqState,
         cep: "",
         cnae_principal_descricao: "Empresa Localizada no Termômetro",
-        ddd_telefone_1: "",
+        ddd_telefone_1: (phone as string) || "",
         email: "",
         discoveredAuto: false,
       });
@@ -2864,75 +3098,13 @@ export async function registerRoutes(
   // Termômetro de Leads API Endpoints
   // -----------------------------------------------------------------------
     // Helper para enriquecer dados de CNPJ, email corporativo e telefone
-  async function autoEnrichLeadCompany(name: string, locationStr: string, existingPhone?: string, existingDoc?: string) {
-    if (existingDoc && existingDoc.replace(/\D/g, "").length === 14) {
-      const cleanDoc = existingDoc.replace(/\D/g, "");
-      try {
-        const bRes = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanDoc}`, { signal: AbortSignal.timeout(3500) });
-        if (bRes.ok) {
-          const bData = await bRes.json();
-          return {
-            document: cleanDoc,
-            corporateName: bData.razao_social || bData.nome_fantasia || name,
-            email: bData.email || null,
-            phone: bData.ddd_telefone_1 || existingPhone || null,
-            address: [bData.descricao_tipo_de_logradouro, bData.logradouro, bData.numero, bData.bairro, bData.municipio, bData.uf].filter(Boolean).join(", "),
-            cnae: bData.cnae_fiscal_descricao || null,
-          };
-        }
-      } catch (e) {}
-    }
-
-    const cleanName = (name || "")
-      .replace(/\b(unidade|filial|matriz|loja|unid|un)\b.*$/gi, "")
-      .replace(/[-_]/g, " ")
-      .trim();
-    const coreName = cleanName.replace(/\b(seguros|corretora|ltda|s\/a|s\.a\.)\b/gi, "").trim();
-    const city = (locationStr || "São Paulo").split(",")[0]?.trim();
-    const query = `${coreName || cleanName} ${city} cnpj`;
-
+  async function autoEnrichLeadCompany(name: string, locationStr: string, website?: string, existingPhone?: string, existingDoc?: string) {
     try {
-      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-      const searchRes = await fetch(searchUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "pt-BR,pt;q=0.9",
-        },
-        signal: AbortSignal.timeout(4000),
-      });
-
-      if (searchRes.ok) {
-        const html = await searchRes.text();
-        const matches = html.match(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g) || [];
-        for (const m of matches) {
-          const c = m.replace(/\D/g, "");
-          if (c.length === 14) {
-            try {
-              const bRes = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${c}`, { signal: AbortSignal.timeout(3500) });
-              if (bRes.ok) {
-                const bData = await bRes.json();
-                return {
-                  document: c,
-                  corporateName: bData.razao_social || bData.nome_fantasia || name,
-                  email: bData.email || null,
-                  phone: bData.ddd_telefone_1 || existingPhone || null,
-                  address: [bData.descricao_tipo_de_logradouro, bData.logradouro, bData.numero, bData.bairro, bData.municipio, bData.uf].filter(Boolean).join(", "),
-                  cnae: bData.cnae_fiscal_descricao || null,
-                };
-              }
-            } catch (err) {}
-            return {
-              document: c,
-              corporateName: name,
-              email: null,
-              phone: existingPhone || null,
-            };
-          }
-        }
-      }
-    } catch (e) {}
-    return null;
+      return await discoverCnpjAndEmail(name, locationStr, website, existingPhone, existingDoc);
+    } catch (e: any) {
+      console.warn("[autoEnrichLeadCompany] Erro:", e.message);
+      return null;
+    }
   }
 
   app.post("/api/leads-thermometer/search", isTeam, async (req, res) => {
@@ -3140,7 +3312,7 @@ export async function registerRoutes(
         await Promise.allSettled(
           leadsToEnrich.map(async (item) => {
             if (!item.document || !item.email) {
-              const enriched = await autoEnrichLeadCompany(item.name, location, item.phone, item.document);
+              const enriched = await autoEnrichLeadCompany(item.name, location, item.website, item.phone, item.document);
               if (enriched) {
                 if (enriched.document) item.document = enriched.document;
                 if (enriched.email) item.email = enriched.email;
@@ -3509,10 +3681,15 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Nenhum dos leads selecionados possui telefone válido para WhatsApp." });
       }
 
-      const waCentralUrl = process.env.MONTEIRO_CONECTA_URL || process.env.WA_CENTRAL_URL || "https://whatsapp.monteiroseguros.com.br";
-      const crmApiKey = process.env.CRM_API_KEY || "monteiro_crm_secret_key_2026";
-
-      console.log(`[DispatchWhatsApp] Enviando ${validRecipients.length} contatos para broadcast em ${waCentralUrl}...`);
+      const candidateUrls = [
+        process.env.WA_CENTRAL_URL,
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        process.env.MONTEIRO_CONECTA_URL,
+        "https://whatsapp.monteiroseguros.com.br"
+      ].filter(Boolean) as string[];
+      const waCentralUrl = candidateUrls[0];
+      const crmApiKey = process.env.CRM_API_KEY || "ms_live_8a7c289eda9bd623177b50c7e489df3b";
 
       try {
         const broadcastRes = await fetch(`${waCentralUrl}/api/conversations/broadcast`, {
