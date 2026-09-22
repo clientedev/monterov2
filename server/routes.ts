@@ -788,6 +788,78 @@ export async function registerRoutes(
     }
   });
 
+  // Sincronização automática com Monteiro Conecta (WhatsApp Central) quando um lead é editado ou excluído
+  async function notifyMonteiroConectaLeadChange(
+    action: "updated" | "deleted",
+    lead: any,
+    extra?: { leadBefore?: any; changerUserId?: number }
+  ) {
+    try {
+      const conectaBaseUrl =
+        process.env.MONTEIRO_CONECTA_URL ||
+        process.env.WA_CENTRAL_URL ||
+        process.env.WHATSAPP_CENTRAL_URL ||
+        "https://whatsapp.monteiroseguros.com.br";
+
+      const apiKey = await getPrimaryExternalApiKey();
+
+      const contact = lead.contactId ? await storage.getContact(lead.contactId) : null;
+      const allClientes = await storage.getClientes();
+      const cliente = contact ? allClientes.find(c => c.contactId === contact.id) : null;
+
+      const payload = {
+        event: action === "deleted" ? "lead.deleted" : "lead.updated",
+        action,
+        leadId: lead.id,
+        id: lead.id,
+        clienteId: cliente?.id || null,
+        contactId: contact?.id || lead.contactId || null,
+        lead: {
+          id: lead.id,
+          status: lead.status,
+          product: lead.product,
+          value: lead.value,
+          notes: lead.notes,
+          assignedTo: lead.assignedTo,
+          updatedAt: new Date().toISOString(),
+        },
+        contact: contact ? {
+          id: cliente?.id || contact.id,
+          clienteId: cliente?.id || null,
+          contactId: contact.id,
+          name: contact.name,
+          phone: contact.phone,
+          email: contact.email,
+          document: contact.document,
+        } : null,
+        timestamp: new Date().toISOString(),
+      };
+
+      const endpoints = [
+        `${conectaBaseUrl}/api/crm/webhook`,
+        `${conectaBaseUrl}/api/webhook/crm`,
+        `${conectaBaseUrl}/api/crm/lead-sync`,
+        `${conectaBaseUrl}/api/leads/sync`,
+      ];
+
+      for (const url of endpoints) {
+        fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": apiKey,
+            "Authorization": `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(payload),
+        }).catch(() => {});
+      }
+
+      console.log(`[Monteiro Conecta] Notificação disparada (${action}) para lead #${lead.id}`);
+    } catch (err: any) {
+      console.warn("[Monteiro Conecta] Erro ao sincronizar alteração de lead:", err.message);
+    }
+  }
+
   app.patch("/api/leads/:id/status", isTeam, async (req, res) => {
     const leadBefore = await storage.getLead(parseInt(req.params.id));
     const lead = await storage.updateLeadStatus(parseInt(req.params.id), req.body.status);
@@ -825,6 +897,9 @@ export async function registerRoutes(
       sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_status_changed", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
     }
 
+    // Sincroniza alteração no Monteiro Conecta
+    notifyMonteiroConectaLeadChange("updated", lead, { leadBefore, changerUserId: (req.user as any)?.id });
+
     res.json(lead);
   });
 
@@ -853,11 +928,18 @@ export async function registerRoutes(
       sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_assigned", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
     }
 
+    // Sincroniza alteração no Monteiro Conecta
+    notifyMonteiroConectaLeadChange("updated", lead, { leadBefore, changerUserId: (req.user as any)?.id });
+
     res.json(lead);
   });
 
   app.delete("/api/leads/:id", isTeam, async (req, res) => {
+    const leadToDelete = await storage.getLead(parseInt(req.params.id));
     await storage.deleteLead(parseInt(req.params.id));
+    if (leadToDelete) {
+      notifyMonteiroConectaLeadChange("deleted", leadToDelete);
+    }
     res.sendStatus(204);
   });
 
@@ -3355,6 +3437,9 @@ export async function registerRoutes(
 
   async function externalApiKeyAuth(req: any, res: any, next: any) {
     try {
+      if (req.isAuthenticated && req.isAuthenticated()) {
+        return next();
+      }
       const validKeys = await getValidExternalApiKeys();
 
       // Check all header variations
@@ -4113,22 +4198,60 @@ export async function registerRoutes(
     "/api/v1/crm/deal",
   ], externalApiKeyAuth, handleExternalContactAndOpportunity);
 
-  // Passo 3: Na rota GET /api/v1/external/contacts/lookup do CRM
-  // External Lookup API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
-  app.get([
+  // ============================================================
+  // External Lookup API (Used by WhatsApp Central / Monteiro Conecta)
+  // Endpoints: GET/POST /api/contacts/lookup, /api/v1/external/contacts/lookup, etc.
+  // ============================================================
+  const lookupRoutes = [
+    "/api/contacts/lookup",
+    "/api/v1/contacts/lookup",
     "/api/v1/external/contacts/lookup",
     "/api/external/contacts/lookup",
-  ], externalApiKeyAuth, async (req, res) => {
-    try {
-      const rawPhoneQuery = req.query.phone ? String(req.query.phone).trim() : "";
-      const phone = rawPhoneQuery.replace(/\D/g, "");
-      const document = req.query.document ? String(req.query.document).trim() : "";
-      const email = req.query.email ? String(req.query.email).trim() : "";
+    "/api/v1/external/lookup",
+    "/api/external/lookup",
+    "/api/lookup",
+    "/api/crm/lookup",
+    "/api/v1/crm/lookup",
+  ];
 
-      if (!phone && !document && !email) {
+  async function handleContactLookup(req: any, res: any) {
+    try {
+      const rawPhoneQuery =
+        req.query.phone ||
+        req.query.telefone ||
+        req.query.whatsapp ||
+        req.query.celular ||
+        req.query.numero ||
+        req.query.q ||
+        req.body?.phone ||
+        req.body?.telefone ||
+        req.body?.whatsapp ||
+        req.body?.numero ||
+        "";
+
+      const phone = String(rawPhoneQuery).replace(/\D/g, "");
+
+      const rawDocQuery =
+        req.query.document ||
+        req.query.documento ||
+        req.query.cpf ||
+        req.query.cnpj ||
+        req.query.cpfCnpj ||
+        req.body?.document ||
+        req.body?.documento ||
+        req.body?.cpf ||
+        req.body?.cnpj ||
+        req.body?.cpfCnpj ||
+        "";
+      const document = String(rawDocQuery).trim();
+
+      const email = String(req.query.email || req.body?.email || "").trim();
+      const nameQuery = String(req.query.name || req.query.nome || req.body?.name || req.body?.nome || "").trim();
+
+      if (!phone && !document && !email && !nameQuery) {
         return res.status(400).json({
           found: false,
-          error: "Telefone obrigatório ou informe ?document= ou ?email=",
+          error: "Telefone obrigatório ou informe ?document= ou ?email= para localizar o contato.",
         });
       }
 
@@ -4142,26 +4265,64 @@ export async function registerRoutes(
 
       const cleanDocInput = cleanDigits(document);
       const cleanEmailInput = email.toLowerCase();
+      const cleanNameInput = nameQuery.toLowerCase();
 
       let matchedContact = allContacts.find(c => {
         if (phone && c.phone && matchesPhone(phone, c.phone)) return true;
-        if (document && c.document && cleanDigits(c.document) === cleanDocInput && cleanDocInput.length > 0) return true;
-        if (email && c.email && c.email.toLowerCase() === cleanEmailInput) return true;
+        if (cleanDocInput && c.document && cleanDigits(c.document) === cleanDocInput && cleanDocInput.length >= 11) return true;
+        if (cleanEmailInput && c.email && c.email.toLowerCase() === cleanEmailInput) return true;
+        if (cleanNameInput && c.name && c.name.toLowerCase() === cleanNameInput) return true;
         return false;
       });
 
       let matchedCliente = allClientes.find(c => {
         if (phone && (c.telefone || c.whatsapp) && (matchesPhone(phone, c.telefone || "") || matchesPhone(phone, c.whatsapp || ""))) return true;
-        if (document && c.cpfCnpj && cleanDigits(c.cpfCnpj) === cleanDocInput && cleanDocInput.length > 0) return true;
-        if (email && c.email && c.email.toLowerCase() === cleanEmailInput) return true;
+        if (cleanDocInput && c.cpfCnpj && cleanDigits(c.cpfCnpj) === cleanDocInput && cleanDocInput.length >= 11) return true;
+        if (cleanEmailInput && c.email && c.email.toLowerCase() === cleanEmailInput) return true;
+        if (cleanNameInput && c.nome && c.nome.toLowerCase() === cleanNameInput) return true;
         return false;
       });
 
+      // Se achou contato mas não cliente, vincula ou cria registro em clientes
       if (matchedContact && !matchedCliente) {
-        matchedCliente = allClientes.find(c => c.contactId === matchedContact!.id || (c.cpfCnpj && cleanDigits(c.cpfCnpj) === cleanDigits(matchedContact!.document)));
+        matchedCliente = allClientes.find(c =>
+          c.contactId === matchedContact!.id ||
+          (c.cpfCnpj && cleanDigits(c.cpfCnpj) === cleanDigits(matchedContact!.document) && cleanDigits(c.cpfCnpj).length >= 11) ||
+          ((c.telefone || c.whatsapp) && matchedContact!.phone && (matchesPhone(matchedContact!.phone, c.telefone || "") || matchesPhone(matchedContact!.phone, c.whatsapp || "")))
+        );
+
+        if (!matchedCliente) {
+          try {
+            matchedCliente = await storage.createCliente({
+              contactId: matchedContact.id,
+              type: matchedContact.type,
+              nome: matchedContact.name,
+              cpfCnpj: matchedContact.document || null,
+              email: matchedContact.email || null,
+              telefone: matchedContact.phone || null,
+              whatsapp: matchedContact.phone || null,
+              endereco: matchedContact.address || null,
+              anniversaryDate: matchedContact.anniversaryDate || null,
+              productType: matchedContact.productType || null,
+              insurers: matchedContact.insurers || null,
+              contactOrigin: matchedContact.contactOrigin || null,
+              isReferral: matchedContact.isReferral || false,
+              internalResponsibleId: matchedContact.internalResponsibleId || null,
+              nomeRepresentante: matchedContact.responsibleName || null,
+              observacoes: matchedContact.notes || null,
+            });
+          } catch (e) {
+            console.error("[lookup] Erro ao criar cliente vinculado:", e);
+          }
+        }
       }
+
       if (matchedCliente && !matchedContact) {
-        matchedContact = allContacts.find(c => c.id === matchedCliente!.contactId || (c.document && cleanDigits(c.document) === cleanDigits(matchedCliente!.cpfCnpj)));
+        matchedContact = allContacts.find(c =>
+          c.id === matchedCliente!.contactId ||
+          (c.document && cleanDigits(c.document) === cleanDigits(matchedCliente!.cpfCnpj) && cleanDigits(c.document).length >= 11) ||
+          (c.phone && (matchedCliente!.telefone || matchedCliente!.whatsapp) && (matchesPhone(c.phone, matchedCliente!.telefone || "") || matchesPhone(c.phone, matchedCliente!.whatsapp || "")))
+        );
       }
 
       if (!matchedContact && !matchedCliente) {
@@ -4174,76 +4335,122 @@ export async function registerRoutes(
 
       const contactId = matchedContact?.id || matchedCliente?.contactId || null;
       const clienteId = matchedCliente?.id || null;
-      const name = matchedContact?.name || matchedCliente?.nome || "Sem Nome";
-      const finalPhone = matchedContact?.phone || matchedCliente?.telefone || matchedCliente?.whatsapp || phone;
-      const finalEmail = matchedContact?.email || matchedCliente?.email || email;
-      const finalDoc = matchedContact?.document || matchedCliente?.cpfCnpj || document;
-      const address = matchedContact?.address || matchedCliente?.endereco || null;
-      const type = matchedContact?.type || matchedCliente?.type || "individual";
+
+      // ID principal para redirecionamento para /admin/clientes/:id
+      const targetClienteId = clienteId || contactId;
+
+      const name = matchedCliente?.nome || matchedContact?.name || "Sem Nome";
+      const finalPhone = matchedCliente?.telefone || matchedCliente?.whatsapp || matchedContact?.phone || phone;
+      const finalEmail = matchedCliente?.email || matchedContact?.email || email;
+      const finalDoc = matchedCliente?.cpfCnpj || matchedContact?.document || document;
+      const address = matchedCliente?.endereco || matchedContact?.address || null;
+      const type = matchedCliente?.type || matchedContact?.type || "individual";
       const status = matchedContact?.status || "Ativo";
-      const anniversaryDate = matchedContact?.anniversaryDate || matchedCliente?.anniversaryDate || null;
+      const anniversaryDate = matchedCliente?.anniversaryDate || matchedContact?.anniversaryDate || null;
       const maritalStatus = matchedContact?.maritalStatus || null;
-      const productType = matchedContact?.productType || matchedCliente?.productType || null;
-      const insurers = matchedContact?.insurers || matchedCliente?.insurers || null;
-      const contactOrigin = matchedContact?.contactOrigin || matchedCliente?.contactOrigin || null;
-      const notes = matchedContact?.notes || matchedCliente?.observacoes || null;
-      const responsibleName = matchedContact?.responsibleName || matchedCliente?.nomeRepresentante || null;
+      const productType = matchedCliente?.productType || matchedContact?.productType || null;
+      const insurers = matchedCliente?.insurers || matchedContact?.insurers || null;
+      const contactOrigin = matchedCliente?.contactOrigin || matchedContact?.contactOrigin || null;
+      const notes = matchedCliente?.observacoes || matchedContact?.notes || null;
+      const responsibleName = matchedCliente?.nomeRepresentante || matchedContact?.responsibleName || null;
       const responsiblePhone = matchedCliente?.telefoneRepresentante || null;
       const responsibleEmail = matchedCliente?.emailRepresentante || null;
 
-      const isReferral = matchedContact?.isReferral || matchedCliente?.isReferral || false;
-      const referredByContactId = matchedContact?.referredByContactId || matchedCliente?.referredByContactId || null;
+      const isReferral = matchedCliente?.isReferral || matchedContact?.isReferral || false;
+      const referredByContactId = matchedCliente?.referredByContactId || matchedContact?.referredByContactId || null;
       const referredByContact = referredByContactId ? allContacts.find(c => c.id === referredByContactId) : null;
       const referredByContactName = referredByContact ? referredByContact.name : null;
 
-      const internalResponsibleId = matchedContact?.internalResponsibleId || matchedCliente?.internalResponsibleId || null;
+      const internalResponsibleId = matchedCliente?.internalResponsibleId || matchedContact?.internalResponsibleId || null;
       const internalUser = internalResponsibleId ? allUsers.find(u => u.id === internalResponsibleId) : null;
       const internalResponsibleName = internalUser ? internalUser.name : null;
 
       const tags = matchedCliente?.tags || null;
       const cidade = matchedCliente?.cidade || null;
       const estado = matchedCliente?.estado || null;
-      const createdAt = matchedContact?.createdAt || matchedCliente?.createdAt || null;
+      const createdAt = matchedCliente?.createdAt || matchedContact?.createdAt || null;
 
-      const assignedUserId = matchedContact?.assignedTo || matchedCliente?.responsavelComercialId || matchedCliente?.internalResponsibleId;
+      const assignedUserId = matchedCliente?.responsavelComercialId || matchedCliente?.internalResponsibleId || matchedContact?.assignedTo;
       const assignedUser = assignedUserId ? allUsers.find(u => u.id === assignedUserId) : null;
+      const responsibleDisplayName = assignedUser?.name || responsibleName || internalResponsibleName || null;
 
-      const linkedApolices = clienteId
+      // Busca de Apólices do Cliente
+      let linkedApolices = clienteId
         ? allApolices.filter(a => a.clienteId === clienteId)
         : (contactId ? allApolices.filter(a => {
             const cli = allClientes.find(c => c.id === a.clienteId);
             return cli && cli.contactId === contactId;
           }) : []);
 
+      // Se não encontrou apólices direto pelo ID do cliente, busca por clientes com mesmo documento ou telefone
+      if (linkedApolices.length === 0) {
+        const clientDoc = cleanDigits(finalDoc);
+        const clientPhoneClean = cleanDigits(finalPhone);
+        if (clientDoc || clientPhoneClean) {
+          const relatedClientIds = new Set(
+            allClientes
+              .filter(c =>
+                (clientDoc && cleanDigits(c.cpfCnpj) === clientDoc && clientDoc.length >= 11) ||
+                (clientPhoneClean && (c.telefone || c.whatsapp) && (matchesPhone(clientPhoneClean, c.telefone || "") || matchesPhone(clientPhoneClean, c.whatsapp || "")))
+              )
+              .map(c => c.id)
+          );
+          linkedApolices = allApolices.filter(a => relatedClientIds.has(a.clienteId));
+        }
+      }
+
       const activePolicies = linkedApolices.filter(a => a.status === "ativa");
       const totalAnnualPremium = activePolicies.reduce((sum, a) => sum + (parseCurrencyToNumber(a.premio) || 0), 0);
+      const totalAnnualPremiumFormatted = `R$ ${totalAnnualPremium.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-      const formattedPolicies = linkedApolices.map(a => {
+      const formatPolicy = (a: any) => {
         const seg = allSeguradoras.find(s => s.id === a.seguradoraId);
         const prod = allProdutosSeguro.find(p => p.id === a.produtoId);
         const pNumVal = parseCurrencyToNumber(a.premio) || 0;
+        const pFormatted = pNumVal > 0
+          ? `R$ ${pNumVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : (a.premio ? (String(a.premio).startsWith("R$") ? String(a.premio) : `R$ ${a.premio}`) : "R$ 0,00");
+
+        const expIso = a.fimVigencia ? new Date(a.fimVigencia).toISOString().split('T')[0] : "";
+        const expBr = a.fimVigencia ? new Date(a.fimVigencia).toLocaleDateString('pt-BR') : "";
+
+        const productName = prod?.nome || a.ramo || a.numeroApolice || "Seguro";
+        const insurerName = seg?.nome || "Seguradora";
+        const polNum = a.numeroApolice || a.idApolice || "Sem número";
+
         return {
           id: a.id,
-          product: prod?.nome || a.numeroApolice || "Seguro",
-          insurer: seg?.nome || "Seguradora",
-          policyNumber: a.numeroApolice || "Sem número",
-          numeroApolice: a.numeroApolice || "Sem número",
-          premiumValue: pNumVal,
-          premio: a.premio ? (parseCurrencyToNumber(a.premio)?.toFixed(2) || "0.00") : "0.00",
-          premiumValueFormatted: a.premio
-            ? (String(a.premio).startsWith("R$") ? String(a.premio) : `R$ ${pNumVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
-            : undefined,
-          status: a.status,
-          seguradora: seg?.nome || "—",
-          produto: prod?.nome || "—",
-          expirationDate: a.fimVigencia ? new Date(a.fimVigencia).toISOString().split('T')[0] : undefined,
+          // Nomes do Produto (suporta 'product', 'produto' e 'ramo')
+          product: productName,
+          produto: productName,
+          ramo: productName,
+          // Nomes da Seguradora (suporta 'insurer', 'seguradora' e 'companhia')
+          insurer: insurerName,
+          seguradora: insurerName,
+          companhia: insurerName,
+          // Número da Apólice (suporta 'policyNumber', 'apolice' e 'numeroApolice')
+          policyNumber: polNum,
+          apolice: polNum,
+          numeroApolice: polNum,
+          // Data de Término de Vigência (suporta 'expirationDate', 'vencimento', 'vigenciaFim', 'fimVigencia')
+          expirationDate: expIso || expBr || "",
+          vencimento: expBr || expIso || "",
+          vigenciaFim: expIso || expBr || "",
+          fimVigencia: expIso || expBr || null,
           inicioVigencia: a.inicioVigencia ? new Date(a.inicioVigencia).toISOString().split('T')[0] : null,
-          fimVigencia: a.fimVigencia ? new Date(a.fimVigencia).toISOString().split('T')[0] : null,
+          // Valor do Prêmio (suporta 'premiumValue', 'valorPremio' e 'premio')
+          premiumValue: pFormatted,
+          valorPremio: pFormatted,
+          premio: pFormatted,
+          premiumValueNumber: pNumVal,
+          status: a.status,
+          pdfUrl: a.pdfApolice || null,
         };
-      });
+      };
+
+      const policiesToReturn = (activePolicies.length > 0 ? activePolicies : linkedApolices).map(formatPolicy);
 
       const rawLinkedLeads = contactId ? allLeads.filter(l => l.contactId === contactId) : [];
-      // Deduplica negociações para nunca multiplicar na tela
       const seenLeads = new Set<string>();
       const linkedLeads = rawLinkedLeads.filter(l => {
         const prod = (l.product || "Oportunidade Comercial").trim().toLowerCase();
@@ -4276,14 +4483,18 @@ export async function registerRoutes(
         };
       });
 
-      // Monta resposta compatível com o Whats
+      // Monta resposta compatível com Monteiro Conecta / WhatsApp Central
       return res.json({
         found: true,
+        // 1. ID do cliente na raiz para redirecionar para /admin/clientes/:id
+        id: targetClienteId,
+        clienteId: targetClienteId,
+        contactId: contactId,
+        // 1. Objeto contact com id apontando para o cliente
         contact: {
-          id: contactId,
-          clienteId: clienteId,
-          type: type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
-          rawType: type,
+          id: targetClienteId,
+          clienteId: targetClienteId,
+          contactId: contactId,
           name,
           phone: finalPhone,
           email: finalEmail,
@@ -4294,8 +4505,10 @@ export async function registerRoutes(
           city: cidade,
           state: estado,
           status,
-          produtos: productType, // <-- coluna produtos da tela base
+          produtos: productType,
           anniversaryDate,
+          type: type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
+          rawType: type,
           maritalStatus,
           productType,
           insurers,
@@ -4316,32 +4529,35 @@ export async function registerRoutes(
             id: assignedUser.id,
             name: assignedUser.name,
             email: assignedUser.email,
-          } : null,
+          } : (responsibleDisplayName ? { name: responsibleDisplayName } : null),
           rawContact: matchedContact || null,
           rawCliente: matchedCliente || null,
         },
-        // Array de produtos
+        // 2. Bloco insurance com as apólices ativas e formatadas
+        insurance: {
+          activePoliciesCount: activePolicies.length,
+          totalPoliciesCount: linkedApolices.length,
+          totalAnnualPremiumFormatted,
+          totalAnnualPremiumValue: totalAnnualPremium,
+          policies: policiesToReturn,
+        },
         products: productType ? productType.split(",").map((s: string) => s.trim()).filter(Boolean) : [],
-        // Pipeline com os negócios e valores
         pipeline: {
           totalDealsCount: linkedLeads.length,
           activeDealsCount: activeLeads.length || linkedLeads.length,
           deals: formattedLeads,
-        },
-        // Apólices ativas
-        insurance: {
-          totalPoliciesCount: linkedApolices.length,
-          activePoliciesCount: activePolicies.length,
-          totalAnnualPremiumFormatted: `R$ ${totalAnnualPremium.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-          totalAnnualPremiumValue: totalAnnualPremium,
-          policies: formattedPolicies,
         }
       });
 
     } catch (err: any) {
+      console.error("[lookup] Erro na consulta de contato/cliente:", err);
       res.status(500).json({ found: false, error: err.message });
     }
-  });
+  }
+
+  // Registra as rotas de consulta (suporta GET e POST para máxima compatibilidade)
+  app.get(lookupRoutes, externalApiKeyAuth, handleContactLookup);
+  app.post(lookupRoutes, externalApiKeyAuth, handleContactLookup);
 
   return httpServer;
 }
