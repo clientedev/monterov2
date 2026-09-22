@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
@@ -43,20 +44,23 @@ import { cn } from "@/lib/utils";
 interface ThermometerLead {
     placeId: string;
     name: string;
+    document?: string;
     address: string;
     phone?: string;
     email?: string;
     website?: string;
-    document?: string;
-    location: { lat: number; lng: number };
+    location: {
+        lat: number;
+        lng: number;
+    };
     rating?: number;
     userRatingsTotal?: number;
-    score: number; // 0 a 100
+    businessStatus?: string;
+    score: number;
     temperature: "frio" | "morno" | "quente";
     reason: string;
     productType: string;
     cnae?: string;
-    enriched?: boolean;
 }
 
 export default function LeadsThermometer() {
@@ -68,12 +72,8 @@ export default function LeadsThermometer() {
     const [productType, setProductType] = useState("Plano de Saúde");
     const [customQuery, setCustomQuery] = useState("");
     
-    const [searchPayload, setSearchPayload] = useState<any>({
-        location: "São Paulo, SP",
-        radiusKm: 10,
-        productType: "Plano de Saúde",
-        customQuery: "",
-    });
+    // Inicializa como null para NÃO disparar busca automática sem ação explícita do usuário
+    const [searchPayload, setSearchPayload] = useState<any>(null);
     
     const [savedLeadsMap, setSavedLeadsMap] = useState<Record<string, number>>({});
     const [enrichedLeadsMap, setEnrichedLeadsMap] = useState<Record<string, any>>({});
@@ -90,6 +90,7 @@ export default function LeadsThermometer() {
     const [callOutcome, setCallOutcome] = useState("connected");
     const [interestLevel, setInterestLevel] = useState("high");
     const [prospectingNotes, setProspectingNotes] = useState("");
+    const [sendToPipeline, setSendToPipeline] = useState(false); // Sempre falso por padrão para NUNCA enviar sozinho
 
     const mapRef = useRef<HTMLDivElement>(null);
     const leafletMapRef = useRef<any>(null);
@@ -254,7 +255,7 @@ export default function LeadsThermometer() {
         }
     };
 
-    // Save & Start Prospecting Mutation
+    // Save & Start Prospecting Mutation (Cria apenas contato comercial, NUNCA adiciona ao pipeline sozinho)
     const startProspectingMutation = useMutation({
         mutationFn: async (lead: ThermometerLead) => {
             const enriched = enrichedLeadsMap[lead.placeId] || {};
@@ -271,6 +272,7 @@ export default function LeadsThermometer() {
                 reason: lead.reason,
                 location: locationInput,
                 radiusKm: parseInt(radiusKm),
+                createPipelineLead: false, // NUNCA envia automaticamente para o pipeline de vendas
             });
             return res.json();
         },
@@ -284,12 +286,12 @@ export default function LeadsThermometer() {
                     phone: data.contact?.phone || lead.phone,
                     email: data.contact?.email || lead.email,
                 });
+                setSendToPipeline(false);
                 setProspectingModalOpen(true);
                 queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-                queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
                 toast({
-                    title: "Lead Salvo & Enviado para Prospecção",
-                    description: `${lead.name} pronto para prospecção ativa.`,
+                    title: "Contato Pronto para Prospecção",
+                    description: `${lead.name} pronto para ligação (não inserido no pipeline automaticamente).`,
                 });
             }
         },
@@ -301,11 +303,17 @@ export default function LeadsThermometer() {
             const res = await apiRequest("POST", "/api/prospecting", data);
             return res.json();
         },
-        onSuccess: () => {
+        onSuccess: (_data: any, variables: any) => {
             queryClient.invalidateQueries({ queryKey: ["/api/prospecting"] });
             queryClient.invalidateQueries({ queryKey: ["/api/interactions"] });
+            if (variables?.createPipelineLead) {
+                queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+                toast({ title: "Prospecção Registrada", description: "Resultado salvo e oportunidade adicionada ao pipeline com sucesso!" });
+            } else {
+                toast({ title: "Prospecção Registrada", description: "Resultado da ligação salvo com sucesso!" });
+            }
             setProspectingModalOpen(false);
-            toast({ title: "Prospecção Registrada", description: "Resultado da ligação salvo com sucesso!" });
+            setSendToPipeline(false);
         }
     });
 
@@ -316,6 +324,8 @@ export default function LeadsThermometer() {
             callOutcome,
             interestLevel,
             notes: prospectingNotes || `Prospecção iniciada via Termômetro de Leads (${productType}).`,
+            productType,
+            createPipelineLead: sendToPipeline,
         });
     };
 
@@ -520,6 +530,18 @@ export default function LeadsThermometer() {
                     </Card>
                 </div>
             </div>
+
+            {/* Informational banner when search has not yet been executed */}
+            {!searchPayload && !isLoading && (
+                <div className="p-8 text-center bg-slate-50/80 rounded-2xl border border-dashed border-slate-200 space-y-2">
+                    <Flame className="w-8 h-8 text-amber-500 mx-auto opacity-70" />
+                    <h4 className="text-sm font-bold text-slate-800">Termômetro Pronto para Busca Manual</h4>
+                    <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
+                        Configure a região e o nicho desejado e clique no botão <b>"Medir Termômetro de Leads"</b> para visualizar empresas no mapa.
+                        Nenhum lead é salvo ou enviado para o seu pipeline de forma automática.
+                    </p>
+                </div>
+            )}
 
             {/* Results Grid */}
             {(results.length > 0 || isLoading) && (
@@ -869,6 +891,27 @@ export default function LeadsThermometer() {
                                 onChange={(e) => setProspectingNotes(e.target.value)}
                                 className="bg-white min-h-[80px]"
                             />
+                        </div>
+
+                        {/* Envio Opcional ao Pipeline */}
+                        <div className="flex items-start space-x-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50">
+                            <Checkbox
+                                id="sendToPipeline"
+                                checked={sendToPipeline}
+                                onCheckedChange={(checked) => setSendToPipeline(!!checked)}
+                                className="mt-0.5"
+                            />
+                            <div className="grid gap-1 leading-none">
+                                <label
+                                    htmlFor="sendToPipeline"
+                                    className="text-xs font-bold text-slate-800 cursor-pointer select-none"
+                                >
+                                    Enviar esta oportunidade para o Pipeline (Funil de Vendas)
+                                </label>
+                                <p className="text-[11px] text-slate-500 leading-relaxed">
+                                    Desmarcado por padrão. Ative somente se o cliente tiver interesse real para não lotar seu pipeline automaticamente.
+                                </p>
+                            </div>
                         </div>
                     </div>
 

@@ -2402,6 +2402,18 @@ export async function registerRoutes(
         date: new Date(),
       });
 
+      // Oportunidade no pipeline apenas se o usuário solicitar explicitamente
+      if (input.createPipelineLead === true || input.createPipelineLead === "true") {
+        await storage.createLead({
+          contactId: input.contactId,
+          status: "new",
+          source: "Termômetro de Leads (Prospecção)",
+          product: input.productType || "Plano de Saúde",
+          notes: `[Prospecção] Resultado: ${outcomeLabel}. Interesse: ${input.interestLevel || 'N/A'}. Notas: ${input.notes || ''}`,
+          assignedTo: userId,
+        });
+      }
+
       res.status(201).json(result);
     } catch (err) {
       console.error("[Prospecting] Error saving:", err);
@@ -3167,6 +3179,7 @@ export async function registerRoutes(
         reason = "",
         location = "Brasil",
         radiusKm = 10,
+        createPipelineLead = false,
       } = req.body || {};
 
       if (!leadName || typeof leadName !== "string" || !leadName.trim()) {
@@ -3192,14 +3205,18 @@ export async function registerRoutes(
       const parsedContact = insertContactSchema.parse(contactPayload);
       const result = await storage.upsertContact(parsedContact);
 
-      const leadOpportunity = await storage.createLead({
-        contactId: result.contact.id,
-        status: "new",
-        source: "Termômetro de Leads",
-        product: productType,
-        notes: `[Termômetro de Leads] Score: ${score}/100 (${temperature.toUpperCase()}) - ${reason}`,
-        assignedTo: userId,
-      });
+      // Não cria lead no pipeline automaticamente a menos que solicitado explicitamente
+      let leadOpportunity = null;
+      if (createPipelineLead === true || createPipelineLead === "true") {
+        leadOpportunity = await storage.createLead({
+          contactId: result.contact.id,
+          status: "new",
+          source: "Termômetro de Leads",
+          product: productType,
+          notes: `[Termômetro de Leads] Score: ${score}/100 (${temperature.toUpperCase()}) - ${reason}`,
+          assignedTo: userId,
+        });
+      }
 
       await storage.createLeadThermometerRecord({
         userId,
@@ -3224,7 +3241,9 @@ export async function registerRoutes(
         isNewContact: result.isNew,
         contact: result.contact,
         lead: leadOpportunity,
-        message: result.isNew ? "Lead e Contato criados no CRM com sucesso!" : "Contato existente atualizado e novo Lead associado!",
+        message: leadOpportunity
+          ? (result.isNew ? "Lead e Contato criados no CRM com sucesso!" : "Contato existente atualizado e novo Lead associado!")
+          : (result.isNew ? "Contato cadastrado na agenda do CRM com sucesso!" : "Contato existente atualizado no CRM!"),
       });
     } catch (err: any) {
       console.error("[LeadsThermometer] Save to CRM error:", err);
