@@ -11,7 +11,7 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
 import { db } from "./db";
 import { sql, eq, or, and, desc, asc } from "drizzle-orm";
-import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact, sendClientWelcomeEmail } from "./email";
+import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact, sendClientWelcomeEmail, sendOpportunityNotificationEmail } from "./email";
 import {
   insertInquirySchema,
   insertContactSchema,
@@ -3528,9 +3528,11 @@ export async function registerRoutes(
   }
 
   // Helper to map external deal status to CRM pipeline stage IDs
-  function mapDealStatusToPipelineStage(status: string | null | undefined): string {
+  function mapDealStatusToPipelineStage(status: string | null | undefined, responded?: boolean): string {
+    if (responded === true) return "Respondida";
     if (!status || typeof status !== "string") return "new";
     const s = status.trim().toLowerCase();
+    if (s === "respondida" || s === "respondido" || s === "responded") return "Respondida";
     if (
       s === "cotação" ||
       s === "cotacao" ||
@@ -3563,17 +3565,16 @@ export async function registerRoutes(
       s === "closed"
     ) return "implemented";
     if (s === "perdido" || s === "cancelado" || s === "cancelled" || s === "lost") return "cancelled";
-    if (["new", "qualified", "proposal", "cancelled", "implemented"].includes(status)) return status;
-    return "new";
+    if (["new", "qualified", "proposal", "cancelled", "implemented", "Respondida"].includes(status)) return status;
+    return status.trim() || "new";
   }
 
-  // Passo 2: Na rota POST /api/v1/external/contacts do CRM
-  // Core handler to upsert contact & optionally create opportunity & policy
+  // Core handler to upsert contact & create opportunity & policy (Used by WhatsApp Central)
   async function handleExternalContactAndOpportunity(req: any, res: any) {
     try {
       const body = req.body || {};
 
-      // 1. Telefone e Nome
+      // 1. Telefone e Documento
       const inputPhone =
         body.phone ??
         body.telefone ??
@@ -3591,6 +3592,7 @@ export async function registerRoutes(
         body.fullName ??
         body.nomeContato ??
         body.contactName ??
+        body.cliente ??
         "";
       let contactName = inputName ? String(inputName).trim() : "";
 
@@ -3602,34 +3604,29 @@ export async function registerRoutes(
         body.cpfCnpj ??
         "";
       const rawDoc = inputDoc ? String(inputDoc).trim() : "";
+      const inputEmail = body.email ? String(body.email).trim() : "";
 
+      // 2. Busca contato existente (Regra: Nunca rejeitar telefone existente, sempre fazer UPSERT)
       const allExistingContacts = await storage.getContacts();
 
-      // If name is not provided, look for an existing contact by phone or document
+      const existingMatch = allExistingContacts.find(c => {
+        if (rawPhone && c.phone && matchesPhone(rawPhone, c.phone)) return true;
+        if (rawDoc && c.document && cleanDigits(c.document) === cleanDigits(rawDoc) && cleanDigits(rawDoc).length >= 11) return true;
+        if (inputEmail && c.email && c.email.trim().toLowerCase() === inputEmail.toLowerCase()) return true;
+        return false;
+      });
+
       if (!contactName) {
-        if (rawPhone) {
-          const match = allExistingContacts.find(c => c.phone && matchesPhone(rawPhone, c.phone));
-          if (match) {
-            contactName = match.name;
-          }
-        }
-        if (!contactName && rawDoc) {
-          const docClean = cleanDigits(rawDoc);
-          const match = allExistingContacts.find(c => c.document && cleanDigits(c.document) === docClean);
-          if (match) {
-            contactName = match.name;
-          }
-        }
-        if (!contactName && rawPhone) {
+        if (existingMatch?.name) {
+          contactName = existingMatch.name;
+        } else if (rawPhone) {
           contactName = `Contato WhatsApp (${rawPhone})`;
+        } else {
+          contactName = "Contato";
         }
       }
 
-      if (!contactName) {
-        contactName = "Contato";
-      }
-
-      // 2. Produto (Alimenta a coluna de produtos da base de contatos)
+      // 3. Produtos
       const produtos =
         body.produtos ??
         body.produto ??
@@ -3653,8 +3650,7 @@ export async function registerRoutes(
         }
       }
 
-      // Preserve existing products if contact already exists
-      const existingMatch = rawPhone ? allExistingContacts.find(c => c.phone && matchesPhone(rawPhone, c.phone)) : null;
+      // Mescla com produtos já existentes no contato para manter histórico
       if (existingMatch && existingMatch.productType) {
         const existingParts = existingMatch.productType.split(",").map((s: string) => s.trim()).filter(Boolean);
         for (const ep of existingParts) {
@@ -3667,9 +3663,9 @@ export async function registerRoutes(
 
       const finalProductType = finalProductList.length > 0
         ? finalProductList.join(", ")
-        : (produtos ? String(produtos).trim() : null);
+        : (produtos ? String(produtos).trim() : (existingMatch?.productType || null));
 
-      // 3. Valores Numéricos Tratados
+      // 4. Valores Numéricos Tratados
       const dealVal = parseCurrencyToNumber(
         body.deal?.value ??
         body.pipeline?.value ??
@@ -3684,24 +3680,65 @@ export async function registerRoutes(
         body.valorPremio
       );
 
-      // 4. Etapa do Funil (Pipeline)
-      const dealStageRaw =
+      // 5. Etapa / Status da Oportunidade (Respondida se responded: true ou status Respondida)
+      const rawStatus =
+        body.status ??
+        body.dealStatus ??
         body.deal?.status ??
         body.pipeline?.status ??
-        body.dealStatus ??
         body.etapa ??
         body.stage ??
         body.statusDeal ??
-        'Enviar Cotação';
-      const dealStage = mapDealStatusToPipelineStage(dealStageRaw);
+        "";
+
+      const isResponded =
+        body.responded === true ||
+        body.responded === "true" ||
+        body.isResponded === true ||
+        String(rawStatus).trim().toLowerCase() === "respondida" ||
+        String(rawStatus).trim().toLowerCase() === "respondido" ||
+        String(rawStatus).trim().toLowerCase() === "responded";
+
+      const dealStageRaw = rawStatus || (isResponded ? "Respondida" : "Enviar Cotação");
+      const dealStage = isResponded ? "Respondida" : mapDealStatusToPipelineStage(dealStageRaw, isResponded);
 
       const dealProduct =
         body.deal?.product ??
         body.pipeline?.product ??
         body.dealProduct ??
         produtos ??
+        body.product ??
         'Seguro';
-      const oppProduct = normalizeBackendProductName(dealProduct);
+      const oppProduct = normalizeBackendProductName(dealProduct) || "Seguro";
+
+      // 6. Data de Retorno (dealDate)
+      let formattedDealDate = "";
+      const rawDealDate = body.dealDate || body.deal_date || body.dataRetorno || body.returnDate;
+      if (rawDealDate) {
+        try {
+          const d = new Date(rawDealDate);
+          if (!isNaN(d.getTime())) {
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const year = d.getUTCFullYear();
+            formattedDealDate = `${day}/${month}/${year}`;
+          } else {
+            formattedDealDate = String(rawDealDate);
+          }
+        } catch {
+          formattedDealDate = String(rawDealDate);
+        }
+      }
+
+      // 7. Observações com data de retorno anexada se presente
+      const rawNotes = body.notes || body.observacoes || body.dealNotes || body.opportunityNotes || "";
+      let finalLeadNotes = rawNotes ? String(rawNotes).trim() : "";
+      if (formattedDealDate) {
+        const dateTag = `[Data de Retorno: ${formattedDealDate}]`;
+        if (!finalLeadNotes.includes(dateTag)) {
+          finalLeadNotes = finalLeadNotes ? `${finalLeadNotes}\n\n${dateTag}` : dateTag;
+        }
+      }
 
       // Endereço completo
       const zipCode = body.zipCode || body.cep || "";
@@ -3716,93 +3753,127 @@ export async function registerRoutes(
       if (neighborhood) fullAddress = fullAddress ? `${fullAddress} - ${neighborhood}` : neighborhood;
       if (city) fullAddress = fullAddress ? `${fullAddress}, ${city}` : city;
       if (state) fullAddress = fullAddress ? `${fullAddress} - ${state}` : state;
-      if (zipCode) fullAddress = fullAddress ? `${fullAddress} (CEP: ${zipCode})` : `CEP: ${zipCode}`;
+      if (zipCode) fullAddress = fullAddress ? `${fullAddress} (CEP: ${zipCode})` : (zipCode ? `CEP: ${zipCode}` : "");
 
-      // Responsável
+      // 8. Responsável (Lê de assignedTo.name, assignedTo.email, assignedToName, assignedToEmail ou responsavel)
       const allUsers = await storage.getUsers();
       const staffUsers = allUsers.filter(u => u.role === "admin" || u.role === "employee");
 
-      const rawResp =
-        body.assignedTo ??
-        body.assigned_to ??
-        body.internalResponsibleId ??
-        body.responsibleId ??
-        body.responsavelId ??
-        body.consultorId ??
-        null;
+      let respName = "";
+      let respEmail = "";
+      let respId: number | undefined = undefined;
 
-      let resolvedAssignedTo: number | undefined = undefined;
-      if (rawResp !== null && rawResp !== undefined && !isNaN(Number(rawResp))) {
-        const numResp = Number(rawResp);
-        const matchStaff = staffUsers.find(u => u.id === numResp);
-        if (matchStaff) resolvedAssignedTo = matchStaff.id;
-      } else if (body.responsavel || body.responsibleName || body.consultor) {
-        const queryName = String(body.responsavel || body.responsibleName || body.consultor).trim().toLowerCase();
-        const matchStaff = staffUsers.find(u => u.name.toLowerCase().includes(queryName) || (u.email && u.email.toLowerCase() === queryName));
-        if (matchStaff) resolvedAssignedTo = matchStaff.id;
+      if (body.assignedTo && typeof body.assignedTo === "object") {
+        if (body.assignedTo.name) respName = String(body.assignedTo.name).trim();
+        if (body.assignedTo.email) respEmail = String(body.assignedTo.email).trim();
+        if (body.assignedTo.id && !isNaN(Number(body.assignedTo.id))) respId = Number(body.assignedTo.id);
+      } else if (body.assignedTo && !isNaN(Number(body.assignedTo))) {
+        respId = Number(body.assignedTo);
+      } else if (typeof body.assignedTo === "string") {
+        if (body.assignedTo.includes("@")) respEmail = body.assignedTo.trim();
+        else respName = body.assignedTo.trim();
       }
 
-      // 5. Salva / Atualiza o Contato no CRM
+      if (!respName) {
+        respName = body.assignedToName || body.responsibleName || body.responsavel || body.consultor || "";
+      }
+      if (!respEmail) {
+        respEmail = body.assignedToEmail || body.responsibleEmail || "";
+      }
+      if (!respId && body.internalResponsibleId && !isNaN(Number(body.internalResponsibleId))) {
+        respId = Number(body.internalResponsibleId);
+      }
+
+      let matchedStaff: any = null;
+      if (respId) {
+        matchedStaff = staffUsers.find(u => u.id === respId);
+      }
+      if (!matchedStaff && respEmail) {
+        const cleanE = respEmail.toLowerCase().trim();
+        matchedStaff = staffUsers.find(u => u.email && u.email.toLowerCase().trim() === cleanE);
+      }
+      if (!matchedStaff && respName) {
+        const cleanN = respName.toLowerCase().trim();
+        matchedStaff = staffUsers.find(u =>
+          u.name.toLowerCase().trim() === cleanN ||
+          u.name.toLowerCase().includes(cleanN) ||
+          cleanN.includes(u.name.toLowerCase())
+        );
+      }
+
+      const resolvedAssignedTo = matchedStaff ? matchedStaff.id : respId;
+      const finalRespName = matchedStaff ? matchedStaff.name : (respName || null);
+      const finalRespEmail = matchedStaff?.email || respEmail || null;
+
+      // 9. Salva / Atualiza o Contato no CRM (UPSERT)
       const contactPayload: InsertContact = {
         name: contactName,
         type: body.type === "company" ? "company" : "individual",
-        phone: rawPhone || null,
-        email: body.email ? String(body.email).trim() : null,
-        document: rawDoc || null,
-        address: fullAddress || null,
-        responsibleName: body.responsibleName ? String(body.responsibleName).trim() : null,
-        responsibleId: body.responsibleId ? Number(body.responsibleId) : undefined,
-        internalResponsibleId: resolvedAssignedTo || (body.internalResponsibleId ? Number(body.internalResponsibleId) : undefined),
-        anniversaryDate: body.anniversaryDate ? String(body.anniversaryDate).trim() : null,
-        maritalStatus: body.maritalStatus ? String(body.maritalStatus).trim() : null,
-        productType: finalProductType, // <-- Grava na coluna de produtos da base de contatos!
-        insurers: body.insurers ? String(body.insurers).trim() : null,
-        contactOrigin: body.contactOrigin ? String(body.contactOrigin).trim() : "WhatsApp Integrado",
+        phone: rawPhone || (existingMatch?.phone || null),
+        email: inputEmail || (existingMatch?.email || null),
+        document: rawDoc || (existingMatch?.document || null),
+        address: fullAddress || (existingMatch?.address || null),
+        responsibleName: finalRespName || (existingMatch?.responsibleName || null),
+        responsibleId: body.responsibleId ? Number(body.responsibleId) : (existingMatch?.responsibleId || undefined),
+        internalResponsibleId: resolvedAssignedTo || (existingMatch?.internalResponsibleId || undefined),
+        anniversaryDate: body.anniversaryDate ? String(body.anniversaryDate).trim() : (existingMatch?.anniversaryDate || null),
+        maritalStatus: body.maritalStatus ? String(body.maritalStatus).trim() : (existingMatch?.maritalStatus || null),
+        productType: finalProductType,
+        insurers: body.insurers ? String(body.insurers).trim() : (existingMatch?.insurers || null),
+        contactOrigin: body.contactOrigin ? String(body.contactOrigin).trim() : (existingMatch?.contactOrigin || "WhatsApp Central"),
         isReferral: Boolean(body.isReferral),
         referredByContactId: body.referredByContactId ? Number(body.referredByContactId) : undefined,
-        notes: (body.notes || body.observacoes) ? String(body.notes || body.observacoes).trim() : null,
-        status: body.status === "Cancelado" || body.status === "Prospects" ? body.status : "Ativo",
+        notes: rawNotes ? String(rawNotes).trim() : (existingMatch?.notes || null),
+        status: body.status === "Cancelado" || body.status === "Prospects" ? body.status : (existingMatch?.status || "Ativo"),
       };
 
-      const parsed = insertContactSchema.parse(contactPayload);
-      const result = await storage.upsertContact(parsed);
+      let contactRecord: any;
+      let isNewContact = false;
 
-      // Sincronização com clientes
+      if (existingMatch) {
+        contactRecord = await storage.updateContact(existingMatch.id, contactPayload);
+        isNewContact = false;
+      } else {
+        contactRecord = await storage.createContact(contactPayload);
+        isNewContact = true;
+      }
+
+      // Sincronização com tabela clientes
       const allClientes = await storage.getClientes();
       let linkedCliente = allClientes.find(cliente => {
-        if (cliente.contactId === result.contact.id) return true;
-        const contactDoc = cleanDigits(result.contact.document);
+        if (cliente.contactId === contactRecord.id) return true;
+        const contactDoc = cleanDigits(contactRecord.document);
         const clientDoc = cleanDigits(cliente.cpfCnpj);
-        const cName = (result.contact.name || "").trim().toLowerCase();
+        const cName = (contactRecord.name || "").trim().toLowerCase();
         const cliName = (cliente.nome || "").trim().toLowerCase();
-        const contactPhone = cleanDigits(result.contact.phone);
+        const contactPhone = cleanDigits(contactRecord.phone);
         const clientPhone = cleanDigits(cliente.telefone);
         return Boolean(contactDoc && clientDoc && contactDoc === clientDoc) ||
           Boolean(cName === cliName && contactPhone && clientPhone && contactPhone === clientPhone);
       });
 
       const clienteDataPayload = {
-        contactId: result.contact.id,
-        type: result.contact.type,
-        nome: result.contact.name,
-        cpfCnpj: result.contact.document || null,
-        email: result.contact.email || null,
-        telefone: result.contact.phone || null,
-        whatsapp: result.contact.phone || null,
-        endereco: fullAddress || result.contact.address || null,
+        contactId: contactRecord.id,
+        type: contactRecord.type,
+        nome: contactRecord.name,
+        cpfCnpj: contactRecord.document || null,
+        email: contactRecord.email || null,
+        telefone: contactRecord.phone || null,
+        whatsapp: contactRecord.phone || null,
+        endereco: fullAddress || contactRecord.address || null,
         cidade: city || null,
         estado: state || null,
-        anniversaryDate: result.contact.anniversaryDate || null,
-        productType: result.contact.productType || null,
-        insurers: result.contact.insurers || null,
-        contactOrigin: result.contact.contactOrigin || null,
-        isReferral: result.contact.isReferral || false,
-        referredByContactId: result.contact.referredByContactId || null,
-        internalResponsibleId: result.contact.internalResponsibleId || null,
-        nomeRepresentante: result.contact.responsibleName || null,
+        anniversaryDate: contactRecord.anniversaryDate || null,
+        productType: contactRecord.productType || null,
+        insurers: contactRecord.insurers || null,
+        contactOrigin: contactRecord.contactOrigin || null,
+        isReferral: contactRecord.isReferral || false,
+        referredByContactId: contactRecord.referredByContactId || null,
+        internalResponsibleId: contactRecord.internalResponsibleId || null,
+        nomeRepresentante: contactRecord.responsibleName || null,
         telefoneRepresentante: body.responsiblePhone ? String(body.responsiblePhone).trim() : null,
-        emailRepresentante: body.responsibleEmail ? String(body.responsibleEmail).trim() : null,
-        observacoes: result.contact.notes || null,
+        emailRepresentante: finalRespEmail || (body.responsibleEmail ? String(body.responsibleEmail).trim() : null),
+        observacoes: contactRecord.notes || null,
       };
 
       if (linkedCliente) {
@@ -3811,7 +3882,7 @@ export async function registerRoutes(
         linkedCliente = await storage.createCliente(clienteDataPayload);
       }
 
-      // 6. Grava a Oportunidade no Funil de Vendas (LEADS & Pipeline)
+      // 10. Grava a Oportunidade no Funil de Vendas (LEADS & Pipeline)
       const isOpportunityEndpoint =
         req.path.includes("opportunities") ||
         req.path.includes("leads") ||
@@ -3826,6 +3897,11 @@ export async function registerRoutes(
         body.dealValue !== undefined ||
         body.valor !== undefined ||
         body.value !== undefined ||
+        body.product !== undefined ||
+        body.produto !== undefined ||
+        body.dealDate !== undefined ||
+        body.status !== undefined ||
+        body.responded !== undefined ||
         body.createOpportunity === true ||
         body.createOpportunity === "true" ||
         body.createLead === true ||
@@ -3836,36 +3912,30 @@ export async function registerRoutes(
 
       let createdLead: any = null;
       if (shouldCreateOpportunity) {
-        const allExistingLeads = await storage.getLeads();
-        const existingLead = allExistingLeads.find(l =>
-          l.contactId === result.contact.id &&
-          (l.product || "").trim().toLowerCase() === (oppProduct || "Oportunidade Comercial").trim().toLowerCase() &&
-          l.status !== "closed" && l.status !== "lost" && l.status !== "cancelled"
+        const allExistingLeads = await storage.getLeads(contactRecord.id);
+
+        // Prevenção contra disparo duplicado de webhook em menos de 10 segundos
+        const recentDuplicate = allExistingLeads.find(l =>
+          (l.product || "").trim().toLowerCase() === oppProduct.toLowerCase() &&
+          l.status === dealStage &&
+          l.createdAt && (Date.now() - new Date(l.createdAt).getTime() < 10000)
         );
 
-        if (existingLead) {
-          createdLead = await storage.updateLead(existingLead.id, {
-            status: dealStage,
-            value: dealVal !== null ? dealVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : existingLead.value,
-            notes: (body.notes || body.observacoes || body.dealNotes || body.opportunityNotes)
-              ? String(body.notes || body.observacoes || body.dealNotes || body.opportunityNotes).trim()
-              : existingLead.notes,
-            assignedTo: resolvedAssignedTo || existingLead.assignedTo,
-          });
+        if (recentDuplicate) {
+          createdLead = recentDuplicate;
         } else {
+          // Sempre cria e anexa a nova oportunidade ao histórico do contato
           createdLead = await storage.createLead({
-            contactId: result.contact.id,
+            contactId: contactRecord.id,
             product: oppProduct || "Oportunidade Comercial",
             status: dealStage,
-            source: body.contactOrigin || "WhatsApp Integrado",
-            value: dealVal !== null ? dealVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : null,
-            notes: (body.notes || body.observacoes || body.dealNotes || body.opportunityNotes)
-              ? String(body.notes || body.observacoes || body.dealNotes || body.opportunityNotes).trim()
-              : null,
+            source: body.contactOrigin || "WhatsApp Central",
+            value: dealVal !== null ? dealVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : (body.value ? String(body.value) : null),
+            notes: finalLeadNotes || null,
             assignedTo: resolvedAssignedTo || undefined,
           });
 
-          // Disparar automações Todoist
+          // Disparar automações Todoist se configuradas
           try {
             await storage.triggerTodoistAutomations('new_lead', {
               leadId: createdLead.id,
@@ -3876,7 +3946,60 @@ export async function registerRoutes(
         }
       }
 
-      // 7. Se veio Apólice com número e prêmio:
+      // 11. Disparo Automático de E-mail para o Responsável
+      let emailNotificationResult: { sent: boolean; recipient?: string; error?: string } = { sent: false };
+
+      const shouldNotify =
+        body.notifyResponsible === true ||
+        body.notifyResponsible === "true" ||
+        Boolean(finalRespEmail);
+
+      if (createdLead && shouldNotify) {
+        let targetEmail = finalRespEmail;
+        if (!targetEmail && resolvedAssignedTo) {
+          const staff = staffUsers.find(u => u.id === resolvedAssignedTo);
+          if (staff?.email) targetEmail = staff.email;
+        }
+
+        // Fallback para e-mail corporativo de notificações caso notifyResponsible seja true mas sem e-mail específico
+        if (!targetEmail && (body.notifyResponsible === true || body.notifyResponsible === "true")) {
+          const settings = await storage.getSiteSettings();
+          targetEmail = settings?.smtpUser || process.env.NOTIFICATION_EMAIL || "notificacoes@monteiroseguros.com.br";
+        }
+
+        if (targetEmail) {
+          try {
+            const emailRes = await sendOpportunityNotificationEmail({
+              recipientEmail: targetEmail,
+              recipientName: finalRespName || undefined,
+              clientName: contactRecord.name,
+              clientPhone: contactRecord.phone || rawPhone,
+              product: createdLead.product || oppProduct,
+              value: dealVal !== null ? dealVal : (body.value || null),
+              status: createdLead.status || dealStage,
+              dealDate: formattedDealDate || (rawDealDate ? String(rawDealDate) : undefined),
+              notes: rawNotes ? String(rawNotes) : undefined,
+              leadId: createdLead.id,
+            });
+
+            emailNotificationResult = {
+              sent: emailRes.success,
+              recipient: targetEmail,
+              error: emailRes.error,
+            };
+            if (emailRes.success) {
+              console.log(`[External API] ✉️ E-mail de notificação de oportunidade enviado para ${targetEmail}`);
+            } else {
+              console.warn(`[External API] ⚠️ Falha no envio de e-mail para ${targetEmail}:`, emailRes.error);
+            }
+          } catch (mailErr: any) {
+            console.error("[External API] ❌ Erro inesperado ao disparar e-mail:", mailErr);
+            emailNotificationResult = { sent: false, recipient: targetEmail, error: mailErr.message };
+          }
+        }
+      }
+
+      // 12. Se veio Apólice com número e prêmio:
       let createdPolicy: any = null;
       const policyNumber = body.insurance?.policyNumber || body.policyNumber;
       if (policyNumber && linkedCliente) {
@@ -3895,46 +4018,47 @@ export async function registerRoutes(
         }
       }
 
-      return res.status(result.isNew ? 201 : 200).json({
+      return res.status(isNewContact ? 201 : 200).json({
         ok: true,
         success: true,
-        contactId: result.contact.id,
-        isNew: result.isNew,
+        contactId: contactRecord.id,
+        isNew: isNewContact,
         message: createdLead
           ? "Contato e Oportunidade registrados com sucesso no CRM e enviados para o LEADS & Pipeline!"
-          : (result.isNew
+          : (isNewContact
             ? "Contato cadastrado com sucesso no CRM Monteiro Seguros!"
             : "Contato atualizado com sucesso no CRM Monteiro Seguros!"),
         contact: {
-          id: result.contact.id,
-          name: result.contact.name,
-          phone: result.contact.phone,
-          email: result.contact.email,
-          document: result.contact.document,
-          address: result.contact.address,
-          status: result.contact.status,
-          produtos: result.contact.productType, // <-- coluna produtos da tela base
-          anniversaryDate: result.contact.anniversaryDate,
-          type: result.contact.type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
-          rawType: result.contact.type,
-          maritalStatus: result.contact.maritalStatus,
-          productType: result.contact.productType,
-          insurers: result.contact.insurers,
-          contactOrigin: result.contact.contactOrigin,
-          responsibleName: result.contact.responsibleName,
-          responsibleId: result.contact.responsibleId,
-          internalResponsibleId: result.contact.internalResponsibleId,
-          notes: result.contact.notes,
-          createdAt: result.contact.createdAt,
-          rawContact: result.contact,
+          id: contactRecord.id,
+          name: contactRecord.name,
+          phone: contactRecord.phone,
+          email: contactRecord.email,
+          document: contactRecord.document,
+          address: contactRecord.address,
+          status: contactRecord.status,
+          produtos: contactRecord.productType,
+          anniversaryDate: contactRecord.anniversaryDate,
+          type: contactRecord.type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
+          rawType: contactRecord.type,
+          maritalStatus: contactRecord.maritalStatus,
+          productType: contactRecord.productType,
+          insurers: contactRecord.insurers,
+          contactOrigin: contactRecord.contactOrigin,
+          responsibleName: contactRecord.responsibleName,
+          responsibleId: contactRecord.responsibleId,
+          internalResponsibleId: contactRecord.internalResponsibleId,
+          notes: contactRecord.notes,
+          createdAt: contactRecord.createdAt,
+          rawContact: contactRecord,
         },
-        products: result.contact.productType
-          ? result.contact.productType.split(",").map((s: string) => s.trim()).filter(Boolean)
+        products: contactRecord.productType
+          ? contactRecord.productType.split(",").map((s: string) => s.trim()).filter(Boolean)
           : [],
         lead: createdLead,
         opportunity: createdLead,
         deal: createdLead,
         policy: createdPolicy,
+        emailNotification: emailNotificationResult,
         pipelineUrl: "/admin/leads",
       });
     } catch (err: any) {
@@ -3945,14 +4069,39 @@ export async function registerRoutes(
     }
   }
 
-  // External Create/Register Contact API (Used by WhatsApp Management Software / Typebot / N8N / Baileys / Evolution)
+  // 1. GET /api/v1/external/users & /api/v1/external/employees - Lista funcionários/responsáveis
+  app.get([
+    "/api/v1/external/users",
+    "/api/external/users",
+    "/api/v1/external/employees",
+    "/api/external/employees",
+  ], externalApiKeyAuth, async (_req, res) => {
+    try {
+      const allUsers = await storage.getUsers();
+      const staffUsers = allUsers.filter(u => u.role === "admin" || u.role === "employee");
+      const result = staffUsers.map(u => ({
+        id: String(u.id),
+        name: u.name,
+        email: u.email || "",
+        role: u.role === "admin" ? "Consultor" : "Corretora",
+      }));
+      return res.json(result);
+    } catch (err: any) {
+      console.error("[External API] Error listing employees:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 2. POST /api/v1/external/contacts - Cadastro / Upsert de Contatos e Oportunidades
   app.post([
     "/api/v1/external/contacts",
     "/api/external/contacts",
   ], externalApiKeyAuth, handleExternalContactAndOpportunity);
 
-  // External Create Opportunity API (Direct endpoints supporting external WhatsApp crmService)
+  // 3. POST /api/v1/external/deals - Endpoint Dedicado para Oportunidades (WhatsApp Central)
   app.post([
+    "/api/v1/external/deals",
+    "/api/external/deals",
     "/api/v1/external/opportunities",
     "/api/external/opportunities",
     "/api/v1/external/leads",

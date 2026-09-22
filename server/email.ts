@@ -563,3 +563,96 @@ export function buildTaskAssignedEmail(params: {
     }),
   };
 }
+
+/** Send automatic email notification when a new WhatsApp opportunity is received */
+export async function sendOpportunityNotificationEmail(params: {
+  recipientEmail: string;
+  recipientName?: string;
+  clientName: string;
+  clientPhone: string;
+  product: string;
+  value?: string | number | null;
+  status?: string;
+  dealDate?: string;
+  notes?: string;
+  leadId?: number;
+}): Promise<{ success: boolean; error?: string }> {
+  const {
+    recipientEmail,
+    recipientName,
+    clientName,
+    clientPhone,
+    product,
+    value,
+    status = "Respondida",
+    dealDate,
+    notes,
+    leadId,
+  } = params;
+
+  if (!recipientEmail || !recipientEmail.includes("@")) {
+    return { success: false, error: "Destinatário de e-mail inválido." };
+  }
+
+  const cleanPhone = clientPhone ? clientPhone.replace(/\D/g, "") : "";
+  const waUrl = cleanPhone ? `https://wa.me/55${cleanPhone.replace(/^55/, "")}` : "";
+  const phoneFormatted = clientPhone || "Não informado";
+
+  let valFormatted = "Não informado";
+  if (value !== undefined && value !== null && value !== "") {
+    if (typeof value === "number") {
+      valFormatted = `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else {
+      const sVal = String(value).trim();
+      valFormatted = sVal.startsWith("R$") ? sVal : `R$ ${sVal}`;
+    }
+  }
+
+  const subject = `[CRM] Nova Oportunidade WhatsApp: ${product} - ${clientName}`;
+
+  const content = `
+    <div style="text-align: left;">
+      <p style="color: #1E293B; font-size: 16px; line-height: 1.6; margin: 0 0 16px; font-weight: 700;">
+        Olá${recipientName ? `, <strong>${recipientName}</strong>` : ""}! 🚀
+      </p>
+      <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+        Uma nova oportunidade vinda do <strong>WhatsApp Central</strong> acabou de ser registrada e vinculada no CRM:
+      </p>
+
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          ${infoRow("Nome do Cliente", clientName || "Não informado")}
+          ${infoRow("WhatsApp", waUrl ? `<a href="${waUrl}" target="_blank" style="color: #059669; text-decoration: none; font-weight: 700;">${phoneFormatted} 💬</a>` : phoneFormatted)}
+          ${infoRow("Produto", product || "Seguro")}
+          ${infoRow("Valor Estimado", valFormatted)}
+          ${infoRow("Status", `<span style="background: #ECFDF5; color: #059669; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 800;">${status}</span>`)}
+          ${dealDate ? infoRow("Data de Retorno", dealDate) : ""}
+        </table>
+      </div>
+
+      ${notes ? `
+      <div style="margin-bottom: 24px;">
+        <p style="margin: 0 0 8px; font-size: 13px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Observações:</p>
+        <div style="background: #F1F5F9; border-left: 4px solid #059669; border-radius: 4px 12px 12px 4px; padding: 14px 18px; color: #334155; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${notes}</div>
+      </div>` : ""}
+
+      <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;">
+        <p style="margin: 0; font-size: 13px; color: #1E40AF; line-height: 1.5;">
+          💡 <strong>Dica:</strong> Acesse o CRM para responder prontamente o cliente ou atualizar o andamento da negociação.
+        </p>
+      </div>
+    </div>`;
+
+  const html = baseLayout({
+    title: "Nova Oportunidade WhatsApp",
+    badge: "WhatsApp Central",
+    content,
+    buttonUrl: `${getSiteBaseUrl()}/admin/leads`,
+    buttonText: "Acessar Oportunidade no CRM →",
+  });
+
+  const res = await sendEmail({ to: recipientEmail, subject, html });
+  await logNotification(null, "lead_assigned", "lead", leadId || 0, res.success ? "sent" : "failed", res.error);
+  return res;
+}
+

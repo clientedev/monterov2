@@ -57,6 +57,7 @@ const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG
 
 const DEFAULT_LEAD_COLUMNS = [
     { id: "new", label: "Novo Lead", color: "text-blue-500", bg: "bg-blue-50/50", accent: "border-blue-300" },
+    { id: "Respondida", label: "Respondida", color: "text-indigo-500", bg: "bg-indigo-50/50", accent: "border-indigo-300" },
     { id: "qualified", label: "Qualificado", color: "text-purple-500", bg: "bg-purple-50/50", accent: "border-purple-300" },
     { id: "proposal", label: "Proposta", color: "text-amber-500", bg: "bg-amber-50/50", accent: "border-amber-300" },
     { id: "cancelled", label: "Cancelado", color: "text-rose-500", bg: "bg-rose-50/50", accent: "border-rose-300" },
@@ -93,7 +94,14 @@ export default function LeadsPage() {
     const columns = useMemo(() => {
         if (settings?.leadColumns) {
             try {
-                return JSON.parse(settings.leadColumns);
+                const parsed = JSON.parse(settings.leadColumns);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    if (!parsed.some((c: any) => c.id?.toLowerCase() === "respondida")) {
+                        parsed.splice(1, 0, { id: "Respondida", label: "Respondida", color: "text-indigo-500", bg: "bg-indigo-50/50", accent: "border-indigo-300" });
+                    }
+                    return parsed;
+                }
+                return DEFAULT_LEAD_COLUMNS;
             } catch (e) {
                 return DEFAULT_LEAD_COLUMNS;
             }
@@ -501,8 +509,8 @@ export default function LeadsPage() {
                                                             )}
                                                         >
                                                             {leads?.filter(l => {
-                                                                const isDirectMatch = l.status === column.id;
-                                                                const isUnmappedFallback = (l.status === "Ativo" || l.status === "ativo" || !columns.some((c: any) => c.id === l.status)) && (column.id === "new" || index === 0);
+                                                                const isDirectMatch = l.status === column.id || (Boolean(l.status) && Boolean(column.id) && l.status.toLowerCase() === column.id.toLowerCase());
+                                                                const isUnmappedFallback = (l.status === "Ativo" || l.status === "ativo" || !columns.some((c: any) => c.id === l.status || (l.status && c.id && c.id.toLowerCase() === l.status.toLowerCase()))) && (column.id === "new" || index === 0);
                                                                 return (isDirectMatch || isUnmappedFallback) && (
                                                                     search === "" ||
                                                                     getContactForLead(l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
