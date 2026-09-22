@@ -94,6 +94,16 @@ export default function LeadsThermometer() {
     
     const [savedLeadsMap, setSavedLeadsMap] = useState<Record<string, number>>({});
     const [enrichedLeadsMap, setEnrichedLeadsMap] = useState<Record<string, any>>({});
+    const [dismissedLeads, setDismissedLeads] = useState<Set<string>>(new Set());
+
+    const dismissLead = (placeId: string) => {
+        setDismissedLeads(prev => new Set(Array.from(prev).concat(placeId)));
+        setSelectedLeads(prev => {
+            const next = { ...prev };
+            delete next[placeId];
+            return next;
+        });
+    };
 
     // CNPJ Details Modal State
     const [cnpjModalOpen, setCnpjModalOpen] = useState(false);
@@ -166,7 +176,8 @@ export default function LeadsThermometer() {
         enabled: !!searchPayload,
     });
 
-    const results = searchData?.results || [];
+    const allResults = searchData?.results || [];
+    const results = allResults.filter(l => !dismissedLeads.has(l.placeId));
 
     // Lazily initialize Leaflet Map
     useEffect(() => {
@@ -291,23 +302,22 @@ export default function LeadsThermometer() {
                 const data = await res.json();
                 setCnpjModalData(data);
 
-                if (data.cnpj || data.email || data.ddd_telefone_1) {
+                // Sempre atualiza o mapa com o que a API retornar
+                if (data && (data.cnpj || data.razao_social || data.email || data.ddd_telefone_1)) {
                     if (data.cnpj) lead.document = data.cnpj;
                     if (data.email) lead.email = data.email;
                     if (data.ddd_telefone_1 && !lead.phone) lead.phone = data.ddd_telefone_1;
-                    if (data.razao_social && data.razao_social !== lead.name) {
-                        lead.corporateName = data.razao_social;
-                    }
+                    if (data.razao_social) lead.corporateName = data.razao_social;
 
                     setEnrichedLeadsMap(prev => ({
                         ...prev,
                         [lead.placeId]: {
                             ...(prev[lead.placeId] || {}),
-                            document: data.cnpj || prev[lead.placeId]?.document || lead.document,
-                            name: data.razao_social || data.nome_fantasia || lead.corporateName || lead.name,
-                            address: [data.logradouro, data.numero, data.bairro, data.municipio, data.uf].filter(Boolean).join(", ") || lead.address,
-                            phone: data.ddd_telefone_1 || lead.phone || null,
-                            email: data.email || lead.email || null,
+                            document: data.cnpj || prev[lead.placeId]?.document || lead.document || undefined,
+                            name: data.razao_social || data.nome_fantasia || prev[lead.placeId]?.name || lead.corporateName || lead.name,
+                            address: [data.logradouro, data.numero, data.bairro, data.municipio, data.uf].filter(Boolean).join(", ") || prev[lead.placeId]?.address || lead.address,
+                            phone: data.ddd_telefone_1 || prev[lead.placeId]?.phone || lead.phone || null,
+                            email: data.email || prev[lead.placeId]?.email || lead.email || null,
                         }
                     }));
                 }
@@ -982,6 +992,14 @@ export default function LeadsThermometer() {
                                                     : "border-slate-100"
                                             )}
                                         >
+                                            {/* Botão X para dispensar o card */}
+                                            <button
+                                                onClick={() => dismissLead(lead.placeId)}
+                                                title="Remover este lead da lista"
+                                                className="absolute top-3 right-3 z-10 h-5 w-5 rounded-full bg-slate-200 hover:bg-rose-100 hover:text-rose-600 text-slate-400 flex items-center justify-center transition-all duration-150 opacity-0 group-hover:opacity-100 text-[10px] font-bold shadow-sm"
+                                            >
+                                                ✕
+                                            </button>
                                             {/* Top Thermometer Color Strip */}
                                             <div className={cn(
                                                 "h-2 w-full",
@@ -1009,12 +1027,7 @@ export default function LeadsThermometer() {
                                                     {lead.corporateName || enriched?.name || lead.name}
                                                 </CardTitle>
 
-                                                {lead.document && (
-                                                    <CardDescription className="font-mono text-[10px] font-bold text-slate-600 flex items-center gap-1">
-                                                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                                                        CNPJ: {lead.document}
-                                                    </CardDescription>
-                                                )}
+
                                             </CardHeader>
 
                                             <CardContent className="space-y-3 pb-4 flex-1">
@@ -1043,6 +1056,18 @@ export default function LeadsThermometer() {
                                                     ) : (
                                                         <div className="text-[10px] text-slate-400 italic">E-mail corporativo não detectado</div>
                                                     )}
+
+                                                    {/* CNPJ — preenchido automaticamente após "Puxar CNPJ" */}
+                                                    {(() => {
+                                                        const cnpj = enriched?.document || lead.document;
+                                                        if (!cnpj) return null;
+                                                        return (
+                                                            <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold font-mono bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                                                <span className="tracking-wide">{cnpj}</span>
+                                                            </div>
+                                                        );
+                                                    })()}
 
                                                     {lead.website && (
                                                         <div className="flex items-center gap-1.5 text-[11px] text-blue-600 font-medium truncate">
