@@ -11,7 +11,7 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
 import { db } from "./db";
 import { sql, eq, or, and, desc, asc } from "drizzle-orm";
-import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact, sendClientWelcomeEmail, sendOpportunityNotificationEmail } from "./email";
+import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact, sendClientWelcomeEmail, sendOpportunityNotificationEmail, sendEmail } from "./email";
 import {
   insertInquirySchema,
   insertContactSchema,
@@ -43,6 +43,10 @@ import {
   contactFiles,
   users,
   type InsertContact,
+  leadDispatchGroups,
+  insertLeadDispatchGroupSchema,
+  type InsertLeadDispatchGroup,
+  type LeadDispatchGroup,
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -2859,6 +2863,78 @@ export async function registerRoutes(
   // -----------------------------------------------------------------------
   // Termômetro de Leads API Endpoints
   // -----------------------------------------------------------------------
+    // Helper para enriquecer dados de CNPJ, email corporativo e telefone
+  async function autoEnrichLeadCompany(name: string, locationStr: string, existingPhone?: string, existingDoc?: string) {
+    if (existingDoc && existingDoc.replace(/\D/g, "").length === 14) {
+      const cleanDoc = existingDoc.replace(/\D/g, "");
+      try {
+        const bRes = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanDoc}`, { signal: AbortSignal.timeout(3500) });
+        if (bRes.ok) {
+          const bData = await bRes.json();
+          return {
+            document: cleanDoc,
+            corporateName: bData.razao_social || bData.nome_fantasia || name,
+            email: bData.email || null,
+            phone: bData.ddd_telefone_1 || existingPhone || null,
+            address: [bData.descricao_tipo_de_logradouro, bData.logradouro, bData.numero, bData.bairro, bData.municipio, bData.uf].filter(Boolean).join(", "),
+            cnae: bData.cnae_fiscal_descricao || null,
+          };
+        }
+      } catch (e) {}
+    }
+
+    const cleanName = (name || "")
+      .replace(/\b(unidade|filial|matriz|loja|unid|un)\b.*$/gi, "")
+      .replace(/[-_]/g, " ")
+      .trim();
+    const coreName = cleanName.replace(/\b(seguros|corretora|ltda|s\/a|s\.a\.)\b/gi, "").trim();
+    const city = (locationStr || "São Paulo").split(",")[0]?.trim();
+    const query = `${coreName || cleanName} ${city} cnpj`;
+
+    try {
+      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+      const searchRes = await fetch(searchUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "pt-BR,pt;q=0.9",
+        },
+        signal: AbortSignal.timeout(4000),
+      });
+
+      if (searchRes.ok) {
+        const html = await searchRes.text();
+        const matches = html.match(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g) || [];
+        for (const m of matches) {
+          const c = m.replace(/\D/g, "");
+          if (c.length === 14) {
+            try {
+              const bRes = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${c}`, { signal: AbortSignal.timeout(3500) });
+              if (bRes.ok) {
+                const bData = await bRes.json();
+                return {
+                  document: c,
+                  corporateName: bData.razao_social || bData.nome_fantasia || name,
+                  email: bData.email || null,
+                  phone: bData.ddd_telefone_1 || existingPhone || null,
+                  address: [bData.descricao_tipo_de_logradouro, bData.logradouro, bData.numero, bData.bairro, bData.municipio, bData.uf].filter(Boolean).join(", "),
+                  cnae: bData.cnae_fiscal_descricao || null,
+                };
+              }
+            } catch (err) {}
+            return {
+              document: c,
+              corporateName: name,
+              email: null,
+              phone: existingPhone || null,
+            };
+          }
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
   app.post("/api/leads-thermometer/search", isTeam, async (req, res) => {
     try {
       const { location = "São Paulo, SP", radiusKm = 10, productType = "Plano de Saúde", customQuery = "" } = req.body || {};
@@ -2869,6 +2945,11 @@ export async function registerRoutes(
       let results: any[] = [];
 
       const PRODUCT_MAP: Record<string, { queryKeywords: string[]; targetNiche: string; cnaeHint: string }> = {
+        "Benefícios (Alimentação, Refeição, etc.)": {
+          queryKeywords: ["beneficios", "vale alimentacao", "vale refeicao", "empresa", "consultoria", "escritorio", "tecnologia", "industria", "rh", "comercio", "servicos"],
+          targetNiche: "Benefícios Corporativos (VA/VR/VT)",
+          cnaeHint: "Corporativo / RH / Serviços / Indústria / Tecnologia",
+        },
         "Plano de Saúde": {
           queryKeywords: ["empresa", "escritorio", "clinica", "consultoria", "tecnologia"],
           targetNiche: "Saúde & Corporativo",
@@ -3051,6 +3132,29 @@ export async function registerRoutes(
         } catch (err: any) {
           console.error("[LeadsThermometer] Public proxy fallback error:", err.message);
         }
+      }
+
+            // Auto-enriquecimento integrado de CNPJ, email e telefone direto no script de busca
+      try {
+        const leadsToEnrich = results.slice(0, 15);
+        await Promise.allSettled(
+          leadsToEnrich.map(async (item) => {
+            if (!item.document || !item.email) {
+              const enriched = await autoEnrichLeadCompany(item.name, location, item.phone, item.document);
+              if (enriched) {
+                if (enriched.document) item.document = enriched.document;
+                if (enriched.email) item.email = enriched.email;
+                if (enriched.phone && !item.phone) item.phone = enriched.phone;
+                if (enriched.corporateName && enriched.corporateName !== item.name) {
+                  item.corporateName = enriched.corporateName;
+                }
+                if (enriched.cnae && !item.cnae) item.cnae = enriched.cnae;
+              }
+            }
+          })
+        );
+      } catch (enrichErr: any) {
+        console.warn("[LeadsThermometer] Aviso no auto-enriquecimento:", enrichErr.message);
       }
 
       const scoredResults = results.map((item) => {
@@ -3250,6 +3354,215 @@ export async function registerRoutes(
       res.json(history);
     } catch (err: any) {
       res.status(500).json({ message: "Erro ao buscar histórico do Termômetro de Leads" });
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Grupos de Disparo de Leads & Disparos em Massa (E-mail & WhatsApp)
+  // -----------------------------------------------------------------------
+  app.get("/api/leads-thermometer/dispatch-groups", isTeam, async (req, res) => {
+    try {
+      const groups = await storage.getLeadDispatchGroups();
+      res.json(groups);
+    } catch (err: any) {
+      console.error("[DispatchGroups] Erro ao listar grupos:", err);
+      res.status(500).json({ message: "Erro ao carregar grupos de disparo." });
+    }
+  });
+
+  app.post("/api/leads-thermometer/dispatch-groups", isTeam, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id || null;
+      const parsed = insertLeadDispatchGroupSchema.parse({
+        ...req.body,
+        createdBy: userId,
+      });
+      const created = await storage.createLeadDispatchGroup(parsed);
+      res.status(201).json({ success: true, group: created });
+    } catch (err: any) {
+      console.error("[DispatchGroups] Erro ao criar grupo:", err);
+      res.status(400).json({ message: err.message || "Erro ao criar grupo de disparo." });
+    }
+  });
+
+  app.post("/api/leads-thermometer/dispatch-email", isTeam, async (req, res) => {
+    try {
+      const { leads = [], subject, bodyTemplate, productType = "Benefícios Corporativos" } = req.body || {};
+
+      if (!Array.isArray(leads) || leads.length === 0) {
+        return res.status(400).json({ message: "Nenhum lead selecionado para envio de e-mail." });
+      }
+
+      if (!subject || !bodyTemplate) {
+        return res.status(400).json({ message: "Assunto e mensagem são obrigatórios para o disparo." });
+      }
+
+      let sentCount = 0;
+      let failedCount = 0;
+      const errors: Array<{ email: string; error: string }> = [];
+
+      for (const lead of leads) {
+        const toEmail = (lead.email || "").trim();
+        if (!toEmail || !toEmail.includes("@")) {
+          failedCount++;
+          errors.push({ email: toEmail || "vazio", error: "E-mail inválido ou ausente" });
+          continue;
+        }
+
+        const empresaName = lead.corporateName || lead.company || lead.name || "Sua Empresa";
+        const contactName = lead.contactPerson || lead.name || "Prezado(a)";
+        const cnpjStr = lead.document || "";
+
+        // Interpolação das variáveis no assunto e no corpo
+        const personalizedSubject = subject
+          .replace(/\{empresa\}/gi, empresaName)
+          .replace(/\{nome\}/gi, contactName)
+          .replace(/\{produto\}/gi, productType)
+          .replace(/\{cnpj\}/gi, cnpjStr);
+
+        const rawHtmlBody = bodyTemplate
+          .replace(/\{empresa\}/gi, empresaName)
+          .replace(/\{nome\}/gi, contactName)
+          .replace(/\{produto\}/gi, productType)
+          .replace(/\{cnpj\}/gi, cnpjStr);
+
+        const styledHtml = `
+          <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; line-height: 1.6; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <div style="margin-bottom: 20px; border-bottom: 2px solid #e11d48; padding-bottom: 12px;">
+              <h2 style="color: #0f172a; margin: 0; font-size: 20px;">Monteiro Seguros & Benefícios</h2>
+              <span style="font-size: 12px; color: #64748b;">Soluções Corporativas Especializadas</span>
+            </div>
+            <div style="font-size: 14px; color: #334155; white-space: pre-wrap;">${rawHtmlBody}</div>
+            <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
+              <p style="margin: 0;">Enviado por Monteiro Seguros e Soluções Corporativas | Contato: (11) 4004-0000</p>
+            </div>
+          </div>
+        `;
+
+        try {
+          const result = await sendEmail({
+            to: toEmail,
+            subject: personalizedSubject,
+            html: styledHtml,
+          });
+
+          if (result.success) {
+            sentCount++;
+          } else {
+            failedCount++;
+            errors.push({ email: toEmail, error: result.error || "Erro no envio" });
+          }
+        } catch (e: any) {
+          failedCount++;
+          errors.push({ email: toEmail, error: e.message || "Exceção no envio" });
+        }
+      }
+
+      res.json({
+        success: true,
+        total: leads.length,
+        sent: sentCount,
+        failed: failedCount,
+        errors,
+        message: `Disparo concluído: ${sentCount} e-mails enviados com sucesso, ${failedCount} falhas.`,
+      });
+    } catch (err: any) {
+      console.error("[DispatchEmail] Erro no disparo de emails:", err);
+      res.status(500).json({ message: "Erro ao processar disparo de e-mails: " + err.message });
+    }
+  });
+
+  app.post("/api/leads-thermometer/dispatch-whatsapp", isTeam, async (req, res) => {
+    try {
+      const { leads = [], messageTemplate, productType = "Benefícios Corporativos", accountId } = req.body || {};
+
+      if (!Array.isArray(leads) || leads.length === 0) {
+        return res.status(400).json({ message: "Nenhum lead selecionado para WhatsApp." });
+      }
+
+      if (!messageTemplate) {
+        return res.status(400).json({ message: "O texto da mensagem é obrigatório." });
+      }
+
+      // Prepara os destinatários com telefone válido
+      const validRecipients = leads
+        .filter((l: any) => l.phone && String(l.phone).replace(/\D/g, "").length >= 8)
+        .map((l: any) => {
+          const rawPhone = String(l.phone).replace(/\D/g, "");
+          const formattedPhone = rawPhone.length <= 11 ? `55${rawPhone}` : rawPhone;
+          const empresaName = l.corporateName || l.company || l.name || "sua empresa";
+          const contactName = l.contactPerson || l.name || "olá";
+
+          return {
+            phone: formattedPhone,
+            name: l.name || empresaName,
+            variables: {
+              empresa: empresaName,
+              nome: contactName,
+              produto: productType,
+              cnpj: l.document || "",
+            },
+          };
+        });
+
+      if (validRecipients.length === 0) {
+        return res.status(400).json({ message: "Nenhum dos leads selecionados possui telefone válido para WhatsApp." });
+      }
+
+      const waCentralUrl = process.env.MONTEIRO_CONECTA_URL || process.env.WA_CENTRAL_URL || "https://whatsapp.monteiroseguros.com.br";
+      const crmApiKey = process.env.CRM_API_KEY || "monteiro_crm_secret_key_2026";
+
+      console.log(`[DispatchWhatsApp] Enviando ${validRecipients.length} contatos para broadcast em ${waCentralUrl}...`);
+
+      try {
+        const broadcastRes = await fetch(`${waCentralUrl}/api/conversations/broadcast`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": crmApiKey,
+          },
+          body: JSON.stringify({
+            accountId: accountId || undefined,
+            messageTemplate,
+            recipients: validRecipients,
+          }),
+          signal: AbortSignal.timeout(15000),
+        });
+
+        if (broadcastRes.ok) {
+          const data = await broadcastRes.json();
+          return res.json({
+            success: true,
+            externalBroadcast: true,
+            totalQueued: validRecipients.length,
+            data,
+            message: `${validRecipients.length} mensagens enviadas para a fila de disparo do WhatsApp (Monteiro Conecta) com sucesso!`,
+          });
+        }
+
+        const errText = await broadcastRes.text();
+        console.warn(`[DispatchWhatsApp] Monteiro Conecta retornou ${broadcastRes.status}: ${errText}`);
+
+        return res.json({
+          success: true,
+          externalBroadcast: false,
+          totalQueued: validRecipients.length,
+          recipients: validRecipients,
+          warning: `Monteiro Conecta retornou status ${broadcastRes.status}. Foram gerados links manuais de WhatsApp para cada contato.`,
+        });
+      } catch (fetchErr: any) {
+        console.warn("[DispatchWhatsApp] Falha ao conectar no Monteiro Conecta:", fetchErr.message);
+        return res.json({
+          success: true,
+          externalBroadcast: false,
+          totalQueued: validRecipients.length,
+          recipients: validRecipients,
+          warning: `Não foi possível alcançar o servidor do Monteiro Conecta automaticamente (${fetchErr.message}). Links prontos para envio individual via WhatsApp Web.`,
+        });
+      }
+    } catch (err: any) {
+      console.error("[DispatchWhatsApp] Erro:", err);
+      res.status(500).json({ message: "Erro ao processar disparo de WhatsApp: " + err.message });
     }
   });
 

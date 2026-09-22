@@ -88,6 +88,9 @@ import {
   leadThermometerHistory,
   type LeadThermometerHistory,
   type InsertLeadThermometerHistory,
+  leadDispatchGroups,
+  type LeadDispatchGroup,
+  type InsertLeadDispatchGroup,
 } from "@shared/schema";
 import { sql, and, desc, eq, asc, lte, or, isNull, inArray, gte, like } from "drizzle-orm";
 
@@ -299,6 +302,12 @@ export interface IStorage {
   // Lead Thermometer
   createLeadThermometerRecord(record: InsertLeadThermometerHistory): Promise<LeadThermometerHistory>;
   getLeadThermometerHistory(userId?: number): Promise<LeadThermometerHistory[]>;
+
+  // Lead Dispatch Groups
+  createLeadDispatchGroup(group: InsertLeadDispatchGroup): Promise<LeadDispatchGroup>;
+  getLeadDispatchGroups(userId?: number): Promise<LeadDispatchGroup[]>;
+  getLeadDispatchGroupById(id: number): Promise<LeadDispatchGroup | undefined>;
+  updateLeadDispatchGroup(id: number, updates: Partial<LeadDispatchGroup>): Promise<LeadDispatchGroup | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2042,6 +2051,28 @@ export class DatabaseStorage implements IStorage {
     }
     return await db.select().from(leadThermometerHistory).orderBy(desc(leadThermometerHistory.createdAt));
   }
+
+  async createLeadDispatchGroup(group: InsertLeadDispatchGroup): Promise<LeadDispatchGroup> {
+    const [inserted] = await db.insert(leadDispatchGroups).values(group).returning();
+    return inserted;
+  }
+
+  async getLeadDispatchGroups(userId?: number): Promise<LeadDispatchGroup[]> {
+    if (userId) {
+      return await db.select().from(leadDispatchGroups).where(eq(leadDispatchGroups.userId, userId)).orderBy(desc(leadDispatchGroups.createdAt));
+    }
+    return await db.select().from(leadDispatchGroups).orderBy(desc(leadDispatchGroups.createdAt));
+  }
+
+  async getLeadDispatchGroupById(id: number): Promise<LeadDispatchGroup | undefined> {
+    const [found] = await db.select().from(leadDispatchGroups).where(eq(leadDispatchGroups.id, id));
+    return found;
+  }
+
+  async updateLeadDispatchGroup(id: number, updates: Partial<LeadDispatchGroup>): Promise<LeadDispatchGroup | undefined> {
+    const [updated] = await db.update(leadDispatchGroups).set(updates).where(eq(leadDispatchGroups.id, id)).returning();
+    return updated;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -2852,6 +2883,42 @@ export class MemStorage implements IStorage {
     };
   }
   async getLeadThermometerHistory(userId?: number): Promise<LeadThermometerHistory[]> { return []; }
+
+  private dispatchGroups: LeadDispatchGroup[] = [];
+
+  async createLeadDispatchGroup(group: InsertLeadDispatchGroup): Promise<LeadDispatchGroup> {
+    const newGroup: LeadDispatchGroup = {
+      id: Math.floor(Math.random() * 100000),
+      userId: group.userId || null,
+      name: group.name,
+      productType: group.productType || "Benefícios (Alimentação, Refeição, etc.)",
+      channel: group.channel || "both",
+      leadsData: group.leadsData,
+      sentCount: group.sentCount || 0,
+      lastDispatchedAt: group.lastDispatchedAt || null,
+      createdAt: new Date(),
+    };
+    this.dispatchGroups.push(newGroup);
+    return newGroup;
+  }
+
+  async getLeadDispatchGroups(userId?: number): Promise<LeadDispatchGroup[]> {
+    if (userId) {
+      return this.dispatchGroups.filter(g => g.userId === userId);
+    }
+    return this.dispatchGroups;
+  }
+
+  async getLeadDispatchGroupById(id: number): Promise<LeadDispatchGroup | undefined> {
+    return this.dispatchGroups.find(g => g.id === id);
+  }
+
+  async updateLeadDispatchGroup(id: number, updates: Partial<LeadDispatchGroup>): Promise<LeadDispatchGroup | undefined> {
+    const idx = this.dispatchGroups.findIndex(g => g.id === id);
+    if (idx === -1) return undefined;
+    this.dispatchGroups[idx] = { ...this.dispatchGroups[idx], ...updates };
+    return this.dispatchGroups[idx];
+  }
 }
 
 export const storage = new DatabaseStorage();

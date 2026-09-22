@@ -645,4 +645,21 @@ export const insertLeadThermometerHistorySchema = createInsertSchema(leadThermom
 export type LeadThermometerHistory = typeof leadThermometerHistory.$inferSelect;
 export type InsertLeadThermometerHistory = z.infer<typeof insertLeadThermometerHistorySchema>;
 
+// Grupos de Disparo criados no Termômetro de Leads
+export const leadDispatchGroups = pgTable("lead_dispatch_groups", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  productType: text("product_type").notNull().default("Benefícios (Alimentação, Refeição, etc.)"),
+  channel: text("channel").notNull().default("both"), // 'email' | 'whatsapp' | 'both'
+  leadsData: json("leads_data").notNull(), // Lista de leads com nome, telefone, email, cnpj, etc.
+  sentCount: integer("sent_count").default(0),
+  lastDispatchedAt: timestamp("last_dispatched_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLeadDispatchGroupSchema = createInsertSchema(leadDispatchGroups).omit({ id: true, createdAt: true });
+export type LeadDispatchGroup = typeof leadDispatchGroups.$inferSelect;
+export type InsertLeadDispatchGroup = z.infer<typeof insertLeadDispatchGroupSchema>;
+
 

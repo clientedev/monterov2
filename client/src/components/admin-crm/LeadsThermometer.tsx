@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -37,13 +39,28 @@ import {
     Building,
     UserCheck,
     Calendar,
-    ArrowRight
+    ArrowRight,
+    Send,
+    Users,
+    CheckSquare,
+    Square,
+    MessageSquare,
+    Share2,
+    Layers,
+    ChevronLeft,
+    ChevronRight,
+    Copy,
+    Check,
+    FolderPlus,
+    Clock,
+    ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ThermometerLead {
     placeId: string;
     name: string;
+    corporateName?: string;
     document?: string;
     address: string;
     phone?: string;
@@ -91,6 +108,45 @@ export default function LeadsThermometer() {
     const [interestLevel, setInterestLevel] = useState("high");
     const [prospectingNotes, setProspectingNotes] = useState("");
     const [sendToPipeline, setSendToPipeline] = useState(false); // Sempre falso por padrão para NUNCA enviar sozinho
+
+    // Seleção & Gavetinha de Disparos
+    const [selectedLeads, setSelectedLeads] = useState<Record<string, ThermometerLead>>({});
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [activeDrawerTab, setActiveDrawerTab] = useState("email");
+
+    // Paginação
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(9);
+
+    // Formulário de Disparo de E-mail
+    const [emailSubject, setEmailSubject] = useState("Oportunidade em Gestão de Benefícios Corporativos - {empresa}");
+    const [emailBody, setEmailBody] = useState(
+      "Olá {nome},\n\nIdentificamos a {empresa} como uma empresa de destaque na nossa região e gostaríamos de apresentar condições diferenciadas para a implantação e otimização de Benefícios Corporativos (Vale Alimentação, Vale Refeição e Seguro de Vida Empresarial).\n\nNossas soluções reduzem encargos tributários através do PAT e ampliam a satisfação da sua equipe sem custos operacionais adicionais.\n\nPodemos agendar uma rápida conversa de 10 minutos esta semana?\n\nAtenciosamente,\nEquipe Monteiro Seguros & Benefícios Corporativos\n(11) 4004-0000"
+    );
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+    const [emailDispatchResult, setEmailDispatchResult] = useState<any>(null);
+
+    // Formulário de Disparo de WhatsApp
+    const [whatsappTemplate, setWhatsappTemplate] = useState(
+      "Olá {nome}! Tudo bem? Sou consultor corporativo da Monteiro Seguros. Localizei o perfil da {empresa} e gostaria de compartilhar uma proposta especial de Benefícios (Vale Alimentação e Refeição) com isenção fiscal pelo PAT e economia direta. Teriam 5 minutinhos hoje para conversarmos?"
+    );
+    const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
+    const [whatsappDispatchResult, setWhatsappDispatchResult] = useState<any>(null);
+
+    // Formulário de Criação de Grupos de Disparo
+    const [groupName, setGroupName] = useState("");
+    const [groupDescription, setGroupDescription] = useState("");
+    const [groupChannel, setGroupChannel] = useState("omnichannel");
+    const [isSavingGroup, setIsSavingGroup] = useState(false);
+
+    // Query de Grupos de Disparo Salvos
+    const { data: dispatchGroups = [], refetch: refetchDispatchGroups } = useQuery<any[]>({
+        queryKey: ["/api/leads-thermometer/dispatch-groups"],
+        queryFn: async () => {
+            const res = await apiRequest("GET", "/api/leads-thermometer/dispatch-groups");
+            return res.json();
+        }
+    });
 
     const mapRef = useRef<HTMLDivElement>(null);
     const leafletMapRef = useRef<any>(null);
@@ -192,6 +248,8 @@ export default function LeadsThermometer() {
             toast({ title: "Localização Obrigatória", description: "Informe uma cidade, bairro ou região.", variant: "destructive" });
             return;
         }
+        setCurrentPage(1);
+        setSelectedLeads({});
         setSearchPayload({
             location: locationInput.trim(),
             radiusKm: parseInt(radiusKm),
@@ -317,6 +375,220 @@ export default function LeadsThermometer() {
         }
     });
 
+        // Handlers de Seleção de Leads
+    const toggleLeadSelection = (lead: ThermometerLead, isSelected: boolean) => {
+        setSelectedLeads(prev => {
+            const next = { ...prev };
+            if (isSelected) {
+                next[lead.placeId] = lead;
+            } else {
+                delete next[lead.placeId];
+            }
+            return next;
+        });
+    };
+
+    const handleSelectAllOnPage = (pageLeads: ThermometerLead[]) => {
+        setSelectedLeads(prev => {
+            const next = { ...prev };
+            pageLeads.forEach(lead => {
+                next[lead.placeId] = lead;
+            });
+            return next;
+        });
+    };
+
+    const handleSelectAllResults = (allLeads: ThermometerLead[]) => {
+        setSelectedLeads(prev => {
+            const next = { ...prev };
+            allLeads.forEach(lead => {
+                next[lead.placeId] = lead;
+            });
+            return next;
+        });
+    };
+
+    const handleClearSelection = () => {
+        setSelectedLeads({});
+    };
+
+    // Cálculos de Seleção
+    const selectedLeadsList = Object.values(selectedLeads);
+    const countSelected = selectedLeadsList.length;
+    const countWithEmail = selectedLeadsList.filter(l => l.email && l.email.includes("@")).length;
+    const countWithPhone = selectedLeadsList.filter(l => l.phone && l.phone.replace(/\D/g, "").length >= 8).length;
+
+    // Paginação
+    const totalPages = Math.max(1, Math.ceil(results.length / pageSize));
+    const paginatedResults = results.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+    // Handlers de Disparo
+    const handleSendEmailDispatch = async () => {
+        if (countWithEmail === 0) {
+            toast({
+                title: "Nenhum e-mail disponível",
+                description: "Selecione leads que possuam e-mail corporativo preenchido.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsSendingEmail(true);
+        setEmailDispatchResult(null);
+        try {
+            const res = await apiRequest("POST", "/api/leads-thermometer/dispatch-email", {
+                leads: selectedLeadsList,
+                subject: emailSubject,
+                bodyTemplate: emailBody,
+                productType: productType
+            });
+            const data = await res.json();
+            setEmailDispatchResult(data);
+            if (data.success) {
+                toast({
+                    title: "Disparo de E-mails Concluído",
+                    description: `${data.sent} e-mails enviados com sucesso!`
+                });
+            } else {
+                toast({
+                    title: "Aviso no Disparo de E-mails",
+                    description: data.message || "Verifique o relatório de envio.",
+                    variant: "destructive"
+                });
+            }
+        } catch (err: any) {
+            toast({
+                title: "Falha no Envio de E-mail",
+                description: err.message || "Erro de conexão com o servidor.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSendingEmail(false);
+        }
+    };
+
+    const handleSendWhatsappDispatch = async () => {
+        if (countWithPhone === 0) {
+            toast({
+                title: "Nenhum telefone disponível",
+                description: "Selecione leads que possuam número de telefone ou WhatsApp.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsSendingWhatsapp(true);
+        setWhatsappDispatchResult(null);
+        try {
+            const res = await apiRequest("POST", "/api/leads-thermometer/dispatch-whatsapp", {
+                leads: selectedLeadsList,
+                messageTemplate: whatsappTemplate,
+                productType: productType
+            });
+            const data = await res.json();
+            setWhatsappDispatchResult(data);
+            if (data.success) {
+                toast({
+                    title: "Disparo WhatsApp Concluído",
+                    description: data.message || "Mensagens encaminhadas com sucesso!"
+                });
+            } else {
+                toast({
+                    title: "Aviso no Disparo de WhatsApp",
+                    description: data.message || data.warning || "Consulte o resultado.",
+                    variant: "destructive"
+                });
+            }
+        } catch (err: any) {
+            toast({
+                title: "Erro no Disparo WhatsApp",
+                description: err.message || "Falha na comunicação com o Monteiro Conecta.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSendingWhatsapp(false);
+        }
+    };
+
+    const handleSaveDispatchGroup = async () => {
+        if (!groupName.trim()) {
+            toast({
+                title: "Nome obrigatório",
+                description: "Dê um nome identificável para este grupo de disparo.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        if (countSelected === 0) {
+            toast({
+                title: "Nenhum lead selecionado",
+                description: "Selecione pelo menos um lead para compor o grupo.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsSavingGroup(true);
+        try {
+            const res = await apiRequest("POST", "/api/leads-thermometer/dispatch-groups", {
+                name: groupName.trim(),
+                description: groupDescription.trim() || undefined,
+                channel: groupChannel,
+                productType: productType,
+                leads: selectedLeadsList
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast({
+                    title: "Grupo Criado com Sucesso",
+                    description: `Grupo "${groupName}" salvo com ${countSelected} leads.`
+                });
+                setGroupName("");
+                setGroupDescription("");
+                refetchDispatchGroups();
+                setActiveDrawerTab("saved_groups");
+            }
+        } catch (err: any) {
+            toast({
+                title: "Erro ao Salvar Grupo",
+                description: err.message || "Não foi possível salvar o grupo de disparo.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSavingGroup(false);
+        }
+    };
+
+    const handleLoadDispatchGroup = (group: any) => {
+        if (Array.isArray(group.leads)) {
+            const newSelected: Record<string, ThermometerLead> = {};
+            group.leads.forEach((l: any, idx: number) => {
+                const key = l.placeId || `group_${group.id}_${idx}`;
+                newSelected[key] = {
+                    placeId: key,
+                    name: l.name || l.corporateName || "Lead do Grupo",
+                    document: l.document || "",
+                    address: l.address || "",
+                    phone: l.phone || "",
+                    email: l.email || "",
+                    website: l.website || "",
+                    score: l.score || 70,
+                    temperature: l.temperature || "quente",
+                    reason: l.reason || "Lead de grupo salvo",
+                    productType: l.productType || group.productType || productType,
+                    location: l.location || { lat: -23.5505, lng: -46.6333 },
+                    corporateName: l.corporateName || l.name,
+                };
+            });
+            setSelectedLeads(newSelected);
+            toast({
+                title: "Grupo Carregado",
+                description: `${group.leads.length} leads do grupo "${group.name}" selecionados!`
+            });
+        }
+    };
+
     const handleSaveProspectingLog = () => {
         if (!activeProspectingContact) return;
         saveProspectingLogMutation.mutate({
@@ -434,6 +706,7 @@ export default function LeadsThermometer() {
                                         <SelectValue placeholder="Selecione o produto" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="Benefícios (Alimentação, Refeição, etc.)">Benefícios (Alimentação, Refeição, etc.)</SelectItem>
                                         <SelectItem value="Plano de Saúde">Plano de Saúde (Empresarial / PME)</SelectItem>
                                         <SelectItem value="Seguro de Vida">Seguro de Vida (Individual / Grupo)</SelectItem>
                                         <SelectItem value="Seguro Auto / Frota">Seguro Auto / Frota Corporativa</SelectItem>
@@ -543,156 +816,714 @@ export default function LeadsThermometer() {
                 </div>
             )}
 
-            {/* Results Grid */}
+            {/* Results Grid & Selection Controls */}
             {(results.length > 0 || isLoading) && (
                 <div className="space-y-4 pt-4">
-                    <div className="flex items-center justify-between">
+                    {/* Header with Selection Toolbar */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                         <div>
-                            <h4 className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
+                            <h4 className="text-lg font-display font-bold text-slate-900 flex items-center gap-2">
                                 Oportunidades Identificadas ({results.length})
                             </h4>
                             <p className="text-xs text-slate-500 font-medium mt-0.5">
-                                Leads ordenados por intenção de compra. Puxe o CNPJ ou inicie a prospecção direto do card.
+                                CNPJ, e-mails e contatos já enriquecidos na busca. Selecione os que deseja para disparar ou agrupar.
                             </p>
                         </div>
+
+                        {/* Quick Selection Actions */}
+                        {!isLoading && results.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSelectAllOnPage(paginatedResults)}
+                                    className="text-xs font-semibold h-8 border-slate-200"
+                                >
+                                    <CheckSquare className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                                    Página ({paginatedResults.length})
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSelectAllResults(results)}
+                                    className="text-xs font-semibold h-8 border-slate-200"
+                                >
+                                    Todos ({results.length})
+                                </Button>
+
+                                {countSelected > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleClearSelection}
+                                        className="text-xs font-semibold h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                    >
+                                        Limpar ({countSelected})
+                                    </Button>
+                                )}
+
+                                {/* Open Drawer Trigger Button */}
+                                <Button
+                                    size="sm"
+                                    onClick={() => setIsDrawerOpen(true)}
+                                    className={cn(
+                                        "h-8 text-xs font-bold shadow-md transition-all rounded-lg flex items-center gap-1.5",
+                                        countSelected > 0
+                                            ? "bg-gradient-to-r from-rose-600 via-red-600 to-amber-600 hover:opacity-95 text-white shadow-rose-500/25 animate-pulse"
+                                            : "bg-slate-900 hover:bg-slate-800 text-white"
+                                    )}
+                                >
+                                    <Layers className="w-3.5 h-3.5" />
+                                    Gaveta de Disparos
+                                    {countSelected > 0 && (
+                                        <Badge className="bg-white text-rose-700 text-[10px] font-black h-4 px-1.5 ml-1">
+                                            {countSelected}
+                                        </Badge>
+                                    )}
+                                </Button>
+                            </div>
+                        )}
                     </div>
+
+                    {/* Active Selection Summary Bar */}
+                    {countSelected > 0 && (
+                        <div className="p-3 bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 border border-rose-200/60 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+                            <div className="flex items-center gap-3">
+                                <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-4 h-4 text-rose-600" />
+                                    {countSelected} {countSelected === 1 ? "lead selecionado" : "leads selecionados"}
+                                </span>
+                                <span className="text-slate-400">|</span>
+                                <span className="text-slate-700 font-medium flex items-center gap-1">
+                                    <Mail className="w-3.5 h-3.5 text-blue-600" />
+                                    <b>{countWithEmail}</b> com e-mail
+                                </span>
+                                <span className="text-slate-400">|</span>
+                                <span className="text-slate-700 font-medium flex items-center gap-1">
+                                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                                    <b>{countWithPhone}</b> com WhatsApp
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setActiveDrawerTab("email");
+                                        setIsDrawerOpen(true);
+                                    }}
+                                    className="h-7 text-[11px] font-bold bg-white text-blue-700 hover:bg-blue-50 border-blue-200"
+                                >
+                                    <Mail className="w-3 h-3 mr-1" /> Disparar E-mail
+                                </Button>
+
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setActiveDrawerTab("whatsapp");
+                                        setIsDrawerOpen(true);
+                                    }}
+                                    className="h-7 text-[11px] font-bold bg-white text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+                                >
+                                    <MessageSquare className="w-3 h-3 mr-1" /> Disparar WhatsApp
+                                </Button>
+
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setActiveDrawerTab("create_group");
+                                        setIsDrawerOpen(true);
+                                    }}
+                                    className="h-7 text-[11px] font-bold bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                                >
+                                    <FolderPlus className="w-3 h-3 mr-1" /> Salvar Grupo
+                                </Button>
+                            </div>
+                        </div>
+                    )}
 
                     {isLoading && (
                         <div className="flex flex-col items-center justify-center py-16">
                             <Loader2 className="h-10 w-10 text-red-500 animate-spin mb-3" />
-                            <p className="text-slate-500 font-medium text-sm">Analisando empresas e calculando pontuações do termômetro...</p>
+                            <p className="text-slate-500 font-medium text-sm">Analisando empresas, buscando CNPJs e calculando pontuações...</p>
                         </div>
                     )}
 
                     {!isLoading && results.length > 0 && (
-                        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                            {results.map((lead, idx) => {
-                                const enriched = enrichedLeadsMap[lead.placeId];
-                                const savedContactId = savedLeadsMap[lead.placeId];
+                        <>
+                            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                                {paginatedResults.map((lead, idx) => {
+                                    const enriched = enrichedLeadsMap[lead.placeId];
+                                    const savedContactId = savedLeadsMap[lead.placeId];
+                                    const isSelected = !!selectedLeads[lead.placeId];
 
-                                return (
-                                    <Card key={lead.placeId || idx} className="premium-card hover:-translate-y-1 transition-all duration-300 border-none shadow-lg group relative overflow-hidden flex flex-col justify-between">
-                                        {/* Top Thermometer Color Strip */}
-                                        <div className={cn(
-                                            "h-2 w-full",
-                                            lead.temperature === "quente" && "bg-gradient-to-r from-red-500 via-rose-500 to-orange-500",
-                                            lead.temperature === "morno" && "bg-gradient-to-r from-amber-400 via-amber-500 to-orange-400",
-                                            lead.temperature === "frio" && "bg-gradient-to-r from-slate-400 via-blue-500 to-indigo-500"
-                                        )} />
-
-                                        <CardHeader className="pb-3">
-                                            <div className="flex justify-between items-start gap-2">
-                                                <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                                                    <Building2 className="h-5 w-5 text-slate-700" />
-                                                </div>
-                                                {renderTemperatureBadge(lead.temperature, lead.score)}
-                                            </div>
-
-                                            <CardTitle className="text-sm font-bold mt-3 leading-tight uppercase text-slate-900 line-clamp-2 min-h-[2.5rem]">
-                                                {enriched?.name || lead.name}
-                                            </CardTitle>
-
-                                            {lead.document && (
-                                                <CardDescription className="font-mono text-[10px] font-bold text-slate-500">
-                                                    CNPJ: {lead.document}
-                                                </CardDescription>
+                                    return (
+                                        <Card
+                                            key={lead.placeId || idx}
+                                            className={cn(
+                                                "premium-card hover:-translate-y-1 transition-all duration-300 border shadow-lg group relative overflow-hidden flex flex-col justify-between",
+                                                isSelected
+                                                    ? "border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/10"
+                                                    : "border-slate-100"
                                             )}
-                                        </CardHeader>
+                                        >
+                                            {/* Top Thermometer Color Strip */}
+                                            <div className={cn(
+                                                "h-2 w-full",
+                                                lead.temperature === "quente" && "bg-gradient-to-r from-red-500 via-rose-500 to-orange-500",
+                                                lead.temperature === "morno" && "bg-gradient-to-r from-amber-400 via-amber-500 to-orange-400",
+                                                lead.temperature === "frio" && "bg-gradient-to-r from-slate-400 via-blue-500 to-indigo-500"
+                                            )} />
 
-                                        <CardContent className="space-y-3 pb-4 flex-1">
-                                            {/* Address */}
-                                            <div className="flex items-start gap-1.5 text-[11px] text-slate-600">
-                                                <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" />
-                                                <span className="line-clamp-2">{enriched?.address || lead.address}</span>
-                                            </div>
-
-                                            {/* Phone & Email */}
-                                            <div className="flex flex-col gap-1.5 pt-1">
-                                                {(enriched?.phone || lead.phone) ? (
-                                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-700 font-semibold">
-                                                        <Phone className="h-3.5 w-3.5 text-emerald-600" />
-                                                        {enriched?.phone || lead.phone}
+                                            <CardHeader className="pb-3">
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Checkbox
+                                                            checked={isSelected}
+                                                            onCheckedChange={(checked) => toggleLeadSelection(lead, !!checked)}
+                                                            className="h-5 w-5 rounded border-slate-300 data-[state=checked]:bg-rose-600 data-[state=checked]:border-rose-600 cursor-pointer"
+                                                        />
+                                                        <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                                                            <Building2 className="h-4 w-4 text-slate-700" />
+                                                        </div>
                                                     </div>
-                                                ) : (
-                                                    <div className="text-[10px] text-slate-400 italic">Telefone público não detectado</div>
-                                                )}
-
-                                                {(enriched?.email || lead.email) && (
-                                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-700 font-medium truncate">
-                                                        <Mail className="h-3.5 w-3.5 text-blue-600" />
-                                                        {enriched?.email || lead.email}
-                                                    </div>
-                                                )}
-
-                                                {lead.website && (
-                                                    <div className="flex items-center gap-1.5 text-[11px] text-blue-600 font-medium truncate">
-                                                        <Globe className="h-3.5 w-3.5 text-blue-500" />
-                                                        <a href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`} target="_blank" rel="noreferrer" className="hover:underline truncate">
-                                                            {lead.website.replace(/^https?:\/\//, '')}
-                                                        </a>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Thermometer Reason / Interest */}
-                                            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
-                                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                                                    <Sparkles className="w-3 h-3 text-amber-500" />
-                                                    Por que chegou a essa pontuação?
+                                                    {renderTemperatureBadge(lead.temperature, lead.score)}
                                                 </div>
-                                                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
-                                                    {lead.reason}
-                                                </p>
-                                            </div>
 
-                                            {/* Action Buttons: Puxar CNPJ + Iniciar Prospecção */}
-                                            <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => handleFetchCnpjModal(lead)}
-                                                    className="w-full text-xs font-bold text-slate-700 hover:bg-amber-50 border-slate-200 h-9"
-                                                >
-                                                    <FileText className="w-3.5 h-3.5 mr-1 text-amber-500" />
-                                                    Puxar CNPJ
-                                                </Button>
+                                                <CardTitle className="text-sm font-bold mt-3 leading-tight uppercase text-slate-900 line-clamp-2 min-h-[2.5rem]">
+                                                    {lead.corporateName || enriched?.name || lead.name}
+                                                </CardTitle>
 
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        if (savedContactId) {
-                                                            setActiveProspectingContact({
-                                                                id: savedContactId,
-                                                                name: lead.name,
-                                                                phone: lead.phone,
-                                                                email: lead.email,
-                                                            });
-                                                            setProspectingModalOpen(true);
-                                                        } else {
-                                                            startProspectingMutation.mutate(lead);
-                                                        }
-                                                    }}
-                                                    disabled={startProspectingMutation.isPending}
-                                                    className="w-full h-9 font-bold text-xs bg-gradient-to-r from-red-600 via-amber-600 to-amber-500 hover:opacity-90 text-white shadow-sm rounded-lg"
-                                                >
-                                                    {startProspectingMutation.isPending ? (
-                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                {lead.document && (
+                                                    <CardDescription className="font-mono text-[10px] font-bold text-slate-600 flex items-center gap-1">
+                                                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                                        CNPJ: {lead.document}
+                                                    </CardDescription>
+                                                )}
+                                            </CardHeader>
+
+                                            <CardContent className="space-y-3 pb-4 flex-1">
+                                                {/* Address */}
+                                                <div className="flex items-start gap-1.5 text-[11px] text-slate-600">
+                                                    <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" />
+                                                    <span className="line-clamp-2">{enriched?.address || lead.address}</span>
+                                                </div>
+
+                                                {/* Phone & Email */}
+                                                <div className="flex flex-col gap-1.5 pt-1">
+                                                    {(enriched?.phone || lead.phone) ? (
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-700 font-semibold">
+                                                            <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                                            <span className="truncate">{enriched?.phone || lead.phone}</span>
+                                                        </div>
                                                     ) : (
-                                                        <>
-                                                            <PhoneCall className="w-3.5 h-3.5 mr-1" />
-                                                            Prospecção
-                                                        </>
+                                                        <div className="text-[10px] text-slate-400 italic">Telefone público não detectado</div>
                                                     )}
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                        </div>
+
+                                                    {(enriched?.email || lead.email) ? (
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-700 font-medium truncate">
+                                                            <Mail className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                                            <span className="truncate font-mono">{enriched?.email || lead.email}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-[10px] text-slate-400 italic">E-mail corporativo não detectado</div>
+                                                    )}
+
+                                                    {lead.website && (
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-blue-600 font-medium truncate">
+                                                            <Globe className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                                            <a href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`} target="_blank" rel="noreferrer" className="hover:underline truncate">
+                                                                {lead.website.replace(/^https?:\/\//, '')}
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Thermometer Reason / Interest */}
+                                                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+                                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                                                        <Sparkles className="w-3 h-3 text-amber-500" />
+                                                        Por que chegou a essa pontuação?
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
+                                                        {lead.reason}
+                                                    </p>
+                                                </div>
+
+                                                {/* Action Buttons: Puxar CNPJ + Iniciar Prospecção */}
+                                                <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleFetchCnpjModal(lead)}
+                                                        className="w-full text-xs font-bold text-slate-700 hover:bg-amber-50 border-slate-200 h-9"
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5 mr-1 text-amber-500" />
+                                                        Puxar CNPJ
+                                                    </Button>
+
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            if (savedContactId) {
+                                                                setActiveProspectingContact({
+                                                                    id: savedContactId,
+                                                                    name: lead.name,
+                                                                    phone: lead.phone,
+                                                                    email: lead.email,
+                                                                });
+                                                                setProspectingModalOpen(true);
+                                                            } else {
+                                                                startProspectingMutation.mutate(lead);
+                                                            }
+                                                        }}
+                                                        disabled={startProspectingMutation.isPending}
+                                                        className="w-full h-9 font-bold text-xs bg-gradient-to-r from-red-600 via-amber-600 to-amber-500 hover:opacity-90 text-white shadow-sm rounded-lg"
+                                                    >
+                                                        {startProspectingMutation.isPending ? (
+                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        ) : (
+                                                            <>
+                                                                <PhoneCall className="w-3.5 h-3.5 mr-1" />
+                                                                Prospecção
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {totalPages > 1 && (
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 pb-2 border-t border-slate-200">
+                                    <div className="text-xs text-slate-500 font-medium">
+                                        Exibindo <b>{(currentPage - 1) * pageSize + 1}</b> a <b>{Math.min(currentPage * pageSize, results.length)}</b> de <b>{results.length}</b> oportunidades
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                            className="h-8 px-2.5 text-xs font-semibold"
+                                        >
+                                            <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+                                        </Button>
+
+                                        <div className="flex items-center gap-1">
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                                                .map((pageNum, idx, arr) => {
+                                                    const prev = arr[idx - 1];
+                                                    return (
+                                                        <div key={pageNum} className="flex items-center">
+                                                            {prev && pageNum - prev > 1 && (
+                                                                <span className="px-1 text-slate-400 text-xs">...</span>
+                                                            )}
+                                                            <Button
+                                                                variant={currentPage === pageNum ? "default" : "outline"}
+                                                                size="sm"
+                                                                onClick={() => setCurrentPage(pageNum)}
+                                                                className={cn(
+                                                                    "h-8 w-8 p-0 text-xs font-bold",
+                                                                    currentPage === pageNum && "bg-rose-600 hover:bg-rose-700 text-white"
+                                                                )}
+                                                            >
+                                                                {pageNum}
+                                                            </Button>
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="h-8 px-2.5 text-xs font-semibold"
+                                        >
+                                            Próxima <ChevronRight className="w-4 h-4 ml-1" />
+                                        </Button>
+
+                                        {/* Page Size Selector */}
+                                        <Select
+                                            value={String(pageSize)}
+                                            onValueChange={(val) => {
+                                                setPageSize(Number(val));
+                                                setCurrentPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 w-20 text-xs bg-white border-slate-200 ml-2">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="6">6 / pág</SelectItem>
+                                                <SelectItem value="9">9 / pág</SelectItem>
+                                                <SelectItem value="15">15 / pág</SelectItem>
+                                                <SelectItem value="30">30 / pág</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             )}
+
+            {/* Sticky Floating Bottom Bar for Fast Action */}
+            {countSelected > 0 && !isDrawerOpen && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-slate-900/95 backdrop-blur text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-xs">
+                            <span className="font-black text-rose-400 flex items-center gap-1">
+                                <CheckSquare className="w-4 h-4" />
+                                {countSelected}
+                            </span>
+                            <span className="text-slate-300">selecionados</span>
+                            <span className="text-slate-600">|</span>
+                            <span className="text-slate-300 flex items-center gap-1">
+                                <Mail className="w-3.5 h-3.5 text-blue-400" /> {countWithEmail}
+                            </span>
+                            <span className="text-slate-600">|</span>
+                            <span className="text-slate-300 flex items-center gap-1">
+                                <Phone className="w-3.5 h-3.5 text-emerald-400" /> {countWithPhone}
+                            </span>
+                        </div>
+
+                        <Button
+                            size="sm"
+                            onClick={() => setIsDrawerOpen(true)}
+                            className="h-8 bg-gradient-to-r from-rose-600 to-amber-600 hover:opacity-90 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/30"
+                        >
+                            <Layers className="w-3.5 h-3.5 mr-1" />
+                            Abrir Gaveta de Disparos
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Gavetinha de Disparos & Grupos de Leads (Sheet Drawer) */}
+            <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl overflow-y-auto p-6 bg-slate-50/50">
+                    <SheetHeader className="pb-4 border-b border-slate-200">
+                        <div className="flex items-center gap-2">
+                            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-rose-600 to-amber-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+                                <Layers className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <SheetTitle className="text-lg font-bold text-slate-900">
+                                    Gaveta de Disparos & Grupos de Leads
+                                </SheetTitle>
+                                <SheetDescription className="text-xs text-slate-500">
+                                    Envie e-mails, acione WhatsApp ou crie grupos separados do funil de vendas.
+                                </SheetDescription>
+                            </div>
+                        </div>
+
+                        {/* Status Badges */}
+                        <div className="flex flex-wrap items-center gap-2 pt-3">
+                            <Badge variant="secondary" className="text-[11px] font-semibold bg-white border border-slate-200 text-slate-700">
+                                Total Selecionados: <b className="ml-1 text-slate-900">{countSelected}</b>
+                            </Badge>
+                            <Badge variant="secondary" className="text-[11px] font-semibold bg-blue-50 border border-blue-200 text-blue-800">
+                                <Mail className="w-3 h-3 mr-1 text-blue-600" />
+                                Com E-mail: <b className="ml-1">{countWithEmail}</b>
+                            </Badge>
+                            <Badge variant="secondary" className="text-[11px] font-semibold bg-emerald-50 border border-emerald-200 text-emerald-800">
+                                <Phone className="w-3 h-3 mr-1 text-emerald-600" />
+                                Com WhatsApp: <b className="ml-1">{countWithPhone}</b>
+                            </Badge>
+                        </div>
+                    </SheetHeader>
+
+                    {/* Drawer Content Tabs */}
+                    <div className="py-5">
+                        <Tabs value={activeDrawerTab} onValueChange={setActiveDrawerTab} className="w-full">
+                            <TabsList className="grid grid-cols-4 w-full bg-slate-200/70 p-1 rounded-xl mb-4">
+                                <TabsTrigger value="email" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    <Mail className="w-3.5 h-3.5 mr-1 text-blue-600" /> E-mail
+                                </TabsTrigger>
+                                <TabsTrigger value="whatsapp" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    <MessageSquare className="w-3.5 h-3.5 mr-1 text-emerald-600" /> WhatsApp
+                                </TabsTrigger>
+                                <TabsTrigger value="create_group" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    <FolderPlus className="w-3.5 h-3.5 mr-1 text-amber-600" /> Criar Grupo
+                                </TabsTrigger>
+                                <TabsTrigger value="saved_groups" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    <Clock className="w-3.5 h-3.5 mr-1 text-slate-600" /> Salvos ({dispatchGroups.length})
+                                </TabsTrigger>
+                            </TabsList>
+
+                            {/* TAB 1: DISPARO DE E-MAIL */}
+                            <TabsContent value="email" className="space-y-4">
+                                <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-100 space-y-1.5">
+                                    <span className="text-[11px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1">
+                                        <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Tags Dinâmicas Disponíveis
+                                    </span>
+                                    <p className="text-xs text-blue-700 leading-relaxed">
+                                        Clique para copiar: <code className="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono text-[10px]">{"{empresa}"}</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono text-[10px]">{"{nome}"}</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono text-[10px]">{"{produto}"}</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono text-[10px]">{"{cnpj}"}</code>.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-slate-700">Assunto do E-mail</Label>
+                                    <Input
+                                        value={emailSubject}
+                                        onChange={(e) => setEmailSubject(e.target.value)}
+                                        className="bg-white border-slate-200 text-xs font-medium"
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-slate-700">Corpo do E-mail (HTML / Texto)</Label>
+                                    <Textarea
+                                        rows={8}
+                                        value={emailBody}
+                                        onChange={(e) => setEmailBody(e.target.value)}
+                                        className="bg-white border-slate-200 text-xs font-mono leading-relaxed"
+                                    />
+                                </div>
+
+                                {/* Preview of First Lead */}
+                                {selectedLeadsList.length > 0 && (
+                                    <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1 text-xs">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Prévia do 1º Destinatário</span>
+                                        <div className="font-semibold text-slate-800">
+                                            Para: {selectedLeadsList[0]?.email || "Sem e-mail cadastrado"} ({selectedLeadsList[0]?.corporateName || selectedLeadsList[0]?.name})
+                                        </div>
+                                        <div className="text-[11px] text-slate-600 truncate">
+                                            Assunto: {emailSubject.replace(/\{empresa\}/gi, selectedLeadsList[0]?.corporateName || selectedLeadsList[0]?.name)}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <Button
+                                    onClick={handleSendEmailDispatch}
+                                    disabled={isSendingEmail || countWithEmail === 0}
+                                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-bold h-11 rounded-xl shadow-md"
+                                >
+                                    {isSendingEmail ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando e-mails para {countWithEmail} destinatários...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Send className="w-4 h-4 mr-2" /> Disparar E-mail para {countWithEmail} {countWithEmail === 1 ? "lead" : "leads"}
+                                        </>
+                                    )}
+                                </Button>
+
+                                {/* Email Result Report */}
+                                {emailDispatchResult && (
+                                    <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2 text-xs">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-bold text-slate-900">Relatório do Disparo</span>
+                                            <Badge className={emailDispatchResult.sent > 0 ? "bg-emerald-600" : "bg-rose-600"}>
+                                                {emailDispatchResult.sent} enviados · {emailDispatchResult.failed} falhas
+                                            </Badge>
+                                        </div>
+                                        <p className="text-slate-600">{emailDispatchResult.message}</p>
+                                    </div>
+                                )}
+                            </TabsContent>
+
+                            {/* TAB 2: DISPARO DE WHATSAPP */}
+                            <TabsContent value="whatsapp" className="space-y-4">
+                                <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-100 space-y-1.5">
+                                    <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1">
+                                        <MessageSquare className="w-3.5 h-3.5 text-emerald-600" /> Integração Monteiro Conecta (WhatsApp Central)
+                                    </span>
+                                    <p className="text-xs text-emerald-700 leading-relaxed">
+                                        O disparo em lote envia mensagens para a fila do WhatsApp conectado. Você também pode disparar individualmente via WhatsApp Web.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-slate-700">Mensagem para Disparo WhatsApp</Label>
+                                    <Textarea
+                                        rows={6}
+                                        value={whatsappTemplate}
+                                        onChange={(e) => setWhatsappTemplate(e.target.value)}
+                                        className="bg-white border-slate-200 text-xs leading-relaxed"
+                                    />
+                                </div>
+
+                                <Button
+                                    onClick={handleSendWhatsappDispatch}
+                                    disabled={isSendingWhatsapp || countWithPhone === 0}
+                                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white font-bold h-11 rounded-xl shadow-md"
+                                >
+                                    {isSendingWhatsapp ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Conectando ao Monteiro Conecta...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Share2 className="w-4 h-4 mr-2" /> Disparar em Massa via WhatsApp ({countWithPhone} contatos)
+                                        </>
+                                    )}
+                                </Button>
+
+                                {/* WhatsApp Results / Direct Links */}
+                                {whatsappDispatchResult && (
+                                    <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2 text-xs">
+                                        <span className="font-bold text-slate-900">Resultado do WhatsApp</span>
+                                        <p className="text-slate-600">{whatsappDispatchResult.message || whatsappDispatchResult.warning}</p>
+                                    </div>
+                                )}
+
+                                {/* Individual WhatsApp Quick-Send List */}
+                                <div className="pt-2 space-y-2">
+                                    <Label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                                        <span>Envio Rápido 1 a 1 no WhatsApp Web</span>
+                                        <span className="text-[10px] text-slate-400 font-normal">Abre direto a conversa</span>
+                                    </Label>
+
+                                    <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                                        {selectedLeadsList.filter(l => l.phone).map((lead, idx) => {
+                                            const cleanPhone = String(lead.phone).replace(/\D/g, "");
+                                            const formattedPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+                                            const personalizedMsg = encodeURIComponent(
+                                                whatsappTemplate
+                                                    .replace(/\{empresa\}/gi, lead.corporateName || lead.name)
+                                                    .replace(/\{nome\}/gi, lead.name)
+                                                    .replace(/\{produto\}/gi, productType)
+                                            );
+                                            const waUrl = `https://wa.me/${formattedPhone}?text=${personalizedMsg}`;
+
+                                            return (
+                                                <div key={lead.placeId || idx} className="p-2.5 bg-white rounded-lg border border-slate-200 flex items-center justify-between gap-2 text-xs">
+                                                    <div className="truncate">
+                                                        <div className="font-bold text-slate-800 truncate">{lead.corporateName || lead.name}</div>
+                                                        <div className="text-[11px] text-slate-500 font-mono">{lead.phone}</div>
+                                                    </div>
+                                                    <a
+                                                        href={waUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md font-bold text-[11px] transition-colors shrink-0"
+                                                    >
+                                                        Abrir Web <ExternalLink className="w-3 h-3" />
+                                                    </a>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            {/* TAB 3: CRIAR GRUPO DE DISPARO */}
+                            <TabsContent value="create_group" className="space-y-4">
+                                <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-100 text-xs text-amber-900 leading-relaxed">
+                                    Crie grupos temáticos (ex: "Leads Benefícios Campinas", "Restaurantes VR") para disparos futuros sem poluir o pipeline de vendas.
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-slate-700">Nome do Grupo</Label>
+                                    <Input
+                                        placeholder="Ex: PMEs Benefícios Pinheiros 22/09"
+                                        value={groupName}
+                                        onChange={(e) => setGroupName(e.target.value)}
+                                        className="bg-white border-slate-200 text-xs"
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-slate-700">Canal Principal de Disparo</Label>
+                                    <Select value={groupChannel} onValueChange={setGroupChannel}>
+                                        <SelectTrigger className="bg-white text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="omnichannel">Omnichannel (E-mail + WhatsApp)</SelectItem>
+                                            <SelectItem value="email">Apenas E-mail</SelectItem>
+                                            <SelectItem value="whatsapp">Apenas WhatsApp</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-slate-700">Descrição / Anotações (Opcional)</Label>
+                                    <Textarea
+                                        placeholder="Notas de contexto para este grupo de prospecção..."
+                                        rows={3}
+                                        value={groupDescription}
+                                        onChange={(e) => setGroupDescription(e.target.value)}
+                                        className="bg-white border-slate-200 text-xs"
+                                    />
+                                </div>
+
+                                <Button
+                                    onClick={handleSaveDispatchGroup}
+                                    disabled={isSavingGroup || countSelected === 0}
+                                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-11 rounded-xl shadow-md"
+                                >
+                                    {isSavingGroup ? (
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    ) : (
+                                        <FolderPlus className="w-4 h-4 mr-2" />
+                                    )}
+                                    Salvar Grupo com {countSelected} {countSelected === 1 ? "lead" : "leads"}
+                                </Button>
+                            </TabsContent>
+
+                            {/* TAB 4: GRUPOS SALVOS */}
+                            <TabsContent value="saved_groups" className="space-y-3">
+                                {dispatchGroups.length === 0 ? (
+                                    <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-200 text-xs text-slate-500 space-y-1">
+                                        <FolderPlus className="w-8 h-8 text-slate-300 mx-auto" />
+                                        <div className="font-bold text-slate-700">Nenhum grupo de disparo salvo ainda</div>
+                                        <div>Selecione leads no termômetro e salve o primeiro grupo na aba ao lado.</div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2.5">
+                                        {dispatchGroups.map((grp: any) => {
+                                            const totalInGrp = Array.isArray(grp.leads) ? grp.leads.length : 0;
+                                            return (
+                                                <div key={grp.id} className="p-3.5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 transition-colors shadow-sm space-y-2">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div>
+                                                            <div className="font-bold text-slate-900 text-xs">{grp.name}</div>
+                                                            {grp.description && (
+                                                                <p className="text-[11px] text-slate-500 line-clamp-1">{grp.description}</p>
+                                                            )}
+                                                        </div>
+                                                        <Badge variant="outline" className="text-[10px] uppercase font-bold shrink-0">
+                                                            {grp.channel}
+                                                        </Badge>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                                                        <span><b>{totalInGrp}</b> leads no grupo</span>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => handleLoadDispatchGroup(grp)}
+                                                            className="h-7 text-[11px] font-bold text-slate-700 hover:bg-slate-50"
+                                                        >
+                                                            Carregar Leads <ArrowRight className="w-3 h-3 ml-1" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </TabsContent>
+                        </Tabs>
+                    </div>
+                </SheetContent>
+            </Sheet>
 
             {/* Modal: Puxar CNPJ & Dados da Empresa */}
             <Dialog open={cnpjModalOpen} onOpenChange={setCnpjModalOpen}>
