@@ -47,7 +47,9 @@ import {
   Settings,
   Sparkles,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  RotateCcw,
+  Repeat
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -66,6 +68,9 @@ export default function TodoistModulePage() {
   // Selection & Modal states
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+
+  // Undo (Desfazer última ação) state
+  const [lastAction, setLastAction] = useState<{ type: 'delete' | 'complete'; task: any } | null>(null);
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState("");
@@ -104,6 +109,7 @@ export default function TodoistModulePage() {
   if (activeView === "overdue") queryParams.append("view", "overdue");
   if (activeView === "upcoming") queryParams.append("view", "upcoming");
   if (activeView === "completed") queryParams.append("view", "completed");
+  if (activeView === "recurring") queryParams.append("view", "recurring");
   if (activeView === "inbox") queryParams.append("projectId", "0");
   if (activeView.startsWith("project_")) {
     const pId = activeView.replace("project_", "");
@@ -123,6 +129,23 @@ export default function TodoistModulePage() {
     },
   });
 
+  // Restore task mutation (Undo)
+  const restoreTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const res = await apiRequest("POST", `/api/todoist/tasks/${taskId}/restore`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/todoist/dashboard"] });
+      setLastAction(null);
+      toast({ title: "Tarefa restaurada com sucesso!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao restaurar tarefa", description: err.message, variant: "destructive" });
+    }
+  });
+
   // Delete task mutation
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: number) => {
@@ -135,6 +158,25 @@ export default function TodoistModulePage() {
     },
   });
 
+  const handleDeleteWithUndo = (task: any) => {
+    setLastAction({ type: 'delete', task });
+    deleteTaskMutation.mutate(task.id);
+    toast({
+      title: `Tarefa "${task.title}" excluída`,
+      description: "Você pode desfazer esta ação a qualquer momento.",
+      action: (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => restoreTaskMutation.mutate(task.id)}
+          className="bg-white text-primary border-primary/30 font-bold hover:bg-primary/10 h-8 px-2.5 text-xs shadow-sm"
+        >
+          Desfazer
+        </Button>
+      ),
+    });
+  };
+
   // Complete task mutation
   const completeTaskMutation = useMutation({
     mutationFn: async (taskId: number) => {
@@ -146,6 +188,28 @@ export default function TodoistModulePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/todoist/dashboard"] });
     },
   });
+
+  const handleToggleCompleteWithUndo = (task: any) => {
+    setLastAction({ type: 'complete', task });
+    completeTaskMutation.mutate(task.id);
+    const willBeDone = task.status !== "done";
+    toast({
+      title: willBeDone ? "Tarefa marcada como concluída!" : "Tarefa reaberta!",
+      action: (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            completeTaskMutation.mutate(task.id);
+            setLastAction(null);
+          }}
+          className="bg-white text-primary border-primary/30 font-bold hover:bg-primary/10 h-8 px-2.5 text-xs shadow-sm"
+        >
+          Desfazer
+        </Button>
+      ),
+    });
+  };
 
   // Update Kanban Column Mutation
   const updateKanbanMutation = useMutation({
@@ -246,6 +310,27 @@ export default function TodoistModulePage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {lastAction && (
+            <Button
+              onClick={() => {
+                if (lastAction.type === 'delete') {
+                  restoreTaskMutation.mutate(lastAction.task.id);
+                } else if (lastAction.type === 'complete') {
+                  completeTaskMutation.mutate(lastAction.task.id);
+                  setLastAction(null);
+                }
+              }}
+              disabled={restoreTaskMutation.isPending}
+              variant="outline"
+              size="sm"
+              className="bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 font-bold text-xs gap-1.5 rounded-xl shadow-sm animate-pulse"
+              title="Clique para desfazer a última ação"
+            >
+              <RotateCcw className="h-3.5 w-3.5 text-amber-600" />
+              Desfazer última ação ({lastAction.type === 'delete' ? 'Exclusão' : 'Conclusão'})
+            </Button>
+          )}
+
           <Button
             onClick={() => setQuickAddOpen(true)}
             className="bg-primary hover:bg-primary/90 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-md shadow-primary/20 gap-2 active:scale-95 transition-all"
@@ -297,6 +382,16 @@ export default function TodoistModulePage() {
               }`}
             >
               <CalendarIcon className={`h-4 w-4 ${activeView === "upcoming" ? "text-emerald-200" : "text-emerald-500"}`} /> Próximas
+            </Button>
+
+            <Button
+              variant="ghost"
+              onClick={() => setActiveView("recurring")}
+              className={`w-full justify-start gap-3 text-xs font-semibold rounded-xl px-3 py-2.5 ${
+                activeView === "recurring" ? "bg-primary text-white shadow-md font-bold" : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <Repeat className={`h-4 w-4 ${activeView === "recurring" ? "text-emerald-200" : "text-emerald-600"}`} /> Recorrentes
             </Button>
 
             <Button
@@ -481,9 +576,9 @@ export default function TodoistModulePage() {
                       <TodoistTaskItem
                         key={t.id}
                         task={t}
-                        onToggleComplete={(id) => completeTaskMutation.mutate(id)}
+                        onToggleComplete={() => handleToggleCompleteWithUndo(t)}
                         onSelectTask={(task) => setSelectedTaskId(task.id)}
-                        onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
+                        onDeleteTask={() => handleDeleteWithUndo(t)}
                       />
                     ))}
                   </div>
@@ -504,9 +599,9 @@ export default function TodoistModulePage() {
                       <TodoistTaskItem
                         key={t.id}
                         task={t}
-                        onToggleComplete={(id) => completeTaskMutation.mutate(id)}
+                        onToggleComplete={() => handleToggleCompleteWithUndo(t)}
                         onSelectTask={(task) => setSelectedTaskId(task.id)}
-                        onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
+                        onDeleteTask={() => handleDeleteWithUndo(t)}
                       />
                     ))}
                   </div>
@@ -527,9 +622,9 @@ export default function TodoistModulePage() {
                       <TodoistTaskItem
                         key={t.id}
                         task={t}
-                        onToggleComplete={(id) => completeTaskMutation.mutate(id)}
+                        onToggleComplete={() => handleToggleCompleteWithUndo(t)}
                         onSelectTask={(task) => setSelectedTaskId(task.id)}
-                        onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
+                        onDeleteTask={() => handleDeleteWithUndo(t)}
                       />
                     ))}
                   </div>
@@ -538,8 +633,38 @@ export default function TodoistModulePage() {
             </div>
           )}
 
+          {/* VIEW: RECURRING */}
+          {activeView === "recurring" && (
+            <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-sm">
+              <div className="flex items-center gap-2 text-emerald-700 font-bold">
+                <Repeat className="h-5 w-5 text-emerald-600" />
+                <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider">Tarefas Recorrentes ({tasks.length})</h3>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-2">
+                Tarefas que se repetem periodicamente de forma automática quando são concluídas.
+              </p>
+              {tasksLoading ? (
+                <p className="text-xs text-slate-400 py-6 text-center">Carregando...</p>
+              ) : tasks.length === 0 ? (
+                <p className="text-xs text-slate-400 py-8 text-center italic">Nenhuma tarefa com repetição/recorrência cadastrada.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {tasks.map((t) => (
+                    <TodoistTaskItem
+                      key={t.id}
+                      task={t}
+                      onToggleComplete={() => handleToggleCompleteWithUndo(t)}
+                      onSelectTask={(task) => setSelectedTaskId(task.id)}
+                      onDeleteTask={() => handleDeleteWithUndo(t)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* VIEW: INBOX / UPCOMING / COMPLETED / PROJECTS */}
-          {activeView !== "today" && activeView !== "kanban" && activeView !== "dashboard" && activeView !== "automations" && (
+          {activeView !== "today" && activeView !== "recurring" && activeView !== "kanban" && activeView !== "dashboard" && activeView !== "automations" && (
             <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-sm">
               <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider">
                 {activeView === "inbox" && "Caixa de Entrada (Inbox)"}
@@ -558,9 +683,9 @@ export default function TodoistModulePage() {
                     <TodoistTaskItem
                       key={t.id}
                       task={t}
-                      onToggleComplete={(id) => completeTaskMutation.mutate(id)}
+                      onToggleComplete={() => handleToggleCompleteWithUndo(t)}
                       onSelectTask={(task) => setSelectedTaskId(task.id)}
-                      onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
+                      onDeleteTask={() => handleDeleteWithUndo(t)}
                     />
                   ))}
                 </div>
@@ -603,9 +728,9 @@ export default function TodoistModulePage() {
                                   >
                                     <TodoistTaskItem
                                       task={t}
-                                      onToggleComplete={(id) => completeTaskMutation.mutate(id)}
+                                      onToggleComplete={() => handleToggleCompleteWithUndo(t)}
                                       onSelectTask={(task) => setSelectedTaskId(task.id)}
-                                      onDeleteTask={(id) => deleteTaskMutation.mutate(id)}
+                                      onDeleteTask={() => handleDeleteWithUndo(t)}
                                     />
                                   </div>
                                 )}

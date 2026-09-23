@@ -1985,6 +1985,16 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  app.post("/api/todoist/tasks/:id/restore", isTeam, async (req, res) => {
+    try {
+      const restored = await storage.restoreTodoistTask(parseInt(req.params.id));
+      if (!restored) return res.status(404).json({ message: "Tarefa não encontrada" });
+      res.json(restored);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   // Subtasks
   app.post("/api/todoist/subtasks", isTeam, async (req, res) => {
     try {

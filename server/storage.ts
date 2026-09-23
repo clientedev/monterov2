@@ -279,6 +279,7 @@ export interface IStorage {
   updateTodoistTask(id: number, updates: Partial<InsertTodoistTask>, subtasksList?: { id?: number; title: string; completed?: boolean }[], labelIds?: number[], updatedByUserId?: number): Promise<TodoistTask | undefined>;
   completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }>;
   deleteTodoistTask(id: number): Promise<void>;
+  restoreTodoistTask(id: number): Promise<TodoistTask | undefined>;
 
   createTodoistSubtask(subtask: InsertTodoistSubtask): Promise<TodoistSubtask>;
   updateTodoistSubtask(id: number, completed: boolean, title?: string): Promise<TodoistSubtask | undefined>;
@@ -1430,7 +1431,7 @@ export class DatabaseStorage implements IStorage {
     isRecurring?: boolean;
   }): Promise<any[]> {
     let query = db.select().from(todoistTasks);
-    const conditions: any[] = [];
+    const conditions: any[] = [isNull(todoistTasks.deletedAt)];
 
     if (filters?.projectId !== undefined) {
       if (filters.projectId === 0) {
@@ -1515,6 +1516,8 @@ export class DatabaseStorage implements IStorage {
       );
     } else if (filters?.view === 'completed') {
       conditions.push(eq(todoistTasks.status, 'done'));
+    } else if (filters?.view === 'recurring') {
+      conditions.push(eq(todoistTasks.isRecurring, true));
     }
 
     if (conditions.length > 0) {
@@ -1569,6 +1572,7 @@ export class DatabaseStorage implements IStorage {
         ...t,
         project,
         assignee,
+        assigneeUser: assignee,
         contact,
         lead,
         cliente,
@@ -1645,6 +1649,7 @@ export class DatabaseStorage implements IStorage {
       ...t,
       project,
       assignee,
+      assigneeUser: assignee,
       contact,
       lead,
       cliente,
@@ -1806,8 +1811,9 @@ export class DatabaseStorage implements IStorage {
 
     let nextOccurrenceTask: TodoistTask | undefined = undefined;
 
-    if (newStatus === 'done' && existing.isRecurring && existing.recurrenceRule && existing.dueDate) {
-      const nextDate = new Date(existing.dueDate);
+    if (newStatus === 'done' && existing.isRecurring && existing.recurrenceRule) {
+      const baseDate = existing.dueDate ? new Date(existing.dueDate) : new Date();
+      const nextDate = new Date(baseDate);
       const rule = existing.recurrenceRule.toLowerCase();
 
       if (rule === 'daily') {
@@ -1827,6 +1833,27 @@ export class DatabaseStorage implements IStorage {
         nextDate.setDate(nextDate.getDate() + days);
       } else {
         nextDate.setDate(nextDate.getDate() + 7);
+      }
+
+      // If nextDate is in the past, advance it to today or future
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let safetyCounter = 0;
+      while (nextDate < today && safetyCounter < 500) {
+        safetyCounter++;
+        if (rule === 'daily') {
+          nextDate.setDate(nextDate.getDate() + 1);
+        } else if (rule === 'weekdays') {
+          nextDate.setDate(nextDate.getDate() + 1);
+          if (nextDate.getDay() === 6) nextDate.setDate(nextDate.getDate() + 2);
+          if (nextDate.getDay() === 0) nextDate.setDate(nextDate.getDate() + 1);
+        } else if (rule === 'weekly') {
+          nextDate.setDate(nextDate.getDate() + 7);
+        } else if (rule === 'monthly') {
+          nextDate.setMonth(nextDate.getMonth() + 1);
+        } else {
+          nextDate.setDate(nextDate.getDate() + 7);
+        }
       }
 
       [nextOccurrenceTask] = await db.insert(todoistTasks).values({
@@ -1878,7 +1905,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTodoistTask(id: number): Promise<void> {
-    await db.delete(todoistTasks).where(eq(todoistTasks.id, id));
+    await db.update(todoistTasks).set({ deletedAt: new Date() }).where(eq(todoistTasks.id, id));
+  }
+
+  async restoreTodoistTask(id: number): Promise<TodoistTask | undefined> {
+    const [restored] = await db.update(todoistTasks).set({ deletedAt: null }).where(eq(todoistTasks.id, id)).returning();
+    return restored;
   }
 
   async createTodoistSubtask(subtask: InsertTodoistSubtask): Promise<TodoistSubtask> {
@@ -2847,6 +2879,7 @@ export class MemStorage implements IStorage {
   async updateTodoistTask(id: number, updates: Partial<InsertTodoistTask>, subtasksList?: any[], labelIds?: number[], updatedByUserId?: number): Promise<TodoistTask | undefined> { return undefined; }
   async completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }> { throw new Error("Not implemented"); }
   async deleteTodoistTask(id: number): Promise<void> {}
+  async restoreTodoistTask(id: number): Promise<TodoistTask | undefined> { return undefined; }
   async createTodoistSubtask(subtask: InsertTodoistSubtask): Promise<TodoistSubtask> { throw new Error("Not implemented"); }
   async updateTodoistSubtask(id: number, completed: boolean, title?: string): Promise<TodoistSubtask | undefined> { return undefined; }
   async deleteTodoistSubtask(id: number): Promise<void> {}

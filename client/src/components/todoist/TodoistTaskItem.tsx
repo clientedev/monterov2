@@ -162,10 +162,10 @@ export function TodoistTaskItem({ task, onToggleComplete, onSelectTask, onDelete
         {/* Meta details footer */}
         <div className="flex items-center gap-4 mt-2.5 text-xs text-slate-500 flex-wrap">
           {/* Assigned user badge */}
-          {task.assigneeUser && (
-            <div className="flex items-center gap-1 text-slate-600 bg-slate-100 px-2 py-0.5 rounded text-[11px] font-semibold">
+          {(task.assigneeUser || task.assignee) && (
+            <div className="flex items-center gap-1 text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[11px] font-semibold" title={`Responsável: ${(task.assigneeUser || task.assignee).name || (task.assigneeUser || task.assignee).username}`}>
               <User className="h-3 w-3 text-primary" />
-              <span>{task.assigneeUser.name}</span>
+              <span>{(task.assigneeUser || task.assignee).name || (task.assigneeUser || task.assignee).username}</span>
             </div>
           )}
 
@@ -185,9 +185,16 @@ export function TodoistTaskItem({ task, onToggleComplete, onSelectTask, onDelete
 
           {/* Recurrence */}
           {task.isRecurring && (
-            <div className="flex items-center gap-1 text-emerald-600 font-medium">
-              <Repeat className="h-3.5 w-3.5" />
-              <span>Recorrente</span>
+            <div className="flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded text-[11px] font-medium" title={task.recurrenceRule ? `Recorrência: ${task.recurrenceRule}` : "Recorrente"}>
+              <Repeat className="h-3.5 w-3.5 text-emerald-600" />
+              <span>
+                {task.recurrenceRule === "daily" && "Todo dia"}
+                {task.recurrenceRule === "weekdays" && "Dias úteis"}
+                {task.recurrenceRule === "weekly" && "Semanal"}
+                {task.recurrenceRule === "monthly" && "Mensal"}
+                {task.recurrenceRule === "yearly" && "Anual"}
+                {(!task.recurrenceRule || !["daily", "weekdays", "weekly", "monthly", "yearly"].includes(task.recurrenceRule)) && "Recorrente"}
+              </span>
             </div>
           )}
 

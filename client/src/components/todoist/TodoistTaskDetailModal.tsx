@@ -156,9 +156,32 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
       await apiRequest("DELETE", `/api/todoist/tasks/${taskId}`);
     },
     onSuccess: () => {
+      const deletedId = taskId;
       queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/todoist/dashboard"] });
-      toast({ title: "Tarefa excluída com sucesso!" });
+      toast({
+        title: "Tarefa excluída!",
+        description: "Você pode desfazer a exclusão a qualquer momento.",
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                await apiRequest("POST", `/api/todoist/tasks/${deletedId}/restore`);
+                queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/todoist/dashboard"] });
+                toast({ title: "Tarefa restaurada com sucesso!" });
+              } catch (e: any) {
+                toast({ title: "Erro ao restaurar tarefa", variant: "destructive" });
+              }
+            }}
+            className="bg-white text-primary border-primary/30 font-bold hover:bg-primary/10 h-8 px-2.5 text-xs shadow-sm"
+          >
+            Desfazer
+          </Button>
+        ),
+      });
       onOpenChange(false);
     },
   });
@@ -200,7 +223,9 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     className="bg-transparent text-xl font-bold border-none px-0 text-slate-900 focus-visible:ring-0 shadow-none focus-visible:bg-slate-100/50"
                   />
                   <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
-                    <span>Criado por {task.createdBy}</span>
+                    <span>
+                      Criado por {usersList.find((u: any) => u.id === task.createdBy)?.name || usersList.find((u: any) => u.id === task.createdBy)?.username || (task.createdBy ? `Usuário #${task.createdBy}` : "Sistema")}
+                    </span>
                     <span>•</span>
                     <span>{format(new Date(task.createdAt), "dd/MM/yyyy 'às' HH:mm")}</span>
                   </div>
@@ -461,7 +486,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                 {/* Assignee */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5" /> Responsável
+                    <User className="h-3.5 w-3.5 text-primary" /> Responsável
                   </label>
                   <Select
                     value={task.assignedTo ? String(task.assignedTo) : "unassigned"}
@@ -472,11 +497,15 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-800">
                       <SelectItem value="unassigned">Não atribuído</SelectItem>
-                        {usersList.filter((u: any) => u.role !== 'client').map((u: any) => (
+                      {usersList.length === 0 ? (
+                        <div className="p-2 text-xs text-slate-400 text-center">Carregando usuários...</div>
+                      ) : (
+                        usersList.filter((u: any) => u.role !== 'client').map((u: any) => (
                           <SelectItem key={u.id} value={String(u.id)}>
-                            {u.name || u.username} ({u.role === 'admin' ? 'Admin' : 'Funcionário'})
+                            {u.name || u.username} {u.role === 'admin' ? '(Admin)' : '(Equipe)'}
                           </SelectItem>
-                        ))}
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -526,11 +555,11 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     }}
                   >
                     <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl">
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione recorrência..." />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 text-slate-800">
                       <SelectItem value="none">Não se repete</SelectItem>
-                      <SelectItem value="daily">Todos os dias</SelectItem>
+                      <SelectItem value="daily">Todos os dias (Diário)</SelectItem>
                       <SelectItem value="weekdays">Dias úteis (Seg-Sex)</SelectItem>
                       <SelectItem value="weekly">Semanalmente</SelectItem>
                       <SelectItem value="monthly">Mensalmente</SelectItem>

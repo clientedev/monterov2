@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -69,6 +69,12 @@ export function TodoistQuickAddModal({
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceRule, setRecurrenceRule] = useState<string>("weekly");
 
+  useEffect(() => {
+    if (open && user && (!assignedTo || assignedTo === "")) {
+      setAssignedTo(String(user.id));
+    }
+  }, [open, user]);
+
   const [contactId, setContactId] = useState<number | undefined>(defaultContactId);
   const [leadId, setLeadId] = useState<number | undefined>(defaultLeadId);
 
@@ -131,9 +137,11 @@ export function TodoistQuickAddModal({
     setDescription("");
     setPriority("P3");
     setProjectId("0");
+    setAssignedTo(user ? String(user.id) : "");
     setDueDate(format(new Date(), "yyyy-MM-dd"));
     setDueTime("14:00");
     setIsRecurring(false);
+    setRecurrenceRule("weekly");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -179,13 +187,7 @@ export function TodoistQuickAddModal({
     };
   });
 
-  const userOptions = usersList
-    .filter((u: any) => u.role !== 'client')
-    .map((u: any) => ({
-      value: String(u.id),
-      label: u.name,
-      sublabel: u.role === 'admin' ? 'Administrador' : 'Equipe'
-    }));
+  const teamUsers = usersList.filter((u: any) => u.role !== 'client');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -280,18 +282,30 @@ export function TodoistQuickAddModal({
               </Select>
             </div>
 
-            {/* Assignee — Searchable */}
+            {/* Assignee — Select */}
             <div>
-              <label className="text-xs font-bold text-slate-700">Responsável</label>
-              <div className="mt-1">
-                <SearchableSelect
-                  options={userOptions}
-                  value={assignedTo}
-                  onValueChange={setAssignedTo}
-                  placeholder="Selecione responsável..."
-                  searchPlaceholder="Pesquisar usuário..."
-                />
-              </div>
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <User className="h-3 w-3 text-primary" /> Responsável
+              </label>
+              <Select
+                value={assignedTo || (user ? String(user.id) : "")}
+                onValueChange={setAssignedTo}
+              >
+                <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 mt-1 rounded-xl">
+                  <SelectValue placeholder="Selecione responsável..." />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200 text-slate-800">
+                  {teamUsers.length === 0 ? (
+                    <div className="p-2 text-xs text-slate-400 text-center">Carregando usuários...</div>
+                  ) : (
+                    teamUsers.map((u: any) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {u.name || u.username} {u.role === 'admin' ? '(Admin)' : '(Equipe)'}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -337,11 +351,11 @@ export function TodoistQuickAddModal({
                 }}
               >
                 <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 mt-1 rounded-xl">
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione recorrência..." />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200 text-slate-800">
                   <SelectItem value="none">Não se repete</SelectItem>
-                  <SelectItem value="daily">Todos os dias</SelectItem>
+                  <SelectItem value="daily">Todos os dias (Diário)</SelectItem>
                   <SelectItem value="weekdays">Dias úteis (Seg-Sex)</SelectItem>
                   <SelectItem value="weekly">Semanalmente</SelectItem>
                   <SelectItem value="monthly">Mensalmente</SelectItem>

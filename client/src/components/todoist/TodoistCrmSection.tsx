@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Plus, CheckSquare, Calendar, Clock, AlertCircle } from "lucide-react";
 import { TodoistTaskItem } from "./TodoistTaskItem";
@@ -22,6 +23,7 @@ export function TodoistCrmSection({
   apoliceId,
   title = "Tarefas Vinculadas (TODOIST)",
 }: TodoistCrmSectionProps) {
+  const { toast } = useToast();
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
@@ -50,6 +52,43 @@ export function TodoistCrmSection({
       queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
     },
   });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      await apiRequest("DELETE", `/api/todoist/tasks/${taskId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
+    },
+  });
+
+  const restoreTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      await apiRequest("POST", `/api/todoist/tasks/${taskId}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
+      toast({ title: "Tarefa restaurada com sucesso!" });
+    },
+  });
+
+  const handleDeleteWithUndo = (task: any) => {
+    deleteTaskMutation.mutate(task.id);
+    toast({
+      title: `Tarefa "${task.title}" excluída`,
+      description: "Você pode desfazer a qualquer momento.",
+      action: (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => restoreTaskMutation.mutate(task.id)}
+          className="bg-white text-primary border-primary/30 font-bold hover:bg-primary/10 h-8 px-2.5 text-xs shadow-sm"
+        >
+          Desfazer
+        </Button>
+      ),
+    });
+  };
 
   const pendingTasks = tasks.filter((t) => t.status !== "done");
   const completedTasks = tasks.filter((t) => t.status === "done");
@@ -97,6 +136,7 @@ export function TodoistCrmSection({
               task={task}
               onToggleComplete={(id) => toggleCompleteMutation.mutate(id)}
               onSelectTask={(t) => setSelectedTaskId(t.id)}
+              onDeleteTask={() => handleDeleteWithUndo(task)}
             />
           ))}
 
@@ -112,6 +152,7 @@ export function TodoistCrmSection({
                     task={task}
                     onToggleComplete={(id) => toggleCompleteMutation.mutate(id)}
                     onSelectTask={(t) => setSelectedTaskId(t.id)}
+                    onDeleteTask={() => handleDeleteWithUndo(task)}
                   />
                 ))}
               </div>
