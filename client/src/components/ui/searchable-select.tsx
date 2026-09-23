@@ -93,7 +93,7 @@ export function SearchableSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className={cn("p-0", className)}
+        className={cn("p-0 z-[100002]", className)}
         style={{ width: "var(--radix-popover-trigger-width)" }}
         align="start"
       >

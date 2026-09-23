@@ -449,7 +449,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     <SelectTrigger className="bg-white border-slate-200 text-xs font-bold text-slate-800 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200 text-slate-800">
+                    <SelectContent className="bg-white border-slate-200 text-slate-800 z-[100002]">
                       <SelectItem value="P1" className="text-red-600 font-bold">P1 — Urgente</SelectItem>
                       <SelectItem value="P2" className="text-orange-600 font-bold">P2 — Alta</SelectItem>
                       <SelectItem value="P3" className="text-blue-600 font-bold">P3 — Normal</SelectItem>
@@ -472,7 +472,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl">
                       <SelectValue placeholder="Selecione um projeto" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200 text-slate-800">
+                    <SelectContent className="bg-white border-slate-200 text-slate-800 z-[100002]">
                       <SelectItem value="0">Inbox (Sem Projeto)</SelectItem>
                       {projects.map((p: any) => (
                         <SelectItem key={p.id} value={String(p.id)}>
@@ -495,7 +495,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl">
                       <SelectValue placeholder="Atribuir a..." />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200 text-slate-800">
+                    <SelectContent className="bg-white border-slate-200 text-slate-800 z-[100002]">
                       <SelectItem value="unassigned">Não atribuído</SelectItem>
                       {usersList.length === 0 ? (
                         <div className="p-2 text-xs text-slate-400 text-center">Carregando usuários...</div>
@@ -557,7 +557,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     <SelectTrigger className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl">
                       <SelectValue placeholder="Selecione recorrência..." />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200 text-slate-800">
+                    <SelectContent className="bg-white border-slate-200 text-slate-800 z-[100002]">
                       <SelectItem value="none">Não se repete</SelectItem>
                       <SelectItem value="daily">Todos os dias (Diário)</SelectItem>
                       <SelectItem value="weekdays">Dias úteis (Seg-Sex)</SelectItem>
