@@ -992,8 +992,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(tasks).where(eq(tasks.id, id));
   }
 
-  // Site Settings
-  private fallbackSiteSettings: SiteSettings = {
+  private cachedSiteSettings: SiteSettings = {
     id: 1,
     siteName: "Monteiro Seguros e Benefícios",
     logoBase64: null,
@@ -1006,16 +1005,16 @@ export class DatabaseStorage implements IStorage {
     heroTitle: "Proteção que Transforma,\nBenefícios que Cuidam",
     heroSubtitle: "A Monteiro Seguros e Benefícios é especializada em consultoria estratégica em proteção e benefícios para empresas e famílias.",
     aboutTitle: "Sobre a Monteiro Seguros e Benefícios",
-    aboutContent: "Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, a Monteiro Corretora oferece sempre o seguro mais adequado ao seu perfil – pessoal ou empresarial – e às suas expectativas, com um atendimento personalizado, humano e qualificado.\n\nNos preocupamos em oferecer aos segurados acompanhamento durante todas as etapas do processo, ou seja, durante a contratação e também no pós-venda, garantindo tranquilidade e segurança.",
-    aboutImageBase64: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600",
-    servicesTitle: "Soluções Completas em Seguros",
-    servicesSubtitle: "Planos de cobertura personalizados projetados para atender às suas necessidades específicas.",
+    aboutContent: "A Monteiro Seguros e Benefícios é especializada em oferecer consultoria estratégica em proteção e benefícios para empresas e famílias.\n\nMais do que comercializar seguros, atuamos como parceiros na construção de soluções que equilibram cuidado com pessoas, controle de custos e segurança financeira, tanto no ambiente corporativo quanto na vida pessoal.",
+    aboutImageBase64: "/equipe.jpg",
+    servicesTitle: "Soluções Completas em Proteção e Benefícios",
+    servicesSubtitle: "Planos personalizados para cada momento da sua vida e do seu negócio.",
     blogTitle: "Blog e Novidades",
-    blogSubtitle: "Fique por dentro das novidades e dicas do mercado de seguros.",
+    blogSubtitle: "Fique por dentro das novidades e dicas do mercado de seguros e benefícios.",
     contactEmail: "contato@monteiroseguros.com.br",
     contactPhone: "+55 (11) 9999-9999",
     address: "São Paulo, SP",
-    footerText: "Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios.",
+    footerText: "Cuidar de pessoas é uma decisão estratégica. Benefícios não são custo. São estratégia.",
     facebookUrl: null,
     instagramUrl: null,
     twitterUrl: null,
@@ -1036,125 +1035,101 @@ export class DatabaseStorage implements IStorage {
     updatedAt: new Date(),
   };
 
-  private isDbHealthy: boolean = true;
-  private lastDbCheck: number = 0;
+  private lastSettingsFetch: number = 0;
 
+  // Site Settings
   async getSiteSettings(): Promise<SiteSettings> {
     const now = Date.now();
-    if (!this.isDbHealthy && now - this.lastDbCheck < 30000) {
-      return this.fallbackSiteSettings;
+    if (now - this.lastSettingsFetch < 10000) {
+      return this.cachedSiteSettings;
     }
-
     try {
       const [settings] = await db.select().from(siteSettings);
-      this.isDbHealthy = true;
-      if (!settings) {
-        // Seed default settings if none exist
-        const [newSettings] = await db.insert(siteSettings).values({
-          siteName: "Monteiro Corretora",
-          primaryColor: "#08454c",
-          secondaryColor: "#c65f54",
-          heroTitle: "Protegendo seu Futuro,\nGarantindo seu Legado",
-          heroSubtitle: "Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna.",
-          aboutTitle: "Sobre a Monteiro Corretora",
-          aboutContent: "Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, a Monteiro Corretora oferece sempre o seguro mais adequado ao seu perfil – pessoal ou empresarial – e às suas expectativas, com um atendimento personalizado, humano e qualificado.\n\nNos preocupamos em oferecer aos segurados acompanhamento durante todas as etapas do processo, ou seja, durante a contratação e também no pós-venda, garantindo tranquilidade e segurança.",
-          aboutImageBase64: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600",
-          servicesTitle: "Soluções Completas em Seguros",
-          servicesSubtitle: "Planos de cobertura personalizados projetados para atender às suas necessidades específicas.",
-          blogTitle: "Blog e Novidades",
-          blogSubtitle: "Fique por dentro das novidades e dicas do mercado de seguros.",
-          footerText: "Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios.",
-          activeTheme: "default",
-          themeOutubroRosa: false,
-          themeOutubroRosaBadge: true,
-        }).returning();
-        if (newSettings) {
-          this.fallbackSiteSettings = { ...newSettings };
-          return newSettings;
-        }
-      }
       if (settings) {
-        this.fallbackSiteSettings = { ...this.fallbackSiteSettings, ...settings };
-        return this.fallbackSiteSettings;
+        this.cachedSiteSettings = { ...this.cachedSiteSettings, ...settings };
+        this.lastSettingsFetch = now;
+        return this.cachedSiteSettings;
       }
     } catch (err: any) {
-      this.isDbHealthy = false;
-      this.lastDbCheck = now;
-      console.warn("[STORAGE] Using cached site settings (DB unreachable):", err.message);
+      this.lastSettingsFetch = now;
+      console.warn("[SiteSettings] Using cached settings (DB timeout/offline):", err.message);
     }
-    return this.fallbackSiteSettings;
+    return this.cachedSiteSettings;
   }
 
   async updateSiteSettings(settings: InsertSiteSettings): Promise<SiteSettings> {
-    this.fallbackSiteSettings = {
-      ...this.fallbackSiteSettings,
+    this.cachedSiteSettings = {
+      ...this.cachedSiteSettings,
       ...settings,
       updatedAt: new Date(),
     } as SiteSettings;
-
-    if (!this.isDbHealthy) {
-      return this.fallbackSiteSettings;
-    }
+    this.lastSettingsFetch = Date.now();
 
     try {
-      const existing = await this.getSiteSettings();
-      const [updated] = await db
-        .update(siteSettings)
-        .set({ ...settings, updatedAt: new Date() })
-        .where(eq(siteSettings.id, existing.id || 1))
-        .returning();
-      if (updated) {
-        this.fallbackSiteSettings = { ...this.fallbackSiteSettings, ...updated };
+      const existing = await db.select().from(siteSettings);
+      if (existing.length > 0) {
+        const [updated] = await db
+          .update(siteSettings)
+          .set({ ...settings, updatedAt: new Date() })
+          .where(eq(siteSettings.id, existing[0].id))
+          .returning();
+        if (updated) {
+          this.cachedSiteSettings = { ...this.cachedSiteSettings, ...updated };
+        }
       }
     } catch (err: any) {
-      this.isDbHealthy = false;
-      console.warn("[STORAGE] Saved site settings in-memory (DB unreachable):", err.message);
+      console.warn("[SiteSettings] Updated in-memory, DB sync pending:", err.message);
     }
-    return this.fallbackSiteSettings;
+    return this.cachedSiteSettings;
   }
 
   // Hero Slides
   async getHeroSlides(): Promise<HeroSlide[]> {
-    const existing = await db.select().from(heroSlides).orderBy(heroSlides.order);
-    if (existing.length === 0) {
-      const defaultSlides = [
-        {
-          title: "Planos de Saúde Individuais & Familiares",
-          subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
-          imageBase64: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
-          buttonText: "Cotação Individual",
-          buttonLink: "/contact",
-          order: 0,
-          isActive: true,
-        },
-        {
-          title: "Benefícios Corporativos Sob Medida",
-          subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
-          imageBase64: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
-          buttonText: "Cotação Corporativa",
-          buttonLink: "/contact",
-          order: 1,
-          isActive: true,
-        },
-        {
-          title: "Planos de Saúde Premium & Reembolso",
-          subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
-          imageBase64: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
-          buttonText: "Planos Premium",
-          buttonLink: "/contact",
-          order: 2,
-          isActive: true,
-        }
-      ];
-      
-      const seeded: HeroSlide[] = [];
-      for (const item of defaultSlides) {
-        const [newSlide] = await db.insert(heroSlides).values(item).returning();
-        seeded.push(newSlide);
+    const defaultSlides: HeroSlide[] = [
+      {
+        id: 1,
+        title: "Planos de Saúde Individuais & Familiares",
+        subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
+        imageBase64: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
+        buttonText: "Cotação Individual",
+        buttonLink: "/contact",
+        order: 0,
+        isActive: true,
+        createdAt: new Date(),
+      },
+      {
+        id: 2,
+        title: "Benefícios Corporativos Sob Medida",
+        subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
+        imageBase64: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
+        buttonText: "Cotação Corporativa",
+        buttonLink: "/contact",
+        order: 1,
+        isActive: true,
+        createdAt: new Date(),
+      },
+      {
+        id: 3,
+        title: "Planos de Saúde Premium & Reembolso",
+        subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
+        imageBase64: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
+        buttonText: "Planos Premium",
+        buttonLink: "/contact",
+        order: 2,
+        isActive: true,
+        createdAt: new Date(),
       }
-      return seeded;
+    ];
+
+    try {
+      const existing = await db.select().from(heroSlides).orderBy(heroSlides.order);
+      if (existing && existing.length > 0) {
+        return existing;
+      }
+    } catch (err: any) {
+      console.warn("[HeroSlides] Returning default slides (DB timeout/offline):", err.message);
     }
-    return existing;
+    return defaultSlides;
   }
 
   async createHeroSlide(slide: InsertHeroSlide): Promise<HeroSlide> {
@@ -2804,7 +2779,7 @@ export class MemStorage implements IStorage {
         updatedAt: new Date(),
       };
     }
-    return this.siteSettingsData;
+    return this.siteSettingsData!;
   }
 
   async updateSiteSettings(settings: InsertSiteSettings): Promise<SiteSettings> {

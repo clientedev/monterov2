@@ -28,6 +28,9 @@ export function Footer() {
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
+                  onError={(e) => {
+                    e.currentTarget.src = logo;
+                  }}
                   className="h-16 w-auto brightness-0 invert opacity-95 transition-opacity hover:opacity-100"
                 />
               ) : (

@@ -1,4 +1,4 @@
-﻿import { Link, useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState, createContext } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import {
     Package,
     ShieldCheck,
     Building2,
-    Shield, Bot,
+    Shield,
     StickyNote,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -38,7 +38,7 @@ import { TodoistNotificationBell } from "@/components/todoist/TodoistNotificatio
 import { useStickyNotes } from "@/hooks/useStickyNotes";
 import { StickyNotesLayer, StickyNoteButton } from "@/components/StickyNoteWidget";
 
-// â”€â”€â”€ Sticky Notes Context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sticky Notes Context ────────────────────────────────────────────────────
 export const StickyNotesContext = createContext<ReturnType<typeof useStickyNotes> | null>(null);
 
 const WhatsAppIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
@@ -94,7 +94,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 ) : (
                                     <img
                                         src={logo}
-                                        alt="Monteiro Seguros e BenefÃ­cios"
+                                        alt="Monteiro Seguros e Benefícios"
                                         className="h-24 w-auto object-contain"
                                     />
                                 )}
@@ -108,9 +108,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                     {/* CRM Section */}
                     <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-                        <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">GestÃ£o de Clientes</p>
+                        <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Gestão de Clientes</p>
                         <nav className="space-y-1">
-                            <NavLink href="/admin" icon={LayoutDashboard} label="VisÃ£o Geral" />
+                            <NavLink href="/admin" icon={LayoutDashboard} label="Visão Geral" />
                             <NavLink href="/admin/contacts" icon={Users} label="Base de Contatos" />
                             <NavLink href="/admin/leads" icon={UserPlus} label="Leads & Pipeline" />
                             <a
@@ -127,8 +127,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     Monteiro Conecta
                                 </Button>
                             </a>
-                            <NavLink href="/admin/interactions" icon={Megaphone} label="RÃ©gua de Contato" />
-                            <NavLink href="/admin/prospecting" icon={PhoneCall} label="ProspecÃ§Ã£o" />
+                            <NavLink href="/admin/interactions" icon={Megaphone} label="Régua de Contato" />
+                            <NavLink href="/admin/prospecting" icon={PhoneCall} label="Prospecção" />
                             <NavLink href="/admin/company-search" icon={Search} label="Busca de Empresas" />
                         </nav>
                     </div>
@@ -149,7 +149,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <nav className="space-y-1">
                             <NavLink href="/admin/seguros" icon={ShieldCheck} label="Dashboard Seguros" />
                             <NavLink href="/admin/clientes" icon={Users} label="Clientes de Seguro" />
-                            <NavLink href="/admin/apolices" icon={FileText} label="ApÃ³lices" />
+                            <NavLink href="/admin/apolices" icon={FileText} label="Apólices" />
                             <NavLink href="/admin/seguradoras" icon={Building2} label="Seguradoras" />
                         </nav>
                     </div>
@@ -165,12 +165,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                     {/* Site & Content Section */}
                     <div className="animate-in fade-in slide-in-from-left-4 duration-700">
-                        <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">ConteÃºdo Presencial</p>
+                        <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Conteúdo Presencial</p>
                         <nav className="space-y-1">
                             <NavLink href="/admin/posts" icon={FileText} label="Blog Central" />
-                            <NavLink href="/admin/comments" icon={MessageSquare} label="Moderar ComentÃ¡rios" />
-                            <NavLink href="/admin/reviews" icon={Star} label="Moderar AvaliaÃ§Ãµes" />
-                            <NavLink href="/admin/services" icon={Briefcase} label="PortfÃ³lio de ServiÃ§os" />
+                            <NavLink href="/admin/comments" icon={MessageSquare} label="Moderar Comentários" />
+                            <NavLink href="/admin/reviews" icon={Star} label="Moderar Avaliações" />
+                            <NavLink href="/admin/services" icon={Briefcase} label="Portfólio de Serviços" />
                         </nav>
                     </div>
 
@@ -178,7 +178,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <div className="animate-in fade-in slide-in-from-left-4 duration-1000 mt-auto pt-6">
                         <p className="text-[11px] uppercase text-[#1A3A4F] font-bold mb-4 px-2 tracking-[0.15em]">Sistema</p>
                         <nav className="space-y-1">
-                            {isAdmin && <NavLink href="/admin/site-config" icon={Settings} label="ConfiguraÃ§Ãµes Web" />}
+                            {isAdmin && <NavLink href="/admin/site-config" icon={Settings} label="Configurações Web" />}
                             <NavLink href="/admin/notas" icon={StickyNote} label="Notas Adesivas" />
                         </nav>
                     </div>

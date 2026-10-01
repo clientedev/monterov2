@@ -168,114 +168,84 @@
   --secondary: 347 77% 50%; /* #f43f5e */
   --secondary-foreground: 0 0% 100%;
   --ring: 336 80% 48%;
-  --brand-gradient-start: #831843; /* Vinho Profundo Rose */
-  --brand-gradient-end: #500724; /* Vinho Escuro */
+  --brand-gradient-start: #831843;
+  --brand-gradient-end: #500724;
   --navbar-bg: rgba(131, 24, 67, 0.96);
+  --primary-hex: #db2777;
+  --secondary-hex: #f43f5e;
   --primary-default: #be185d;
   --secondary-default: #f43f5e;
 }
 
-/* Headings in Outubro Rosa */
-[data-theme="outubro-rosa"] h1,
-[data-theme="outubro-rosa"] h2,
-[data-theme="outubro-rosa"] h3,
-[data-theme="outubro-rosa"] h4,
-[data-theme="outubro-rosa"] h5,
-[data-theme="outubro-rosa"] h6 {
-  color: #701a75; /* Ameixa profundo e sofisticado */
+/* Headings and texts that use the dark brand color (#163b52) switch to elegant deep rose */
+[data-theme="outubro-rosa"] .text-\[\#163b52\],
+[data-theme="outubro-rosa"] h1.text-\[\#163b52\],
+[data-theme="outubro-rosa"] h2.text-\[\#163b52\],
+[data-theme="outubro-rosa"] h3.text-\[\#163b52\],
+[data-theme="outubro-rosa"] h4.text-\[\#163b52\],
+[data-theme="outubro-rosa"] h5.text-\[\#163b52\],
+[data-theme="outubro-rosa"] h6.text-\[\#163b52\] {
+  color: #831843 !important;
 }
 
-/* Solid Brand Backgrounds (Hero sections, Footers, CTA banners) */
-[data-theme="outubro-rosa"] .bg-\[\#08454c\],
-[data-theme="outubro-rosa"] [class*="bg-[#08454c]"] {
+/* Sections with dark brand background */
+[data-theme="outubro-rosa"] section.bg-\[\#08454c\],
+[data-theme="outubro-rosa"] footer.bg-\[\#08454c\],
+[data-theme="outubro-rosa"] header.bg-\[\#08454c\],
+[data-theme="outubro-rosa"] div.bg-\[\#08454c\]:not([class*="mix-blend"]):not([class*="gradient"]):not([class*="blur"]):not([class*="opacity"]) {
   background-color: #831843 !important;
 }
 
-/* Opacity variants of the brand background */
-[data-theme="outubro-rosa"] [class*="bg-[#08454c]/5"] {
-  background-color: rgba(219, 39, 119, 0.07) !important;
-}
-[data-theme="outubro-rosa"] [class*="bg-[#08454c]/10"] {
-  background-color: rgba(219, 39, 119, 0.12) !important;
-}
-[data-theme="outubro-rosa"] [class*="bg-[#08454c]/20"] {
-  background-color: rgba(219, 39, 119, 0.22) !important;
-}
-[data-theme="outubro-rosa"] [class*="bg-[#08454c]/60"] {
-  background-color: rgba(131, 24, 67, 0.6) !important;
-}
-[data-theme="outubro-rosa"] [class*="bg-[#08454c]/70"] {
-  background-color: rgba(131, 24, 67, 0.7) !important;
-}
-[data-theme="outubro-rosa"] [class*="bg-[#08454c]/85"] {
-  background-color: rgba(131, 24, 67, 0.85) !important;
-}
-
-/* Brand Text Highlights */
-[data-theme="outubro-rosa"] .text-\[\#08454c\],
-[data-theme="outubro-rosa"] [class*="text-[#08454c]"] {
-  color: #be185d !important;
-}
-
-/* Brand Borders & Rings */
-[data-theme="outubro-rosa"] .border-\[\#08454c\],
-[data-theme="outubro-rosa"] [class*="border-[#08454c]"] {
-  border-color: #db2777 !important;
-}
-[data-theme="outubro-rosa"] [class*="border-[#08454c]/10"] {
-  border-color: rgba(219, 39, 119, 0.2) !important;
-}
-[data-theme="outubro-rosa"] [class*="focus:border-[#08454c]"]:focus {
-  border-color: #db2777 !important;
-}
-[data-theme="outubro-rosa"] [class*="focus:ring-[#08454c]"]:focus {
-  --tw-ring-color: rgba(219, 39, 119, 0.25) !important;
-}
-
-/* Hover & Group Hover States */
-[data-theme="outubro-rosa"] [class*="hover:bg-[#08454c]"]:hover,
-[data-theme="outubro-rosa"] [class*="group"]:hover [class*="group-hover:bg-[#08454c]"] {
+/* Buttons with brand background */
+[data-theme="outubro-rosa"] button.bg-\[\#08454c\],
+[data-theme="outubro-rosa"] a.bg-\[\#08454c\] {
   background-color: #be185d !important;
 }
-[data-theme="outubro-rosa"] [class*="hover:text-[#08454c]"]:hover,
-[data-theme="outubro-rosa"] [class*="group"]:hover [class*="group-hover:text-[#08454c]"] {
-  color: #db2777 !important;
+[data-theme="outubro-rosa"] button.bg-\[\#08454c\]:hover,
+[data-theme="outubro-rosa"] a.bg-\[\#08454c\]:hover {
+  background-color: #9d174d !important;
 }
 
-/* Gradients */
-[data-theme="outubro-rosa"] [class*="from-[#08454c]"] {
+/* Brand text highlights */
+[data-theme="outubro-rosa"] .text-\[\#08454c\] {
+  color: #be185d !important;
+}
+[data-theme="outubro-rosa"] .text-\[\#163b52\] {
+  color: #831843 !important;
+}
+[data-theme="outubro-rosa"] .border-\[\#08454c\] {
+  border-color: #db2777 !important;
+}
+
+/* Secondary / Terracota buttons and badges */
+[data-theme="outubro-rosa"] .bg-\[\#c65f54\] {
+  background-color: #db2777 !important;
+}
+[data-theme="outubro-rosa"] .text-\[\#c65f54\] {
+  color: #db2777 !important;
+}
+[data-theme="outubro-rosa"] .border-\[\#c65f54\] {
+  border-color: #db2777 !important;
+}
+[data-theme="outubro-rosa"] button.bg-\[\#c65f54\]:hover,
+[data-theme="outubro-rosa"] a.bg-\[\#c65f54\]:hover {
+  background-color: #be185d !important;
+}
+
+/* Safe Gradients */
+[data-theme="outubro-rosa"] .from-\[\#08454c\] {
   --tw-gradient-from: #831843 var(--tw-gradient-from-position) !important;
   --tw-gradient-to: rgba(131, 24, 67, 0) var(--tw-gradient-to-position) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
-[data-theme="outubro-rosa"] [class*="via-[#08454c]"] {
-  --tw-gradient-to: rgba(131, 24, 67, 0) var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), #701a75 var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+[data-theme="outubro-rosa"] .via-\[\#08454c\]\/70 {
+  --tw-gradient-stops: var(--tw-gradient-from), rgba(131, 24, 67, 0.7) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
 }
-[data-theme="outubro-rosa"] [class*="to-[#163b52]"] {
+[data-theme="outubro-rosa"] .via-\[\#08454c\]\/90 {
+  --tw-gradient-stops: var(--tw-gradient-from), rgba(131, 24, 67, 0.9) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+[data-theme="outubro-rosa"] .to-\[\#163b52\] {
   --tw-gradient-to: #500724 var(--tw-gradient-to-position) !important;
-}
-
-/* Secondary / Terracota Overrides to Outubro Rosa Accent */
-[data-theme="outubro-rosa"] [class*="text-[#c65f54]"] {
-  color: #f43f5e !important;
-}
-[data-theme="outubro-rosa"] [class*="bg-[#c65f54]"] {
-  background-color: #f43f5e !important;
-}
-[data-theme="outubro-rosa"] [class*="border-[#c65f54]"] {
-  border-color: #f43f5e !important;
-}
-[data-theme="outubro-rosa"] [class*="hover:bg-[#c65f54]"]:hover {
-  background-color: #e11d48 !important;
-}
-
-/* Text Slate Blue (#163b52) to Harmonious Plum (#701a75) */
-[data-theme="outubro-rosa"] [class*="text-[#163b52]"] {
-  color: #701a75 !important;
-}
-[data-theme="outubro-rosa"] [class*="hover:text-[#163b52]"]:hover {
-  color: #831843 !important;
 }
 
 /* Premium Card & Gradient Overrides */

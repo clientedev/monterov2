@@ -56,6 +56,9 @@ export function Navbar() {
                 <img
                   src={settings.logoBase64}
                   alt={settings.siteName}
+                  onError={(e) => {
+                    e.currentTarget.src = logo;
+                  }}
                   style={{ 
                      '--logo-scale': `${(settings.logoScale || 150) / 100}`,
                      '--logo-scale-mobile': `${(settings.logoScaleMobile || 130) / 100}`

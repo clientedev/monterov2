@@ -1,4 +1,4 @@
-﻿import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, CheckCircle2, Star, Loader2, MessageSquare, ShieldCheck, Zap, Heart, Sparkles } from "lucide-react";
@@ -39,24 +39,24 @@ export default function Home() {
   const defaultSlides = [
     {
       id: 1,
-      title: "Planos de SaÃºde Individuais & Familiares",
-      subtitle: "A proteÃ§Ã£o mais completa para quem vocÃª ama. Acesso aos melhores hospitais do paÃ­s com condiÃ§Ãµes diferenciadas e atendimento personalizado.",
+      title: "Planos de Saúde Individuais & Familiares",
+      subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
       imageBase64: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
-      buttonText: "CotaÃ§Ã£o Individual",
+      buttonText: "Cotação Individual",
       buttonLink: "/contact",
     },
     {
       id: 2,
-      title: "BenefÃ­cios Corporativos Sob Medida",
-      subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saÃºde empresariais customizados para pequenas, mÃ©dias e grandes empresas.",
+      title: "Benefícios Corporativos Sob Medida",
+      subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
       imageBase64: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
-      buttonText: "CotaÃ§Ã£o Corporativa",
+      buttonText: "Cotação Corporativa",
       buttonLink: "/contact",
     },
     {
       id: 3,
-      title: "Planos de SaÃºde Premium & Reembolso",
-      subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistÃªncia nacional e internacional. O padrÃ£o de saÃºde que sua famÃ­lia e executivos merecem.",
+      title: "Planos de Saúde Premium & Reembolso",
+      subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
       imageBase64: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
       buttonText: "Planos Premium",
       buttonLink: "/contact",
@@ -113,6 +113,9 @@ export default function Home() {
                       <img
                         src={slide.imageBase64}
                         alt={slide.title}
+                        onError={(e) => {
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000";
+                        }}
                         className="w-full h-full object-cover opacity-60"
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/70 to-transparent" />
@@ -196,7 +199,7 @@ export default function Home() {
                 Artigos em Destaque
               </div>
               <h2 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">
-                ConteÃºdos Selecionados para VocÃª
+                Conteúdos Selecionados para Você
               </h2>
             </div>
             <Link href="/blog">
@@ -231,8 +234,11 @@ export default function Home() {
 
                     <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 flex items-center justify-center relative p-1">
                       <img
-                        src={post.coverImage}
+                        src={post.coverImage || "/favicon.png"}
                         alt={post.title}
+                        onError={(e) => {
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
+                        }}
                         className="w-full h-full object-contain"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity pointer-events-none" />
@@ -242,7 +248,7 @@ export default function Home() {
                       <div>
                         <div className="flex items-center gap-2 text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">
                           <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
-                          <span>â€¢</span>
+                          <span>•</span>
                           <span className="text-[#c65f54]">Monteiro Blog</span>
                         </div>
                         <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300 line-clamp-2">
@@ -278,12 +284,12 @@ export default function Home() {
       <section id="services" className="py-28 bg-[#f5f2eb] relative border-t border-slate-100">
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-20">
-            <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Nossas SoluÃ§Ãµes</span>
+            <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Nossas Soluções</span>
             <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-[#163b52] leading-tight">
-              {settings?.servicesTitle || "Seguros Estruturados & BenefÃ­cios Inteligentes"}
+              {settings?.servicesTitle || "Seguros Estruturados & Benefícios Inteligentes"}
             </h2>
             <p className="text-slate-500 text-lg font-light leading-relaxed">
-              {settings?.servicesSubtitle || "Modelos boutique de apÃ³lices elaboradas para resguardar sua vida corporativa, saÃºde familiar e legado patrimonial de forma sustentÃ¡vel."}
+              {settings?.servicesSubtitle || "Modelos boutique de apólices elaboradas para resguardar sua vida corporativa, saúde familiar e legado patrimonial de forma sustentável."}
             </p>
           </div>
 
@@ -300,7 +306,7 @@ export default function Home() {
 
             {!loadingServices && (!services || services.length === 0) && (
               <div className="col-span-full text-center text-slate-400 py-16 bg-white rounded-[2.5rem] border border-slate-100">
-                Nossos serviÃ§os estÃ£o sendo atualizados no momento. Retorne em breve.
+                Nossos serviços estão sendo atualizados no momento. Retorne em breve.
               </div>
             )}
           </div>
@@ -337,7 +343,7 @@ export default function Home() {
                     <CheckCircle2 className="w-7 h-7" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">SatisfaÃ§Ã£o do Cliente</p>
+                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Satisfação do Cliente</p>
                     <p className="text-2xl font-bold text-[#163b52]">98.7%</p>
                   </div>
                 </div>
@@ -349,18 +355,18 @@ export default function Home() {
               <div>
                 <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Diferencial Monteiro</span>
                 <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-[#163b52] leading-tight">
-                  Cuidar de pessoas Ã© uma decisÃ£o de legado
+                  Cuidar de pessoas é uma decisão de legado
                 </h2>
                 <p className="text-slate-600 text-lg font-light leading-relaxed">
-                  Trabalhamos no modelo boutique: proximidade total com o cliente, acompanhamento inabalÃ¡vel em caso de sinistro e total transparÃªncia. EsqueÃ§a centrais de atendimento eletrÃ´nico e robÃ´s.
+                  Trabalhamos no modelo boutique: proximidade total com o cliente, acompanhamento inabalável em caso de sinistro e total transparência. Esqueça centrais de atendimento eletrônico e robôs.
                 </p>
               </div>
 
               <ul className="space-y-4">
                 {[
-                  { title: "Arquitetura de Riscos Personalizada", desc: "AnÃ¡lise tÃ©cnica minuciosa para garantir cobertura exata, evitando desperdÃ­cios.", icon: ShieldCheck },
+                  { title: "Arquitetura de Riscos Personalizada", desc: "Análise técnica minuciosa para garantir cobertura exata, evitando desperdícios.", icon: ShieldCheck },
                   { title: "Agilidade Total sem Burocracias", desc: "Processo otimizado e canais de contato diretos para maior tranquilidade.", icon: Zap },
-                  { title: "Consultoria Boutique Exclusiva", desc: "Um consultor dedicado que entende sua vida ou negÃ³cio de ponta a ponta.", icon: Heart }
+                  { title: "Consultoria Boutique Exclusiva", desc: "Um consultor dedicado que entende sua vida ou negócio de ponta a ponta.", icon: Heart }
                 ].map((item, i) => (
                   <motion.li 
                     key={i} 
@@ -384,7 +390,7 @@ export default function Home() {
               <div className="pt-4">
                 <Link href="/sobre">
                   <button className="text-[#163b52] bg-white border border-[#809ba6]/30 px-8 py-3.5 rounded-full font-bold hover:bg-slate-50 hover:border-[#809ba6]/50 transition-all duration-300 flex items-center gap-3 group shadow-sm">
-                    ConheÃ§a Nossa EssÃªncia
+                    Conheça Nossa Essência
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </Link>
@@ -394,7 +400,7 @@ export default function Home() {
         </div>
           </section>
 
-      {/* SeÃ§Ã£o A: Qualidade de Vida e PrevenÃ§Ã£o Ativa */}
+      {/* Seção A: Qualidade de Vida e Prevenção Ativa */}
       <section className="py-28 bg-white relative overflow-hidden">
         {/* Soft decorative glow */}
         <div className="absolute left-0 top-0 w-[400px] h-[400px] bg-[#809ba6]/5 rounded-full blur-[100px] pointer-events-none" />
@@ -404,12 +410,12 @@ export default function Home() {
             {/* Left Column: Copywriting */}
             <div className="lg:col-span-6 space-y-8">
               <div>
-                <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Bem-Estar & PrevenÃ§Ã£o</span>
+                <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Bem-Estar & Prevenção</span>
                 <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-[#163b52] leading-tight">
-                  Sua saÃºde e vitalidade integradas em um sÃ³ lugar
+                  Sua saúde e vitalidade integradas em um só lugar
                 </h2>
                 <p className="text-slate-600 text-lg font-light leading-relaxed">
-                  Acreditamos que um plano de saÃºde moderno nÃ£o deve apenas tratar a doenÃ§a, mas sim ser a base estrutural para a sua qualidade de vida diÃ¡ria. Promovemos acesso a redes assistenciais preventivas, telemedicina especializada e concierges dedicados para a sua mÃ¡xima tranquilidade.
+                  Acreditamos que um plano de saúde moderno não deve apenas tratar a doença, mas sim ser a base estrutural para a sua qualidade de vida diária. Promovemos acesso a redes assistenciais preventivas, telemedicina especializada e concierges dedicados para a sua máxima tranquilidade.
                 </p>
               </div>
 
@@ -419,7 +425,7 @@ export default function Home() {
                     <Heart className="w-5 h-5" />
                   </div>
                   <h4 className="font-bold text-[#163b52] text-lg mb-2">Medicina Preventiva</h4>
-                  <p className="text-slate-500 text-sm font-light leading-relaxed">Foco em check-ups proativos e monitoramento contÃ­nuo da sua saÃºde geral.</p>
+                  <p className="text-slate-500 text-sm font-light leading-relaxed">Foco em check-ups proativos e monitoramento contínuo da sua saúde geral.</p>
                 </div>
 
                 <div className="bg-[#f5f2eb]/50 p-6 rounded-3xl border border-slate-100/50">
@@ -427,14 +433,14 @@ export default function Home() {
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <h4 className="font-bold text-[#163b52] text-lg mb-2">Qualidade de Vida</h4>
-                  <p className="text-slate-500 text-sm font-light leading-relaxed">Incentivo a rotinas equilibradas, saÃºde mental qualificada e longevidade.</p>
+                  <p className="text-slate-500 text-sm font-light leading-relaxed">Incentivo a rotinas equilibradas, saúde mental qualificada e longevidade.</p>
                 </div>
               </div>
 
               <div className="pt-2">
                 <Link href="/contact">
                   <button className="px-8 py-4 rounded-full bg-[#08454c] text-white font-bold hover:bg-[#08454c]/95 transition-all hover:shadow-lg hover:shadow-[#08454c]/20 flex items-center gap-3 group">
-                    Planejar Minha SaÃºde
+                    Planejar Minha Saúde
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </Link>
@@ -452,7 +458,7 @@ export default function Home() {
               <div className="relative rounded-[3rem] overflow-hidden shadow-2xl aspect-[4/3] md:aspect-[16/10] border-8 border-slate-50">
                 <img
                   src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=1200"
-                  alt="Estilo de vida ativo e saudÃ¡vel ao ar livre"
+                  alt="Estilo de vida ativo e saudável ao ar livre"
                   className="w-full h-full object-cover scale-102 hover:scale-100 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#163b52]/30 via-transparent to-transparent pointer-events-none" />
@@ -463,8 +469,8 @@ export default function Home() {
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">AcreditaÃ§Ã£o TÃ©cnica</p>
-                  <p className="text-base font-bold text-[#163b52]">ANS NÃ­vel A</p>
+                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Acreditação Técnica</p>
+                  <p className="text-base font-bold text-[#163b52]">ANS Nível A</p>
                 </div>
               </div>
             </motion.div>
@@ -472,7 +478,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SeÃ§Ã£o B: Nossos Pilares de Cuidado */}
+      {/* Seção B: Nossos Pilares de Cuidado */}
       <section className="py-28 bg-[#f5f2eb]/70 relative overflow-hidden border-t border-slate-100/50">
         <div className="absolute right-[-10%] bottom-0 w-[500px] h-[500px] bg-[#c65f54]/3 rounded-full blur-[120px] pointer-events-none" />
         
@@ -480,30 +486,30 @@ export default function Home() {
           <div className="text-center max-w-3xl mx-auto mb-20">
             <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Pilares de Cuidado</span>
             <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-[#163b52] leading-tight">
-              SoluÃ§Ãµes integradas para cada momento da sua vida
+              Soluções integradas para cada momento da sua vida
             </h2>
             <p className="text-slate-500 text-lg font-light leading-relaxed">
-              Trabalhamos em estreita parceria com as principais operadoras de saÃºde do paÃ­s para oferecer coberturas sob medida que unem excelÃªncia clÃ­nica, reembolso Ã¡gil e conforto executivo.
+              Trabalhamos em estreita parceria com as principais operadoras de saúde do país para oferecer coberturas sob medida que unem excelência clínica, reembolso ágil e conforto executivo.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                title: "ProteÃ§Ã£o Familiar Completa",
-                desc: "Garanta atendimento hospitalar premium e pronto-socorro nos centros de referÃªncia mÃ©dica nacionais para as pessoas mais importantes da sua vida.",
+                title: "Proteção Familiar Completa",
+                desc: "Garanta atendimento hospitalar premium e pronto-socorro nos centros de referência médica nacionais para as pessoas mais importantes da sua vida.",
                 img: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=800",
                 badge: "Familiar"
               },
               {
-                title: "BenefÃ­cios Corporativos & PME",
-                desc: "Planos empresariais estratÃ©gicos com coparticipaÃ§Ã£o inteligente, reduzindo a sinistralidade e agregando valor para atrair e reter talentos chave.",
+                title: "Benefícios Corporativos & PME",
+                desc: "Planos empresariais estratégicos com coparticipação inteligente, reduzindo a sinistralidade e agregando valor para atrair e reter talentos chave.",
                 img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800",
                 badge: "Corporativo"
               },
               {
-                title: "Planos de SaÃºde Premium",
-                desc: "Acesso direto a hospitais renomados (Albert Einstein, SÃ­rio-LibanÃªs), reembolso diferenciado de consultas particulares e serviÃ§os de concierge.",
+                title: "Planos de Saúde Premium",
+                desc: "Acesso direto a hospitais renomados (Albert Einstein, Sírio-Libanês), reembolso diferenciado de consultas particulares e serviços de concierge.",
                 img: "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&q=80&w=800",
                 badge: "Premium"
               }
@@ -538,7 +544,7 @@ export default function Home() {
                   <div className="pt-6 mt-6 border-t border-slate-50">
                     <Link href="/contact">
                       <a className="inline-flex items-center gap-2 text-sm font-bold text-[#c65f54] hover:text-[#c65f54]/85 transition-colors uppercase tracking-wider">
-                        Solicitar CotaÃ§Ã£o
+                        Solicitar Cotação
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </a>
                     </Link>
@@ -553,7 +559,7 @@ export default function Home() {
       {/* Partners / Logos Section */}
       <section className="py-20 bg-white border-y border-slate-100 overflow-hidden">
         <div className="container px-4 mx-auto mb-10 text-center">
-          <span className="text-[#c65f54] font-bold tracking-wider text-xs uppercase">ConexÃµes Globais</span>
+          <span className="text-[#c65f54] font-bold tracking-wider text-xs uppercase">Conexões Globais</span>
           <h3 className="text-2xl md:text-3xl font-display font-bold text-[#163b52] mt-2">
             Seguradoras e Beneficiadoras Parceiras
           </h3>
@@ -578,7 +584,7 @@ export default function Home() {
               { name: "Azos", logo: "/partners/azos.jpg", link: "https://www.azos.com.br" },
               { name: "Omint", logo: "/partners/omint.jpg", link: "https://www.omint.com.br" },
               { name: "Porto Seguro", logo: "/partners/porto.jpg", link: "https://www.portoseguro.com.br" },
-              { name: "SulAmÃ©rica", logo: "/partners/sulamerica.jpg", link: "https://www.sulamerica.com.br" },
+              { name: "SulAmérica", logo: "/partners/sulamerica.jpg", link: "https://www.sulamerica.com.br" },
               { name: "Bradesco Seguros", logo: "/partners/bradescoseguros.jpg", link: "https://www.bradescoseguros.com.br" },
               { name: "Icatu", logo: "/partners/icatu.jpg", link: "https://www.icatuseguros.com.br" },
               { name: "Petlove", logo: "/partners/pet.jpg", link: "https://www.petlove.com.br" },
@@ -591,7 +597,7 @@ export default function Home() {
               { name: "Azos", logo: "/partners/azos.jpg", link: "https://www.azos.com.br" },
               { name: "Omint", logo: "/partners/omint.jpg", link: "https://www.omint.com.br" },
               { name: "Porto Seguro", logo: "/partners/porto.jpg", link: "https://www.portoseguro.com.br" },
-              { name: "SulAmÃ©rica", logo: "/partners/sulamerica.jpg", link: "https://www.sulamerica.com.br" },
+              { name: "SulAmérica", logo: "/partners/sulamerica.jpg", link: "https://www.sulamerica.com.br" },
               { name: "Bradesco Seguros", logo: "/partners/bradescoseguros.jpg", link: "https://www.bradescoseguros.com.br" },
               { name: "Icatu", logo: "/partners/icatu.jpg", link: "https://www.icatuseguros.com.br" },
               { name: "Petlove", logo: "/partners/pet.jpg", link: "https://www.petlove.com.br" },
@@ -624,7 +630,7 @@ export default function Home() {
         <div className="container px-4 md:px-6 mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-6">
             <div>
-              <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">ConteÃºdo Educativo</span>
+              <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Conteúdo Educativo</span>
               <h2 className="text-3xl md:text-5xl font-display font-bold mt-3 text-[#163b52]">
                 {settings?.blogTitle || "Artigos & Dicas"}
               </h2>
@@ -661,7 +667,7 @@ export default function Home() {
                         <div>
                           <div className="flex gap-2 text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">
                             <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
-                            <span>â€¢</span>
+                            <span>•</span>
                             <span className="text-[#c65f54]">Monteiro Blog</span>
                           </div>
                           <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300">
@@ -698,12 +704,12 @@ export default function Home() {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
         
         <div className="container px-4 md:px-6 mx-auto relative z-10 text-center max-w-4xl">
-          <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase mb-4 block">ProteÃ§Ã£o Imediata</span>
+          <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase mb-4 block">Proteção Imediata</span>
           <h2 className="text-4xl md:text-6xl font-display font-bold text-white mb-8 leading-tight tracking-tight">
             Pronto para blindar seu legado?
           </h2>
           <p className="text-slate-200 text-lg md:text-xl max-w-2xl mx-auto mb-14 font-light leading-relaxed">
-            Fale diretamente com nossa fundadora ou nossa equipe de especialistas premium. Garantimos consultoria humana e sem enrolaÃ§Ãµes.
+            Fale diretamente com nossa fundadora ou nossa equipe de especialistas premium. Garantimos consultoria humana e sem enrolações.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
