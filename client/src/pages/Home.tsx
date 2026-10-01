@@ -17,22 +17,53 @@ export default function Home() {
   const { settings, slides, isLoadingSettings: loadingSettings } = useSiteSettings();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
+  const fallbackPosts = [
+    {
+      id: 1,
+      title: "Como Escolher o Melhor Plano de Saúde Corporativo",
+      slug: "como-escolher-o-melhor-plano-de-saude-corporativo",
+      summary: "Descubra critérios fundamentais para selecionar a melhor operadora e rede credenciada para sua equipe.",
+      coverImage: "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800",
+      isFeatured: true,
+      publishedAt: new Date().toISOString(),
+    },
+    {
+      id: 2,
+      title: "Engenharia de Benefícios: Reduzindo Custos com Inteligência",
+      slug: "engenharia-de-beneficios-reduzindo-custos",
+      summary: "Estratégias de coparticipação e gestão ativa de sinistralidade para manter custos sustentáveis.",
+      coverImage: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=800",
+      isFeatured: true,
+      publishedAt: new Date().toISOString(),
+    },
+    {
+      id: 3,
+      title: "Seguro de Vida e Sucessão Patrimonial",
+      slug: "seguro-de-vida-e-sucessao-patrimonial",
+      summary: "Como o seguro de vida garante liquidez imediata e proteção patrimonial para empresas familiares.",
+      coverImage: "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=800",
+      isFeatured: true,
+      publishedAt: new Date().toISOString(),
+    },
+  ];
+
   // Filter only published posts (publishedAt <= now)
   const now = new Date();
-  const validPosts = posts?.filter((p) => {
+  const sourcePosts = (posts && posts.length > 0) ? posts : fallbackPosts;
+  const validPosts = sourcePosts.filter((p: any) => {
     if (!p.publishedAt) return true;
     const d = new Date(p.publishedAt);
     return !isNaN(d.getTime()) && d <= now;
-  }) || [];
+  });
 
   // Filter featured posts first; if fewer than 3, fallback to latest approved posts
-  const featuredPosts = validPosts.filter((p) => p.isFeatured);
+  const featuredPosts = validPosts.filter((p: any) => p.isFeatured);
   const displayFeaturedPosts = (
     featuredPosts.length >= 3
       ? featuredPosts.slice(0, 3)
       : [
           ...featuredPosts,
-          ...validPosts.filter((p) => !p.isFeatured)
+          ...validPosts.filter((p: any) => !p.isFeatured)
         ]
   ).slice(0, 3);
 
@@ -234,7 +265,7 @@ export default function Home() {
 
                     <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 flex items-center justify-center relative p-1">
                       <img
-                        src={post.coverImage || "/favicon.png"}
+                        src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
                         alt={post.title}
                         onError={(e) => {
                           e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
@@ -658,8 +689,11 @@ export default function Home() {
                   >
                     <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 flex items-center justify-center relative p-1">
                       <img
-                        src={post.coverImage}
+                        src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
                         alt={post.title}
+                        onError={(e) => {
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
+                        }}
                         className="w-full h-full object-contain"
                       />
                     </div>

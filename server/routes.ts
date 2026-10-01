@@ -96,19 +96,20 @@ export async function registerRoutes(
 
   // Dynamic Image Server for OG Tags
   app.get("/api/posts/:id/image", async (req, res) => {
+    const fallbackImage = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
     try {
       const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).send("Invalid ID");
+      if (isNaN(id)) return res.redirect(fallbackImage);
       
       const post = await storage.getPost(id);
       if (!post || !post.coverImage) {
-        return res.redirect("/favicon.png");
+        return res.redirect(fallbackImage);
       }
 
       if (post.coverImage.startsWith("data:")) {
         const matches = post.coverImage.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
         if (!matches || matches.length !== 3) {
-          return res.redirect("/favicon.png");
+          return res.redirect(fallbackImage);
         }
         const type = matches[1];
         const buffer = Buffer.from(matches[2], 'base64');
@@ -119,7 +120,7 @@ export async function registerRoutes(
       
       res.redirect(post.coverImage);
     } catch (error) {
-      res.redirect("/favicon.png");
+      res.redirect(fallbackImage);
     }
   });
 

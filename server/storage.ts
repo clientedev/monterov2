@@ -327,6 +327,54 @@ export class DatabaseStorage implements IStorage {
     this.postsCache.clear();
   }
 
+  private fallbackPosts: Post[] = [
+    {
+      id: 1,
+      title: "Como Escolher o Melhor Plano de Saúde Corporativo",
+      slug: "como-escolher-o-melhor-plano-de-saude-corporativo",
+      summary: "Descubra critérios fundamentais para selecionar a melhor operadora e rede credenciada para sua equipe.",
+      coverImage: "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800",
+      content: "Oferecer um plano de saúde de excelência é um dos principais diferenciais competitivos para atração e retenção de talentos corporativos.",
+      likes: 12,
+      videoUrl: null,
+      youtubeUrl: null,
+      isApproved: true,
+      isFeatured: true,
+      publishedAt: new Date(),
+      createdAt: new Date(),
+    },
+    {
+      id: 2,
+      title: "Engenharia de Benefícios: Reduzindo Custos com Inteligência",
+      slug: "engenharia-de-beneficios-reduzindo-custos",
+      summary: "Estratégias de coparticipação e gestão ativa de sinistralidade para manter custos sustentáveis.",
+      coverImage: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=800",
+      content: "A consultoria técnica da Monteiro auxilia empresas na revisão contínua de contratos e programas preventivos de saúde ocupacional.",
+      likes: 8,
+      videoUrl: null,
+      youtubeUrl: null,
+      isApproved: true,
+      isFeatured: true,
+      publishedAt: new Date(),
+      createdAt: new Date(),
+    },
+    {
+      id: 3,
+      title: "Seguro de Vida e Sucessão Patrimonial",
+      slug: "seguro-de-vida-e-sucessao-patrimonial",
+      summary: "Como o seguro de vida garante liquidez imediata e proteção patrimonial para empresas familiares.",
+      coverImage: "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=800",
+      content: "Planejamento sucessório moderno com foco em tranquilidade familiar e continuidade dos negócios.",
+      likes: 15,
+      videoUrl: null,
+      youtubeUrl: null,
+      isApproved: true,
+      isFeatured: true,
+      publishedAt: new Date(),
+      createdAt: new Date(),
+    },
+  ];
+
   // Posts
   async getPosts(approvedOnly = true, includeContent = false): Promise<Post[]> {
     const cacheKey = `${approvedOnly}_${includeContent}`;
@@ -335,58 +383,74 @@ export class DatabaseStorage implements IStorage {
       return cached.data;
     }
 
-    let query = db
-      .select({
-        id: posts.id,
-        title: posts.title,
-        slug: posts.slug,
-        summary: posts.summary,
-        coverImage: sql<string>`CASE WHEN ${posts.coverImage} LIKE 'data:%' THEN '/api/posts/' || ${posts.id} || '/image' ELSE ${posts.coverImage} END`,
-        likes: posts.likes,
-        videoUrl: posts.videoUrl,
-        youtubeUrl: posts.youtubeUrl,
-        isApproved: posts.isApproved,
-        isFeatured: posts.isFeatured,
-        publishedAt: posts.publishedAt,
-        createdAt: posts.createdAt,
-        content: includeContent ? posts.content : sql<string>`''`,
-      })
-      .from(posts);
+    try {
+      let query = db
+        .select({
+          id: posts.id,
+          title: posts.title,
+          slug: posts.slug,
+          summary: posts.summary,
+          coverImage: sql<string>`CASE WHEN ${posts.coverImage} LIKE 'data:%' THEN '/api/posts/' || ${posts.id} || '/image' ELSE ${posts.coverImage} END`,
+          likes: posts.likes,
+          videoUrl: posts.videoUrl,
+          youtubeUrl: posts.youtubeUrl,
+          isApproved: posts.isApproved,
+          isFeatured: posts.isFeatured,
+          publishedAt: posts.publishedAt,
+          createdAt: posts.createdAt,
+          content: includeContent ? posts.content : sql<string>`''`,
+        })
+        .from(posts);
 
-    if (approvedOnly) {
-      const now = new Date();
-      const gracePeriodNow = new Date(now.getTime() + 5 * 60 * 1000);
-      query = query.where(
-        and(
-          eq(posts.isApproved, true),
-          or(lte(posts.publishedAt, gracePeriodNow), isNull(posts.publishedAt))
-        )
-      ) as any;
+      if (approvedOnly) {
+        const now = new Date();
+        const gracePeriodNow = new Date(now.getTime() + 5 * 60 * 1000);
+        query = query.where(
+          and(
+            eq(posts.isApproved, true),
+            or(lte(posts.publishedAt, gracePeriodNow), isNull(posts.publishedAt))
+          )
+        ) as any;
+      }
+      const rawList = await query.orderBy(desc(posts.publishedAt));
+      const result = rawList.map((p: any) => ({
+        ...p,
+        coverImage: p.coverImage && p.coverImage.startsWith("data:") ? `/api/posts/${p.id}/image` : (p.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"),
+      })) as any;
+
+      this.postsCache.set(cacheKey, { data: result, expiresAt: Date.now() + 60_000 });
+      return result;
+    } catch (err: any) {
+      console.warn("[STORAGE] getPosts error, returning cached or fallback posts:", err.message);
+      if (cached) return cached.data;
+      return this.fallbackPosts;
     }
-    const rawList = await query.orderBy(desc(posts.publishedAt));
-    const result = rawList.map((p: any) => ({
-      ...p,
-      coverImage: p.coverImage && p.coverImage.startsWith("data:") ? `/api/posts/${p.id}/image` : p.coverImage,
-    })) as any;
-
-    this.postsCache.set(cacheKey, { data: result, expiresAt: Date.now() + 60_000 });
-    return result;
   }
 
   async getPost(id: number): Promise<Post | undefined> {
-    const [post] = await db.select().from(posts).where(eq(posts.id, id));
-    if (post && post.coverImage && post.coverImage.startsWith("data:")) {
-      post.coverImage = `/api/posts/${post.id}/image`;
+    try {
+      const [post] = await db.select().from(posts).where(eq(posts.id, id));
+      if (post && post.coverImage && post.coverImage.startsWith("data:")) {
+        post.coverImage = `/api/posts/${post.id}/image`;
+      }
+      if (post) return post;
+    } catch (err: any) {
+      console.warn("[STORAGE] getPost error, checking fallback:", err.message);
     }
-    return post;
+    return this.fallbackPosts.find((p) => p.id === id);
   }
 
   async getPostBySlug(slug: string): Promise<Post | undefined> {
-    const [post] = await db.select().from(posts).where(eq(posts.slug, slug));
-    if (post && post.coverImage && post.coverImage.startsWith("data:")) {
-      post.coverImage = `/api/posts/${post.id}/image`;
+    try {
+      const [post] = await db.select().from(posts).where(eq(posts.slug, slug));
+      if (post && post.coverImage && post.coverImage.startsWith("data:")) {
+        post.coverImage = `/api/posts/${post.id}/image`;
+      }
+      if (post) return post;
+    } catch (err: any) {
+      console.warn("[STORAGE] getPostBySlug error, checking fallback:", err.message);
     }
-    return post;
+    return this.fallbackPosts.find((p) => p.slug === slug);
   }
 
   async createPost(post: InsertPost): Promise<Post> {

@@ -594,7 +594,12 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
           <video src={post.videoUrl} controls playsInline className="w-full h-full object-contain bg-black" />
         ) : post.youtubeUrl && vid ? (
           <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="block relative w-full h-full flex items-center justify-center">
-            <img src={`https://img.youtube.com/vi/${vid}/maxresdefault.jpg`} alt={post.title} className="w-full h-full object-contain" />
+            <img
+              src={`https://img.youtube.com/vi/${vid}/maxresdefault.jpg`}
+              alt={post.title}
+              className="w-full h-full object-contain"
+              onError={e => { (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${vid}/hqdefault.jpg`; }}
+            />
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
               <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center shadow-xl">
                 <Play className="w-6 h-6 text-white fill-white ml-1" />
