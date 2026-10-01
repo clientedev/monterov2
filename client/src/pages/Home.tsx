@@ -41,7 +41,7 @@ export default function Home() {
       title: "Seguro de Vida e Sucessão Patrimonial",
       slug: "seguro-de-vida-e-sucessao-patrimonial",
       summary: "Como o seguro de vida garante liquidez imediata e proteção patrimonial para empresas familiares.",
-      coverImage: "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&q=80&w=800",
+      coverImage: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=800",
       isFeatured: true,
       publishedAt: new Date().toISOString(),
     },
