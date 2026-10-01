@@ -101,24 +101,36 @@ export async function registerRoutes(
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.redirect(fallbackImage);
       
-      const post = await storage.getPost(id);
+      // Request raw post so coverImage retains the data:... URI if present in DB
+      const post = await storage.getPost(id, true);
       if (!post || !post.coverImage) {
         return res.redirect(fallbackImage);
       }
 
+      // 1. If it's a data URI (base64 image), decode and serve the binary directly with proper caching
       if (post.coverImage.startsWith("data:")) {
         const matches = post.coverImage.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        if (!matches || matches.length !== 3) {
-          return res.redirect(fallbackImage);
+        if (matches && matches.length === 3) {
+          const type = matches[1];
+          const buffer = Buffer.from(matches[2], 'base64');
+          res.setHeader('Content-Type', type);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          return res.send(buffer);
         }
-        const type = matches[1];
-        const buffer = Buffer.from(matches[2], 'base64');
-        res.setHeader('Content-Type', type);
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-        return res.send(buffer);
+        return res.redirect(fallbackImage);
+      }
+
+      // 2. Prevent self-redirect loop! Never redirect to this same route
+      if (post.coverImage.includes(`/api/posts/${id}/image`) || post.coverImage.startsWith("/api/posts")) {
+        return res.redirect(fallbackImage);
       }
       
-      res.redirect(post.coverImage);
+      // 3. If it's a valid external URL, redirect to it
+      if (post.coverImage.startsWith("http://") || post.coverImage.startsWith("https://")) {
+        return res.redirect(post.coverImage);
+      }
+
+      return res.redirect(fallbackImage);
     } catch (error) {
       res.redirect(fallbackImage);
     }

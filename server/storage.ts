@@ -107,7 +107,7 @@ export function normalizePhone(phone: string | null | undefined): string {
 export interface IStorage {
   // Posts
   getPosts(approvedOnly?: boolean, includeContent?: boolean): Promise<Post[]>;
-  getPost(id: number): Promise<Post | undefined>;
+  getPost(id: number, raw?: boolean): Promise<Post | undefined>;
   getPostBySlug(slug: string): Promise<Post | undefined>;
   createPost(post: InsertPost): Promise<Post>;
   updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined>;
@@ -427,13 +427,15 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getPost(id: number): Promise<Post | undefined> {
+  async getPost(id: number, raw = false): Promise<Post | undefined> {
     try {
       const [post] = await db.select().from(posts).where(eq(posts.id, id));
-      if (post && post.coverImage && post.coverImage.startsWith("data:")) {
-        post.coverImage = `/api/posts/${post.id}/image`;
+      if (post) {
+        if (!raw && post.coverImage && post.coverImage.startsWith("data:")) {
+          post.coverImage = `/api/posts/${post.id}/image`;
+        }
+        return post;
       }
-      if (post) return post;
     } catch (err: any) {
       console.warn("[STORAGE] getPost error, checking fallback:", err.message);
     }
@@ -2288,7 +2290,7 @@ export class MemStorage implements IStorage {
     });
   }
 
-  async getPost(id: number): Promise<Post | undefined> {
+  async getPost(id: number, _raw = false): Promise<Post | undefined> {
     return this.posts.find((p) => p.id === id);
   }
 
