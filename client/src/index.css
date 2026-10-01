@@ -177,62 +177,104 @@
   --secondary-default: #f43f5e;
 }
 
-/* Headings and texts that use the dark brand color (#163b52) switch to elegant deep rose */
-[data-theme="outubro-rosa"] .text-\[\#163b52\],
-[data-theme="outubro-rosa"] h1.text-\[\#163b52\],
-[data-theme="outubro-rosa"] h2.text-\[\#163b52\],
-[data-theme="outubro-rosa"] h3.text-\[\#163b52\],
-[data-theme="outubro-rosa"] h4.text-\[\#163b52\],
-[data-theme="outubro-rosa"] h5.text-\[\#163b52\],
-[data-theme="outubro-rosa"] h6.text-\[\#163b52\] {
-  color: #831843 !important;
+/* ── Garantia de Títulos e Textos Brancos em Áreas Escuras ── */
+[data-theme="outubro-rosa"] .text-white,
+[data-theme="outubro-rosa"] [class*="text-white"],
+[data-theme="outubro-rosa"] h1.text-white,
+[data-theme="outubro-rosa"] h2.text-white,
+[data-theme="outubro-rosa"] h3.text-white,
+[data-theme="outubro-rosa"] h4.text-white,
+[data-theme="outubro-rosa"] h5.text-white,
+[data-theme="outubro-rosa"] h6.text-white {
+  color: #ffffff !important;
 }
 
-/* Sections with dark brand background */
+/* Títulos do Hero slider e subtítulos com máxima nitidez */
+[data-theme="outubro-rosa"] section [class*="max-w-3xl"] h1,
+[data-theme="outubro-rosa"] section [class*="max-w-3xl"] p,
+[data-theme="outubro-rosa"] .hero-title {
+  color: #ffffff !important;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+}
+
+/* Seções e Banners escuros (Hero, CTA, Blog Banner, Footer, Destaques) com textos brancos */
+[data-theme="outubro-rosa"] section.bg-\[\#08454c\] h1,
+[data-theme="outubro-rosa"] section.bg-\[\#08454c\] h2,
+[data-theme="outubro-rosa"] section.bg-\[\#08454c\] h3,
+[data-theme="outubro-rosa"] section.bg-\[\#08454c\] h4,
+[data-theme="outubro-rosa"] section.bg-\[\#08454c\] p,
+[data-theme="outubro-rosa"] section.bg-\[\#163b52\] h1,
+[data-theme="outubro-rosa"] section.bg-\[\#163b52\] h2,
+[data-theme="outubro-rosa"] section.bg-\[\#163b52\] h3,
+[data-theme="outubro-rosa"] section.bg-\[\#163b52\] h4,
+[data-theme="outubro-rosa"] section.bg-\[\#163b52\] p,
+[data-theme="outubro-rosa"] div.bg-\[\#08454c\] h1,
+[data-theme="outubro-rosa"] div.bg-\[\#08454c\] h2,
+[data-theme="outubro-rosa"] div.bg-\[\#08454c\] h3,
+[data-theme="outubro-rosa"] div.bg-\[\#08454c\] p,
+[data-theme="outubro-rosa"] header h1,
+[data-theme="outubro-rosa"] header h2,
+[data-theme="outubro-rosa"] header p,
+[data-theme="outubro-rosa"] footer h1,
+[data-theme="outubro-rosa"] footer h2,
+[data-theme="outubro-rosa"] footer h3,
+[data-theme="outubro-rosa"] footer h4,
+[data-theme="outubro-rosa"] footer h5,
+[data-theme="outubro-rosa"] footer h6,
+[data-theme="outubro-rosa"] footer p {
+  color: #ffffff !important;
+}
+
+/* Seções com fundo escuro da marca adaptadas para o tema */
 [data-theme="outubro-rosa"] section.bg-\[\#08454c\],
 [data-theme="outubro-rosa"] footer.bg-\[\#08454c\],
 [data-theme="outubro-rosa"] header.bg-\[\#08454c\],
 [data-theme="outubro-rosa"] div.bg-\[\#08454c\]:not([class*="mix-blend"]):not([class*="gradient"]):not([class*="blur"]):not([class*="opacity"]) {
   background-color: #831843 !important;
 }
+[data-theme="outubro-rosa"] section.bg-\[\#163b52\] {
+  background-color: #500724 !important;
+}
 
-/* Buttons with brand background */
+/* Botões da marca adaptados para rosa vibrante */
 [data-theme="outubro-rosa"] button.bg-\[\#08454c\],
 [data-theme="outubro-rosa"] a.bg-\[\#08454c\] {
   background-color: #be185d !important;
+  color: #ffffff !important;
 }
 [data-theme="outubro-rosa"] button.bg-\[\#08454c\]:hover,
 [data-theme="outubro-rosa"] a.bg-\[\#08454c\]:hover {
   background-color: #9d174d !important;
+  color: #ffffff !important;
 }
 
-/* Brand text highlights */
-[data-theme="outubro-rosa"] .text-\[\#08454c\] {
-  color: #be185d !important;
-}
-[data-theme="outubro-rosa"] .text-\[\#163b52\] {
-  color: #831843 !important;
-}
-[data-theme="outubro-rosa"] .border-\[\#08454c\] {
-  border-color: #db2777 !important;
-}
-
-/* Secondary / Terracota buttons and badges */
+/* Destaques secundários / terracota adaptados para a paleta rosa */
 [data-theme="outubro-rosa"] .bg-\[\#c65f54\] {
   background-color: #db2777 !important;
 }
 [data-theme="outubro-rosa"] .text-\[\#c65f54\] {
-  color: #db2777 !important;
+  color: #f43f5e !important;
 }
 [data-theme="outubro-rosa"] .border-\[\#c65f54\] {
   border-color: #db2777 !important;
 }
+[data-theme="outubro-rosa"] button.bg-\[\#c65f54\],
+[data-theme="outubro-rosa"] a.bg-\[\#c65f54\] {
+  background-color: #db2777 !important;
+  color: #ffffff !important;
+}
 [data-theme="outubro-rosa"] button.bg-\[\#c65f54\]:hover,
 [data-theme="outubro-rosa"] a.bg-\[\#c65f54\]:hover {
   background-color: #be185d !important;
+  color: #ffffff !important;
 }
 
-/* Safe Gradients */
+/* Bordas de destaque */
+[data-theme="outubro-rosa"] .border-\[\#08454c\] {
+  border-color: #db2777 !important;
+}
+
+/* Gradientes seguros com transparência e preservação de imagens */
 [data-theme="outubro-rosa"] .from-\[\#08454c\] {
   --tw-gradient-from: #831843 var(--tw-gradient-from-position) !important;
   --tw-gradient-to: rgba(131, 24, 67, 0) var(--tw-gradient-to-position) !important;
@@ -248,7 +290,7 @@
   --tw-gradient-to: #500724 var(--tw-gradient-to-position) !important;
 }
 
-/* Premium Card & Gradient Overrides */
+/* Elementos de gradiente premium */
 [data-theme="outubro-rosa"] .premium-gradient {
   background-image: linear-gradient(135deg, #831843, #500724) !important;
 }
@@ -256,5 +298,5 @@
   color: #f43f5e !important;
 }
 [data-theme="outubro-rosa"] .premium-card:hover {
-  box-shadow: 0 20px 50px rgba(131, 24, 67, 0.12) !important;
+  box-shadow: 0 20px 50px rgba(131, 24, 67, 0.15) !important;
 }
