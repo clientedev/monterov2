@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 import {
     Loader2,
     Plus,
@@ -41,7 +42,10 @@ import {
     Play,
     RefreshCw,
     Search,
-    Edit3
+    Edit3,
+    Sparkles,
+    Heart,
+    ShieldCheck
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -350,6 +354,9 @@ export default function SiteConfigPage() {
             smtpPass: "",
             smtpFrom: "",
             resendApiKey: "",
+            activeTheme: "default",
+            themeOutubroRosa: false,
+            themeOutubroRosaBadge: true,
         },
     });
 
@@ -363,6 +370,9 @@ export default function SiteConfigPage() {
                 smtpPass: settings.smtpPass || "",
                 smtpFrom: settings.smtpFrom || "",
                 resendApiKey: settings.resendApiKey || "",
+                activeTheme: settings.activeTheme || "default",
+                themeOutubroRosa: Boolean(settings.themeOutubroRosa || settings.activeTheme === "outubro_rosa"),
+                themeOutubroRosaBadge: settings.themeOutubroRosaBadge ?? true,
             });
         }
     }, [settings, siteForm]);
@@ -397,12 +407,15 @@ export default function SiteConfigPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl grid grid-cols-2 md:grid-cols-6 gap-1 h-auto mb-8 border border-white/40 shadow-sm">
+                <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5 h-auto mb-8 border border-white/40 shadow-sm">
                     <TabsTrigger value="identity" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <Globe className="h-4 w-4" /> Identidade
                     </TabsTrigger>
                     <TabsTrigger value="styling" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <Palette className="h-4 w-4" /> Estilo
+                    </TabsTrigger>
+                    <TabsTrigger value="themes" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
+                        <Sparkles className="h-4 w-4 text-pink-500" /> Temas
                     </TabsTrigger>
                     <TabsTrigger value="home" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <LayoutTemplate className="h-4 w-4" /> Home
@@ -414,10 +427,10 @@ export default function SiteConfigPage() {
                         <PhoneCall className="h-4 w-4" /> Contato
                     </TabsTrigger>
                     <TabsTrigger value="email" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
-                        <Mail className="h-4 w-4" /> Servidor de E-mail
+                        <Mail className="h-4 w-4" /> E-mail
                     </TabsTrigger>
                     {activeTab === "api" && (
-                        <TabsTrigger value="api" className="rounded-xl data-[state=active]:bg-slate-900 data-[state=active]:text-amber-400 py-2.5 gap-2 col-span-2 md:col-span-6 bg-slate-900 text-amber-400 font-bold border border-slate-800">
+                        <TabsTrigger value="api" className="rounded-xl data-[state=active]:bg-slate-900 data-[state=active]:text-amber-400 py-2.5 gap-2 col-span-2 md:col-span-7 bg-slate-900 text-amber-400 font-bold border border-slate-800">
                             <Key className="h-4 w-4 text-emerald-400" /> 🔒 Acesso Direto: Área de Integração WhatsApp & API Externa
                         </TabsTrigger>
                     )}
@@ -627,6 +640,280 @@ export default function SiteConfigPage() {
                                                 </FormItem>
                                             )}
                                         />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* Themes TAB */}
+                        <TabsContent value="themes" className="mt-0 focus-visible:outline-none space-y-8">
+                            {/* Live Status Banner */}
+                            <div className={cn(
+                                "rounded-3xl p-6 md:p-8 border transition-all duration-500 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm",
+                                siteForm.watch("themeOutubroRosa")
+                                    ? "bg-gradient-to-r from-pink-50 via-rose-50 to-pink-100 border-pink-200"
+                                    : "bg-slate-50 border-slate-200"
+                            )}>
+                                <div className="flex items-start gap-4">
+                                    <div className={cn(
+                                        "w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm transition-transform duration-300",
+                                        siteForm.watch("themeOutubroRosa")
+                                            ? "bg-pink-600 text-white shadow-pink-600/30 scale-105"
+                                            : "bg-primary text-white"
+                                    )}>
+                                        {siteForm.watch("themeOutubroRosa") ? "🎗️" : "🏛️"}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="text-xl font-bold font-display text-slate-900">
+                                                {siteForm.watch("themeOutubroRosa")
+                                                    ? "Tema Outubro Rosa Ativado"
+                                                    : "Tema Padrão Monteiro Ativado"}
+                                            </h3>
+                                            <Badge className={cn(
+                                                "font-bold uppercase tracking-wider text-[10px] px-2.5 py-0.5",
+                                                siteForm.watch("themeOutubroRosa")
+                                                    ? "bg-pink-600 text-white hover:bg-pink-600"
+                                                    : "bg-slate-200 text-slate-700 hover:bg-slate-200"
+                                            )}>
+                                                {siteForm.watch("themeOutubroRosa") ? "Campanha Ao Vivo" : "Identidade Original"}
+                                            </Badge>
+                                        </div>
+                                        <p className="text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                                            {siteForm.watch("themeOutubroRosa")
+                                                ? "O site público está exibindo a paleta de cores uniforme Outubro Rosa com contraste profissional, incluindo cabeçalho, botões, gradientes e rodapé."
+                                                : "O site está utilizando as cores padrões da marca definidas na aba Estilo (Verde Profundo e Terracota Vital)."}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    type="button"
+                                    onClick={siteForm.handleSubmit(onSaveSettings)}
+                                    disabled={isUpdatingSettings}
+                                    className={cn(
+                                        "rounded-xl h-11 px-6 font-bold text-white shadow-md transition-all shrink-0 active:scale-95",
+                                        siteForm.watch("themeOutubroRosa")
+                                            ? "bg-pink-600 hover:bg-pink-700 shadow-pink-600/25"
+                                            : "bg-primary hover:bg-primary/90"
+                                    )}
+                                >
+                                    {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                                    Salvar Alterações
+                                </Button>
+                            </div>
+
+                            {/* Main Theme Card */}
+                            <Card className="premium-card border-none shadow-sm overflow-hidden">
+                                <CardHeader className="bg-gradient-to-r from-pink-500/10 via-rose-500/5 to-transparent border-b border-pink-100/60 p-8">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 text-white flex items-center justify-center shadow-lg shadow-pink-500/30">
+                                                <Heart className="h-5 w-5 fill-white" />
+                                            </div>
+                                            <div>
+                                                <CardTitle className="text-2xl font-display font-bold text-slate-900 flex items-center gap-2">
+                                                    Outubro Rosa
+                                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">
+                                                        Campanha Sazonal
+                                                    </span>
+                                                </CardTitle>
+                                                <CardDescription className="text-slate-500">
+                                                    Transformação visual completa em apoio à prevenção e diagnóstico precoce do câncer de mama.
+                                                </CardDescription>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+
+                                <CardContent className="p-8 space-y-8">
+                                    {/* Toggle Main Switch */}
+                                    <div className="rounded-2xl border border-slate-200/80 p-6 bg-white hover:border-pink-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-base font-bold text-slate-900">Ativar Tema Outubro Rosa</span>
+                                                {siteForm.watch("themeOutubroRosa") && (
+                                                    <span className="relative flex h-2.5 w-2.5">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-pink-600"></span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-sm text-slate-500 max-w-xl">
+                                                Muda instantaneamente todo o site para uma paleta de rosa harmoniosa e uniforme. Quando desativado, o site volta 100% ao estado visual original.
+                                            </p>
+                                        </div>
+
+                                        <FormField
+                                            control={siteForm.control}
+                                            name="themeOutubroRosa"
+                                            render={({ field }) => (
+                                                <FormItem className="flex items-center space-y-0">
+                                                    <FormControl>
+                                                        <Switch
+                                                            checked={Boolean(field.value)}
+                                                            onCheckedChange={(checked) => {
+                                                                field.onChange(checked);
+                                                                siteForm.setValue("activeTheme", checked ? "outubro_rosa" : "default");
+                                                            }}
+                                                            className="data-[state=checked]:bg-pink-600 h-7 w-12"
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    {/* Badge Switch */}
+                                    <div className="rounded-2xl border border-slate-200/80 p-6 bg-white hover:border-pink-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <span className="text-base font-bold text-slate-900">Exibir Selo Flutuante de Apoio à Causa</span>
+                                            <p className="text-sm text-slate-500 max-w-xl">
+                                                Exibe um discreto laço informativo ("🎗️ Outubro Rosa") no canto inferior da tela pública com mensagem de conscientização.
+                                            </p>
+                                        </div>
+
+                                        <FormField
+                                            control={siteForm.control}
+                                            name="themeOutubroRosaBadge"
+                                            render={({ field }) => (
+                                                <FormItem className="flex items-center space-y-0">
+                                                    <FormControl>
+                                                        <Switch
+                                                            checked={field.value !== false}
+                                                            onCheckedChange={field.onChange}
+                                                            disabled={!siteForm.watch("themeOutubroRosa")}
+                                                            className="data-[state=checked]:bg-pink-600 h-7 w-12"
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    {/* Harmonious Color Palette Presentation */}
+                                    <div className="space-y-4">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                                            Paleta de Cores Uniforme do Tema
+                                        </Label>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#db2777" }}>
+                                                    #db2777
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Rosa Vibrante</p>
+                                                    <p className="text-[11px] text-slate-500">Botões e Destaques</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#be185d" }}>
+                                                    #be185d
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Rosa Nobre</p>
+                                                    <p className="text-[11px] text-slate-500">Textos Principais</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#831843" }}>
+                                                    #831843
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Vinho Profundo</p>
+                                                    <p className="text-[11px] text-slate-500">Hero, Header e Rodapé</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#f43f5e" }}>
+                                                    #f43f5e
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Rosa Acento</p>
+                                                    <p className="text-[11px] text-slate-500">Badges e Ícones</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner border border-pink-200 flex items-center justify-center text-pink-700 text-xs font-bold font-mono" style={{ backgroundColor: "#fdf2f8" }}>
+                                                    #fdf2f8
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Rosa Suave</p>
+                                                    <p className="text-[11px] text-slate-500">Superfícies e Cartões</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Live Interactive Preview Box */}
+                                    <div className="space-y-4">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                                            Demonstração Visual em Tempo Real
+                                        </Label>
+                                        <div className={cn(
+                                            "rounded-3xl p-6 md:p-8 transition-all duration-500 border overflow-hidden",
+                                            siteForm.watch("themeOutubroRosa")
+                                                ? "bg-gradient-to-br from-[#831843] via-[#701a75] to-[#500724] text-white border-pink-500/30 shadow-xl shadow-pink-900/10"
+                                                : "bg-[#08454c] text-white border-slate-700"
+                                        )}>
+                                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                                                <div className="space-y-2 max-w-xl">
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-white/10 backdrop-blur-sm border border-white/20">
+                                                        <span>{siteForm.watch("themeOutubroRosa") ? "🎗️ Campanha Outubro Rosa" : "🏛️ Monteiro Seguros"}</span>
+                                                    </div>
+                                                    <h4 className="text-2xl font-bold font-display leading-tight">
+                                                        {siteForm.watch("themeOutubroRosa")
+                                                            ? "Cuidar de você e da sua família é o nosso maior compromisso."
+                                                            : "Protegendo seu Futuro, Garantindo seu Legado."}
+                                                    </h4>
+                                                    <p className="text-sm text-white/80">
+                                                        Exemplo de como títulos, botões e cartões aparecerão para os visitantes do seu site.
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                                                    <button
+                                                        type="button"
+                                                        className={cn(
+                                                            "px-6 py-3 rounded-full font-bold text-sm shadow-lg transition-all",
+                                                            siteForm.watch("themeOutubroRosa")
+                                                                ? "bg-white text-[#be185d] hover:bg-white/90"
+                                                                : "bg-white text-[#08454c] hover:bg-white/90"
+                                                        )}
+                                                    >
+                                                        Solicitar Cotação
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={cn(
+                                                            "px-6 py-3 rounded-full font-bold text-sm transition-all border",
+                                                            siteForm.watch("themeOutubroRosa")
+                                                                ? "bg-pink-600/90 text-white border-pink-400/30 hover:bg-pink-600"
+                                                                : "bg-[#c65f54] text-white border-transparent hover:bg-[#c65f54]/90"
+                                                        )}
+                                                    >
+                                                        Conhecer Planos
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 100% Reversibility Guarantee Card */}
+                                    <div className="rounded-2xl bg-emerald-50/80 border border-emerald-200/80 p-5 flex items-start gap-4 text-emerald-950">
+                                        <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                                            <ShieldCheck className="h-4 w-4" />
+                                        </div>
+                                        <div className="space-y-1 text-sm">
+                                            <p className="font-bold">Garantia de Reversibilidade 100%</p>
+                                            <p className="text-emerald-800 leading-relaxed">
+                                                Suas cores oficiais configuradas na aba <strong>Estilo</strong> (Cor Primária e Cor Secundária) ficam intactas no banco de dados. Ao desativar o interruptor acima, o site volta instantaneamente ao visual padrão.
+                                            </p>
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

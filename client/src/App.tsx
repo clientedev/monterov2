@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+﻿import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { ThemeInjector } from "@/components/ThemeInjector";
+import { PinkOctoberBadge } from "@/components/PinkOctoberBadge";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import NotFound from "@/pages/not-found";
@@ -47,7 +48,8 @@ import DashboardSegurosPage from "@/pages/admin-crm/dashboard-seguros";
 import ClientesPage from "@/pages/admin-crm/clientes";
 import ClienteDetalhePage from "@/pages/admin-crm/cliente-detalhe";
 import ApolicesPage from "@/pages/admin-crm/apolices";
-import SeguradorasPage from "@/pages/admin-crm/seguradoras";
+
+
 
 function ProtectedAdminRoute({ path, component: Component }: { path: string; component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
@@ -142,7 +144,7 @@ function Router() {
       <ProtectedAdminRoute path="/admin/clientes" component={ClientesPage} />
       <ProtectedAdminRoute path="/admin/clientes/:id" component={ClienteDetalhePage} />
       <ProtectedAdminRoute path="/admin/apolices" component={ApolicesPage} />
-      <ProtectedAdminRoute path="/admin/seguradoras" component={SeguradorasPage} />
+      
 
       <Route component={NotFound} />
     </Switch>
@@ -157,7 +159,8 @@ function App() {
           <ThemeInjector />
           <ScrollToTop />
           <Router />
-          <ChatBubble />
+          <PinkOctoberBadge />
+    
           <Toaster />
         </TooltipProvider>
       </AuthProvider>

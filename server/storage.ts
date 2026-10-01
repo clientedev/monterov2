@@ -993,38 +993,124 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Site Settings
+  private fallbackSiteSettings: SiteSettings = {
+    id: 1,
+    siteName: "Monteiro Seguros e Benefícios",
+    logoBase64: null,
+    primaryColor: "#08454c",
+    secondaryColor: "#c65f54",
+    fontSans: "Inter",
+    fontDisplay: "Outfit",
+    logoScale: 150,
+    logoScaleMobile: 130,
+    heroTitle: "Proteção que Transforma,\nBenefícios que Cuidam",
+    heroSubtitle: "A Monteiro Seguros e Benefícios é especializada em consultoria estratégica em proteção e benefícios para empresas e famílias.",
+    aboutTitle: "Sobre a Monteiro Seguros e Benefícios",
+    aboutContent: "Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, a Monteiro Corretora oferece sempre o seguro mais adequado ao seu perfil – pessoal ou empresarial – e às suas expectativas, com um atendimento personalizado, humano e qualificado.\n\nNos preocupamos em oferecer aos segurados acompanhamento durante todas as etapas do processo, ou seja, durante a contratação e também no pós-venda, garantindo tranquilidade e segurança.",
+    aboutImageBase64: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600",
+    servicesTitle: "Soluções Completas em Seguros",
+    servicesSubtitle: "Planos de cobertura personalizados projetados para atender às suas necessidades específicas.",
+    blogTitle: "Blog e Novidades",
+    blogSubtitle: "Fique por dentro das novidades e dicas do mercado de seguros.",
+    contactEmail: "contato@monteiroseguros.com.br",
+    contactPhone: "+55 (11) 9999-9999",
+    address: "São Paulo, SP",
+    footerText: "Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios.",
+    facebookUrl: null,
+    instagramUrl: null,
+    twitterUrl: null,
+    linkedinUrl: null,
+    taskColumns: null,
+    leadColumns: null,
+    smtpHost: null,
+    smtpPort: 587,
+    smtpUser: null,
+    smtpPass: null,
+    smtpSecure: false,
+    smtpFrom: null,
+    resendApiKey: null,
+    externalApiKey: null,
+    activeTheme: "default",
+    themeOutubroRosa: false,
+    themeOutubroRosaBadge: true,
+    updatedAt: new Date(),
+  };
+
+  private isDbHealthy: boolean = true;
+  private lastDbCheck: number = 0;
+
   async getSiteSettings(): Promise<SiteSettings> {
-    const [settings] = await db.select().from(siteSettings);
-    if (!settings) {
-      // Seed default settings if none exist
-      const [newSettings] = await db.insert(siteSettings).values({
-        siteName: "Monteiro Corretora",
-        primaryColor: "#08454c",
-        secondaryColor: "#c65f54",
-        heroTitle: "Protegendo seu Futuro,\nGarantindo seu Legado",
-        heroSubtitle: "Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna.",
-        aboutTitle: "Sobre a Monteiro Corretora",
-        aboutContent: "Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, a Monteiro Corretora oferece sempre o seguro mais adequado ao seu perfil – pessoal ou empresarial – e às suas expectativas, com um atendimento personalizado, humano e qualificado.\n\nNos preocupamos em oferecer aos segurados acompanhamento durante todas as etapas do processo, ou seja, durante a contratação e também no pós-venda, garantindo tranquilidade e segurança.",
-        aboutImageBase64: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600",
-        servicesTitle: "Soluções Completas em Seguros",
-        servicesSubtitle: "Planos de cobertura personalizados projetados para atender às suas necessidades específicas.",
-        blogTitle: "Blog e Novidades",
-        blogSubtitle: "Fique por dentro das novidades e dicas do mercado de seguros.",
-        footerText: "Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios.",
-      }).returning();
-      return newSettings;
+    const now = Date.now();
+    if (!this.isDbHealthy && now - this.lastDbCheck < 30000) {
+      return this.fallbackSiteSettings;
     }
-    return settings;
+
+    try {
+      const [settings] = await db.select().from(siteSettings);
+      this.isDbHealthy = true;
+      if (!settings) {
+        // Seed default settings if none exist
+        const [newSettings] = await db.insert(siteSettings).values({
+          siteName: "Monteiro Corretora",
+          primaryColor: "#08454c",
+          secondaryColor: "#c65f54",
+          heroTitle: "Protegendo seu Futuro,\nGarantindo seu Legado",
+          heroSubtitle: "Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna.",
+          aboutTitle: "Sobre a Monteiro Corretora",
+          aboutContent: "Com anos de experiência no mercado, trabalhando com seguradoras e corretoras líderes no mercado mundial, a Monteiro Corretora oferece sempre o seguro mais adequado ao seu perfil – pessoal ou empresarial – e às suas expectativas, com um atendimento personalizado, humano e qualificado.\n\nNos preocupamos em oferecer aos segurados acompanhamento durante todas as etapas do processo, ou seja, durante a contratação e também no pós-venda, garantindo tranquilidade e segurança.",
+          aboutImageBase64: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1600",
+          servicesTitle: "Soluções Completas em Seguros",
+          servicesSubtitle: "Planos de cobertura personalizados projetados para atender às suas necessidades específicas.",
+          blogTitle: "Blog e Novidades",
+          blogSubtitle: "Fique por dentro das novidades e dicas do mercado de seguros.",
+          footerText: "Oferecemos soluções premium em seguros personalizadas para seu estilo de vida e necessidades de negócios.",
+          activeTheme: "default",
+          themeOutubroRosa: false,
+          themeOutubroRosaBadge: true,
+        }).returning();
+        if (newSettings) {
+          this.fallbackSiteSettings = { ...newSettings };
+          return newSettings;
+        }
+      }
+      if (settings) {
+        this.fallbackSiteSettings = { ...this.fallbackSiteSettings, ...settings };
+        return this.fallbackSiteSettings;
+      }
+    } catch (err: any) {
+      this.isDbHealthy = false;
+      this.lastDbCheck = now;
+      console.warn("[STORAGE] Using cached site settings (DB unreachable):", err.message);
+    }
+    return this.fallbackSiteSettings;
   }
 
   async updateSiteSettings(settings: InsertSiteSettings): Promise<SiteSettings> {
-    const existing = await this.getSiteSettings();
-    const [updated] = await db
-      .update(siteSettings)
-      .set({ ...settings, updatedAt: new Date() })
-      .where(eq(siteSettings.id, existing.id))
-      .returning();
-    return updated;
+    this.fallbackSiteSettings = {
+      ...this.fallbackSiteSettings,
+      ...settings,
+      updatedAt: new Date(),
+    } as SiteSettings;
+
+    if (!this.isDbHealthy) {
+      return this.fallbackSiteSettings;
+    }
+
+    try {
+      const existing = await this.getSiteSettings();
+      const [updated] = await db
+        .update(siteSettings)
+        .set({ ...settings, updatedAt: new Date() })
+        .where(eq(siteSettings.id, existing.id || 1))
+        .returning();
+      if (updated) {
+        this.fallbackSiteSettings = { ...this.fallbackSiteSettings, ...updated };
+      }
+    } catch (err: any) {
+      this.isDbHealthy = false;
+      console.warn("[STORAGE] Saved site settings in-memory (DB unreachable):", err.message);
+    }
+    return this.fallbackSiteSettings;
   }
 
   // Hero Slides
@@ -2712,6 +2798,9 @@ export class MemStorage implements IStorage {
         smtpFrom: null,
         resendApiKey: null,
         externalApiKey: null,
+        activeTheme: "default",
+        themeOutubroRosa: false,
+        themeOutubroRosaBadge: true,
         updatedAt: new Date(),
       };
     }

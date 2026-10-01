@@ -5,33 +5,41 @@ export function ThemeInjector() {
     const { settings } = useSiteSettings();
 
     useEffect(() => {
-        if (settings) {
-            const root = document.documentElement;
+        if (!settings) return;
+
+        const root = document.documentElement;
+        const isPinkOctober = Boolean(settings.themeOutubroRosa || settings.activeTheme === "outubro_rosa");
+
+        if (isPinkOctober) {
+            root.setAttribute("data-theme", "outubro-rosa");
+            root.classList.add("theme-outubro-rosa");
+            root.style.setProperty("--primary-hex", "#db2777");
+            root.style.setProperty("--secondary-hex", "#f43f5e");
+            root.style.setProperty("--navbar-bg", "rgba(131, 24, 67, 0.95)");
+        } else {
+            root.removeAttribute("data-theme");
+            root.classList.remove("theme-outubro-rosa");
+            root.style.removeProperty("--navbar-bg");
 
             if (settings.primaryColor) {
-                // Convert hex to HSL if possible, or just inject hex if the CSS is updated to support it
-                // Since original index.css uses HSL, let's try to pass the raw hex to a new variable or override
                 root.style.setProperty("--primary-hex", settings.primaryColor);
-                // For simplicity, we'll use a data attribute or direct style override for some components
+            } else {
+                root.style.removeProperty("--primary-hex");
             }
 
             if (settings.secondaryColor) {
                 root.style.setProperty("--secondary-hex", settings.secondaryColor);
+            } else {
+                root.style.removeProperty("--secondary-hex");
             }
+        }
 
-            if (settings.fontSans) {
-                root.style.setProperty("--font-sans", settings.fontSans + ", sans-serif");
-            }
+        if (settings.fontSans) {
+            root.style.setProperty("--font-sans", settings.fontSans + ", sans-serif");
+        }
 
-            if (settings.fontDisplay) {
-                root.style.setProperty("--font-display", settings.fontDisplay + ", sans-serif");
-            }
-
-            if (settings.logoBase64) {
-                const head = document.head || document.getElementsByTagName('head')[0];
-
-                // Favicon handling removed to keep static favicon unchanged
-            }
+        if (settings.fontDisplay) {
+            root.style.setProperty("--font-display", settings.fontDisplay + ", sans-serif");
         }
     }, [settings]);
 

@@ -212,6 +212,11 @@ export const siteSettings = pgTable("site_settings", {
   // External Integration API
   externalApiKey: text("external_api_key"),
 
+  // Theme Management
+  activeTheme: text("active_theme").notNull().default("default"),
+  themeOutubroRosa: boolean("theme_outubro_rosa").notNull().default(false),
+  themeOutubroRosaBadge: boolean("theme_outubro_rosa_badge").notNull().default(true),
+
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -381,6 +386,9 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, creat
 export const insertSiteSettingsSchema = createInsertSchema(siteSettings, {
   logoScale: z.coerce.number(),
   logoScaleMobile: z.coerce.number(),
+  activeTheme: z.string().optional(),
+  themeOutubroRosa: z.boolean().optional(),
+  themeOutubroRosaBadge: z.boolean().optional(),
 }).omit({ id: true, updatedAt: true });
 export const insertHeroSlideSchema = createInsertSchema(heroSlides).omit({ id: true, createdAt: true });
 export const insertProspectingChecklistSchema = createInsertSchema(prospectingChecklists).omit({ id: true, createdAt: true });

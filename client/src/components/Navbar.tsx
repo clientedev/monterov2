@@ -44,7 +44,7 @@ export function Navbar() {
       )}
       style={{
         backgroundColor: showScrolledNavbar 
-          ? "rgba(8, 69, 76, 0.95)" 
+          ? "var(--navbar-bg, rgba(8, 69, 76, 0.95))" 
           : "transparent"
       }}
     >

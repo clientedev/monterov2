@@ -187,7 +187,7 @@ export async function registerRoutes(
     <meta property="og:image" content="${imageUrl}" />
     <meta property="og:url" content="${siteUrl}" />
     <meta property="og:type" content="article" />
-    <meta property="og:site_name" content="Monteiro Seguros e Benefícios" />
+    <meta property="og:site_name" content="Monteiro Seguros e BenefÃƒÂ­cios" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${post.title}" />
     <meta name="twitter:description" content="${post.summary.replace(/"/g, '&quot;')}" />
@@ -203,7 +203,7 @@ export async function registerRoutes(
     }
   });
 
-  // Diagnostic endpoint — shows actual columns of posts table in live DB
+  // Diagnostic endpoint Ã¢â‚¬â€ shows actual columns of posts table in live DB
   app.get("/api/debug/posts-columns", async (req, res) => {
     try {
       const result = await db.execute(
@@ -420,7 +420,7 @@ export async function registerRoutes(
       // Save the inquiry for the user's history
       const inquiry = await storage.createInquiry({ ...input, userId });
 
-      // Integration with CRM: Salva/atualiza o contato e registra o histórico, SEM criar oportunidade no pipeline automaticamente
+      // Integration with CRM: Salva/atualiza o contato e registra o histÃƒÂ³rico, SEM criar oportunidade no pipeline automaticamente
       const { contact } = await storage.upsertContact({
         type: "individual",
         name: input.name,
@@ -430,7 +430,7 @@ export async function registerRoutes(
         address: null,
         status: "Ativo",
         assignedTo: attributionId,
-        notes: `Mensagem enviada pelo formulário do site: ${input.message}`,
+        notes: `Mensagem enviada pelo formulÃƒÂ¡rio do site: ${input.message}`,
       });
 
       await storage.createInteraction({
@@ -461,7 +461,7 @@ export async function registerRoutes(
   });
 
   // ============================================================
-  // ÁREA DO CLIENTE — Meus Documentos e Apólices
+  // ÃƒÂREA DO CLIENTE Ã¢â‚¬â€ Meus Documentos e ApÃƒÂ³lices
   // ============================================================
 
   // Retorna os arquivos do cliente logado (via contactId do user)
@@ -482,11 +482,11 @@ export async function registerRoutes(
     }
   });
 
-  // Retorna as apólices do cliente logado (vinculadas via email no módulo de seguros)
+  // Retorna as apÃƒÂ³lices do cliente logado (vinculadas via email no mÃƒÂ³dulo de seguros)
   app.get("/api/my-apolices", isAuthenticated, async (req, res) => {
     try {
       const currentUser = req.user as any;
-      // Busca cliente na tabela clientes via email do usuário
+      // Busca cliente na tabela clientes via email do usuÃƒÂ¡rio
       const userEmail = currentUser.email || currentUser.username;
       if (!userEmail) return res.json([]);
 
@@ -587,8 +587,8 @@ export async function registerRoutes(
   app.post("/api/contacts/:id/send-birthday-email", isTeam, async (req, res) => {
     try {
       const contact = await storage.getContact(parseInt(req.params.id));
-      if (!contact) return res.status(404).json({ message: "Contato não encontrado" });
-      if (!contact.email) return res.status(400).json({ message: "Contato não possui e-mail cadastrado" });
+      if (!contact) return res.status(404).json({ message: "Contato nÃƒÂ£o encontrado" });
+      if (!contact.email) return res.status(400).json({ message: "Contato nÃƒÂ£o possui e-mail cadastrado" });
 
       let age: number | null = null;
       if (contact.anniversaryDate) {
@@ -609,8 +609,8 @@ export async function registerRoutes(
       await storage.createInteraction({
         contactId: contact.id,
         userId,
-        type: "E-mail Aniversário",
-        description: `E-mail comemorativo de aniversário enviado com sucesso para ${contact.email}.`,
+        type: "E-mail AniversÃƒÂ¡rio",
+        description: `E-mail comemorativo de aniversÃƒÂ¡rio enviado com sucesso para ${contact.email}.`,
         date: new Date(),
       }).catch(() => {});
 
@@ -716,7 +716,7 @@ export async function registerRoutes(
 
       res.json({ success: true, created, updated, errors });
     } catch (err) {
-      res.status(500).json({ message: "Erro ao processar importação" });
+      res.status(500).json({ message: "Erro ao processar importaÃƒÂ§ÃƒÂ£o" });
     }
   });
 
@@ -784,7 +784,7 @@ export async function registerRoutes(
     }
   });
 
-  // Sincronização automática com Monteiro Conecta (WhatsApp Central) quando um lead é editado ou excluído
+  // SincronizaÃƒÂ§ÃƒÂ£o automÃƒÂ¡tica com Monteiro Conecta (WhatsApp Central) quando um lead ÃƒÂ© editado ou excluÃƒÂ­do
   async function notifyMonteiroConectaLeadChange(
     action: "updated" | "deleted",
     lead: any,
@@ -850,9 +850,9 @@ export async function registerRoutes(
         }).catch(() => {});
       }
 
-      console.log(`[Monteiro Conecta] Notificação disparada (${action}) para lead #${lead.id}`);
+      console.log(`[Monteiro Conecta] NotificaÃƒÂ§ÃƒÂ£o disparada (${action}) para lead #${lead.id}`);
     } catch (err: any) {
-      console.warn("[Monteiro Conecta] Erro ao sincronizar alteração de lead:", err.message);
+      console.warn("[Monteiro Conecta] Erro ao sincronizar alteraÃƒÂ§ÃƒÂ£o de lead:", err.message);
     }
   }
 
@@ -893,7 +893,7 @@ export async function registerRoutes(
       sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_status_changed", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
     }
 
-    // Sincroniza alteração no Monteiro Conecta
+    // Sincroniza alteraÃƒÂ§ÃƒÂ£o no Monteiro Conecta
     notifyMonteiroConectaLeadChange("updated", lead, { leadBefore, changerUserId: (req.user as any)?.id });
 
     res.json(lead);
@@ -924,7 +924,7 @@ export async function registerRoutes(
       sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_assigned", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
     }
 
-    // Sincroniza alteração no Monteiro Conecta
+    // Sincroniza alteraÃƒÂ§ÃƒÂ£o no Monteiro Conecta
     notifyMonteiroConectaLeadChange("updated", lead, { leadBefore, changerUserId: (req.user as any)?.id });
 
     res.json(lead);
@@ -1041,17 +1041,17 @@ export async function registerRoutes(
     try {
       const { username, password, name, role, email } = req.body;
       if (!username || !password || !name) {
-        return res.status(400).json({ message: "username, password e name são obrigatórios" });
+        return res.status(400).json({ message: "username, password e name sÃƒÂ£o obrigatÃƒÂ³rios" });
       }
       if (email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-          return res.status(400).json({ message: "Formato de e-mail inválido" });
+          return res.status(400).json({ message: "Formato de e-mail invÃƒÂ¡lido" });
         }
       }
       const existing = await storage.getUserByUsername(username);
       if (existing) {
-        return res.status(400).json({ message: "Nome de usuário já existe" });
+        return res.status(400).json({ message: "Nome de usuÃƒÂ¡rio jÃƒÂ¡ existe" });
       }
       const hashedPassword = await hashPassword(password);
       const user = await storage.createUser({
@@ -1065,7 +1065,7 @@ export async function registerRoutes(
       const { password: _, ...safeUser } = user;
       res.status(201).json(safeUser);
     } catch (err) {
-      res.status(500).json({ message: "Erro ao criar usuário" });
+      res.status(500).json({ message: "Erro ao criar usuÃƒÂ¡rio" });
     }
   });
 
@@ -1074,14 +1074,14 @@ export async function registerRoutes(
     try {
       const { email } = req.body;
       if (!email) {
-        return res.status(400).json({ message: "E-mail é obrigatório" });
+        return res.status(400).json({ message: "E-mail ÃƒÂ© obrigatÃƒÂ³rio" });
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: "Formato de e-mail inválido" });
+        return res.status(400).json({ message: "Formato de e-mail invÃƒÂ¡lido" });
       }
       const updatedUser = await storage.updateUserEmail(parseInt(req.params.id), email);
-      if (!updatedUser) return res.status(404).json({ message: "Usuário não encontrado" });
+      if (!updatedUser) return res.status(404).json({ message: "UsuÃƒÂ¡rio nÃƒÂ£o encontrado" });
       const { password: _, ...safeUser } = updatedUser;
       res.json(safeUser);
     } catch (err) {
@@ -1097,10 +1097,10 @@ export async function registerRoutes(
       }
       const hashedPassword = await hashPassword(newPassword);
       const updatedUser = await storage.updateUserPassword(parseInt(req.params.id), hashedPassword);
-      if (!updatedUser) return res.status(404).json({ message: "Usuário não encontrado" });
+      if (!updatedUser) return res.status(404).json({ message: "UsuÃƒÂ¡rio nÃƒÂ£o encontrado" });
       res.sendStatus(200);
     } catch (err) {
-      res.status(500).json({ message: "Erro ao alterar senha do usuário" });
+      res.status(500).json({ message: "Erro ao alterar senha do usuÃƒÂ¡rio" });
     }
   });
 
@@ -1128,7 +1128,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const currentUser = req.user as any;
     if (currentUser.id === id) {
-      return res.status(400).json({ message: "Você não pode deletar sua própria conta" });
+      return res.status(400).json({ message: "VocÃƒÂª nÃƒÂ£o pode deletar sua prÃƒÂ³pria conta" });
     }
     await storage.deleteUser(id);
     res.sendStatus(204);
@@ -1144,11 +1144,11 @@ export async function registerRoutes(
         .set({ anniversaryDate })
         .where(eq(users.id, id))
         .returning();
-      if (!updated) return res.status(404).json({ message: "Usuário não encontrado" });
+      if (!updated) return res.status(404).json({ message: "UsuÃƒÂ¡rio nÃƒÂ£o encontrado" });
       const { password: _, ...safeUser } = updated;
       res.json(safeUser);
     } catch (err) {
-      res.status(500).json({ message: "Erro ao atualizar aniversário do usuário" });
+      res.status(500).json({ message: "Erro ao atualizar aniversÃƒÂ¡rio do usuÃƒÂ¡rio" });
     }
   });
 
@@ -1174,7 +1174,7 @@ export async function registerRoutes(
       const contactId = parseInt(req.params.id);
       const { fileName, fileUrl, fileType, fileSize } = req.body;
       if (!fileName || !fileUrl) {
-        return res.status(400).json({ message: "Nome e arquivo são obrigatórios" });
+        return res.status(400).json({ message: "Nome e arquivo sÃƒÂ£o obrigatÃƒÂ³rios" });
       }
       const currentUser = req.user as any;
       const [newFile] = await db
@@ -1212,10 +1212,10 @@ export async function registerRoutes(
       const contactId = parseInt(req.params.id);
       const [contact] = await db.select().from(contacts).where(eq(contacts.id, contactId));
       if (!contact) {
-        return res.status(404).json({ message: "Contato não encontrado" });
+        return res.status(404).json({ message: "Contato nÃƒÂ£o encontrado" });
       }
       if (!contact.email || !contact.email.includes("@")) {
-        return res.status(400).json({ message: "O contato precisa ter um e-mail válido cadastrado para gerar conta." });
+        return res.status(400).json({ message: "O contato precisa ter um e-mail vÃƒÂ¡lido cadastrado para gerar conta." });
       }
 
       const existingUsers = await db.select().from(users).where(eq(users.email, contact.email));
@@ -1280,9 +1280,9 @@ export async function registerRoutes(
           emailSent: true,
         });
       } else {
-        console.warn(`[generate-account] E-mail não pôde ser enviado para ${contact.email}: ${emailRes.error}`);
+        console.warn(`[generate-account] E-mail nÃƒÂ£o pÃƒÂ´de ser enviado para ${contact.email}: ${emailRes.error}`);
         res.json({
-          message: `Conta gerada com sucesso! (${emailRes.error || "Credenciais de e-mail não configuradas"}). Link de primeiro acesso para o cliente: ${setupUrl}`,
+          message: `Conta gerada com sucesso! (${emailRes.error || "Credenciais de e-mail nÃƒÂ£o configuradas"}). Link de primeiro acesso para o cliente: ${setupUrl}`,
           user: clientUser,
           setupUrl,
           emailSent: false,
@@ -1299,15 +1299,15 @@ export async function registerRoutes(
     try {
       const { token } = req.query;
       if (!token || typeof token !== "string") {
-        return res.status(400).json({ valid: false, message: "Token não fornecido" });
+        return res.status(400).json({ valid: false, message: "Token nÃƒÂ£o fornecido" });
       }
       const matched = await db.select().from(users).where(eq(users.firstLoginToken, token));
       const user = matched[0];
       if (!user) {
-        return res.status(404).json({ valid: false, message: "Link expirado ou inválido" });
+        return res.status(404).json({ valid: false, message: "Link expirado ou invÃƒÂ¡lido" });
       }
       if (user.firstLoginTokenExpires && new Date(user.firstLoginTokenExpires) < new Date()) {
-        return res.status(400).json({ valid: false, message: "Este link de primeiro acesso expirou. Solicite um novo à Monteiro Corretora." });
+        return res.status(400).json({ valid: false, message: "Este link de primeiro acesso expirou. Solicite um novo ÃƒÂ  Monteiro Corretora." });
       }
       res.json({ valid: true, name: user.name, email: user.email });
     } catch (err: any) {
@@ -1319,12 +1319,12 @@ export async function registerRoutes(
     try {
       const { token, password } = req.body;
       if (!token || !password || password.length < 6) {
-        return res.status(400).json({ message: "A senha deve conter no mínimo 6 caracteres" });
+        return res.status(400).json({ message: "A senha deve conter no mÃƒÂ­nimo 6 caracteres" });
       }
       const matched = await db.select().from(users).where(eq(users.firstLoginToken, token));
       const user = matched[0];
       if (!user) {
-        return res.status(404).json({ message: "Token de primeiro acesso inválido" });
+        return res.status(404).json({ message: "Token de primeiro acesso invÃƒÂ¡lido" });
       }
       const hashedPassword = await hashPassword(password);
       const [updatedUser] = await db
@@ -1340,7 +1340,7 @@ export async function registerRoutes(
         .returning();
 
       req.login(updatedUser, (err) => {
-        if (err) return res.status(200).json({ message: "Senha cadastrada com sucesso! Faça login para prosseguir.", user: updatedUser });
+        if (err) return res.status(200).json({ message: "Senha cadastrada com sucesso! FaÃƒÂ§a login para prosseguir.", user: updatedUser });
         res.json({ message: "Senha cadastrada com sucesso!", user: updatedUser });
       });
     } catch (err: any) {
@@ -1376,7 +1376,7 @@ export async function registerRoutes(
 
   app.get("/api/clientes/:id", isTeam, async (req, res) => {
     const cliente = await storage.getCliente(parseInt(req.params.id));
-    if (!cliente) return res.status(404).json({ message: "Cliente não encontrado" });
+    if (!cliente) return res.status(404).json({ message: "Cliente nÃƒÂ£o encontrado" });
     res.json(cliente);
   });
 
@@ -1573,9 +1573,9 @@ export async function registerRoutes(
           fimVigencia: parseExcelDate(fimVigencia),
           premio: premio ? (() => {
             const raw = String(premio).trim().replace(/^R\$\s*/i, "").trim();
-            // Brazilian: 1.234,56 → remove dot thousands sep, comma→dot
+            // Brazilian: 1.234,56 Ã¢â€ â€™ remove dot thousands sep, commaÃ¢â€ â€™dot
             if (raw.includes(",") && raw.includes(".")) return raw.replace(/\./g, "").replace(",", ".");
-            // Brazilian: 1234,56 → comma as decimal
+            // Brazilian: 1234,56 Ã¢â€ â€™ comma as decimal
             if (raw.includes(",")) return raw.replace(",", ".");
             // ISO/US: 356.16 already valid
             return raw;
@@ -1623,7 +1623,7 @@ export async function registerRoutes(
     try {
       const input = insertClienteSchema.partial().parse(req.body);
       const cliente = await storage.updateCliente(parseInt(req.params.id), input);
-      if (!cliente) return res.status(404).json({ message: "Cliente não encontrado" });
+      if (!cliente) return res.status(404).json({ message: "Cliente nÃƒÂ£o encontrado" });
       const linkedContact = cliente.contactId
         ? await storage.getContact(cliente.contactId)
         : (await storage.getContacts()).find((candidate) => {
@@ -1667,7 +1667,7 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
-  // Apólices
+  // ApÃƒÂ³lices
   app.get("/api/apolices", isTeam, async (req, res) => {
     const clienteId = req.query.clienteId ? parseInt(req.query.clienteId as string) : undefined;
     const filters = {
@@ -1687,7 +1687,7 @@ export async function registerRoutes(
 
   app.get("/api/apolices/:id", isTeam, async (req, res) => {
     const apolice = await storage.getApolice(parseInt(req.params.id));
-    if (!apolice) return res.status(404).json({ message: "Apólice não encontrada" });
+    if (!apolice) return res.status(404).json({ message: "ApÃƒÂ³lice nÃƒÂ£o encontrada" });
     res.json(apolice);
   });
 
@@ -1706,7 +1706,7 @@ export async function registerRoutes(
     try {
       const input = insertApoliceSchema.partial().parse(req.body);
       const apolice = await storage.updateApolice(parseInt(req.params.id), input);
-      if (!apolice) return res.status(404).json({ message: "Apólice não encontrada" });
+      if (!apolice) return res.status(404).json({ message: "ApÃƒÂ³lice nÃƒÂ£o encontrada" });
       res.json(apolice);
     } catch (err: any) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors });
@@ -1740,7 +1740,7 @@ export async function registerRoutes(
     try {
       const input = insertSeguradoraSchema.partial().parse(req.body);
       const seg = await storage.updateSeguradora(parseInt(req.params.id), input);
-      if (!seg) return res.status(404).json({ message: "Seguradora não encontrada" });
+      if (!seg) return res.status(404).json({ message: "Seguradora nÃƒÂ£o encontrada" });
       res.json(seg);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1773,7 +1773,7 @@ export async function registerRoutes(
     try {
       const input = insertProdutoSeguroSchema.partial().parse(req.body);
       const produto = await storage.updateProdutoSeguro(parseInt(req.params.id), input);
-      if (!produto) return res.status(404).json({ message: "Produto não encontrado" });
+      if (!produto) return res.status(404).json({ message: "Produto nÃƒÂ£o encontrado" });
       res.json(produto);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1867,7 +1867,7 @@ export async function registerRoutes(
   app.patch("/api/todoist/projects/:id", isTeam, async (req, res) => {
     const id = parseInt(req.params.id);
     const updated = await storage.updateTodoistProject(id, req.body);
-    if (!updated) return res.status(404).json({ message: "Projeto não encontrado" });
+    if (!updated) return res.status(404).json({ message: "Projeto nÃƒÂ£o encontrado" });
     res.json(updated);
   });
 
@@ -1937,7 +1937,7 @@ export async function registerRoutes(
 
   app.get("/api/todoist/tasks/:id", isTeam, async (req, res) => {
     const task = await storage.getTodoistTask(parseInt(req.params.id));
-    if (!task) return res.status(404).json({ message: "Tarefa não encontrada" });
+    if (!task) return res.status(404).json({ message: "Tarefa nÃƒÂ£o encontrada" });
     res.json(task);
   });
 
@@ -1962,7 +1962,7 @@ export async function registerRoutes(
       const id = parseInt(req.params.id);
       const { subtasksList, labelIds, ...updates } = req.body;
       const updated = await storage.updateTodoistTask(id, updates, subtasksList, labelIds, (req.user as any)?.id);
-      if (!updated) return res.status(404).json({ message: "Tarefa não encontrada" });
+      if (!updated) return res.status(404).json({ message: "Tarefa nÃƒÂ£o encontrada" });
       res.json(updated);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -1988,7 +1988,7 @@ export async function registerRoutes(
   app.post("/api/todoist/tasks/:id/restore", isTeam, async (req, res) => {
     try {
       const restored = await storage.restoreTodoistTask(parseInt(req.params.id));
-      if (!restored) return res.status(404).json({ message: "Tarefa não encontrada" });
+      if (!restored) return res.status(404).json({ message: "Tarefa nÃƒÂ£o encontrada" });
       res.json(restored);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -2009,7 +2009,7 @@ export async function registerRoutes(
   app.patch("/api/todoist/subtasks/:id", isTeam, async (req, res) => {
     const id = parseInt(req.params.id);
     const subtask = await storage.updateTodoistSubtask(id, req.body.completed, req.body.title);
-    if (!subtask) return res.status(404).json({ message: "Subtarefa não encontrada" });
+    if (!subtask) return res.status(404).json({ message: "Subtarefa nÃƒÂ£o encontrada" });
     res.json(subtask);
   });
 
@@ -2061,7 +2061,7 @@ export async function registerRoutes(
   app.patch("/api/todoist/automations/:id", isAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     const updated = await storage.updateTodoistAutomation(id, req.body);
-    if (!updated) return res.status(404).json({ message: "Automação não encontrada" });
+    if (!updated) return res.status(404).json({ message: "AutomaÃƒÂ§ÃƒÂ£o nÃƒÂ£o encontrada" });
     res.json(updated);
   });
 
@@ -2093,7 +2093,7 @@ export async function registerRoutes(
   app.post("/api/todoist/quick-parse", isTeam, async (req, res) => {
     const { text } = req.body;
     if (!text || typeof text !== 'string') {
-      return res.status(400).json({ message: "Texto não informado" });
+      return res.status(400).json({ message: "Texto nÃƒÂ£o informado" });
     }
 
     // 1. Try Gemini AI structured parsing
@@ -2137,22 +2137,22 @@ export async function registerRoutes(
     if (inputLower.includes("hoje")) {
       dateStr = parsedDate.toISOString();
       title = title.replace(/hoje/gi, "").trim();
-    } else if (inputLower.includes("amanhã") || inputLower.includes("amanha")) {
+    } else if (inputLower.includes("amanhÃƒÂ£") || inputLower.includes("amanha")) {
       parsedDate.setDate(parsedDate.getDate() + 1);
       dateStr = parsedDate.toISOString();
-      title = title.replace(/amanhã|amanha/gi, "").trim();
+      title = title.replace(/amanhÃƒÂ£|amanha/gi, "").trim();
     } else if (inputLower.includes("segunda")) {
       const day = parsedDate.getDay();
       const diff = (1 + 7 - day) % 7 || 7;
       parsedDate.setDate(parsedDate.getDate() + diff);
       dateStr = parsedDate.toISOString();
       title = title.replace(/segunda(-feira)?/gi, "").trim();
-    } else if (inputLower.includes("terça") || inputLower.includes("terca")) {
+    } else if (inputLower.includes("terÃƒÂ§a") || inputLower.includes("terca")) {
       const day = parsedDate.getDay();
       const diff = (2 + 7 - day) % 7 || 7;
       parsedDate.setDate(parsedDate.getDate() + diff);
       dateStr = parsedDate.toISOString();
-      title = title.replace(/terça|terca(-feira)?/gi, "").trim();
+      title = title.replace(/terÃƒÂ§a|terca(-feira)?/gi, "").trim();
     } else if (inputLower.includes("quarta")) {
       const day = parsedDate.getDay();
       const diff = (3 + 7 - day) % 7 || 7;
@@ -2173,7 +2173,7 @@ export async function registerRoutes(
       title = title.replace(/sexta(-feira)?/gi, "").trim();
     }
 
-    const timeMatch = text.match(/(?:às|as|at)?\s*(\d{1,2})(?::(\d{2})|h(\d{2})?)/i);
+    const timeMatch = text.match(/(?:ÃƒÂ s|as|at)?\s*(\d{1,2})(?::(\d{2})|h(\d{2})?)/i);
     if (timeMatch) {
       const hours = timeMatch[1].padStart(2, "0");
       const minutes = timeMatch[2] || timeMatch[3] || "00";
@@ -2215,7 +2215,7 @@ export async function registerRoutes(
     const cnpj = req.params.cnpj.replace(/\D/g, "");
 
     if (cnpj.length !== 14) {
-      return res.status(400).json({ message: `CNPJ inválido: esperado 14 dígitos, recebido ${cnpj.length}` });
+      return res.status(400).json({ message: `CNPJ invÃƒÂ¡lido: esperado 14 dÃƒÂ­gitos, recebido ${cnpj.length}` });
     }
 
     const fetchWithTimeout = async (url: string, timeoutMs = 8000) => {
@@ -2249,7 +2249,7 @@ export async function registerRoutes(
       const brasilRes = await fetchWithTimeout(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
       if (brasilRes.ok) {
         const data = await brasilRes.json();
-        console.log(`[CNPJ] ✅ BrasilAPI respondeu com sucesso`);
+        console.log(`[CNPJ] Ã¢Å“â€¦ BrasilAPI respondeu com sucesso`);
         return res.json({
           name: data.razao_social || data.nome_fantasia,
           email: data.email || null,
@@ -2269,7 +2269,7 @@ export async function registerRoutes(
       if (receitaRes.ok) {
         const data = await receitaRes.json();
         if (data.status !== "ERROR") {
-          console.log(`[CNPJ] ✅ ReceitaWS respondeu com sucesso`);
+          console.log(`[CNPJ] Ã¢Å“â€¦ ReceitaWS respondeu com sucesso`);
           return res.json({
             name: data.nome || data.fantasia,
             email: data.email || null,
@@ -2289,7 +2289,7 @@ export async function registerRoutes(
       const publicaRes = await fetchWithTimeout(`https://publica.cnpj.ws/cnpj/${cnpj}`);
       if (publicaRes.ok) {
         const data = await publicaRes.json();
-        console.log(`[CNPJ] ✅ publica.cnpj.ws respondeu com sucesso`);
+        console.log(`[CNPJ] Ã¢Å“â€¦ publica.cnpj.ws respondeu com sucesso`);
         const est = data.estabelecimento || {};
         return res.json({
           name: data.razao_social || est.nome_fantasia,
@@ -2309,7 +2309,7 @@ export async function registerRoutes(
       const openRes = await fetchWithTimeout(`https://open.cnpja.com/office/${cnpj}`);
       if (openRes.ok) {
         const data = await openRes.json();
-        console.log(`[CNPJ] ✅ open.cnpja.com respondeu com sucesso`);
+        console.log(`[CNPJ] Ã¢Å“â€¦ open.cnpja.com respondeu com sucesso`);
         const addr = data.address || {};
         return res.json({
           name: data.company?.name || data.alias,
@@ -2323,8 +2323,8 @@ export async function registerRoutes(
       console.log(`[CNPJ] open.cnpja.com falhou: ${e.message}`);
     }
 
-    console.log(`[CNPJ] ❌ Todas as APIs falharam para ${cnpj}`);
-    res.status(404).json({ message: "Nenhuma das APIs conseguiu encontrar dados para este CNPJ. Verifique o número e tente novamente." });
+    console.log(`[CNPJ] Ã¢ÂÅ’ Todas as APIs falharam para ${cnpj}`);
+    res.status(404).json({ message: "Nenhuma das APIs conseguiu encontrar dados para este CNPJ. Verifique o nÃƒÂºmero e tente novamente." });
   });
 
   app.patch("/api/site-settings", isAuthenticated, isAdmin, async (req, res) => {
@@ -2397,25 +2397,25 @@ export async function registerRoutes(
         'connected': 'Conectado',
         'no_answer': 'Sem Atendimento',
         'busy': 'Ocupado',
-        'wrong_number': 'Número Errado'
+        'wrong_number': 'NÃƒÂºmero Errado'
       }[input.callOutcome as string] || input.callOutcome;
 
       await storage.createInteraction({
         contactId: input.contactId,
         userId: userId,
         type: "call",
-        description: `Prospecção Realizada - Resultado: ${outcomeLabel}. Notas: ${input.notes || "Sem observações."}`,
+        description: `ProspecÃƒÂ§ÃƒÂ£o Realizada - Resultado: ${outcomeLabel}. Notas: ${input.notes || "Sem observaÃƒÂ§ÃƒÂµes."}`,
         date: new Date(),
       });
 
-      // Oportunidade no pipeline apenas se o usuário solicitar explicitamente
+      // Oportunidade no pipeline apenas se o usuÃƒÂ¡rio solicitar explicitamente
       if (input.createPipelineLead === true || input.createPipelineLead === "true") {
         await storage.createLead({
           contactId: input.contactId,
           status: "new",
-          source: "Termômetro de Leads (Prospecção)",
-          product: input.productType || "Plano de Saúde",
-          notes: `[Prospecção] Resultado: ${outcomeLabel}. Interesse: ${input.interestLevel || 'N/A'}. Notas: ${input.notes || ''}`,
+          source: "TermÃƒÂ´metro de Leads (ProspecÃƒÂ§ÃƒÂ£o)",
+          product: input.productType || "Plano de SaÃƒÂºde",
+          notes: `[ProspecÃƒÂ§ÃƒÂ£o] Resultado: ${outcomeLabel}. Interesse: ${input.interestLevel || 'N/A'}. Notas: ${input.notes || ''}`,
           assignedTo: userId,
         });
       }
@@ -2574,7 +2574,7 @@ export async function registerRoutes(
       }
     }
 
-    const city = (locationStr || "São Paulo").split(",")[0]?.trim();
+    const city = (locationStr || "SÃƒÂ£o Paulo").split(",")[0]?.trim();
     const cleanName = (companyName || "")
       .replace(/\b(unidade|filial|matriz|loja|unid|un)\b.*$/gi, "")
       .replace(/[-_]/g, " ")
@@ -2744,13 +2744,13 @@ export async function registerRoutes(
   app.get("/api/proxy/companies/:cnpj", isAuthenticated, async (req, res) => {
     const cnpj = req.params.cnpj.replace(/\D/g, "");
     if (cnpj.length !== 14) {
-      return res.status(400).json({ message: "CNPJ inválido" });
+      return res.status(400).json({ message: "CNPJ invÃƒÂ¡lido" });
     }
 
     try {
       const full = await unifiedCnpjLookup(cnpj);
       if (!full) {
-        return res.status(404).json({ message: "Empresa não encontrada ou erro na API" });
+        return res.status(404).json({ message: "Empresa nÃƒÂ£o encontrada ou erro na API" });
       }
 
       res.json([full]);
@@ -2765,7 +2765,7 @@ export async function registerRoutes(
       const { q, name, city, state, address, document, website, phone } = req.query;
       const searchName = (q as string || name as string || "").trim();
       const rawAddr = (address as string || "");
-      const reqCity = (city as string || rawAddr.split(",")[0] || "São Paulo").trim();
+      const reqCity = (city as string || rawAddr.split(",")[0] || "SÃƒÂ£o Paulo").trim();
       const reqState = (state as string || rawAddr.match(/\b([A-Z]{2})\b/)?.[1] || "SP").toUpperCase();
       const locationStr = `${reqCity}, ${reqState}`;
 
@@ -2805,7 +2805,7 @@ export async function registerRoutes(
         municipio: reqCity,
         uf: reqState,
         cep: "",
-        cnae_principal_descricao: "Empresa Localizada no Termômetro",
+        cnae_principal_descricao: "Empresa Localizada no TermÃƒÂ´metro",
         ddd_telefone_1: (phone as string) || "",
         email: "",
         discoveredAuto: false,
@@ -2828,41 +2828,41 @@ export async function registerRoutes(
     const municipio = (city as string || "").trim(); // Preserve original casing
     const bairroFiltroInput = (neighborhood as string || "").trim();
     const keyword = (q as string || "").toLowerCase().trim();
-    const targetCity = municipio.toUpperCase() || "SÃO PAULO";
+    const targetCity = municipio.toUpperCase() || "SÃƒÆ’O PAULO";
     const targetUf = uf || "SP";
 
     // -----------------------------------------------------------------------
-    // Keyword → CNAE mapping + niche label
+    // Keyword Ã¢â€ â€™ CNAE mapping + niche label
     // -----------------------------------------------------------------------
     const NICHE_MAP: Array<{ terms: string[]; cnae: string; label: string; cnaeDesc: string }> = [
-      { terms: ["restaurante", "lanchonete", "comida", "alimentação", "refeição", "bar", "boteco", "pizzaria", "hamburgueria", "self service", "cafeteria", "padaria", "confeitaria", "doce", "bolo"], cnae: "5611201", label: "Alimentação", cnaeDesc: "Restaurante e similares" },
-      { terms: ["academia", "fitness", "musculação", "ginástica", "pilates", "crossfit", "natação", "esporte"], cnae: "9313100", label: "Academia/Fitness", cnaeDesc: "Atividades de condicionamento físico" },
-      { terms: ["médico", "clínica", "hospital", "consultório", "saúde", "dentista", "odonto", "pediatra", "cardiologista", "ortopedista", "dermatologista"], cnae: "8610101", label: "Saúde", cnaeDesc: "Atividades de atendimento hospitalar, exceto pronto-socorro" },
-      { terms: ["advocacia", "advogado", "escritório", "jurídico", "direito", "advocacia"], cnae: "6911701", label: "Advocacia", cnaeDesc: "Serviços advocatícios" },
-      { terms: ["contabilidade", "contador", "contábil", "fiscal", "tributário", "imposto", "declaração"], cnae: "6920601", label: "Contabilidade", cnaeDesc: "Atividades de contabilidade" },
-      { terms: ["seguro", "corretora", "apólice", "previdência", "seguradora", "vida", "residencial"], cnae: "6512000", label: "Seguros", cnaeDesc: "Seguros de vida" },
-      { terms: ["farmácia", "drogaria", "medicamento", "remédio", "genérico"], cnae: "4771701", label: "Farmácia", cnaeDesc: "Comércio varejista de produtos farmacêuticos" },
-      { terms: ["auto", "automóvel", "veículo", "carro", "moto", "oficina", "mecânica", "funilaria", "pintura", "borracharia", "lava jato", "estética automotiva"], cnae: "4520001", label: "Automotivo", cnaeDesc: "Serviços de manutenção e reparação de automóveis" },
-      { terms: ["imobiliária", "imóvel", "imóveis", "corretora de imóveis", "aluguel", "locação", "venda de imóveis"], cnae: "6821801", label: "Imóveis", cnaeDesc: "Corretagem na compra e venda de imóveis" },
-      { terms: ["supermercado", "mercado", "mercearia", "hortifruti", "verdura", "frutas"], cnae: "4711301", label: "Supermercado", cnaeDesc: "Comércio varejista de mercadorias em geral" },
-      { terms: ["roupa", "moda", "vestuário", "calçado", "tênis", "boutique", "loja", "confecção", "roupas", "moda feminina", "moda masculina"], cnae: "4781400", label: "Vestuário", cnaeDesc: "Comércio varejista de artigos do vestuário e acessórios" },
-      { terms: ["escola", "ensino", "educação", "curso", "colégio", "faculdade", "universidade", "pré-escola", "creche"], cnae: "8531700", label: "Educação", cnaeDesc: "Educação superior - graduação" },
-      { terms: ["salão", "beleza", "cabeleireiro", "manicure", "pedicure", "estética", "spa", "nail", "hair"], cnae: "9602501", label: "Beleza", cnaeDesc: "Cabeleireiros, manicure e pedicure" },
-      { terms: ["hotel", "pousada", "hospedagem", "resort", "hostel", "motel"], cnae: "5510801", label: "Hotelaria", cnaeDesc: "Hotéis e similares" },
-      { terms: ["tecnologia", "software", "ti", "informática", "sistema", "desenvolvimento", "app", "aplicativo", "startup"], cnae: "6201500", label: "Tecnologia", cnaeDesc: "Desenvolvimento de programas de computador sob encomenda" },
-      { terms: ["marketing", "publicidade", "propaganda", "agência", "comunicação", "mídia", "design", "criativo"], cnae: "7311400", label: "Marketing", cnaeDesc: "Agências de publicidade" },
-      { terms: ["construção", "construtora", "obras", "engenharia", "reforma", "civil", "edificação"], cnae: "4120400", label: "Construção", cnaeDesc: "Construção de edifícios" },
-      { terms: ["logística", "transporte", "frete", "entrega", "courier", "mudança", "armazenagem", "distribuição"], cnae: "4930201", label: "Transporte", cnaeDesc: "Transporte rodoviário de carga" },
-      { terms: ["petshop", "veterinário", "animal", "bicho", "pet", "banho e tosa"], cnae: "7500100", label: "Pet Shop", cnaeDesc: "Atividades veterinárias" },
-      { terms: ["banco", "financeiro", "crédito", "empréstimo", "financeira", "câmbio", "investimento"], cnae: "6422100", label: "Financeiro", cnaeDesc: "Bancos múltiplos, com carteira comercial" },
-      { terms: ["consultoria", "gestão", "rh", "recursos humanos", "estratégia", "negócios"], cnae: "7020400", label: "Consultoria", cnaeDesc: "Atividades de consultoria em gestão empresarial" },
-      { terms: ["gráfica", "impressão", "papel", "gráfico", "tipografia", "plotagem"], cnae: "1811301", label: "Gráfica", cnaeDesc: "Impressão de jornais, livros, revistas e outras publicações" },
-      { terms: ["eletrica", "elétrico", "instalação", "painel", "energia", "solar", "fotovoltaico"], cnae: "4321500", label: "Elétrica", cnaeDesc: "Instalação e manutenção elétrica" },
-      { terms: ["segurança", "vigilância", "monitoramento", "alarme", "câmera", "cftv", "portaria"], cnae: "8011101", label: "Segurança", cnaeDesc: "Atividades de vigilância e segurança privada" },
-      { terms: ["limpeza", "higienização", "lavanderia", "dedetização", "conservação", "faxina"], cnae: "8121400", label: "Limpeza", cnaeDesc: "Limpeza em prédios e em domicílios" },
-      { terms: ["móveis", "decoração", "interiores", "arquitetura", "design de interiores", "home"], cnae: "4754701", label: "Móveis/Decoração", cnaeDesc: "Comércio varejista de móveis" },
-      { terms: ["eventos", "cerimonial", "casamento", "festa", "buffet", "dj", "fotografia", "video"], cnae: "8230001", label: "Eventos", cnaeDesc: "Serviços de organização de feiras, congressos, exposições e festas" },
-      { terms: ["farmácias de manipulação", "manipulação", "homeopatia", "fitoterápico"], cnae: "4771702", label: "Farmácia Manipulação", cnaeDesc: "Comércio varejista de produtos farmacêuticos, com manipulação" },
+      { terms: ["restaurante", "lanchonete", "comida", "alimentaÃƒÂ§ÃƒÂ£o", "refeiÃƒÂ§ÃƒÂ£o", "bar", "boteco", "pizzaria", "hamburgueria", "self service", "cafeteria", "padaria", "confeitaria", "doce", "bolo"], cnae: "5611201", label: "AlimentaÃƒÂ§ÃƒÂ£o", cnaeDesc: "Restaurante e similares" },
+      { terms: ["academia", "fitness", "musculaÃƒÂ§ÃƒÂ£o", "ginÃƒÂ¡stica", "pilates", "crossfit", "nataÃƒÂ§ÃƒÂ£o", "esporte"], cnae: "9313100", label: "Academia/Fitness", cnaeDesc: "Atividades de condicionamento fÃƒÂ­sico" },
+      { terms: ["mÃƒÂ©dico", "clÃƒÂ­nica", "hospital", "consultÃƒÂ³rio", "saÃƒÂºde", "dentista", "odonto", "pediatra", "cardiologista", "ortopedista", "dermatologista"], cnae: "8610101", label: "SaÃƒÂºde", cnaeDesc: "Atividades de atendimento hospitalar, exceto pronto-socorro" },
+      { terms: ["advocacia", "advogado", "escritÃƒÂ³rio", "jurÃƒÂ­dico", "direito", "advocacia"], cnae: "6911701", label: "Advocacia", cnaeDesc: "ServiÃƒÂ§os advocatÃƒÂ­cios" },
+      { terms: ["contabilidade", "contador", "contÃƒÂ¡bil", "fiscal", "tributÃƒÂ¡rio", "imposto", "declaraÃƒÂ§ÃƒÂ£o"], cnae: "6920601", label: "Contabilidade", cnaeDesc: "Atividades de contabilidade" },
+      { terms: ["seguro", "corretora", "apÃƒÂ³lice", "previdÃƒÂªncia", "seguradora", "vida", "residencial"], cnae: "6512000", label: "Seguros", cnaeDesc: "Seguros de vida" },
+      { terms: ["farmÃƒÂ¡cia", "drogaria", "medicamento", "remÃƒÂ©dio", "genÃƒÂ©rico"], cnae: "4771701", label: "FarmÃƒÂ¡cia", cnaeDesc: "ComÃƒÂ©rcio varejista de produtos farmacÃƒÂªuticos" },
+      { terms: ["auto", "automÃƒÂ³vel", "veÃƒÂ­culo", "carro", "moto", "oficina", "mecÃƒÂ¢nica", "funilaria", "pintura", "borracharia", "lava jato", "estÃƒÂ©tica automotiva"], cnae: "4520001", label: "Automotivo", cnaeDesc: "ServiÃƒÂ§os de manutenÃƒÂ§ÃƒÂ£o e reparaÃƒÂ§ÃƒÂ£o de automÃƒÂ³veis" },
+      { terms: ["imobiliÃƒÂ¡ria", "imÃƒÂ³vel", "imÃƒÂ³veis", "corretora de imÃƒÂ³veis", "aluguel", "locaÃƒÂ§ÃƒÂ£o", "venda de imÃƒÂ³veis"], cnae: "6821801", label: "ImÃƒÂ³veis", cnaeDesc: "Corretagem na compra e venda de imÃƒÂ³veis" },
+      { terms: ["supermercado", "mercado", "mercearia", "hortifruti", "verdura", "frutas"], cnae: "4711301", label: "Supermercado", cnaeDesc: "ComÃƒÂ©rcio varejista de mercadorias em geral" },
+      { terms: ["roupa", "moda", "vestuÃƒÂ¡rio", "calÃƒÂ§ado", "tÃƒÂªnis", "boutique", "loja", "confecÃƒÂ§ÃƒÂ£o", "roupas", "moda feminina", "moda masculina"], cnae: "4781400", label: "VestuÃƒÂ¡rio", cnaeDesc: "ComÃƒÂ©rcio varejista de artigos do vestuÃƒÂ¡rio e acessÃƒÂ³rios" },
+      { terms: ["escola", "ensino", "educaÃƒÂ§ÃƒÂ£o", "curso", "colÃƒÂ©gio", "faculdade", "universidade", "prÃƒÂ©-escola", "creche"], cnae: "8531700", label: "EducaÃƒÂ§ÃƒÂ£o", cnaeDesc: "EducaÃƒÂ§ÃƒÂ£o superior - graduaÃƒÂ§ÃƒÂ£o" },
+      { terms: ["salÃƒÂ£o", "beleza", "cabeleireiro", "manicure", "pedicure", "estÃƒÂ©tica", "spa", "nail", "hair"], cnae: "9602501", label: "Beleza", cnaeDesc: "Cabeleireiros, manicure e pedicure" },
+      { terms: ["hotel", "pousada", "hospedagem", "resort", "hostel", "motel"], cnae: "5510801", label: "Hotelaria", cnaeDesc: "HotÃƒÂ©is e similares" },
+      { terms: ["tecnologia", "software", "ti", "informÃƒÂ¡tica", "sistema", "desenvolvimento", "app", "aplicativo", "startup"], cnae: "6201500", label: "Tecnologia", cnaeDesc: "Desenvolvimento de programas de computador sob encomenda" },
+      { terms: ["marketing", "publicidade", "propaganda", "agÃƒÂªncia", "comunicaÃƒÂ§ÃƒÂ£o", "mÃƒÂ­dia", "design", "criativo"], cnae: "7311400", label: "Marketing", cnaeDesc: "AgÃƒÂªncias de publicidade" },
+      { terms: ["construÃƒÂ§ÃƒÂ£o", "construtora", "obras", "engenharia", "reforma", "civil", "edificaÃƒÂ§ÃƒÂ£o"], cnae: "4120400", label: "ConstruÃƒÂ§ÃƒÂ£o", cnaeDesc: "ConstruÃƒÂ§ÃƒÂ£o de edifÃƒÂ­cios" },
+      { terms: ["logÃƒÂ­stica", "transporte", "frete", "entrega", "courier", "mudanÃƒÂ§a", "armazenagem", "distribuiÃƒÂ§ÃƒÂ£o"], cnae: "4930201", label: "Transporte", cnaeDesc: "Transporte rodoviÃƒÂ¡rio de carga" },
+      { terms: ["petshop", "veterinÃƒÂ¡rio", "animal", "bicho", "pet", "banho e tosa"], cnae: "7500100", label: "Pet Shop", cnaeDesc: "Atividades veterinÃƒÂ¡rias" },
+      { terms: ["banco", "financeiro", "crÃƒÂ©dito", "emprÃƒÂ©stimo", "financeira", "cÃƒÂ¢mbio", "investimento"], cnae: "6422100", label: "Financeiro", cnaeDesc: "Bancos mÃƒÂºltiplos, com carteira comercial" },
+      { terms: ["consultoria", "gestÃƒÂ£o", "rh", "recursos humanos", "estratÃƒÂ©gia", "negÃƒÂ³cios"], cnae: "7020400", label: "Consultoria", cnaeDesc: "Atividades de consultoria em gestÃƒÂ£o empresarial" },
+      { terms: ["grÃƒÂ¡fica", "impressÃƒÂ£o", "papel", "grÃƒÂ¡fico", "tipografia", "plotagem"], cnae: "1811301", label: "GrÃƒÂ¡fica", cnaeDesc: "ImpressÃƒÂ£o de jornais, livros, revistas e outras publicaÃƒÂ§ÃƒÂµes" },
+      { terms: ["eletrica", "elÃƒÂ©trico", "instalaÃƒÂ§ÃƒÂ£o", "painel", "energia", "solar", "fotovoltaico"], cnae: "4321500", label: "ElÃƒÂ©trica", cnaeDesc: "InstalaÃƒÂ§ÃƒÂ£o e manutenÃƒÂ§ÃƒÂ£o elÃƒÂ©trica" },
+      { terms: ["seguranÃƒÂ§a", "vigilÃƒÂ¢ncia", "monitoramento", "alarme", "cÃƒÂ¢mera", "cftv", "portaria"], cnae: "8011101", label: "SeguranÃƒÂ§a", cnaeDesc: "Atividades de vigilÃƒÂ¢ncia e seguranÃƒÂ§a privada" },
+      { terms: ["limpeza", "higienizaÃƒÂ§ÃƒÂ£o", "lavanderia", "dedetizaÃƒÂ§ÃƒÂ£o", "conservaÃƒÂ§ÃƒÂ£o", "faxina"], cnae: "8121400", label: "Limpeza", cnaeDesc: "Limpeza em prÃƒÂ©dios e em domicÃƒÂ­lios" },
+      { terms: ["mÃƒÂ³veis", "decoraÃƒÂ§ÃƒÂ£o", "interiores", "arquitetura", "design de interiores", "home"], cnae: "4754701", label: "MÃƒÂ³veis/DecoraÃƒÂ§ÃƒÂ£o", cnaeDesc: "ComÃƒÂ©rcio varejista de mÃƒÂ³veis" },
+      { terms: ["eventos", "cerimonial", "casamento", "festa", "buffet", "dj", "fotografia", "video"], cnae: "8230001", label: "Eventos", cnaeDesc: "ServiÃƒÂ§os de organizaÃƒÂ§ÃƒÂ£o de feiras, congressos, exposiÃƒÂ§ÃƒÂµes e festas" },
+      { terms: ["farmÃƒÂ¡cias de manipulaÃƒÂ§ÃƒÂ£o", "manipulaÃƒÂ§ÃƒÂ£o", "homeopatia", "fitoterÃƒÂ¡pico"], cnae: "4771702", label: "FarmÃƒÂ¡cia ManipulaÃƒÂ§ÃƒÂ£o", cnaeDesc: "ComÃƒÂ©rcio varejista de produtos farmacÃƒÂªuticos, com manipulaÃƒÂ§ÃƒÂ£o" },
     ];
 
     const cnaeClean = (cnae as string || "").replace(/\D/g, "");
@@ -2881,7 +2881,7 @@ export async function registerRoutes(
     let apiSuccess = false;
 
     // -----------------------------------------------------------------------
-    // Strategy: publica.cnpj.ws — Note: Search by filters is a Premium feature.
+    // Strategy: publica.cnpj.ws Ã¢â‚¬â€ Note: Search by filters is a Premium feature.
     // If it fails with 404/403, we rely on the OSM fallback.
     // -----------------------------------------------------------------------
     if (cnaeCode || municipio || keyword) {
@@ -2991,7 +2991,7 @@ export async function registerRoutes(
     results = applyFilters(results);
 
     // -----------------------------------------------------------------------
-    // OSM Overpass fallback — fetch REAL businesses from OpenStreetMap
+    // OSM Overpass fallback Ã¢â‚¬â€ fetch REAL businesses from OpenStreetMap
     // If CNPJ API failed OR returned nothing after filtering
     // -----------------------------------------------------------------------
     if (results.length === 0) {
@@ -2999,21 +2999,21 @@ export async function registerRoutes(
 
       // Map niche keyword to OSM amenity/shop tags
       const OSM_TAG_MAP: Record<string, string[]> = {
-        "Alimentação": ["amenity=restaurant", "amenity=cafe", "amenity=fast_food", "amenity=food_court", "amenity=bar", "shop=bakery", "amenity=pub"],
+        "AlimentaÃƒÂ§ÃƒÂ£o": ["amenity=restaurant", "amenity=cafe", "amenity=fast_food", "amenity=food_court", "amenity=bar", "shop=bakery", "amenity=pub"],
         "Academia/Fitness": ["leisure=fitness_centre", "leisure=sports_centre", "leisure=gym", "leisure=stadium"],
-        "Saúde": ["amenity=clinic", "amenity=doctors", "amenity=hospital", "healthcare=yes", "amenity=dentist"],
+        "SaÃƒÂºde": ["amenity=clinic", "amenity=doctors", "amenity=hospital", "healthcare=yes", "amenity=dentist"],
         "Advocacia": ["office=lawyer", "office=yes"],
         "Contabilidade": ["office=accountant", "office=financial", "office=yes"],
         "Automotivo": ["shop=car_repair", "amenity=car_wash", "shop=tyres", "shop=car", "shop=car_parts"],
         "Beleza": ["shop=hairdresser", "shop=beauty", "amenity=beauty_salon", "shop=cosmetics"],
         "Pet Shop": ["shop=pet", "amenity=veterinary", "shop=pet_grooming"],
-        "Imóveis": ["office=estate_agent", "office=yes"],
+        "ImÃƒÂ³veis": ["office=estate_agent", "office=yes"],
         "Seguros": ["office=insurance", "office=yes"],
         "Tecnologia": ["office=it", "office=software", "office=yes"],
         "Marketing": ["office=advertising_agency", "office=marketing", "office=yes"],
-        "Construção": ["office=construction", "craft=construction", "shop=hardware"],
-        "Logística": ["amenity=courier", "shop=shipping", "office=logistics"],
-        "Farmácia Manipulação": ["amenity=pharmacy", "healthcare=pharmacy", "shop=chemist"],
+        "ConstruÃƒÂ§ÃƒÂ£o": ["office=construction", "craft=construction", "shop=hardware"],
+        "LogÃƒÂ­stica": ["amenity=courier", "shop=shipping", "office=logistics"],
+        "FarmÃƒÂ¡cia ManipulaÃƒÂ§ÃƒÂ£o": ["amenity=pharmacy", "healthcare=pharmacy", "shop=chemist"],
       };
 
       const nicheLabel = detectedNiche?.label || "";
@@ -3031,7 +3031,7 @@ export async function registerRoutes(
         })
         .join("\n") + "\n" + keywordTag;
 
-      const areaSearchName = municipio || targetCity || "São Paulo";
+      const areaSearchName = municipio || targetCity || "SÃƒÂ£o Paulo";
       const areaId = await resolveOsmArea(areaSearchName, targetUf);
 
       const overpassQuery = areaId 
@@ -3087,7 +3087,7 @@ export async function registerRoutes(
                 console.log(`[CompanySearch] Aplicando filtro de bairro sugerido no OSM: ${bairroFiltroInput}`);
             }
             apiSuccess = true;
-            console.log(`[CompanySearch] OSM: ${results.length} negócios reais encontrados`);
+            console.log(`[CompanySearch] OSM: ${results.length} negÃƒÂ³cios reais encontrados`);
           }
         }
       } catch (e: any) {
@@ -3105,7 +3105,7 @@ export async function registerRoutes(
   });
 
   // -----------------------------------------------------------------------
-  // Termômetro de Leads API Endpoints
+  // TermÃƒÂ´metro de Leads API Endpoints
   // -----------------------------------------------------------------------
     // Helper para enriquecer dados de CNPJ, email corporativo e telefone
   async function autoEnrichLeadCompany(name: string, locationStr: string, website?: string, existingPhone?: string, existingDoc?: string) {
@@ -3119,7 +3119,7 @@ export async function registerRoutes(
 
   app.post("/api/leads-thermometer/search", isTeam, async (req, res) => {
     try {
-      const { location = "São Paulo, SP", radiusKm = 10, productType = "Plano de Saúde", customQuery = "" } = req.body || {};
+      const { location = "SÃƒÂ£o Paulo, SP", radiusKm = 10, productType = "Plano de SaÃƒÂºde", customQuery = "" } = req.body || {};
 
       const googleApiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
       const isGooglePlacesActive = Boolean(googleApiKey && googleApiKey.trim() !== "");
@@ -3127,35 +3127,35 @@ export async function registerRoutes(
       let results: any[] = [];
 
       const PRODUCT_MAP: Record<string, { queryKeywords: string[]; targetNiche: string; cnaeHint: string }> = {
-        "Benefícios (Alimentação, Refeição, etc.)": {
+        "BenefÃƒÂ­cios (AlimentaÃƒÂ§ÃƒÂ£o, RefeiÃƒÂ§ÃƒÂ£o, etc.)": {
           queryKeywords: ["beneficios", "vale alimentacao", "vale refeicao", "empresa", "consultoria", "escritorio", "tecnologia", "industria", "rh", "comercio", "servicos"],
-          targetNiche: "Benefícios Corporativos (VA/VR/VT)",
-          cnaeHint: "Corporativo / RH / Serviços / Indústria / Tecnologia",
+          targetNiche: "BenefÃƒÂ­cios Corporativos (VA/VR/VT)",
+          cnaeHint: "Corporativo / RH / ServiÃƒÂ§os / IndÃƒÂºstria / Tecnologia",
         },
-        "Plano de Saúde": {
+        "Plano de SaÃƒÂºde": {
           queryKeywords: ["empresa", "escritorio", "clinica", "consultoria", "tecnologia"],
-          targetNiche: "Saúde & Corporativo",
-          cnaeHint: "Saúde / PME / Corporativo",
+          targetNiche: "SaÃƒÂºde & Corporativo",
+          cnaeHint: "SaÃƒÂºde / PME / Corporativo",
         },
         "Seguro de Vida": {
           queryKeywords: ["contabilidade", "advocacia", "transporte", "industria", "construtora"],
-          targetNiche: "Vida & Benefícios",
-          cnaeHint: "Serviços Profissionais / Transporte",
+          targetNiche: "Vida & BenefÃƒÂ­cios",
+          cnaeHint: "ServiÃƒÂ§os Profissionais / Transporte",
         },
         "Seguro Auto / Frota": {
           queryKeywords: ["transportadora", "locadora de veiculos", "logistica", "comercio", "distribuidora"],
           targetNiche: "Automotivo & Frotas",
-          cnaeHint: "Transporte / Logística / Auto",
+          cnaeHint: "Transporte / LogÃƒÂ­stica / Auto",
         },
         "Seguro Empresarial": {
           queryKeywords: ["industria", "restaurante", "loja", "deposito", "supermercado", "oficina"],
           targetNiche: "Patrimonial & Empresarial",
-          cnaeHint: "Comércio / Indústria / Serviços",
+          cnaeHint: "ComÃƒÂ©rcio / IndÃƒÂºstria / ServiÃƒÂ§os",
         },
         "Responsabilidade Civil": {
           queryKeywords: ["construtora", "engenharia", "medico", "agencia", "escritorio de advocacia"],
           targetNiche: "RC Profissional",
-          cnaeHint: "Construção / Serviços Profissionais",
+          cnaeHint: "ConstruÃƒÂ§ÃƒÂ£o / ServiÃƒÂ§os Profissionais",
         },
       };
 
@@ -3359,12 +3359,12 @@ export async function registerRoutes(
           score += 15;
           reasons.push("Telefone direto confirmado");
         } else {
-          reasons.push("Sem telefone público");
+          reasons.push("Sem telefone pÃƒÂºblico");
         }
 
         if (item.website) {
           score += 15;
-          reasons.push("Presença digital ativa (Website)");
+          reasons.push("PresenÃƒÂ§a digital ativa (Website)");
         }
 
         if (item.document) {
@@ -3373,11 +3373,11 @@ export async function registerRoutes(
         }
 
         score += 20;
-        reasons.push(`Perfil compatível para ${productType}`);
+        reasons.push(`Perfil compatÃƒÂ­vel para ${productType}`);
 
         if (item.userRatingsTotal && item.userRatingsTotal > 5) {
           score += 10;
-          reasons.push(`Alta atividade com ${item.userRatingsTotal} avaliações`);
+          reasons.push(`Alta atividade com ${item.userRatingsTotal} avaliaÃƒÂ§ÃƒÂµes`);
         } else {
           score += 5;
         }
@@ -3405,13 +3405,13 @@ export async function registerRoutes(
         success: true,
         isGooglePlacesActive,
         noticeMessage: !isGooglePlacesActive
-          ? "Modo de busca pública ativado. Para obter dados em tempo real da API do Google Places, configure a variável GOOGLE_PLACES_API_KEY no arquivo .env do servidor."
+          ? "Modo de busca pÃƒÂºblica ativado. Para obter dados em tempo real da API do Google Places, configure a variÃƒÂ¡vel GOOGLE_PLACES_API_KEY no arquivo .env do servidor."
           : null,
         results: scoredResults,
       });
     } catch (err: any) {
       console.error("[LeadsThermometer] Error in search route:", err);
-      res.status(500).json({ message: "Erro ao processar busca no Termômetro de Leads" });
+      res.status(500).json({ message: "Erro ao processar busca no TermÃƒÂ´metro de Leads" });
     }
   });
 
@@ -3463,7 +3463,7 @@ export async function registerRoutes(
         document,
         address,
         website,
-        productType = "Plano de Saúde",
+        productType = "Plano de SaÃƒÂºde",
         score = 75,
         temperature = "quente",
         reason = "",
@@ -3473,7 +3473,7 @@ export async function registerRoutes(
       } = req.body || {};
 
       if (!leadName || typeof leadName !== "string" || !leadName.trim()) {
-        return res.status(400).json({ message: "Nome do lead é obrigatório." });
+        return res.status(400).json({ message: "Nome do lead ÃƒÂ© obrigatÃƒÂ³rio." });
       }
 
       const userId = (req.user as any)?.id || 1;
@@ -3487,23 +3487,23 @@ export async function registerRoutes(
         document: document ? String(document).trim() : null,
         address: address ? String(address).trim() : null,
         productType: productType,
-        contactOrigin: "Termômetro de Leads",
-        notes: `[Termômetro de Leads - Score: ${score}/100 (${temperature.toUpperCase()})]\nMotivo: ${reason}\nWebsite: ${website || "N/A"}`,
+        contactOrigin: "TermÃƒÂ´metro de Leads",
+        notes: `[TermÃƒÂ´metro de Leads - Score: ${score}/100 (${temperature.toUpperCase()})]\nMotivo: ${reason}\nWebsite: ${website || "N/A"}`,
         status: "Ativo",
       };
 
       const parsedContact = insertContactSchema.parse(contactPayload);
       const result = await storage.upsertContact(parsedContact);
 
-      // Não cria lead no pipeline automaticamente a menos que solicitado explicitamente
+      // NÃƒÂ£o cria lead no pipeline automaticamente a menos que solicitado explicitamente
       let leadOpportunity = null;
       if (createPipelineLead === true || createPipelineLead === "true") {
         leadOpportunity = await storage.createLead({
           contactId: result.contact.id,
           status: "new",
-          source: "Termômetro de Leads",
+          source: "TermÃƒÂ´metro de Leads",
           product: productType,
-          notes: `[Termômetro de Leads] Score: ${score}/100 (${temperature.toUpperCase()}) - ${reason}`,
+          notes: `[TermÃƒÂ´metro de Leads] Score: ${score}/100 (${temperature.toUpperCase()}) - ${reason}`,
           assignedTo: userId,
         });
       }
@@ -3547,7 +3547,7 @@ export async function registerRoutes(
       const history = await storage.getLeadThermometerHistory(userId);
       res.json(history);
     } catch (err: any) {
-      res.status(500).json({ message: "Erro ao buscar histórico do Termômetro de Leads" });
+      res.status(500).json({ message: "Erro ao buscar histÃƒÂ³rico do TermÃƒÂ´metro de Leads" });
     }
   });
 
@@ -3581,14 +3581,14 @@ export async function registerRoutes(
 
   app.post("/api/leads-thermometer/dispatch-email", isTeam, async (req, res) => {
     try {
-      const { leads = [], subject, bodyTemplate, productType = "Benefícios Corporativos" } = req.body || {};
+      const { leads = [], subject, bodyTemplate, productType = "BenefÃƒÂ­cios Corporativos" } = req.body || {};
 
       if (!Array.isArray(leads) || leads.length === 0) {
         return res.status(400).json({ message: "Nenhum lead selecionado para envio de e-mail." });
       }
 
       if (!subject || !bodyTemplate) {
-        return res.status(400).json({ message: "Assunto e mensagem são obrigatórios para o disparo." });
+        return res.status(400).json({ message: "Assunto e mensagem sÃƒÂ£o obrigatÃƒÂ³rios para o disparo." });
       }
 
       let sentCount = 0;
@@ -3599,7 +3599,7 @@ export async function registerRoutes(
         const toEmail = (lead.email || "").trim();
         if (!toEmail || !toEmail.includes("@")) {
           failedCount++;
-          errors.push({ email: toEmail || "vazio", error: "E-mail inválido ou ausente" });
+          errors.push({ email: toEmail || "vazio", error: "E-mail invÃƒÂ¡lido ou ausente" });
           continue;
         }
 
@@ -3607,7 +3607,7 @@ export async function registerRoutes(
         const contactName = lead.contactPerson || lead.name || "Prezado(a)";
         const cnpjStr = lead.document || "";
 
-        // Interpolação das variáveis no assunto e no corpo
+        // InterpolaÃƒÂ§ÃƒÂ£o das variÃƒÂ¡veis no assunto e no corpo
         const personalizedSubject = subject
           .replace(/\{empresa\}/gi, empresaName)
           .replace(/\{nome\}/gi, contactName)
@@ -3623,12 +3623,12 @@ export async function registerRoutes(
         const styledHtml = `
           <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; line-height: 1.6; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <div style="margin-bottom: 20px; border-bottom: 2px solid #e11d48; padding-bottom: 12px;">
-              <h2 style="color: #0f172a; margin: 0; font-size: 20px;">Monteiro Seguros & Benefícios</h2>
-              <span style="font-size: 12px; color: #64748b;">Soluções Corporativas Especializadas</span>
+              <h2 style="color: #0f172a; margin: 0; font-size: 20px;">Monteiro Seguros & BenefÃƒÂ­cios</h2>
+              <span style="font-size: 12px; color: #64748b;">SoluÃƒÂ§ÃƒÂµes Corporativas Especializadas</span>
             </div>
             <div style="font-size: 14px; color: #334155; white-space: pre-wrap;">${rawHtmlBody}</div>
             <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
-              <p style="margin: 0;">Enviado por Monteiro Seguros e Soluções Corporativas | Contato: (11) 4004-0000</p>
+              <p style="margin: 0;">Enviado por Monteiro Seguros e SoluÃƒÂ§ÃƒÂµes Corporativas | Contato: (11) 4004-0000</p>
             </div>
           </div>
         `;
@@ -3648,7 +3648,7 @@ export async function registerRoutes(
           }
         } catch (e: any) {
           failedCount++;
-          errors.push({ email: toEmail, error: e.message || "Exceção no envio" });
+          errors.push({ email: toEmail, error: e.message || "ExceÃƒÂ§ÃƒÂ£o no envio" });
         }
       }
 
@@ -3658,7 +3658,7 @@ export async function registerRoutes(
         sent: sentCount,
         failed: failedCount,
         errors,
-        message: `Disparo concluído: ${sentCount} e-mails enviados com sucesso, ${failedCount} falhas.`,
+        message: `Disparo concluÃƒÂ­do: ${sentCount} e-mails enviados com sucesso, ${failedCount} falhas.`,
       });
     } catch (err: any) {
       console.error("[DispatchEmail] Erro no disparo de emails:", err);
@@ -3668,24 +3668,24 @@ export async function registerRoutes(
 
   app.post("/api/leads-thermometer/dispatch-whatsapp", isTeam, async (req, res) => {
     try {
-      const { leads = [], messageTemplate, productType = "Benefícios Corporativos", accountId } = req.body || {};
+      const { leads = [], messageTemplate, productType = "BenefÃƒÂ­cios Corporativos", accountId } = req.body || {};
 
       if (!Array.isArray(leads) || leads.length === 0) {
         return res.status(400).json({ message: "Nenhum lead selecionado para WhatsApp." });
       }
 
       if (!messageTemplate) {
-        return res.status(400).json({ message: "O texto da mensagem é obrigatório." });
+        return res.status(400).json({ message: "O texto da mensagem ÃƒÂ© obrigatÃƒÂ³rio." });
       }
 
-      // Prepara os destinatários com telefone válido
+      // Prepara os destinatÃƒÂ¡rios com telefone vÃƒÂ¡lido
       const validRecipients = leads
         .filter((l: any) => l.phone && String(l.phone).replace(/\D/g, "").length >= 8)
         .map((l: any) => {
           const rawPhone = String(l.phone).replace(/\D/g, "");
           const formattedPhone = rawPhone.length <= 11 ? `55${rawPhone}` : rawPhone;
           const empresaName = l.corporateName || l.company || l.name || "sua empresa";
-          const contactName = l.contactPerson || l.name || "olá";
+          const contactName = l.contactPerson || l.name || "olÃƒÂ¡";
 
           return {
             phone: formattedPhone,
@@ -3700,7 +3700,7 @@ export async function registerRoutes(
         });
 
       if (validRecipients.length === 0) {
-        return res.status(400).json({ message: "Nenhum dos leads selecionados possui telefone válido para WhatsApp." });
+        return res.status(400).json({ message: "Nenhum dos leads selecionados possui telefone vÃƒÂ¡lido para WhatsApp." });
       }
 
       const candidateUrls = [
@@ -3756,7 +3756,7 @@ export async function registerRoutes(
           externalBroadcast: false,
           totalQueued: validRecipients.length,
           recipients: validRecipients,
-          warning: `Não foi possível alcançar o servidor do Monteiro Conecta automaticamente (${fetchErr.message}). Links prontos para envio individual via WhatsApp Web.`,
+          warning: `NÃƒÂ£o foi possÃƒÂ­vel alcanÃƒÂ§ar o servidor do Monteiro Conecta automaticamente (${fetchErr.message}). Links prontos para envio individual via WhatsApp Web.`,
         });
       }
     } catch (err: any) {
@@ -3772,22 +3772,22 @@ export async function registerRoutes(
     if (servicesList.length === 0) {
       await storage.createService({
         title: "Seguro Auto",
-        description: "Proteção completa para seu veículo contra roubo, colisão e terceiros.",
+        description: "ProteÃƒÂ§ÃƒÂ£o completa para seu veÃƒÂ­culo contra roubo, colisÃƒÂ£o e terceiros.",
         icon: "Car",
       });
       await storage.createService({
         title: "Seguro de Vida",
-        description: "Garanta a segurança financeira da sua família em momentos difíceis.",
+        description: "Garanta a seguranÃƒÂ§a financeira da sua famÃƒÂ­lia em momentos difÃƒÂ­ceis.",
         icon: "Heart",
       });
       await storage.createService({
-        title: "Plano de Saúde",
-        description: "As melhores opções de planos de saúde para você e sua família.",
+        title: "Plano de SaÃƒÂºde",
+        description: "As melhores opÃƒÂ§ÃƒÂµes de planos de saÃƒÂºde para vocÃƒÂª e sua famÃƒÂ­lia.",
         icon: "Stethoscope",
       });
       await storage.createService({
         title: "Seguro Residencial",
-        description: "Proteja seu lar contra incêndios, roubos e danos elétricos.",
+        description: "Proteja seu lar contra incÃƒÂªndios, roubos e danos elÃƒÂ©tricos.",
         icon: "Home",
       });
     }
@@ -3797,8 +3797,8 @@ export async function registerRoutes(
       await storage.createPost({
         title: "Por que contratar um seguro auto?",
         slug: "por-que-contratar-seguro-auto",
-        summary: "Descubra a importância de ter seu veículo protegido e evite dores de cabeça.",
-        content: "Ter um seguro auto é essencial para quem busca tranquilidade no trânsito...",
+        summary: "Descubra a importÃƒÂ¢ncia de ter seu veÃƒÂ­culo protegido e evite dores de cabeÃƒÂ§a.",
+        content: "Ter um seguro auto ÃƒÂ© essencial para quem busca tranquilidade no trÃƒÂ¢nsito...",
         coverImage: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1000",
         isApproved: true,
         publishedAt: new Date(),
@@ -3807,7 +3807,7 @@ export async function registerRoutes(
         title: "Dicas para economizar no seguro",
         slug: "dicas-economizar-seguro",
         summary: "Saiba como reduzir o valor do seu seguro sem perder coberturas importantes.",
-        content: "Muitas pessoas não sabem, mas pequenas atitudes podem diminuir o valor do seguro...",
+        content: "Muitas pessoas nÃƒÂ£o sabem, mas pequenas atitudes podem diminuir o valor do seguro...",
         coverImage: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1000",
         isApproved: true,
         publishedAt: new Date(),
@@ -3829,7 +3829,7 @@ export async function registerRoutes(
     // Seed Produtos de Seguro
     const existingProdutos = await storage.getProdutosSeguro();
     if (existingProdutos.length === 0) {
-      const defaultProdutos = ["Auto", "Vida", "Saúde", "Residencial", "Empresarial", "Previdência", "Viagem", "Agrícola"];
+      const defaultProdutos = ["Auto", "Vida", "SaÃƒÂºde", "Residencial", "Empresarial", "PrevidÃƒÂªncia", "Viagem", "AgrÃƒÂ­cola"];
       for (const nome of defaultProdutos) {
         await storage.createProdutoSeguro({ nome });
       }
@@ -4008,7 +4008,7 @@ export async function registerRoutes(
         console.warn(`[External API] 401 Unauthorized attempt on ${req.method} ${req.originalUrl}. Provided key: "${extractedKey ? extractedKey.slice(0, 4) + '...' : '(none)'}". Valid keys count: ${validKeys.size}`);
         return res.status(401).json({
           success: false,
-          error: "Unauthorized: Chave de API externa inválida ou não fornecida. Informe a chave no header X-API-Key (ou crm-api-key), Authorization Bearer, ou ?api_key=",
+          error: "Unauthorized: Chave de API externa invÃƒÂ¡lida ou nÃƒÂ£o fornecida. Informe a chave no header X-API-Key (ou crm-api-key), Authorization Bearer, ou ?api_key=",
         });
       }
 
@@ -4041,7 +4041,7 @@ export async function registerRoutes(
       await storage.updateSiteSettings({ ...settings, externalApiKey: newKey });
       res.json({
         apiKey: newKey,
-        message: "Nova chave de API externa gerada com sucesso! Atualize suas conexões do WhatsApp com a nova chave.",
+        message: "Nova chave de API externa gerada com sucesso! Atualize suas conexÃƒÂµes do WhatsApp com a nova chave.",
       });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -4075,38 +4075,38 @@ export async function registerRoutes(
     const map: Record<string, string> = {
       "auto": "Auto",
       "seguro auto": "Auto",
-      "automóvel": "Auto",
+      "automÃƒÂ³vel": "Auto",
       "automovel": "Auto",
-      "saúde": "Saúde",
-      "saude": "Saúde",
-      "plano de saúde": "Saúde",
-      "plano de saude": "Saúde",
+      "saÃƒÂºde": "SaÃƒÂºde",
+      "saude": "SaÃƒÂºde",
+      "plano de saÃƒÂºde": "SaÃƒÂºde",
+      "plano de saude": "SaÃƒÂºde",
       "vida": "Vida",
       "seguro de vida": "Vida",
       "residencial": "Residencial",
-      "residência": "Residencial",
+      "residÃƒÂªncia": "Residencial",
       "residencia": "Residencial",
       "seguro residencial": "Residencial",
       "empresarial": "Empresarial",
       "vida empresarial": "Empresarial",
       "seguro empresarial": "Empresarial",
       "odonto": "Odonto",
-      "odontológico": "Odonto",
+      "odontolÃƒÂ³gico": "Odonto",
       "odontologico": "Odonto",
-      "plano odontológico": "Odonto",
+      "plano odontolÃƒÂ³gico": "Odonto",
       "plano odontologico": "Odonto",
-      "consórcio": "Consórcio",
-      "consorcio": "Consórcio",
-      "previdência": "Previdência",
-      "previdencia": "Previdência",
-      "previdência privada": "Previdência",
-      "previdencia privada": "Previdência",
-      "fiança locatícia": "Fiança Locaticia",
-      "fianca locaticia": "Fiança Locaticia",
-      "fiança locaticia": "Fiança Locaticia",
-      "fianca locatícia": "Fiança Locaticia",
-      "fiança": "Fiança Locaticia",
-      "fianca": "Fiança Locaticia",
+      "consÃƒÂ³rcio": "ConsÃƒÂ³rcio",
+      "consorcio": "ConsÃƒÂ³rcio",
+      "previdÃƒÂªncia": "PrevidÃƒÂªncia",
+      "previdencia": "PrevidÃƒÂªncia",
+      "previdÃƒÂªncia privada": "PrevidÃƒÂªncia",
+      "previdencia privada": "PrevidÃƒÂªncia",
+      "fianÃƒÂ§a locatÃƒÂ­cia": "FianÃƒÂ§a Locaticia",
+      "fianca locaticia": "FianÃƒÂ§a Locaticia",
+      "fianÃƒÂ§a locaticia": "FianÃƒÂ§a Locaticia",
+      "fianca locatÃƒÂ­cia": "FianÃƒÂ§a Locaticia",
+      "fianÃƒÂ§a": "FianÃƒÂ§a Locaticia",
+      "fianca": "FianÃƒÂ§a Locaticia",
       "responsabilidade civil": "Responsabilidade Civil",
       "rc": "Responsabilidade Civil",
       "seguro rc": "Responsabilidade Civil",
@@ -4118,8 +4118,8 @@ export async function registerRoutes(
     return map[key] || clean;
   }
 
-  // Passo 1: Helper de Conversão de Moeda no CRM
-  // Converte "3.500,00", "R$ 3.500,00" ou número em Float válido (3500.00)
+  // Passo 1: Helper de ConversÃƒÂ£o de Moeda no CRM
+  // Converte "3.500,00", "R$ 3.500,00" ou nÃƒÂºmero em Float vÃƒÂ¡lido (3500.00)
   function parseCurrencyToNumber(val: any): number | null {
     if (val === null || val === undefined || val === '') return null;
     if (typeof val === 'number') return isNaN(val) ? null : val;
@@ -4142,24 +4142,24 @@ export async function registerRoutes(
     const s = status.trim().toLowerCase();
     if (s === "respondida" || s === "respondido" || s === "responded") return "Respondida";
     if (
-      s === "cotação" ||
+      s === "cotaÃƒÂ§ÃƒÂ£o" ||
       s === "cotacao" ||
       s === "novo" ||
       s === "novo lead" ||
       s === "new" ||
-      s === "enviar cotação" ||
+      s === "enviar cotaÃƒÂ§ÃƒÂ£o" ||
       s === "enviar cotacao" ||
       s === "ativo" ||
       s === "active"
     ) return "new";
     if (
       s === "qualificado" ||
-      s === "em negociação" ||
+      s === "em negociaÃƒÂ§ÃƒÂ£o" ||
       s === "em negociacao" ||
-      s === "negociação" ||
+      s === "negociaÃƒÂ§ÃƒÂ£o" ||
       s === "negociacao" ||
       s === "qualified" ||
-      s === "revisão agendada" ||
+      s === "revisÃƒÂ£o agendada" ||
       s === "revisao agendada"
     ) return "qualified";
     if (s === "proposta" || s === "proposta enviada" || s === "proposal") return "proposal";
@@ -4258,7 +4258,7 @@ export async function registerRoutes(
         }
       }
 
-      // Mescla com produtos já existentes no contato para manter histórico
+      // Mescla com produtos jÃƒÂ¡ existentes no contato para manter histÃƒÂ³rico
       if (existingMatch && existingMatch.productType) {
         const existingParts = existingMatch.productType.split(",").map((s: string) => s.trim()).filter(Boolean);
         for (const ep of existingParts) {
@@ -4273,7 +4273,7 @@ export async function registerRoutes(
         ? finalProductList.join(", ")
         : (produtos ? String(produtos).trim() : (existingMatch?.productType || null));
 
-      // 4. Valores Numéricos Tratados
+      // 4. Valores NumÃƒÂ©ricos Tratados
       const dealVal = parseCurrencyToNumber(
         body.deal?.value ??
         body.pipeline?.value ??
@@ -4307,7 +4307,7 @@ export async function registerRoutes(
         String(rawStatus).trim().toLowerCase() === "respondido" ||
         String(rawStatus).trim().toLowerCase() === "responded";
 
-      const dealStageRaw = rawStatus || (isResponded ? "Respondida" : "Enviar Cotação");
+      const dealStageRaw = rawStatus || (isResponded ? "Respondida" : "Enviar CotaÃƒÂ§ÃƒÂ£o");
       const dealStage = isResponded ? "Respondida" : mapDealStatusToPipelineStage(dealStageRaw, isResponded);
 
       const dealProduct =
@@ -4338,7 +4338,7 @@ export async function registerRoutes(
         }
       }
 
-      // 7. Observações com data de retorno anexada se presente
+      // 7. ObservaÃƒÂ§ÃƒÂµes com data de retorno anexada se presente
       const rawNotes = body.notes || body.observacoes || body.dealNotes || body.opportunityNotes || "";
       let finalLeadNotes = rawNotes ? String(rawNotes).trim() : "";
       if (formattedDealDate) {
@@ -4348,7 +4348,7 @@ export async function registerRoutes(
         }
       }
 
-      // Endereço completo
+      // EndereÃƒÂ§o completo
       const zipCode = body.zipCode || body.cep || "";
       const addressStreet = body.address || body.rua || "";
       const addressNumber = body.number || body.numero || "";
@@ -4363,7 +4363,7 @@ export async function registerRoutes(
       if (state) fullAddress = fullAddress ? `${fullAddress} - ${state}` : state;
       if (zipCode) fullAddress = fullAddress ? `${fullAddress} (CEP: ${zipCode})` : (zipCode ? `CEP: ${zipCode}` : "");
 
-      // 8. Responsável (Lê de assignedTo.name, assignedTo.email, assignedToName, assignedToEmail ou responsavel)
+      // 8. ResponsÃƒÂ¡vel (LÃƒÂª de assignedTo.name, assignedTo.email, assignedToName, assignedToEmail ou responsavel)
       const allUsers = await storage.getUsers();
       const staffUsers = allUsers.filter(u => u.role === "admin" || u.role === "employee");
 
@@ -4446,7 +4446,7 @@ export async function registerRoutes(
         isNewContact = true;
       }
 
-      // Sincronização com tabela clientes
+      // SincronizaÃƒÂ§ÃƒÂ£o com tabela clientes
       const allClientes = await storage.getClientes();
       let linkedCliente = allClientes.find(cliente => {
         if (cliente.contactId === contactRecord.id) return true;
@@ -4522,7 +4522,7 @@ export async function registerRoutes(
       if (shouldCreateOpportunity) {
         const allExistingLeads = await storage.getLeads(contactRecord.id);
 
-        // Prevenção contra disparo duplicado de webhook em menos de 10 segundos
+        // PrevenÃƒÂ§ÃƒÂ£o contra disparo duplicado de webhook em menos de 10 segundos
         const recentDuplicate = allExistingLeads.find(l =>
           (l.product || "").trim().toLowerCase() === oppProduct.toLowerCase() &&
           l.status === dealStage &&
@@ -4532,7 +4532,7 @@ export async function registerRoutes(
         if (recentDuplicate) {
           createdLead = recentDuplicate;
         } else {
-          // Sempre cria e anexa a nova oportunidade ao histórico do contato
+          // Sempre cria e anexa a nova oportunidade ao histÃƒÂ³rico do contato
           createdLead = await storage.createLead({
             contactId: contactRecord.id,
             product: oppProduct || "Oportunidade Comercial",
@@ -4543,7 +4543,7 @@ export async function registerRoutes(
             assignedTo: resolvedAssignedTo || undefined,
           });
 
-          // Disparar automações Todoist se configuradas
+          // Disparar automaÃƒÂ§ÃƒÂµes Todoist se configuradas
           try {
             await storage.triggerTodoistAutomations('new_lead', {
               leadId: createdLead.id,
@@ -4554,7 +4554,7 @@ export async function registerRoutes(
         }
       }
 
-      // 11. Disparo Automático de E-mail para o Responsável
+      // 11. Disparo AutomÃƒÂ¡tico de E-mail para o ResponsÃƒÂ¡vel
       let emailNotificationResult: { sent: boolean; recipient?: string; error?: string } = { sent: false };
 
       const shouldNotify =
@@ -4569,7 +4569,7 @@ export async function registerRoutes(
           if (staff?.email) targetEmail = staff.email;
         }
 
-        // Fallback para e-mail corporativo de notificações caso notifyResponsible seja true mas sem e-mail específico
+        // Fallback para e-mail corporativo de notificaÃƒÂ§ÃƒÂµes caso notifyResponsible seja true mas sem e-mail especÃƒÂ­fico
         if (!targetEmail && (body.notifyResponsible === true || body.notifyResponsible === "true")) {
           const settings = await storage.getSiteSettings();
           targetEmail = settings?.smtpUser || process.env.NOTIFICATION_EMAIL || "notificacoes@monteiroseguros.com.br";
@@ -4596,18 +4596,18 @@ export async function registerRoutes(
               error: emailRes.error,
             };
             if (emailRes.success) {
-              console.log(`[External API] ✉️ E-mail de notificação de oportunidade enviado para ${targetEmail}`);
+              console.log(`[External API] Ã¢Å“â€°Ã¯Â¸Â E-mail de notificaÃƒÂ§ÃƒÂ£o de oportunidade enviado para ${targetEmail}`);
             } else {
-              console.warn(`[External API] ⚠️ Falha no envio de e-mail para ${targetEmail}:`, emailRes.error);
+              console.warn(`[External API] Ã¢Å¡Â Ã¯Â¸Â Falha no envio de e-mail para ${targetEmail}:`, emailRes.error);
             }
           } catch (mailErr: any) {
-            console.error("[External API] ❌ Erro inesperado ao disparar e-mail:", mailErr);
+            console.error("[External API] Ã¢ÂÅ’ Erro inesperado ao disparar e-mail:", mailErr);
             emailNotificationResult = { sent: false, recipient: targetEmail, error: mailErr.message };
           }
         }
       }
 
-      // 12. Se veio Apólice com número e prêmio:
+      // 12. Se veio ApÃƒÂ³lice com nÃƒÂºmero e prÃƒÂªmio:
       let createdPolicy: any = null;
       const policyNumber = body.insurance?.policyNumber || body.policyNumber;
       if (policyNumber && linkedCliente) {
@@ -4619,10 +4619,10 @@ export async function registerRoutes(
             premio: premiumVal !== null ? `R$ ${premiumVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : (body.premiumValue || body.premio || null),
             fimVigencia: expDate ? new Date(expDate) : undefined,
             status: "ativa",
-            observacoes: body.insurance?.notes || body.notes || "Apólice registrada via WhatsApp",
+            observacoes: body.insurance?.notes || body.notes || "ApÃƒÂ³lice registrada via WhatsApp",
           });
         } catch (e) {
-          console.error("[External API] Erro ao gravar apólice:", e);
+          console.error("[External API] Erro ao gravar apÃƒÂ³lice:", e);
         }
       }
 
@@ -4646,7 +4646,7 @@ export async function registerRoutes(
           status: contactRecord.status,
           produtos: contactRecord.productType,
           anniversaryDate: contactRecord.anniversaryDate,
-          type: contactRecord.type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
+          type: contactRecord.type === "company" ? "PJ (Pessoa JurÃƒÂ­dica)" : "PF (Pessoa FÃƒÂ­sica)",
           rawType: contactRecord.type,
           maritalStatus: contactRecord.maritalStatus,
           productType: contactRecord.productType,
@@ -4677,7 +4677,7 @@ export async function registerRoutes(
     }
   }
 
-  // 1. GET /api/v1/external/users & /api/v1/external/employees - Lista funcionários/responsáveis
+  // 1. GET /api/v1/external/users & /api/v1/external/employees - Lista funcionÃƒÂ¡rios/responsÃƒÂ¡veis
   app.get([
     "/api/v1/external/users",
     "/api/external/users",
@@ -4774,7 +4774,7 @@ export async function registerRoutes(
       if (!phone && !document && !email && !nameQuery) {
         return res.status(400).json({
           found: false,
-          error: "Telefone obrigatório ou informe ?document= ou ?email= para localizar o contato.",
+          error: "Telefone obrigatÃƒÂ³rio ou informe ?document= ou ?email= para localizar o contato.",
         });
       }
 
@@ -4806,7 +4806,7 @@ export async function registerRoutes(
         return false;
       });
 
-      // Se achou contato mas não cliente, vincula ou cria registro em clientes
+      // Se achou contato mas nÃƒÂ£o cliente, vincula ou cria registro em clientes
       if (matchedContact && !matchedCliente) {
         matchedCliente = allClientes.find(c =>
           c.contactId === matchedContact!.id ||
@@ -4851,7 +4851,7 @@ export async function registerRoutes(
       if (!matchedContact && !matchedCliente) {
         return res.json({
           found: false,
-          message: "Nenhum contato ou cliente localizado no CRM com as informações fornecidas.",
+          message: "Nenhum contato ou cliente localizado no CRM com as informaÃƒÂ§ÃƒÂµes fornecidas.",
           query: { phone, document, email }
         });
       }
@@ -4897,7 +4897,7 @@ export async function registerRoutes(
       const assignedUser = assignedUserId ? allUsers.find(u => u.id === assignedUserId) : null;
       const responsibleDisplayName = assignedUser?.name || responsibleName || internalResponsibleName || null;
 
-      // Busca de Apólices do Cliente
+      // Busca de ApÃƒÂ³lices do Cliente
       let linkedApolices = clienteId
         ? allApolices.filter(a => a.clienteId === clienteId)
         : (contactId ? allApolices.filter(a => {
@@ -4905,7 +4905,7 @@ export async function registerRoutes(
             return cli && cli.contactId === contactId;
           }) : []);
 
-      // Se não encontrou apólices direto pelo ID do cliente, busca por clientes com mesmo documento ou telefone
+      // Se nÃƒÂ£o encontrou apÃƒÂ³lices direto pelo ID do cliente, busca por clientes com mesmo documento ou telefone
       if (linkedApolices.length === 0) {
         const clientDoc = cleanDigits(finalDoc);
         const clientPhoneClean = cleanDigits(finalPhone);
@@ -4939,7 +4939,7 @@ export async function registerRoutes(
 
         const productName = prod?.nome || a.ramo || a.numeroApolice || "Seguro";
         const insurerName = seg?.nome || "Seguradora";
-        const polNum = a.numeroApolice || a.idApolice || "Sem número";
+        const polNum = a.numeroApolice || a.idApolice || "Sem nÃƒÂºmero";
 
         return {
           id: a.id,
@@ -4951,17 +4951,17 @@ export async function registerRoutes(
           insurer: insurerName,
           seguradora: insurerName,
           companhia: insurerName,
-          // Número da Apólice (suporta 'policyNumber', 'apolice' e 'numeroApolice')
+          // NÃƒÂºmero da ApÃƒÂ³lice (suporta 'policyNumber', 'apolice' e 'numeroApolice')
           policyNumber: polNum,
           apolice: polNum,
           numeroApolice: polNum,
-          // Data de Término de Vigência (suporta 'expirationDate', 'vencimento', 'vigenciaFim', 'fimVigencia')
+          // Data de TÃƒÂ©rmino de VigÃƒÂªncia (suporta 'expirationDate', 'vencimento', 'vigenciaFim', 'fimVigencia')
           expirationDate: expIso || expBr || "",
           vencimento: expBr || expIso || "",
           vigenciaFim: expIso || expBr || "",
           fimVigencia: expIso || expBr || null,
           inicioVigencia: a.inicioVigencia ? new Date(a.inicioVigencia).toISOString().split('T')[0] : null,
-          // Valor do Prêmio (suporta 'premiumValue', 'valorPremio' e 'premio')
+          // Valor do PrÃƒÂªmio (suporta 'premiumValue', 'valorPremio' e 'premio')
           premiumValue: pFormatted,
           valorPremio: pFormatted,
           premio: pFormatted,
@@ -5006,7 +5006,7 @@ export async function registerRoutes(
         };
       });
 
-      // Monta resposta compatível com Monteiro Conecta / WhatsApp Central
+      // Monta resposta compatÃƒÂ­vel com Monteiro Conecta / WhatsApp Central
       return res.json({
         found: true,
         // 1. ID do cliente na raiz para redirecionar para /admin/clientes/:id
@@ -5030,7 +5030,7 @@ export async function registerRoutes(
           status,
           produtos: productType,
           anniversaryDate,
-          type: type === "company" ? "PJ (Pessoa Jurídica)" : "PF (Pessoa Física)",
+          type: type === "company" ? "PJ (Pessoa JurÃƒÂ­dica)" : "PF (Pessoa FÃƒÂ­sica)",
           rawType: type,
           maritalStatus,
           productType,
@@ -5056,7 +5056,7 @@ export async function registerRoutes(
           rawContact: matchedContact || null,
           rawCliente: matchedCliente || null,
         },
-        // 2. Bloco insurance com as apólices ativas e formatadas
+        // 2. Bloco insurance com as apÃƒÂ³lices ativas e formatadas
         insurance: {
           activePoliciesCount: activePolicies.length,
           totalPoliciesCount: linkedApolices.length,
@@ -5078,9 +5078,19 @@ export async function registerRoutes(
     }
   }
 
-  // Registra as rotas de consulta (suporta GET e POST para máxima compatibilidade)
+  // Registra as rotas de consulta (suporta GET e POST para mÃƒÂ¡xima compatibilidade)
   app.get(lookupRoutes, externalApiKeyAuth, handleContactLookup);
   app.post(lookupRoutes, externalApiKeyAuth, handleContactLookup);
+
+  try {
+    // @ts-ignore
+    const { registerSimulationRoutes } = await import("./simulation-routes");
+    if (typeof registerSimulationRoutes === "function") {
+      registerSimulationRoutes(app);
+    }
+  } catch (err: any) {
+    console.warn("[Simulation] Simulation routes skipped:", err.message);
+  }
 
   return httpServer;
 }

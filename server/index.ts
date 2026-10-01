@@ -1,4 +1,12 @@
 import "dotenv/config";
+
+process.on("unhandledRejection", (reason: any) => {
+  console.warn("[PROCESS] Unhandled rejection captured (server kept alive):", reason?.message || reason);
+});
+process.on("uncaughtException", (error: any) => {
+  console.warn("[PROCESS] Uncaught exception captured (server kept alive):", error?.message || error);
+});
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -263,7 +271,10 @@ app.use((req, res, next) => {
       read BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
-    `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Ativo' NOT NULL;`
+    `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Ativo' NOT NULL;`,
+    `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS active_theme text DEFAULT 'default';`,
+    `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS theme_outubro_rosa boolean DEFAULT false;`,
+    `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS theme_outubro_rosa_badge boolean DEFAULT true;`
   ];
 
   // Run database sync asynchronously or non-blockingly so server startup is instant
