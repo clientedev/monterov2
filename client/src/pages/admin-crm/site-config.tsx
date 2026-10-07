@@ -43,6 +43,7 @@ import {
     RefreshCw,
     Search,
     Edit3,
+    Clock,
     Sparkles,
     Heart,
     ShieldCheck,
@@ -171,6 +172,7 @@ function SlideDialog({
             imageBase64: slide?.imageBase64 || "",
             videoUrl: slide?.videoUrl || "",
             videoFit: (slide?.videoFit === "contain" ? "contain" : "cover") as "cover" | "contain",
+            slideDuration: slide?.slideDuration ?? 7,
             buttonText: slide?.buttonText || "Cotação Gratuita",
             buttonLink: slide?.buttonLink || "/contact",
             order: slide?.order ?? 0,
@@ -182,6 +184,7 @@ function SlideDialog({
     const currentVideoUrl = form.watch("videoUrl") || "";
     const currentVideoFit = form.watch("videoFit") || "cover";
     const currentImage = form.watch("imageBase64") || "";
+    const currentDuration = form.watch("slideDuration") ?? 7;
 
     useEffect(() => {
         if (open) {
@@ -192,6 +195,7 @@ function SlideDialog({
                 imageBase64: slide?.imageBase64 || "",
                 videoUrl: slide?.videoUrl || "",
                 videoFit: (slide?.videoFit === "contain" ? "contain" : "cover") as "cover" | "contain",
+                slideDuration: slide?.slideDuration ?? 7,
                 buttonText: slide?.buttonText || "Cotação Gratuita",
                 buttonLink: slide?.buttonLink || "/contact",
                 order: slide?.order ?? 0,
@@ -208,6 +212,7 @@ function SlideDialog({
             videoFit: data.videoFit || "cover",
             videoUrl: data.videoUrl?.trim() || null,
             imageBase64: data.imageBase64?.trim() || null,
+            slideDuration: Number(data.slideDuration) || 7,
         };
 
         if (payload.mediaType === "video" && !payload.videoUrl) {
@@ -560,6 +565,48 @@ function SlideDialog({
                                         <Input {...form.register("buttonLink")} className="h-11 rounded-xl" />
                                     </div>
                                 </div>
+
+                                {/* Seletor de Duração do Slide / Vídeo */}
+                                <div className="space-y-2.5 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                            <Clock className="h-3.5 w-3.5 text-primary" />
+                                            Tempo de Exibição / Duração
+                                        </Label>
+                                        <span className="text-xs font-black text-primary font-mono bg-white px-2.5 py-0.5 rounded-full border border-slate-200 shadow-xs">
+                                            {form.watch("slideDuration") || 7} segundos
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            type="number"
+                                            min={3}
+                                            max={180}
+                                            {...form.register("slideDuration", { valueAsNumber: true })}
+                                            className="h-10 rounded-xl font-mono text-sm w-24 bg-white"
+                                        />
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            {[5, 7, 10, 15, 20, 30].map((sec) => (
+                                                <button
+                                                    key={sec}
+                                                    type="button"
+                                                    onClick={() => form.setValue("slideDuration", sec)}
+                                                    className={cn(
+                                                        "px-2.5 py-1 rounded-lg text-xs font-bold transition-all",
+                                                        form.watch("slideDuration") === sec
+                                                            ? "bg-primary text-white shadow-sm"
+                                                            : "bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
+                                                    )}
+                                                >
+                                                    {sec}s
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500">
+                                        Tempo que este slide/vídeo permanece na tela antes de passar para o próximo.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -837,8 +884,8 @@ export default function SiteConfigPage() {
                     <TabsTrigger value="themes" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <Sparkles className="h-4 w-4 text-pink-500" /> Temas
                     </TabsTrigger>
-                    <TabsTrigger value="home" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
-                        <LayoutTemplate className="h-4 w-4" /> Home
+                    <TabsTrigger value="home" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2 font-bold text-slate-800">
+                        <Film className="h-4 w-4 text-primary" /> Banners & Vídeos
                     </TabsTrigger>
                     <TabsTrigger value="pages" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-2.5 gap-2">
                         <Info className="h-4 w-4" /> Páginas
@@ -1469,8 +1516,12 @@ export default function SiteConfigPage() {
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="space-y-1">
-                                                            <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-2 flex-wrap">
                                                                 <p className="font-bold text-slate-900 line-clamp-1">{slide.title}</p>
+                                                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-semibold border text-slate-700 bg-slate-50 border-slate-300 flex items-center gap-1">
+                                                                    <Clock className="w-2.5 h-2.5 text-slate-500" />
+                                                                    {slide.slideDuration || 7}s
+                                                                </Badge>
                                                                 {(slide.mediaType === "video" || slide.videoUrl) && (
                                                                     <Badge variant="outline" className={cn(
                                                                         "text-[10px] px-1.5 py-0 font-semibold border",
@@ -1478,7 +1529,7 @@ export default function SiteConfigPage() {
                                                                             ? "text-emerald-700 bg-emerald-50 border-emerald-300" 
                                                                             : "text-blue-700 bg-blue-50 border-blue-300"
                                                                     )}>
-                                                                        {slide.videoFit === "contain" ? "Sem Cortes (100%)" : "Cover"}
+                                                                        {slide.videoFit === "contain" ? "Sem Cortes" : "Cover"}
                                                                     </Badge>
                                                                 )}
                                                             </div>

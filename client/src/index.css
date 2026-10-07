@@ -162,18 +162,18 @@
    Ao desativar o tema, tudo retorna 100% ao estado original.
 ======================================================== */
 [data-theme="outubro-rosa"] {
-  --primary: 344 42% 55%; /* #be5f77 - Rosa suave e acolhedor */
+  --primary: 341 64% 56%; /* #d94676 - Rosa atraente, vivo e delicado */
   --primary-foreground: 0 0% 100%;
-  --secondary: 345 42% 68%; /* #d68a9f - Rosa pétala / blush */
+  --secondary: 341 73% 68%; /* #ea7297 - Blush luminoso e sofisticado */
   --secondary-foreground: 0 0% 100%;
-  --ring: 344 42% 55%;
-  --brand-gradient-start: #3a232f; /* Bordeaux nobre e sutil */
-  --brand-gradient-end: #26161f;
-  --navbar-bg: rgba(54, 32, 43, 0.94);
-  --primary-hex: #be5f77;
-  --secondary-hex: #d68a9f;
-  --primary-default: #be5f77;
-  --secondary-default: #d68a9f;
+  --ring: 341 64% 56%;
+  --brand-gradient-start: #481d2e; /* Bordô rosewood nobre e aveludado */
+  --brand-gradient-end: #2d121c;
+  --navbar-bg: rgba(69, 28, 43, 0.95);
+  --primary-hex: #d94676;
+  --secondary-hex: #ea7297;
+  --primary-default: #d94676;
+  --secondary-default: #ea7297;
 }
 
 /* ── Garantia de Títulos e Textos Brancos em Áreas Escuras ── */

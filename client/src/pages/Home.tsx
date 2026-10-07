@@ -119,14 +119,16 @@ export default function Home() {
   const dbActiveSlides = (slides?.filter(s => s.isActive) || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const displaySlides = dbActiveSlides.length > 0 ? dbActiveSlides : defaultSlides;
 
-  // Auto-play interval for smooth cross-fade dissolve transition
+  // Auto-play dinâmico respeitando o tempo selecionado de cada slide/vídeo
   useEffect(() => {
     if (displaySlides.length <= 1) return;
-    const interval = setInterval(() => {
+    const currentSlide = displaySlides[currentSlideIndex];
+    const durationSeconds = (currentSlide as any)?.slideDuration || 7;
+    const timer = setTimeout(() => {
       setCurrentSlideIndex((prev) => (prev + 1) % displaySlides.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [displaySlides.length]);
+    }, Math.max(3, durationSeconds) * 1000);
+    return () => clearTimeout(timer);
+  }, [displaySlides, currentSlideIndex]);
 
   // Sanitize phone for dynamic WhatsApp links
   const whatsappNumber = settings?.contactPhone 
@@ -211,7 +213,7 @@ export default function Home() {
                                 src={slide.videoUrl}
                                 autoPlay
                                 loop
-                                muted={isHeroMuted}
+                                muted
                                 playsInline
                                 preload="auto"
                                 poster={slide.imageBase64 || undefined}
@@ -248,13 +250,6 @@ export default function Home() {
                           transition={{ duration: 0.8 }}
                           className="space-y-6"
                         >
-                          {isVideo && (
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-amber-300">
-                              <Film className="w-3.5 h-3.5" />
-                              <span>{isContain ? "Vídeo HD • Visão Completa" : "Vídeo HD • Cinema"}</span>
-                            </div>
-                          )}
-
                           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight drop-shadow-sm">
                             {slide.title}
                           </h1>
@@ -288,32 +283,6 @@ export default function Home() {
               })}
             </AnimatePresence>
 
-            {/* Controle de Áudio Flutuante para Banners com Vídeo */}
-            {Boolean(
-              displaySlides[currentSlideIndex]?.mediaType === "video" || 
-              displaySlides[currentSlideIndex]?.videoUrl
-            ) && (
-              <div className="absolute bottom-8 right-6 z-20 hidden sm:flex items-center">
-                <button
-                  type="button"
-                  onClick={() => setIsHeroMuted(!isHeroMuted)}
-                  className="h-10 px-4 rounded-full bg-black/60 hover:bg-black/85 border border-white/20 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all"
-                  title={isHeroMuted ? "Ativar som do vídeo" : "Silenciar áudio"}
-                >
-                  {isHeroMuted ? (
-                    <>
-                      <VolumeX className="w-4 h-4 text-slate-300" />
-                      <span>Áudio Mudo</span>
-                    </>
-                  ) : (
-                    <>
-                      <Volume2 className="w-4 h-4 text-emerald-400 animate-pulse" />
-                      <span className="text-emerald-300">Som Ativo</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
 
             {/* Dots indicators for slide control */}
             {displaySlides.length > 1 && (
@@ -385,6 +354,7 @@ export default function Home() {
                         <div className="overflow-hidden aspect-[16/9] w-full bg-slate-950 flex items-center justify-center relative">
                           <InstagramCachedVideo
                             videoUrl={post.videoUrl}
+                            instagramUrl={post.instagramUrl}
                             fallbackImage={post.coverImage}
                             title={post.title}
                             aspectRatio="video"
@@ -930,6 +900,7 @@ export default function Home() {
                     {isInstagram ? (
                       <InstagramCachedVideo
                         videoUrl={post.videoUrl}
+                        instagramUrl={post.instagramUrl}
                         fallbackImage={post.coverImage}
                         title={post.title}
                         aspectRatio="video"

@@ -231,6 +231,7 @@ export const heroSlides = pgTable("hero_slides", {
   imageBase64: text("image_base64"),
   videoUrl: text("video_url"),
   videoFit: text("video_fit").notNull().default("cover"), // 'cover' | 'contain'
+  slideDuration: integer("slide_duration").notNull().default(7), // duração do slide/vídeo em segundos
   buttonText: text("button_text").notNull().default("Cotação Gratuita"),
   buttonLink: text("button_link").notNull().default("/contact"),
   order: integer("order").notNull().default(0),
@@ -402,6 +403,7 @@ export const insertHeroSlideSchema = createInsertSchema(heroSlides, {
   videoUrl: z.string().nullable().optional(),
   videoFit: z.enum(["cover", "contain"]).default("cover"),
   imageBase64: z.string().nullable().optional(),
+  slideDuration: z.coerce.number().min(3).max(180).default(7),
 }).omit({ id: true, createdAt: true });
 export const insertProspectingChecklistSchema = createInsertSchema(prospectingChecklists).omit({ id: true, createdAt: true });
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, isApproved: true });
