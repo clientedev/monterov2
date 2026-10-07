@@ -8,12 +8,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart, MessageCircle, Share2, Bookmark,
   AlertCircle, RefreshCw, Play, BadgeCheck,
-  Star, ChevronRight, X, Copy, Check, Download
+  Star, ChevronRight, X, Copy, Check, Download,
+  Instagram, FileText, Sparkles, ExternalLink
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { InstagramEmbed } from "@/components/InstagramEmbed";
 
 const formatDate = (d: string | Date | null | undefined) => {
   if (!d) return "";
@@ -407,6 +410,15 @@ export default function Blog() {
   const [saved, setSaved] = useState<Set<number>>(new Set());
   const [sharingPost, setSharingPost] = useState<any | null>(null);
 
+  const [activeTab, setActiveTab] = useState<"all" | "posts" | "articles">(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("tab") === "posts") return "posts";
+      if (p.get("tab") === "articles") return "articles";
+    }
+    return "all";
+  });
+
   const likeMut = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/posts/${id}/like`, {}),
     onSuccess: (_d, id) => {
@@ -423,6 +435,16 @@ export default function Blog() {
     return !isNaN(d.getTime()) && d <= gracePeriod;
   });
 
+  const instaPostsCount = visiblePosts?.filter(p => !!p.instagramUrl || p.postType === "instagram").length || 0;
+  const articlesCount = visiblePosts?.filter(p => !p.instagramUrl && p.postType !== "instagram").length || 0;
+
+  const displayPosts = visiblePosts?.filter((p) => {
+    const isInsta = !!p.instagramUrl || p.postType === "instagram";
+    if (activeTab === "posts") return isInsta;
+    if (activeTab === "articles") return !isInsta;
+    return true;
+  });
+
   return (
     <div className="min-h-screen font-sans bg-[#f0ede8]">
       <Navbar />
@@ -437,23 +459,94 @@ export default function Blog() {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.03]" />
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
         <div className="container px-4 md:px-6 mx-auto relative z-10 text-center">
-          <p className="text-[#c65f54] font-bold uppercase tracking-widest text-xs mb-3">Blog &amp; Conteúdo</p>
+          <p className="text-[#c65f54] font-bold uppercase tracking-widest text-xs mb-3">Blog &amp; Redes Sociais</p>
           <h1 className="text-3xl md:text-5xl font-display font-bold text-white mb-3 leading-tight">
-            Artigos &amp; Novidades
+            Artigos, Dicas &amp; Posts
           </h1>
-          <p className="text-white/50 text-sm md:text-base max-w-md mx-auto font-light">
-            Dicas, tendências e novidades sobre seguros e benefícios.
+          <p className="text-white/60 text-sm md:text-base max-w-md mx-auto font-light">
+            Acompanhe nossas publicações no Instagram e artigos completos sobre seguros e benefícios.
           </p>
-          <div className="flex items-center justify-center mt-5">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm font-semibold">
-              {visiblePosts?.length ?? 0} artigos publicados
+          <div className="flex items-center justify-center gap-3 mt-5 flex-wrap">
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs font-semibold">
+              <span>{visiblePosts?.length ?? 0} publicações</span>
             </div>
+            <a
+              href="https://www.instagram.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold text-white shadow-sm hover:opacity-95 transition-all"
+              style={{ background: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" }}
+            >
+              <Instagram className="w-3.5 h-3.5" />
+              <span>@monteiroseguros</span>
+            </a>
           </div>
         </div>
       </div>
 
+      {/* ── Tabs: Todos | Posts | Artigos ── */}
+      <div className="max-w-[680px] mx-auto px-4 pt-8">
+        <div className="flex items-center justify-center p-1.5 bg-white rounded-2xl shadow-sm border border-slate-200/80 gap-1.5">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={cn(
+              "flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-2",
+              activeTab === "all"
+                ? "bg-[#08454c] text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            )}
+          >
+            <span>Todos</span>
+            <span className={cn(
+              "text-[10px] px-2 py-0.5 rounded-full font-bold",
+              activeTab === "all" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+            )}>
+              {visiblePosts?.length ?? 0}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("posts")}
+            className={cn(
+              "flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-2",
+              activeTab === "posts"
+                ? "bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white shadow-md"
+                : "text-slate-600 hover:text-pink-600 hover:bg-pink-50/50"
+            )}
+          >
+            <Instagram className="w-4 h-4" />
+            <span>Posts</span>
+            <span className={cn(
+              "text-[10px] px-2 py-0.5 rounded-full font-bold",
+              activeTab === "posts" ? "bg-white/20 text-white" : "bg-pink-100 text-pink-700"
+            )}>
+              {instaPostsCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("articles")}
+            className={cn(
+              "flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-2",
+              activeTab === "articles"
+                ? "bg-[#163b52] text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            )}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Artigos</span>
+            <span className={cn(
+              "text-[10px] px-2 py-0.5 rounded-full font-bold",
+              activeTab === "articles" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+            )}>
+              {articlesCount}
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* ── Feed ── */}
-      <div className="max-w-[680px] mx-auto px-4 py-8 space-y-5">
+      <div className="max-w-[680px] mx-auto px-4 py-6 space-y-6">
 
         {isError && (
           <div className="bg-white rounded-2xl border border-red-100 p-10 text-center space-y-4 shadow-sm">
@@ -482,28 +575,65 @@ export default function Blog() {
           </div>
         ))}
 
-        {!isLoading && !isError && (!visiblePosts || visiblePosts.length === 0) && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-16 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-5">
-              <MessageCircle className="w-8 h-8 text-slate-300" />
+        {!isLoading && !isError && (!displayPosts || displayPosts.length === 0) && (
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-16 text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-50 to-amber-50 border border-pink-100 flex items-center justify-center mx-auto mb-3">
+              {activeTab === "posts" ? (
+                <Instagram className="w-8 h-8 text-pink-500" />
+              ) : (
+                <MessageCircle className="w-8 h-8 text-slate-300" />
+              )}
             </div>
-            <h3 className="font-bold text-slate-700 text-lg mb-1">Nenhum artigo ainda</h3>
-            <p className="text-slate-400 text-sm">Em breve novos conteúdos serão publicados.</p>
+            <h3 className="font-bold text-slate-800 text-lg">
+              {activeTab === "posts"
+                ? "Nenhum post do Instagram cadastrado ainda"
+                : activeTab === "articles"
+                ? "Nenhum artigo encontrado"
+                : "Nenhum conteúdo publicado ainda"}
+            </h3>
+            <p className="text-slate-400 text-sm max-w-sm mx-auto">
+              {activeTab === "posts"
+                ? "Adicione o link de qualquer post ou reel do Instagram no painel administrativo para exibi-lo aqui!"
+                : "Em breve novos conteúdos serão disponibilizados."}
+            </p>
           </div>
         )}
 
-        {!isLoading && !isError && visiblePosts?.map((post, index) => (
-          <Post
-            key={post.id}
-            post={post}
-            index={index}
-            isLiked={liked.has(post.id)}
-            isSaved={saved.has(post.id)}
-            onLike={() => likeMut.mutate(post.id)}
-            onSave={() => setSaved(p => { const n = new Set(p); n.has(post.id) ? n.delete(post.id) : n.add(post.id); return n; })}
-            onShare={() => setSharingPost(post)}
-          />
-        ))}
+        {!isLoading && !isError && displayPosts?.map((post, index) => {
+          if (post.instagramUrl) {
+            return (
+              <motion.div
+                key={post.id}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: Math.min(index * 0.06, 0.3), duration: 0.45 }}
+              >
+                <InstagramEmbed
+                  url={post.instagramUrl}
+                  title={post.title}
+                  summary={post.summary}
+                  coverImage={post.coverImage}
+                  likes={post.likes}
+                  compact={false}
+                />
+              </motion.div>
+            );
+          }
+
+          return (
+            <Post
+              key={post.id}
+              post={post}
+              index={index}
+              isLiked={liked.has(post.id)}
+              isSaved={saved.has(post.id)}
+              onLike={() => likeMut.mutate(post.id)}
+              onSave={() => setSaved(p => { const n = new Set(p); n.has(post.id) ? n.delete(post.id) : n.add(post.id); return n; })}
+              onShare={() => setSharingPost(post)}
+            />
+          );
+        })}
       </div>
 
       <Footer />

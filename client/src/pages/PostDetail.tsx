@@ -3,7 +3,7 @@ import { Footer } from "@/components/Footer";
 import { usePost, useComments } from "@/hooks/use-content";
 import { useRoute, Link } from "wouter";
 import { format } from "date-fns";
-import { ArrowLeft, Share2, Heart, MessageSquare, Facebook, Twitter, Linkedin } from "lucide-react";
+import { ArrowLeft, Share2, Heart, MessageSquare, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
+import { InstagramEmbed } from "@/components/InstagramEmbed";
 
 function getYouTubeID(url: string) {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -137,16 +138,28 @@ export default function PostDetail() {
             </h1>
           </header>
 
-          <div className="aspect-video overflow-hidden mb-12 shadow-lg bg-slate-950 flex items-center justify-center">
-            <img
-              src={post.coverImage || "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200"}
-              alt={post.title}
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200";
-              }}
-            />
-          </div>
+          {post.instagramUrl ? (
+            <div className="mb-12 flex justify-center">
+              <InstagramEmbed
+                url={post.instagramUrl}
+                title={post.title}
+                summary={post.summary}
+                coverImage={post.coverImage}
+                likes={post.likes}
+              />
+            </div>
+          ) : (
+            <div className="aspect-video overflow-hidden mb-12 shadow-lg bg-slate-950 flex items-center justify-center">
+              <img
+                src={post.coverImage || "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200"}
+                alt={post.title}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200";
+                }}
+              />
+            </div>
+          )}
 
           <div className="prose prose-lg prose-slate prose-headings:font-display prose-headings:font-bold prose-a:text-primary max-w-none">
             <div 

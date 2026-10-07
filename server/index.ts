@@ -134,6 +134,8 @@ app.use((req, res, next) => {
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS published_at timestamp DEFAULT NOW()`,
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_url text`,
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS youtube_url text`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS instagram_url text`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS post_type text DEFAULT 'article'`,
     `ALTER TABLE clientes ADD COLUMN IF NOT EXISTS nome_representante text`,
     `ALTER TABLE clientes ADD COLUMN IF NOT EXISTS telefone_representante text`,
     `ALTER TABLE clientes ADD COLUMN IF NOT EXISTS email_representante text`,

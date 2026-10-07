@@ -14,6 +14,8 @@ export const posts = pgTable("posts", {
   likes: integer("likes").default(0).notNull(),
   videoUrl: text("video_url"),
   youtubeUrl: text("youtube_url"),
+  instagramUrl: text("instagram_url"),
+  postType: text("post_type").default("article"),
   isApproved: boolean("is_approved").default(false).notNull(),
   isFeatured: boolean("is_featured").default(false).notNull(),
   publishedAt: timestamp("published_at").defaultNow(),
@@ -359,11 +361,13 @@ export const apolices = pgTable("apolices", {
 
 export const insertPostSchema = createInsertSchema(posts, {
   publishedAt: z.coerce.date().optional(),
-  title: z.string().min(3, "Título precisa ter ao menos 3 caracteres"),
-  slug: z.string().min(3, "Slug precisa ter ao menos 3 caracteres").regex(/^[a-z0-9-]+$/, "Slug deve conter apenas letras minúsculas, números e hífens"),
-  content: z.string().min(10, "Conteúdo muito curto"),
-  summary: z.string().min(5, "Resumo muito curto"),
+  title: z.string().min(2, "Título precisa ter ao menos 2 caracteres"),
+  slug: z.string().min(2, "Slug precisa ter ao menos 2 caracteres").regex(/^[a-z0-9-]+$/, "Slug deve conter apenas letras minúsculas, números e hífens"),
+  content: z.string().optional().default(""),
+  summary: z.string().optional().default(""),
   coverImage: z.string().min(1, "Imagem de capa obrigatória"),
+  instagramUrl: z.string().nullable().optional(),
+  postType: z.string().nullable().optional(),
   isApproved: z.boolean().optional(),
 }).omit({ id: true, createdAt: true, likes: true });
 export const insertInquirySchema = createInsertSchema(inquiries).omit({ id: true, createdAt: true });

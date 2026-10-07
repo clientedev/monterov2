@@ -1,7 +1,10 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, Loader2, MessageSquare, ShieldCheck, Zap, Heart, Sparkles } from "lucide-react";
+import {
+  ArrowRight, CheckCircle2, Star, Loader2, MessageSquare, ShieldCheck,
+  Zap, Heart, Sparkles, Instagram, ExternalLink, Play, FileText
+} from "lucide-react";
 import { Link } from "wouter";
 import { useServices, usePosts } from "@/hooks/use-content";
 import { useSiteSettings } from "@/hooks/use-site-settings";
@@ -16,6 +19,7 @@ export default function Home() {
   const { data: posts, isLoading: loadingPosts } = usePosts();
   const { settings, slides, isLoadingSettings: loadingSettings } = useSiteSettings();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [homePostsTab, setHomePostsTab] = useState<"all" | "instagram" | "articles">("all");
 
   const fallbackPosts = [
     {
@@ -656,76 +660,227 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Blog Teaser */}
-      <section className="py-28 bg-[#f5f2eb] border-t border-slate-100">
-        <div className="container px-4 md:px-6 mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-6">
+      {/* Nossos Posts Section (Instagram & Blog) */}
+      <section id="posts" className="py-28 bg-[#f5f2eb] border-t border-slate-100 relative overflow-hidden">
+        <div className="container px-4 md:px-6 mx-auto relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
             <div>
-              <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Conteúdo Educativo</span>
-              <h2 className="text-3xl md:text-5xl font-display font-bold mt-3 text-[#163b52]">
-                {settings?.blogTitle || "Artigos & Dicas"}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-amber-500/10 border border-pink-300/40 text-pink-700 text-xs font-bold uppercase tracking-wider mb-3">
+                <Instagram className="w-3.5 h-3.5 text-pink-600" />
+                <span>Nossos Posts &amp; Redes Sociais</span>
+              </div>
+              <h2 className="text-3xl md:text-5xl font-display font-bold text-[#163b52] leading-tight">
+                Nossos Posts
               </h2>
+              <p className="text-slate-500 text-sm md:text-base mt-2 max-w-xl font-light">
+                Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog.
+              </p>
             </div>
-            <Link href="/blog">
-              <button className="hidden md:flex items-center gap-2 px-6 py-3 rounded-full text-[#163b52] border border-[#809ba6]/30 hover:bg-[#eae4da]/50 transition-all duration-300 shadow-sm font-bold">
-                Ver Todas as Postagens
-              </button>
-            </Link>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <a
+                href="https://www.instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-md hover:opacity-95 transition-all hover:scale-105"
+                style={{ background: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" }}
+              >
+                <Instagram className="w-4 h-4" />
+                <span>Seguir no Instagram</span>
+              </a>
+
+              <Link href="/blog?tab=posts">
+                <button className="hidden sm:inline-flex items-center gap-2 px-5 py-3 rounded-full text-[#163b52] bg-white border border-[#809ba6]/30 hover:bg-slate-50 transition-all font-bold text-sm shadow-sm">
+                  <span>Ver Todos no Blog</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </div>
           </div>
 
+          {/* Interactive Category Filter */}
+          <div className="flex items-center gap-2 mb-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-200/80 w-fit">
+            <button
+              onClick={() => setHomePostsTab("all")}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all",
+                homePostsTab === "all"
+                  ? "bg-[#08454c] text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              )}
+            >
+              Todos ({validPosts.length})
+            </button>
+            <button
+              onClick={() => setHomePostsTab("instagram")}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5",
+                homePostsTab === "instagram"
+                  ? "bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white shadow-md"
+                  : "text-slate-600 hover:text-pink-600 hover:bg-pink-50/50"
+              )}
+            >
+              <Instagram className="w-3.5 h-3.5" />
+              <span>Posts do Instagram</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/10">
+                {validPosts.filter(p => !!p.instagramUrl || p.postType === "instagram").length}
+              </span>
+            </button>
+            <button
+              onClick={() => setHomePostsTab("articles")}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5",
+                homePostsTab === "articles"
+                  ? "bg-[#163b52] text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              )}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Artigos</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/10">
+                {validPosts.filter(p => !p.instagramUrl && p.postType !== "instagram").length}
+              </span>
+            </button>
+          </div>
+
+          {/* Posts Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {loadingPosts ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-96 bg-white rounded-none animate-pulse border border-slate-100" />
+                <div key={i} className="h-96 bg-white rounded-2xl animate-pulse border border-slate-100 shadow-sm" />
               ))
-            ) : (
-              validPosts.slice(0, 3).map((post, index) => (
-                <Link key={post.id} href={`/blog/${post.slug}`}>
+            ) : (() => {
+              const filtered = validPosts.filter((p) => {
+                const isInsta = !!p.instagramUrl || p.postType === "instagram";
+                if (homePostsTab === "instagram") return isInsta;
+                if (homePostsTab === "articles") return !isInsta;
+                return true;
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="col-span-full bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-pink-50 border border-pink-100 flex items-center justify-center mx-auto text-pink-600">
+                      <Instagram className="w-7 h-7" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">Nenhum post nesta categoria</h3>
+                    <p className="text-sm text-slate-400 max-w-md mx-auto">
+                      Cadastre novos posts ou integre publicações do Instagram através do painel de administração.
+                    </p>
+                  </div>
+                );
+              }
+
+              return filtered.slice(0, 6).map((post, index) => {
+                const isInstagram = !!post.instagramUrl || post.postType === "instagram";
+
+                return (
                   <motion.div
+                    key={post.id}
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.08 }}
-                    className="group cursor-pointer bg-white rounded-none overflow-hidden border border-slate-100 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col justify-between"
+                    className="group bg-white rounded-3xl overflow-hidden border border-slate-200/80 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col justify-between shadow-sm relative"
                   >
-                    <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 flex items-center justify-center relative p-1">
+                    {/* Badge de Categoria */}
+                    <div className="absolute top-3.5 left-3.5 z-20">
+                      {isInstagram ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-white shadow-md bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888]">
+                          <Instagram className="w-3.5 h-3.5" />
+                          Instagram
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold text-slate-700 bg-white/95 backdrop-blur-sm shadow-sm border border-slate-200">
+                          <FileText className="w-3 h-3 text-[#08454c]" />
+                          Artigo
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Media Preview */}
+                    <div className="overflow-hidden aspect-[16/10] w-full bg-slate-900 flex items-center justify-center relative group">
                       <img
-                        src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
+                        src={post.coverImage || (isInstagram ? "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800" : "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800")}
                         alt={post.title}
                         onError={(e) => {
-                          e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
+                          e.currentTarget.src = isInstagram
+                            ? "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800"
+                            : "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
                         }}
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity pointer-events-none" />
+
+                      {isInstagram && (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 backdrop-blur-[2px]">
+                          <span className="px-4 py-2 rounded-full bg-white text-slate-900 text-xs font-bold shadow-lg flex items-center gap-2">
+                            <Instagram className="w-4 h-4 text-pink-600" />
+                            Ver no Instagram
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="p-7 flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex gap-2 text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">
-                            <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
-                            <span>•</span>
-                            <span className="text-[#c65f54]">Monteiro Blog</span>
-                          </div>
-                          <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300">
-                            {post.title}
-                          </h3>
-                          <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-2">
+
+                    {/* Content */}
+                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-xs text-slate-400 mb-2 font-semibold">
+                          <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
+                          <span>•</span>
+                          <span className="text-[#c65f54] font-medium">
+                            {isInstagram ? "@monteiroseguros" : "Blog Monteiro"}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-bold font-display text-[#163b52] mb-2 group-hover:text-[#08454c] transition-colors line-clamp-2">
+                          {post.title}
+                        </h3>
+                        {post.summary && (
+                          <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
                             {post.summary}
                           </p>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs font-bold text-[#c65f54] uppercase tracking-wider pt-6 mt-auto">
-                          <span>Ler Artigo</span>
-                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                        </div>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
+                        {isInstagram && post.instagramUrl ? (
+                          <>
+                            <a
+                              href={post.instagramUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-pink-600 hover:text-pink-700 transition-colors"
+                            >
+                              <Instagram className="w-3.5 h-3.5" />
+                              <span>Abrir no Insta</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                            <Link href={`/blog/${post.slug}`}>
+                              <span className="text-xs font-semibold text-slate-500 hover:text-[#08454c] cursor-pointer">
+                                Detalhes
+                              </span>
+                            </Link>
+                          </>
+                        ) : (
+                          <Link href={`/blog/${post.slug}`}>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#c65f54] hover:text-[#a0443a] transition-colors uppercase tracking-wider cursor-pointer">
+                              <span>Ler Artigo Completo</span>
+                              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                            </span>
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
-                </Link>
-              ))
-            )}
+                );
+              });
+            })()}
           </div>
 
-          <div className="mt-10 text-center md:hidden">
-            <Link href="/blog">
-              <button className="px-6 py-3.5 rounded-2xl text-[#163b52] border border-[#809ba6]/30 bg-white hover:bg-slate-50 transition-all w-full shadow-sm font-bold">
-                Ver Todas as Postagens
+          <div className="mt-12 text-center">
+            <Link href="/blog?tab=posts">
+              <button className="px-8 py-4 rounded-full text-white bg-[#08454c] hover:bg-[#06373d] transition-all font-bold text-sm shadow-md hover:shadow-lg">
+                Ver Todos os Posts &amp; Artigos
               </button>
             </Link>
           </div>
