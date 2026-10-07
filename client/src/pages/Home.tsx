@@ -306,148 +306,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* Últimas Publicações (Sempre os 3 últimos postados) */}
-      <section className="py-20 bg-[#163b52] text-white relative overflow-hidden border-b border-white/10">
-        {/* Soft background glow */}
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute bottom-0 left-10 w-[400px] h-[400px] bg-[#08454c]/20 rounded-full blur-[120px] pointer-events-none" />
-        
-        <div className="container px-4 md:px-6 mx-auto relative z-10">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#c65f54]/15 border border-[#c65f54]/30 text-[#c65f54] text-xs font-bold uppercase tracking-wider mb-3">
-                <Sparkles className="w-3.5 h-3.5" />
-                Últimas Publicações
-              </div>
-              <h2 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">
-                Conteúdos Recentes para Você
-              </h2>
-            </div>
-            <Link href="/blog">
-              <button className="hidden md:flex items-center gap-2 px-6 py-3 rounded-full text-white bg-white/10 hover:bg-white/20 border border-white/15 transition-all duration-300 shadow-sm font-bold text-sm">
-                Acessar Blog Completo
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {loadingPosts ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-96 bg-white/5 rounded-[2rem] animate-pulse border border-white/10" />
-              ))
-            ) : (
-              displayRecentPosts.map((post, index) => {
-                const isInstagram = !!post.instagramUrl || post.postType === "instagram";
-
-                return (
-                  <Link key={post.id} href={`/blog/${post.slug}`}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 25 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.1, duration: 0.5 }}
-                      className="group cursor-pointer bg-white text-[#163b52] rounded-none overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
-                    >
-                      {/* Media Preview: se for Instagram, trecho do vídeo rodando em cache */}
-                      {isInstagram ? (
-                        <div className="overflow-hidden aspect-[16/9] w-full bg-slate-950 flex items-center justify-center relative">
-                          <InstagramCachedVideo
-                            videoUrl={post.videoUrl}
-                            instagramUrl={post.instagramUrl}
-                            fallbackImage={post.coverImage}
-                            title={post.title}
-                            aspectRatio="video"
-                            className="aspect-[16/9]"
-                          />
-                        </div>
-                      ) : (
-                        <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 flex items-center justify-center relative p-1">
-                          <img
-                            src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
-                            alt={post.title}
-                            onError={(e) => {
-                              e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
-                            }}
-                            className="w-full h-full object-contain"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity pointer-events-none" />
-                        </div>
-                      )}
-
-                      <div className="p-7 flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center gap-2 text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">
-                            <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
-                            <span>•</span>
-                            <span className="text-[#c65f54]">
-                              {isInstagram ? "@monteirosegurosebeneficios" : "Monteiro Blog"}
-                            </span>
-                          </div>
-                          <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300 line-clamp-2">
-                            {post.title}
-                          </h3>
-                          <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
-                            {post.summary}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-xs font-bold text-[#c65f54] uppercase tracking-wider pt-6 mt-auto">
-                          <span>{isInstagram ? "Ver Detalhes do Post" : "Ler Artigo Completo"}</span>
-                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  </Link>
-                );
-              })
-            )}
-          </div>
-
-          <div className="mt-8 text-center md:hidden">
-            <Link href="/blog">
-              <button className="px-6 py-3.5 rounded-2xl text-white bg-white/10 border border-white/20 transition-all w-full font-bold">
-                Ver Todas as Postagens
-              </button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section id="services" className="py-28 bg-[#f5f2eb] relative border-t border-slate-100">
-        <div className="container px-4 md:px-6 mx-auto relative z-10">
-          <div className="text-center max-w-2xl mx-auto mb-20">
-            <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Nossas Soluções</span>
-            <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-[#163b52] leading-tight">
-              {settings?.servicesTitle || "Seguros Estruturados & Benefícios Inteligentes"}
-            </h2>
-            <p className="text-slate-500 text-lg font-light leading-relaxed">
-              {settings?.servicesSubtitle || "Modelos boutique de apólices elaboradas para resguardar sua vida corporativa, saúde familiar e legado patrimonial de forma sustentável."}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {loadingServices ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-white h-72 rounded-[2.5rem] animate-pulse border border-slate-100" />
-              ))
-            ) : (
-              services?.map((service, index) => (
-                <ServiceCard key={service.id} service={service} index={index} />
-              ))
-            )}
-
-            {!loadingServices && (!services || services.length === 0) && (
-              <div className="col-span-full text-center text-slate-400 py-16 bg-white rounded-[2.5rem] border border-slate-100">
-                Nossos serviços estão sendo atualizados no momento. Retorne em breve.
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Why Choose Us */}
+      {/* Diferencial Monteiro - Logo abaixo do banner */}
       <section className="py-28 bg-[#eae4da] relative overflow-hidden">
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/3 h-[700px] bg-[#c65f54]/5 rounded-full blur-[140px] pointer-events-none" />
         <div className="absolute left-[-10%] top-[10%] w-[350px] h-[350px] bg-[#08454c]/5 rounded-full blur-[100px] pointer-events-none" />
@@ -532,7 +391,148 @@ export default function Home() {
             </div>
           </div>
         </div>
-          </section>
+      </section>
+
+      {/* Últimas Publicações (Logo após Diferencial Monteiro) */}
+      <section className="py-20 bg-[#163b52] text-white relative overflow-hidden border-b border-white/10">
+        {/* Soft background glow */}
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-10 w-[400px] h-[400px] bg-[#08454c]/20 rounded-full blur-[120px] pointer-events-none" />
+        
+        <div className="container px-4 md:px-6 mx-auto relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#c65f54]/15 border border-[#c65f54]/30 text-[#c65f54] text-xs font-bold uppercase tracking-wider mb-3">
+                <Sparkles className="w-3.5 h-3.5" />
+                Últimas Publicações
+              </div>
+              <h2 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">
+                Conteúdos Recentes para Você
+              </h2>
+            </div>
+            <Link href="/blog">
+              <button className="hidden md:flex items-center gap-2 px-6 py-3 rounded-full text-white bg-white/10 hover:bg-white/20 border border-white/15 transition-all duration-300 shadow-sm font-bold text-sm">
+                Acessar Blog Completo
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {loadingPosts ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-96 bg-white/5 rounded-[2rem] animate-pulse border border-white/10" />
+              ))
+            ) : (
+              displayRecentPosts.map((post, index) => {
+                const isInstagram = !!post.instagramUrl || post.postType === "instagram";
+
+                return (
+                  <Link key={post.id} href={`/blog/${post.slug}`}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 25 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.1, duration: 0.5 }}
+                      className="group cursor-pointer bg-white text-[#163b52] rounded-none overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
+                    >
+                      {/* Media Preview: se for Instagram, usa o vídeo do post perfeitamente enquadrado */}
+                      {isInstagram ? (
+                        <div className="overflow-hidden aspect-[16/10] w-full bg-slate-950 flex items-center justify-center relative">
+                          <InstagramCachedVideo
+                            videoUrl={post.videoUrl}
+                            instagramUrl={post.instagramUrl}
+                            fallbackImage={post.coverImage}
+                            title={post.title}
+                            aspectRatio="video"
+                            className="w-full h-full"
+                          />
+                        </div>
+                      ) : (
+                        <div className="overflow-hidden aspect-[16/10] w-full bg-slate-900 flex items-center justify-center relative p-1">
+                          <img
+                            src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
+                            alt={post.title}
+                            onError={(e) => {
+                              e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
+                            }}
+                            className="w-full h-full object-contain"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity pointer-events-none" />
+                        </div>
+                      )}
+
+                      <div className="p-7 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">
+                            <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
+                            <span>•</span>
+                            <span className="text-[#c65f54]">
+                              {isInstagram ? "@monteirosegurosebeneficios" : "Monteiro Blog"}
+                            </span>
+                          </div>
+                          <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300 line-clamp-2">
+                            {post.title}
+                          </h3>
+                          <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
+                            {post.summary}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs font-bold text-[#c65f54] uppercase tracking-wider pt-6 mt-auto">
+                          <span>{isInstagram ? "Ver Detalhes do Post" : "Ler Artigo Completo"}</span>
+                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  </Link>
+                );
+              })
+            )}
+          </div>
+
+          <div className="mt-8 text-center md:hidden">
+            <Link href="/blog">
+              <button className="px-6 py-3.5 rounded-2xl text-white bg-white/10 border border-white/20 transition-all w-full font-bold">
+                Ver Todas as Postagens
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Services Section */}
+      <section id="services" className="py-28 bg-[#f5f2eb] relative border-t border-slate-100">
+        <div className="container px-4 md:px-6 mx-auto relative z-10">
+          <div className="text-center max-w-2xl mx-auto mb-20">
+            <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Nossas Soluções</span>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 mb-6 text-[#163b52] leading-tight">
+              {settings?.servicesTitle || "Seguros Estruturados & Benefícios Inteligentes"}
+            </h2>
+            <p className="text-slate-500 text-lg font-light leading-relaxed">
+              {settings?.servicesSubtitle || "Modelos boutique de apólices elaboradas para resguardar sua vida corporativa, saúde familiar e legado patrimonial de forma sustentável."}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {loadingServices ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white h-72 rounded-[2.5rem] animate-pulse border border-slate-100" />
+              ))
+            ) : (
+              services?.map((service, index) => (
+                <ServiceCard key={service.id} service={service} index={index} />
+              ))
+            )}
+
+            {!loadingServices && (!services || services.length === 0) && (
+              <div className="col-span-full text-center text-slate-400 py-16 bg-white rounded-[2.5rem] border border-slate-100">
+                Nossos serviços estão sendo atualizados no momento. Retorne em breve.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Seção A: Qualidade de Vida e Prevenção Ativa */}
       <section className="py-28 bg-white relative overflow-hidden">
