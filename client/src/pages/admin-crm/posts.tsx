@@ -207,7 +207,6 @@ export default function PostsPage() {
                             <TableHead>Título</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Slug</TableHead>
-                            <TableHead>Destaque</TableHead>
                             <TableHead>Data/Hora Publicação</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
@@ -260,15 +259,7 @@ export default function PostsPage() {
                                         <TableCell className="text-slate-500 text-xs max-w-[140px] truncate font-mono">
                                             {post.slug}
                                         </TableCell>
-                                        <TableCell>
-                                            {post.isFeatured ? (
-                                                <Badge className="bg-amber-500 hover:bg-amber-600 text-white gap-1 font-semibold text-[11px]">
-                                                    <Star className="w-3 h-3 fill-white" /> Destacado
-                                                </Badge>
-                                            ) : (
-                                                <span className="text-slate-300 text-xs">-</span>
-                                            )}
-                                        </TableCell>
+
                                         <TableCell className="text-xs">
                                             {pubDate ? (
                                                 <div className="flex items-center gap-1.5 text-slate-600">
@@ -616,8 +607,48 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                             )}
                         />
 
-                        {/* Agendamento e Destaque */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                        {/* Trecho de Vídeo do Reel (Rodando em Cache sem Egress) */}
+                        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <FormLabel className="text-sm font-semibold flex items-center gap-1.5 text-slate-800">
+                                    <Sparkles className="w-4 h-4 text-[#dc2743]" />
+                                    Trecho do Vídeo / Reel em Loop (Opcional)
+                                </FormLabel>
+                                <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 w-fit">
+                                    ⚡ Guardado em Cache (Zero Egress)
+                                </span>
+                            </div>
+                            <FormDescription className="text-xs text-slate-500">
+                                Deixe um trecho do vídeo rodando no card. Ele é guardado no cache do navegador sem consumir egress em visitas repetidas. Se não enviar, exibiremos o vídeo oficial de preview da Monteiro Seguros.
+                            </FormDescription>
+
+                            <FormField
+                                control={form.control}
+                                name="videoUrl"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <div className="space-y-3">
+                                                <Input
+                                                    placeholder="URL direta de vídeo MP4 (ex: https://.../reel.mp4 ou /insta_reel_preview.mp4)"
+                                                    {...field}
+                                                    value={field.value || ""}
+                                                />
+                                                <VideoUpload
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    description="Ou envie um clipe MP4/WEBM de até 50MB."
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        {/* Agendamento de Data e Hora */}
+                        <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
                             <FormField
                                 control={form.control}
                                 name="publishedAt"
@@ -635,34 +666,13 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                                                     const val = e.target.value;
                                                     field.onChange(val ? new Date(val) : new Date());
                                                 }}
-                                                className="bg-white"
+                                                className="bg-white max-w-md"
                                             />
                                         </FormControl>
+                                        <FormDescription className="text-[11px]">
+                                            Defina quando a publicação ficará visível no site.
+                                        </FormDescription>
                                         <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="isFeatured"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg bg-white p-3 border border-slate-200 shadow-sm mt-auto">
-                                        <div className="space-y-0.5 pr-2">
-                                            <FormLabel className="text-sm font-semibold flex items-center gap-1.5 text-slate-800 cursor-pointer">
-                                                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                                                Destacar na Home
-                                            </FormLabel>
-                                            <FormDescription className="text-[11px] leading-tight">
-                                                Exibir na seção de Nossos Posts da página inicial.
-                                            </FormDescription>
-                                        </div>
-                                        <FormControl>
-                                            <Switch
-                                                checked={field.value || false}
-                                                onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
                                     </FormItem>
                                 )}
                             />
@@ -702,8 +712,8 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                             />
                         </div>
 
-                        {/* Agendamento e Destaque */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                        {/* Agendamento de Publicação */}
+                        <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
                             <FormField
                                 control={form.control}
                                 name="publishedAt"
@@ -721,37 +731,13 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                                                     const val = e.target.value;
                                                     field.onChange(val ? new Date(val) : new Date());
                                                 }}
-                                                className="bg-white"
+                                                className="bg-white max-w-md"
                                             />
                                         </FormControl>
                                         <FormDescription className="text-[11px]">
                                             Defina quando o artigo ficará visível no site.
                                         </FormDescription>
                                         <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="isFeatured"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg bg-white p-3 border border-slate-200 shadow-sm mt-auto">
-                                        <div className="space-y-0.5 pr-2">
-                                            <FormLabel className="text-sm font-semibold flex items-center gap-1.5 text-slate-800 cursor-pointer">
-                                                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                                                Destacar na Home
-                                            </FormLabel>
-                                            <FormDescription className="text-[11px] leading-tight">
-                                                Exibir este artigo nos destaques da página inicial.
-                                            </FormDescription>
-                                        </div>
-                                        <FormControl>
-                                            <Switch
-                                                checked={field.value || false}
-                                                onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
                                     </FormItem>
                                 )}
                             />

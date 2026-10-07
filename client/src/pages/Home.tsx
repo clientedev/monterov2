@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { cn } from "@/lib/utils";
 import { extractInstagramInfo } from "@/components/InstagramEmbed";
+import { InstagramCachedVideo } from "@/components/InstagramCachedVideo";
 
 export default function Home() {
   const { data: services, isLoading: loadingServices } = useServices();
@@ -29,7 +30,7 @@ export default function Home() {
       slug: "como-escolher-o-melhor-plano-de-saude-corporativo",
       summary: "Descubra critérios fundamentais para selecionar a melhor operadora e rede credenciada para sua equipe.",
       coverImage: "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800",
-      isFeatured: true,
+      isFeatured: false,
       publishedAt: new Date().toISOString(),
     },
     {
@@ -38,7 +39,7 @@ export default function Home() {
       slug: "engenharia-de-beneficios-reduzindo-custos",
       summary: "Estratégias de coparticipação e gestão ativa de sinistralidade para manter custos sustentáveis.",
       coverImage: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=800",
-      isFeatured: true,
+      isFeatured: false,
       publishedAt: new Date().toISOString(),
     },
     {
@@ -47,7 +48,7 @@ export default function Home() {
       slug: "seguro-de-vida-e-sucessao-patrimonial",
       summary: "Como o seguro de vida garante liquidez imediata e proteção patrimonial para empresas familiares.",
       coverImage: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=800",
-      isFeatured: true,
+      isFeatured: false,
       publishedAt: new Date().toISOString(),
     },
   ];
@@ -61,16 +62,14 @@ export default function Home() {
     return !isNaN(d.getTime()) && d <= now;
   });
 
-  // Filter featured posts first; if fewer than 3, fallback to latest approved posts
-  const featuredPosts = validPosts.filter((p: any) => p.isFeatured);
-  const displayFeaturedPosts = (
-    featuredPosts.length >= 3
-      ? featuredPosts.slice(0, 3)
-      : [
-          ...featuredPosts,
-          ...validPosts.filter((p: any) => !p.isFeatured)
-        ]
-  ).slice(0, 3);
+  // Sempre os 3 últimos posts postados/publicados (ordenação decrescente por data)
+  const displayRecentPosts = [...validPosts]
+    .sort((a: any, b: any) => {
+      const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return dateB - dateA;
+    })
+    .slice(0, 3);
 
   const defaultSlides = [
     {
@@ -221,7 +220,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* Featured Blog Posts Section (Immediately following Hero) */}
+      {/* Últimas Publicações (Sempre os 3 últimos postados) */}
       <section className="py-20 bg-[#163b52] text-white relative overflow-hidden border-b border-white/10">
         {/* Soft background glow */}
         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
@@ -232,10 +231,10 @@ export default function Home() {
             <div>
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#c65f54]/15 border border-[#c65f54]/30 text-[#c65f54] text-xs font-bold uppercase tracking-wider mb-3">
                 <Sparkles className="w-3.5 h-3.5" />
-                Artigos em Destaque
+                Últimas Publicações
               </div>
               <h2 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">
-                Conteúdos Selecionados para Você
+                Conteúdos Recentes para Você
               </h2>
             </div>
             <Link href="/blog">
@@ -252,57 +251,69 @@ export default function Home() {
                 <div key={i} className="h-96 bg-white/5 rounded-[2rem] animate-pulse border border-white/10" />
               ))
             ) : (
-              displayFeaturedPosts.map((post, index) => (
-                <Link key={post.id} href={`/blog/${post.slug}`}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 25 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1, duration: 0.5 }}
-                    className="group cursor-pointer bg-white text-[#163b52] rounded-none overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
-                  >
-                    {/* Badge Destacado */}
-                    {post.isFeatured && (
-                      <div className="absolute top-4 right-4 z-20 bg-amber-500 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-white" /> Destaque
-                      </div>
-                    )}
+              displayRecentPosts.map((post, index) => {
+                const isInstagram = !!post.instagramUrl || post.postType === "instagram";
 
-                    <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 flex items-center justify-center relative p-1">
-                      <img
-                        src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
-                        alt={post.title}
-                        onError={(e) => {
-                          e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
-                        }}
-                        className="w-full h-full object-contain"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity pointer-events-none" />
-                    </div>
-
-                    <div className="p-7 flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">
-                          <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
-                          <span>•</span>
-                          <span className="text-[#c65f54]">Monteiro Blog</span>
+                return (
+                  <Link key={post.id} href={`/blog/${post.slug}`}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 25 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.1, duration: 0.5 }}
+                      className="group cursor-pointer bg-white text-[#163b52] rounded-none overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
+                    >
+                      {/* Media Preview: se for Instagram, trecho do vídeo rodando em cache */}
+                      {isInstagram ? (
+                        <div className="overflow-hidden aspect-[16/9] w-full bg-slate-950 flex items-center justify-center relative">
+                          <InstagramCachedVideo
+                            videoUrl={post.videoUrl}
+                            fallbackImage={post.coverImage}
+                            title={post.title}
+                            aspectRatio="video"
+                            className="aspect-[16/9]"
+                          />
                         </div>
-                        <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300 line-clamp-2">
-                          {post.title}
-                        </h3>
-                        <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
-                          {post.summary}
-                        </p>
-                      </div>
+                      ) : (
+                        <div className="overflow-hidden aspect-[16/9] w-full bg-slate-900 flex items-center justify-center relative p-1">
+                          <img
+                            src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
+                            alt={post.title}
+                            onError={(e) => {
+                              e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
+                            }}
+                            className="w-full h-full object-contain"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity pointer-events-none" />
+                        </div>
+                      )}
 
-                      <div className="flex items-center gap-2 text-xs font-bold text-[#c65f54] uppercase tracking-wider pt-6 mt-auto">
-                        <span>Ler Artigo Completo</span>
-                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
+                      <div className="p-7 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">
+                            <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
+                            <span>•</span>
+                            <span className="text-[#c65f54]">
+                              {isInstagram ? "@monteirosegurosebeneficios" : "Monteiro Blog"}
+                            </span>
+                          </div>
+                          <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300 line-clamp-2">
+                            {post.title}
+                          </h3>
+                          <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
+                            {post.summary}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs font-bold text-[#c65f54] uppercase tracking-wider pt-6 mt-auto">
+                          <span>{isInstagram ? "Ver Detalhes do Post" : "Ler Artigo Completo"}</span>
+                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                </Link>
-              ))
+                    </motion.div>
+                  </Link>
+                );
+              })
             )}
           </div>
 
@@ -798,29 +809,15 @@ export default function Home() {
                       )}
                     </div>
 
-                    {/* Media Preview */}
-                    {isInstagram && post.instagramUrl ? (() => {
-                      const instaInfo = extractInstagramInfo(post.instagramUrl);
-                      return instaInfo ? (
-                        <div className="w-full bg-white border-b border-slate-100 relative overflow-hidden" style={{ height: '340px' }}>
-                          <iframe
-                            src={instaInfo.embedUrl}
-                            className="w-full h-full border-none"
-                            scrolling="no"
-                            allowTransparency={true}
-                            title={post.title}
-                            loading="lazy"
-                            style={{ pointerEvents: 'none' }}
-                          />
-                          {/* overlay transparente p/ manter hover do card sem interferir no iframe */}
-                          <div className="absolute inset-0" style={{ pointerEvents: 'none' }} />
-                        </div>
-                      ) : (
-                        <div className="overflow-hidden aspect-[16/10] w-full bg-gradient-to-br from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center relative">
-                          <Instagram className="w-16 h-16 text-white/60" />
-                        </div>
-                      );
-                    })() : (
+                    {/* Media Preview: trecho do vídeo do Instagram rodando em cache sem gastar egress */}
+                    {isInstagram ? (
+                      <InstagramCachedVideo
+                        videoUrl={post.videoUrl}
+                        fallbackImage={post.coverImage}
+                        title={post.title}
+                        aspectRatio="video"
+                      />
+                    ) : (
                       <div className="overflow-hidden aspect-[16/10] w-full bg-slate-900 flex items-center justify-center relative group">
                         <img
                           src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}

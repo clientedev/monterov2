@@ -689,11 +689,6 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
             <div className="flex items-center gap-1">
               <span className="text-sm font-bold text-[#163b52]">Monteiro Seguros</span>
               <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
-              {post.isFeatured && (
-                <span className="inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-600 text-[9px] font-bold">
-                  <Star className="w-2.5 h-2.5 fill-current" /> Destaque
-                </span>
-              )}
             </div>
             <p className="text-[11px] text-slate-400">{formatDate(post.publishedAt)} · 🌐 Público</p>
           </div>
