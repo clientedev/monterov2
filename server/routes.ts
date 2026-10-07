@@ -2362,10 +2362,14 @@ export async function registerRoutes(
   app.patch("/api/hero-slides/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const slide = await storage.updateHeroSlide(id, req.body);
+      const input = insertHeroSlideSchema.partial().parse(req.body);
+      const slide = await storage.updateHeroSlide(id, input);
       if (!slide) return res.status(404).json({ message: "Slide not found" });
       res.json(slide);
-    } catch (err) {
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors });
+      }
       res.status(500).json({ message: "Failed to update slide" });
     }
   });

@@ -227,7 +227,10 @@ export const heroSlides = pgTable("hero_slides", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   subtitle: text("subtitle"),
-  imageBase64: text("image_base64").notNull(),
+  mediaType: text("media_type").notNull().default("image"), // 'image' | 'video'
+  imageBase64: text("image_base64"),
+  videoUrl: text("video_url"),
+  videoFit: text("video_fit").notNull().default("cover"), // 'cover' | 'contain'
   buttonText: text("button_text").notNull().default("Cotação Gratuita"),
   buttonLink: text("button_link").notNull().default("/contact"),
   order: integer("order").notNull().default(0),
@@ -394,7 +397,12 @@ export const insertSiteSettingsSchema = createInsertSchema(siteSettings, {
   themeOutubroRosa: z.boolean().optional(),
   themeOutubroRosaBadge: z.boolean().optional(),
 }).omit({ id: true, updatedAt: true });
-export const insertHeroSlideSchema = createInsertSchema(heroSlides).omit({ id: true, createdAt: true });
+export const insertHeroSlideSchema = createInsertSchema(heroSlides, {
+  mediaType: z.enum(["image", "video"]).default("image"),
+  videoUrl: z.string().nullable().optional(),
+  videoFit: z.enum(["cover", "contain"]).default("cover"),
+  imageBase64: z.string().nullable().optional(),
+}).omit({ id: true, createdAt: true });
 export const insertProspectingChecklistSchema = createInsertSchema(prospectingChecklists).omit({ id: true, createdAt: true });
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, isApproved: true });
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, isApproved: true, userId: true });

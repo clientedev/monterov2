@@ -158,23 +158,22 @@
 
 /* ========================================================
    TEMA EXCLUSIVO: OUTUBRO ROSA (100% Reversível)
-   Paleta uniforme, elegante e de alto contraste.
-   Ao remover [data-theme="outubro-rosa"], tudo retorna
-   100% ao estado visual original da marca Monteiro.
+   Paleta suave, delicada, clean e sofisticada (Soft Blush / Rose Quartz).
+   Ao desativar o tema, tudo retorna 100% ao estado original.
 ======================================================== */
 [data-theme="outubro-rosa"] {
-  --primary: 336 80% 48%; /* #db2777 */
+  --primary: 344 42% 55%; /* #be5f77 - Rosa suave e acolhedor */
   --primary-foreground: 0 0% 100%;
-  --secondary: 347 77% 50%; /* #f43f5e */
+  --secondary: 345 42% 68%; /* #d68a9f - Rosa pétala / blush */
   --secondary-foreground: 0 0% 100%;
-  --ring: 336 80% 48%;
-  --brand-gradient-start: #831843;
-  --brand-gradient-end: #500724;
-  --navbar-bg: rgba(131, 24, 67, 0.96);
-  --primary-hex: #db2777;
-  --secondary-hex: #f43f5e;
-  --primary-default: #be185d;
-  --secondary-default: #f43f5e;
+  --ring: 344 42% 55%;
+  --brand-gradient-start: #3a232f; /* Bordeaux nobre e sutil */
+  --brand-gradient-end: #26161f;
+  --navbar-bg: rgba(54, 32, 43, 0.94);
+  --primary-hex: #be5f77;
+  --secondary-hex: #d68a9f;
+  --primary-default: #be5f77;
+  --secondary-default: #d68a9f;
 }
 
 /* ── Garantia de Títulos e Textos Brancos em Áreas Escuras ── */
@@ -197,7 +196,7 @@
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
 }
 
-/* Seções e Banners escuros (Hero, CTA, Blog Banner, Footer, Destaques) com textos brancos */
+/* Seções e Banners escuros com textos brancos */
 [data-theme="outubro-rosa"] section.bg-\[\#08454c\] h1,
 [data-theme="outubro-rosa"] section.bg-\[\#08454c\] h2,
 [data-theme="outubro-rosa"] section.bg-\[\#08454c\] h3,
@@ -225,78 +224,78 @@
   color: #ffffff !important;
 }
 
-/* Seções com fundo escuro da marca adaptadas para o tema */
+/* Seções com fundo escuro da marca adaptadas para o tema com suavidade */
 [data-theme="outubro-rosa"] section.bg-\[\#08454c\],
 [data-theme="outubro-rosa"] footer.bg-\[\#08454c\],
 [data-theme="outubro-rosa"] header.bg-\[\#08454c\],
 [data-theme="outubro-rosa"] div.bg-\[\#08454c\]:not([class*="mix-blend"]):not([class*="gradient"]):not([class*="blur"]):not([class*="opacity"]) {
-  background-color: #831843 !important;
+  background-color: #38222c !important;
 }
 [data-theme="outubro-rosa"] section.bg-\[\#163b52\] {
-  background-color: #500724 !important;
+  background-color: #27161f !important;
 }
 
-/* Botões da marca adaptados para rosa vibrante */
+/* Botões da marca adaptados para rosa suave e elegante */
 [data-theme="outubro-rosa"] button.bg-\[\#08454c\],
 [data-theme="outubro-rosa"] a.bg-\[\#08454c\] {
-  background-color: #be185d !important;
+  background-color: #be5f77 !important;
   color: #ffffff !important;
 }
 [data-theme="outubro-rosa"] button.bg-\[\#08454c\]:hover,
 [data-theme="outubro-rosa"] a.bg-\[\#08454c\]:hover {
-  background-color: #9d174d !important;
+  background-color: #aa4e65 !important;
   color: #ffffff !important;
 }
 
-/* Destaques secundários / terracota adaptados para a paleta rosa */
+/* Destaques secundários adaptados para o rosa suave */
 [data-theme="outubro-rosa"] .bg-\[\#c65f54\] {
-  background-color: #db2777 !important;
+  background-color: #be5f77 !important;
 }
 [data-theme="outubro-rosa"] .text-\[\#c65f54\] {
-  color: #f43f5e !important;
+  color: #c96e85 !important;
 }
 [data-theme="outubro-rosa"] .border-\[\#c65f54\] {
-  border-color: #db2777 !important;
+  border-color: #be5f77 !important;
 }
 [data-theme="outubro-rosa"] button.bg-\[\#c65f54\],
 [data-theme="outubro-rosa"] a.bg-\[\#c65f54\] {
-  background-color: #db2777 !important;
+  background-color: #be5f77 !important;
   color: #ffffff !important;
 }
 [data-theme="outubro-rosa"] button.bg-\[\#c65f54\]:hover,
 [data-theme="outubro-rosa"] a.bg-\[\#c65f54\]:hover {
-  background-color: #be185d !important;
+  background-color: #aa4e65 !important;
   color: #ffffff !important;
 }
 
 /* Bordas de destaque */
 [data-theme="outubro-rosa"] .border-\[\#08454c\] {
-  border-color: #db2777 !important;
+  border-color: #d68a9f !important;
 }
 
-/* Gradientes seguros com transparência e preservação de imagens */
+/* Gradientes suaves e elegantes */
 [data-theme="outubro-rosa"] .from-\[\#08454c\] {
-  --tw-gradient-from: #831843 var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: rgba(131, 24, 67, 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-from: #38222c var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(56, 34, 44, 0) var(--tw-gradient-to-position) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
 [data-theme="outubro-rosa"] .via-\[\#08454c\]\/70 {
-  --tw-gradient-stops: var(--tw-gradient-from), rgba(131, 24, 67, 0.7) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), rgba(56, 34, 44, 0.7) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
 }
 [data-theme="outubro-rosa"] .via-\[\#08454c\]\/90 {
-  --tw-gradient-stops: var(--tw-gradient-from), rgba(131, 24, 67, 0.9) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), rgba(56, 34, 44, 0.9) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
 }
 [data-theme="outubro-rosa"] .to-\[\#163b52\] {
-  --tw-gradient-to: #500724 var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: #27161f var(--tw-gradient-to-position) !important;
 }
 
 /* Elementos de gradiente premium */
 [data-theme="outubro-rosa"] .premium-gradient {
-  background-image: linear-gradient(135deg, #831843, #500724) !important;
+  background-image: linear-gradient(135deg, #38222c, #27161f) !important;
 }
 [data-theme="outubro-rosa"] .text-gold {
-  color: #f43f5e !important;
+  color: #d68a9f !important;
 }
 [data-theme="outubro-rosa"] .premium-card:hover {
-  box-shadow: 0 20px 50px rgba(131, 24, 67, 0.15) !important;
+  box-shadow: 0 20px 50px rgba(190, 95, 119, 0.12) !important;
 }

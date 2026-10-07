@@ -45,7 +45,13 @@ import {
     Edit3,
     Sparkles,
     Heart,
-    ShieldCheck
+    ShieldCheck,
+    Video,
+    Film,
+    Volume2,
+    VolumeX,
+    UploadCloud,
+    CheckCircle2
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -75,6 +81,8 @@ const CURATED_FONTS_DISPLAY = [
     { name: "Lora", value: "Lora", desc: "Serifada e contemporânea" },
     { name: "Cinzel", value: "Cinzel", desc: "Inspirada em inscrições romanas" },
 ];
+
+import { getVideoEmbedInfo } from "@/lib/videoUtils";
 
 const SAMPLE_PRESETS = [
     {
@@ -111,6 +119,36 @@ const SAMPLE_PRESETS = [
     }
 ];
 
+const SAMPLE_VIDEO_PRESETS = [
+    {
+        name: "Saúde & Cuidado Familiar HD",
+        videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-family-walking-in-a-park-together-41364-large.mp4",
+        poster: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
+        title: "Planos de Saúde Individuais & Familiares",
+        subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas.",
+        buttonText: "Cotação Familiar",
+        buttonLink: "/contact"
+    },
+    {
+        name: "Corporativo & Estratégia HD",
+        videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-hands-of-businesspeople-at-a-meeting-in-an-office-42028-large.mp4",
+        poster: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
+        title: "Benefícios Corporativos Sob Medida",
+        subtitle: "Gestão inteligente de sinistralidade e valorização dos seus colaboradores com economia sustentável.",
+        buttonText: "Cotação Corporativa",
+        buttonLink: "/contact"
+    },
+    {
+        name: "Vida & Futuro Tranquilo HD",
+        videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-mother-and-daughter-smiling-outdoors-42095-large.mp4",
+        poster: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=2000",
+        title: "Seguro de Vida e Sucessão Patrimonial",
+        subtitle: "Garantia de liquidez imediata e proteção irrestrita para o patrimônio da sua família.",
+        buttonText: "Consultoria Especializada",
+        buttonLink: "/contact"
+    }
+];
+
 function SlideDialog({
     slide,
     onSave,
@@ -121,104 +159,406 @@ function SlideDialog({
     trigger: React.ReactNode
 }) {
     const [open, setOpen] = useState(false);
+    const [isVideoUploading, setIsVideoUploading] = useState(false);
+    const { toast } = useToast();
+
     const form = useForm<InsertHeroSlide>({
         resolver: zodResolver(insertHeroSlideSchema),
-        defaultValues: slide || {
-            title: "",
-            subtitle: "",
-            imageBase64: "",
-            buttonText: "Cotação Gratuita",
-            buttonLink: "/contact",
-            order: 0,
-            isActive: true
+        defaultValues: {
+            title: slide?.title || "",
+            subtitle: slide?.subtitle || "",
+            mediaType: (slide?.mediaType === "video" || Boolean(slide?.videoUrl) ? "video" : "image") as "image" | "video",
+            imageBase64: slide?.imageBase64 || "",
+            videoUrl: slide?.videoUrl || "",
+            videoFit: (slide?.videoFit === "contain" ? "contain" : "cover") as "cover" | "contain",
+            buttonText: slide?.buttonText || "Cotação Gratuita",
+            buttonLink: slide?.buttonLink || "/contact",
+            order: slide?.order ?? 0,
+            isActive: slide?.isActive ?? true
         }
     });
 
+    const currentMediaType = form.watch("mediaType") || "image";
+    const currentVideoUrl = form.watch("videoUrl") || "";
+    const currentVideoFit = form.watch("videoFit") || "cover";
+    const currentImage = form.watch("imageBase64") || "";
+
     useEffect(() => {
         if (open) {
-            form.reset(slide || {
-                title: "",
-                subtitle: "",
-                imageBase64: "",
-                buttonText: "Cotação Gratuita",
-                buttonLink: "/contact",
-                order: 0,
-                isActive: true
+            form.reset({
+                title: slide?.title || "",
+                subtitle: slide?.subtitle || "",
+                mediaType: (slide?.mediaType === "video" || Boolean(slide?.videoUrl) ? "video" : "image") as "image" | "video",
+                imageBase64: slide?.imageBase64 || "",
+                videoUrl: slide?.videoUrl || "",
+                videoFit: (slide?.videoFit === "contain" ? "contain" : "cover") as "cover" | "contain",
+                buttonText: slide?.buttonText || "Cotação Gratuita",
+                buttonLink: slide?.buttonLink || "/contact",
+                order: slide?.order ?? 0,
+                isActive: slide?.isActive ?? true
             });
         }
     }, [open, slide, form]);
 
     const handleSave = (data: InsertHeroSlide) => {
-        onSave(data);
+        // Garantir que se for vídeo e não tiver poster, salvar sem travar
+        const payload: InsertHeroSlide = {
+            ...data,
+            mediaType: data.mediaType || "image",
+            videoFit: data.videoFit || "cover",
+            videoUrl: data.videoUrl?.trim() || null,
+            imageBase64: data.imageBase64?.trim() || null,
+        };
+
+        if (payload.mediaType === "video" && !payload.videoUrl) {
+            toast({
+                title: "URL do vídeo ausente",
+                description: "Insira uma URL de vídeo ou selecione um modelo HD.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        if (payload.mediaType === "image" && !payload.imageBase64) {
+            toast({
+                title: "Imagem ausente",
+                description: "Selecione uma imagem para o banner.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        onSave(payload);
         setOpen(false);
     };
+
+    const handleVideoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Limite de 45MB para Data URL local direta
+        const maxBytes = 45 * 1024 * 1024;
+        if (file.size > maxBytes) {
+            toast({
+                title: "Arquivo muito pesado",
+                description: "Para vídeos acima de 45MB, recomendamos inserir um link direto (MP4 em CDN, YouTube ou Vimeo) para garantir carregamento instantâneo.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsVideoUploading(true);
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            form.setValue("videoUrl", result);
+            form.setValue("mediaType", "video");
+            setIsVideoUploading(false);
+            toast({
+                title: "Vídeo carregado com sucesso!",
+                description: `${file.name} pronto para ser exibido.`
+            });
+        };
+        reader.onerror = () => {
+            setIsVideoUploading(false);
+            toast({
+                title: "Erro ao ler arquivo",
+                description: "Não foi possível carregar o vídeo local.",
+                variant: "destructive"
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const embedInfo = getVideoEmbedInfo(currentVideoUrl);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border-none shadow-2xl p-0">
+            <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl border-none shadow-2xl p-0">
                 <DialogHeader className="p-8 bg-slate-50 border-b border-slate-100">
-                    <DialogTitle className="text-2xl font-display font-bold text-slate-900">
-                        {slide && 'id' in slide ? "Editar Slide" : "Novo Slide de Impacto"}
+                    <DialogTitle className="text-2xl font-display font-bold text-slate-900 flex items-center gap-3">
+                        {slide && 'id' in slide ? <Edit3 className="h-6 w-6 text-primary" /> : <Plus className="h-6 w-6 text-emerald-600" />}
+                        {slide && 'id' in slide ? "Editar Slide do Banner" : "Novo Slide de Impacto"}
                     </DialogTitle>
                     <DialogDescription>
-                        Crie uma experiência visual marcante para seus clientes.
+                        Crie uma experiência visual cinematográfica para seus clientes na entrada do site.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="p-8 space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Imagem do Slide</Label>
-                                <ImageUpload
-                                    value={form.watch("imageBase64")}
-                                    onChange={(val) => form.setValue("imageBase64", val)}
-                                    label="Foto de Fundo"
-                                />
-                            </div>
+                    {/* Segmented Control de Tipo de Mídia */}
+                    <div className="flex rounded-2xl bg-slate-100 p-1.5 border border-slate-200">
+                        <button
+                            type="button"
+                            onClick={() => form.setValue("mediaType", "image")}
+                            className={cn(
+                                "flex-1 py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2",
+                                currentMediaType === "image"
+                                    ? "bg-white text-primary shadow-sm"
+                                    : "text-slate-600 hover:text-slate-900"
+                            )}
+                        >
+                            <ImageIcon className="h-4 w-4" />
+                            Banner com Imagem
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => form.setValue("mediaType", "video")}
+                            className={cn(
+                                "flex-1 py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2",
+                                currentMediaType === "video"
+                                    ? "bg-primary text-white shadow-sm"
+                                    : "text-slate-600 hover:text-slate-900"
+                            )}
+                        >
+                            <Film className="h-4 w-4 text-amber-300" />
+                            Banner com Vídeo HD
+                        </button>
+                    </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ou escolha um modelo HD</Label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {SAMPLE_PRESETS.map((preset, i) => (
-                                        <button
-                                            key={i}
-                                            type="button"
-                                            onClick={() => {
-                                                form.setValue("imageBase64", preset.image);
-                                                form.setValue("title", preset.title);
-                                                form.setValue("subtitle", preset.subtitle);
-                                            }}
-                                            className="group relative h-16 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all"
-                                        >
-                                            <img src={preset.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0" alt={preset.name} />
-                                            <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent flex items-center justify-center">
-                                                <span className="text-[8px] text-white font-bold uppercase">{preset.name}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Coluna da Esquerda: Mídia (Imagem ou Vídeo) */}
+                        <div className="space-y-6">
+                            {currentMediaType === "image" ? (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Imagem do Slide</Label>
+                                        <ImageUpload
+                                            value={currentImage}
+                                            onChange={(val) => form.setValue("imageBase64", val)}
+                                            label="Foto de Fundo em Alta Resolução"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ou escolha um modelo HD Monteiro</Label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {SAMPLE_PRESETS.map((preset, i) => (
+                                                <button
+                                                    key={i}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        form.setValue("imageBase64", preset.image);
+                                                        form.setValue("title", preset.title);
+                                                        form.setValue("subtitle", preset.subtitle);
+                                                        form.setValue("buttonText", preset.buttonText);
+                                                        form.setValue("buttonLink", preset.buttonLink);
+                                                    }}
+                                                    className="group relative h-20 rounded-xl overflow-hidden border-2 border-transparent hover:border-primary transition-all text-left"
+                                                >
+                                                    <img src={preset.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0" alt={preset.name} />
+                                                    <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 flex items-center justify-center p-2 text-center transition-colors">
+                                                        <span className="text-[10px] text-white font-bold uppercase tracking-tight">{preset.name}</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Configuração de Vídeo */}
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                                                <Film className="h-4 w-4 text-primary" />
+                                                URL do Vídeo (MP4, WebM, YouTube ou Vimeo)
+                                            </Label>
+                                            <Input
+                                                {...form.register("videoUrl")}
+                                                placeholder="https://exemplo.com/video.mp4 ou link YouTube"
+                                                className="h-11 rounded-xl text-sm font-mono border-slate-200"
+                                            />
+                                            <p className="text-[11px] text-slate-500">
+                                                Aceita link direto MP4/WebM de CDN, ou links do YouTube (ex: youtube.com/watch?v=...) e Vimeo.
+                                            </p>
+                                        </div>
+
+                                        {/* Botão de Upload Local */}
+                                        <div className="pt-1">
+                                            <label className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 hover:border-primary rounded-2xl p-4 cursor-pointer hover:bg-slate-50 transition-all text-sm font-medium text-slate-600">
+                                                <UploadCloud className="h-5 w-5 text-primary" />
+                                                <span>{isVideoUploading ? "Processando vídeo..." : "Fazer Upload de Vídeo Local (.mp4, .webm)"}</span>
+                                                <input
+                                                    type="file"
+                                                    accept="video/mp4,video/webm,video/quicktime,video/*"
+                                                    className="hidden"
+                                                    onChange={handleVideoFileSelect}
+                                                    disabled={isVideoUploading}
+                                                />
+                                            </label>
+                                        </div>
+
+                                        {/* Modo de Enquadramento (Sem cortes vs Preenchimento) */}
+                                        <div className="space-y-2 pt-2">
+                                            <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                                                <span>Modo de Enquadramento</span>
+                                                <span className="text-[11px] text-emerald-600 font-bold lowercase">Qualidade Máxima</span>
+                                            </Label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => form.setValue("videoFit", "contain")}
+                                                    className={cn(
+                                                        "p-3 rounded-xl border text-left transition-all",
+                                                        currentVideoFit === "contain"
+                                                            ? "border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/20"
+                                                            : "border-slate-200 hover:border-slate-300 bg-white"
+                                                    )}
+                                                >
+                                                    <p className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                                                        <CheckCircle2 className={cn("h-3.5 w-3.5", currentVideoFit === "contain" ? "text-emerald-600" : "text-slate-300")} />
+                                                        Sem Cortes (100%)
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-500 mt-1 leading-tight">
+                                                        Visão completa: preserva todos os detalhes do vídeo sem cortar nenhuma borda, com fundo ambiental.
+                                                    </p>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => form.setValue("videoFit", "cover")}
+                                                    className={cn(
+                                                        "p-3 rounded-xl border text-left transition-all",
+                                                        currentVideoFit === "cover"
+                                                            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                                                            : "border-slate-200 hover:border-slate-300 bg-white"
+                                                    )}
+                                                >
+                                                    <p className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                                                        <CheckCircle2 className={cn("h-3.5 w-3.5", currentVideoFit === "cover" ? "text-primary" : "text-slate-300")} />
+                                                        Preenchimento Total
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-500 mt-1 leading-tight">
+                                                        Cobre 100% da tela do banner estilo cinema em tela cheia.
+                                                    </p>
+                                                </button>
                                             </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                                        </div>
+
+                                        {/* Poster / Imagem de Capa Opcional */}
+                                        <div className="space-y-2 pt-2">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Imagem de Capa (Poster / Fallback)</Label>
+                                            <Input
+                                                value={currentImage}
+                                                onChange={(e) => form.setValue("imageBase64", e.target.value)}
+                                                placeholder="https://exemplo.com/poster.jpg (opcional)"
+                                                className="h-10 rounded-xl text-xs"
+                                            />
+                                        </div>
+
+                                        {/* Presets de Vídeo HD */}
+                                        <div className="space-y-2 pt-2">
+                                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Modelos de Vídeo HD Pré-configurados</Label>
+                                            <div className="space-y-1.5">
+                                                {SAMPLE_VIDEO_PRESETS.map((preset, i) => (
+                                                    <button
+                                                        key={i}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            form.setValue("videoUrl", preset.videoUrl);
+                                                            form.setValue("imageBase64", preset.poster);
+                                                            form.setValue("title", preset.title);
+                                                            form.setValue("subtitle", preset.subtitle);
+                                                            form.setValue("buttonText", preset.buttonText);
+                                                            form.setValue("buttonLink", preset.buttonLink);
+                                                        }}
+                                                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 hover:border-primary hover:bg-slate-50 text-left flex items-center justify-between transition-all"
+                                                    >
+                                                        <span className="font-bold text-slate-800">{preset.name}</span>
+                                                        <span className="text-[10px] text-primary font-semibold">Usar este vídeo →</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Título Principal</Label>
-                                <Input {...form.register("title")} className="h-11 rounded-xl" placeholder="Ex: Proteção para sua Família" />
+                        {/* Coluna da Direita: Textos, Botões & Preview */}
+                        <div className="space-y-5">
+                            {/* Player de Preview em Tempo Real */}
+                            <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 shadow-inner">
+                                <div className="px-3 py-2 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-300">
+                                    <span className="font-mono flex items-center gap-1.5">
+                                        <Play className="h-3 w-3 text-emerald-400" />
+                                        Preview em Tempo Real
+                                    </span>
+                                    <span className="font-semibold text-amber-400">
+                                        {currentMediaType === "video" ? (currentVideoFit === "contain" ? "Sem Cortes (100%)" : "Cover Total") : "Imagem HD"}
+                                    </span>
+                                </div>
+                                <div className="relative h-44 w-full bg-slate-950 flex items-center justify-center overflow-hidden">
+                                    {currentMediaType === "video" && currentVideoUrl ? (
+                                        embedInfo.type === "youtube" || embedInfo.type === "vimeo" ? (
+                                            <iframe
+                                                src={embedInfo.embedUrl}
+                                                className="w-full h-full border-0 pointer-events-none"
+                                                allow="autoplay"
+                                            />
+                                        ) : (
+                                            <div className="relative w-full h-full flex items-center justify-center">
+                                                {currentVideoFit === "contain" && (
+                                                    <video
+                                                        src={currentVideoUrl}
+                                                        autoPlay
+                                                        loop
+                                                        muted
+                                                        playsInline
+                                                        className="absolute inset-0 w-full h-full object-cover blur-xl opacity-30 pointer-events-none scale-110"
+                                                    />
+                                                )}
+                                                <video
+                                                    src={currentVideoUrl}
+                                                    autoPlay
+                                                    loop
+                                                    muted
+                                                    playsInline
+                                                    poster={currentImage || undefined}
+                                                    className={cn(
+                                                        "w-full h-full relative z-10",
+                                                        currentVideoFit === "contain" ? "object-contain" : "object-cover"
+                                                    )}
+                                                />
+                                            </div>
+                                        )
+                                    ) : currentImage ? (
+                                        <img src={currentImage} alt="Preview" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="text-center p-6 text-slate-500">
+                                            <ImageIcon className="h-8 w-8 mx-auto mb-2 text-slate-600" />
+                                            <p className="text-xs">Insira uma imagem ou vídeo para visualizar o preview.</p>
+                                        </div>
+                                    )}
+
+                                    {/* Overlay de texto simulado */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent z-20 pointer-events-none flex flex-col justify-end p-4">
+                                        <p className="text-white font-bold text-sm line-clamp-1">{form.watch("title") || "Título do Slide"}</p>
+                                        <p className="text-slate-300 text-[11px] line-clamp-1">{form.watch("subtitle") || "Subtítulo de destaque..."}</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subtítulo / Descrição</Label>
-                                <Textarea {...form.register("subtitle")} className="min-h-[80px] rounded-xl resize-none" placeholder="Uma breve frase impactante..." />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+
+                            <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Texto do Botão</Label>
-                                    <Input {...form.register("buttonText")} className="h-11 rounded-xl" />
+                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Título Principal</Label>
+                                    <Input {...form.register("title")} className="h-11 rounded-xl" placeholder="Ex: Proteção para sua Família" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Link</Label>
-                                    <Input {...form.register("buttonLink")} className="h-11 rounded-xl" />
+                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subtítulo / Descrição</Label>
+                                    <Textarea {...form.register("subtitle")} className="min-h-[75px] rounded-xl resize-none" placeholder="Uma breve frase impactante..." />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Texto do Botão</Label>
+                                        <Input {...form.register("buttonText")} className="h-11 rounded-xl" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Link</Label>
+                                        <Input {...form.register("buttonLink")} className="h-11 rounded-xl" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -227,7 +567,7 @@ function SlideDialog({
 
                 <DialogFooter className="p-8 bg-slate-50 border-t border-slate-100 flex gap-3">
                     <Button variant="ghost" onClick={() => setOpen(false)} className="rounded-xl h-12">Cancelar</Button>
-                    <Button onClick={form.handleSubmit(handleSave)} className="rounded-xl h-12 px-8 bg-primary hover:bg-primary/90 text-white font-bold">
+                    <Button onClick={form.handleSubmit((values: any) => handleSave(values))} className="rounded-xl h-12 px-8 bg-primary hover:bg-primary/90 text-white font-bold">
                         Salvar Slide
                     </Button>
                 </DialogFooter>
@@ -753,14 +1093,14 @@ export default function SiteConfigPage() {
                             <div className={cn(
                                 "rounded-3xl p-6 md:p-8 border transition-all duration-500 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm",
                                 siteForm.watch("themeOutubroRosa")
-                                    ? "bg-gradient-to-r from-pink-50 via-rose-50 to-pink-100 border-pink-200"
+                                    ? "bg-gradient-to-r from-[#fbf6f7] via-[#f7edf1] to-[#f3e4e9] border-[#e8b4c0]/50"
                                     : "bg-slate-50 border-slate-200"
                             )}>
                                 <div className="flex items-start gap-4">
                                     <div className={cn(
                                         "w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm transition-transform duration-300",
                                         siteForm.watch("themeOutubroRosa")
-                                            ? "bg-pink-600 text-white shadow-pink-600/30 scale-105"
+                                            ? "bg-[#be5f77] text-white shadow-[#be5f77]/30 scale-105"
                                             : "bg-primary text-white"
                                     )}>
                                         {siteForm.watch("themeOutubroRosa") ? "🎗️" : "🏛️"}
@@ -769,13 +1109,13 @@ export default function SiteConfigPage() {
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <h3 className="text-xl font-bold font-display text-slate-900">
                                                 {siteForm.watch("themeOutubroRosa")
-                                                    ? "Tema Outubro Rosa Ativado"
+                                                    ? "Tema Outubro Rosa Suave Ativado"
                                                     : "Tema Padrão Monteiro Ativado"}
                                             </h3>
                                             <Badge className={cn(
                                                 "font-bold uppercase tracking-wider text-[10px] px-2.5 py-0.5",
                                                 siteForm.watch("themeOutubroRosa")
-                                                    ? "bg-pink-600 text-white hover:bg-pink-600"
+                                                    ? "bg-[#be5f77] text-white hover:bg-[#be5f77]"
                                                     : "bg-slate-200 text-slate-700 hover:bg-slate-200"
                                             )}>
                                                 {siteForm.watch("themeOutubroRosa") ? "Campanha Ao Vivo" : "Identidade Original"}
@@ -783,7 +1123,7 @@ export default function SiteConfigPage() {
                                         </div>
                                         <p className="text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
                                             {siteForm.watch("themeOutubroRosa")
-                                                ? "O site público está exibindo a paleta de cores uniforme Outubro Rosa com contraste profissional, incluindo cabeçalho, botões, gradientes e rodapé."
+                                                ? "O site público está exibindo a paleta delicada e suave Outubro Rosa (Rose Quartz & Blush aveludado), com tipografia limpa, modal educativo discreto e contraste premium."
                                                 : "O site está utilizando as cores padrões da marca definidas na aba Estilo (Verde Profundo e Terracota Vital)."}
                                         </p>
                                     </div>
@@ -796,7 +1136,7 @@ export default function SiteConfigPage() {
                                     className={cn(
                                         "rounded-xl h-11 px-6 font-bold text-white shadow-md transition-all shrink-0 active:scale-95",
                                         siteForm.watch("themeOutubroRosa")
-                                            ? "bg-pink-600 hover:bg-pink-700 shadow-pink-600/25"
+                                            ? "bg-[#be5f77] hover:bg-[#b0536b] shadow-[#be5f77]/25"
                                             : "bg-primary hover:bg-primary/90"
                                     )}
                                 >
@@ -807,21 +1147,21 @@ export default function SiteConfigPage() {
 
                             {/* Main Theme Card */}
                             <Card className="premium-card border-none shadow-sm overflow-hidden">
-                                <CardHeader className="bg-gradient-to-r from-pink-500/10 via-rose-500/5 to-transparent border-b border-pink-100/60 p-8">
+                                <CardHeader className="bg-gradient-to-r from-[#be5f77]/10 via-[#d68a9f]/5 to-transparent border-b border-[#e8b4c0]/40 p-8">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 text-white flex items-center justify-center shadow-lg shadow-pink-500/30">
+                                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#be5f77] to-[#99475c] text-white flex items-center justify-center shadow-lg shadow-[#be5f77]/25">
                                                 <Heart className="h-5 w-5 fill-white" />
                                             </div>
                                             <div>
                                                 <CardTitle className="text-2xl font-display font-bold text-slate-900 flex items-center gap-2">
-                                                    Outubro Rosa
-                                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">
-                                                        Campanha Sazonal
+                                                    Outubro Rosa Suave
+                                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#fbf6f7] text-[#be5f77] border border-[#e8b4c0]/50">
+                                                        Edição Delicada
                                                     </span>
                                                 </CardTitle>
                                                 <CardDescription className="text-slate-500">
-                                                    Transformação visual completa em apoio à prevenção e diagnóstico precoce do câncer de mama.
+                                                    Transformação visual delicada e acolhedora em apoio à conscientização e cuidado com a saúde da mulher.
                                                 </CardDescription>
                                             </div>
                                         </div>
@@ -830,24 +1170,23 @@ export default function SiteConfigPage() {
 
                                 <CardContent className="p-8 space-y-8">
                                     {/* Toggle Main Switch */}
-                                    <div className="rounded-2xl border border-slate-200/80 p-6 bg-white hover:border-pink-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="rounded-2xl border border-slate-200/80 p-6 bg-white hover:border-[#d68a9f]/60 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-base font-bold text-slate-900">Ativar Tema Outubro Rosa</span>
                                                 {siteForm.watch("themeOutubroRosa") && (
                                                     <span className="relative flex h-2.5 w-2.5">
-                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-pink-600"></span>
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#d68a9f] opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#be5f77]"></span>
                                                     </span>
                                                 )}
                                             </div>
                                             <p className="text-sm text-slate-500 max-w-xl">
-                                                Muda instantaneamente todo o site para uma paleta de rosa harmoniosa e uniforme. Quando desativado, o site volta 100% ao estado visual original.
+                                                Aplica ao site uma paleta suave, delicada e harmoniosa (Rose Quartz e tons aveludados sem saturação agressiva). Quando desativado, o site volta 100% à sua identidade original.
                                             </p>
                                         </div>
 
                                         <FormField
-                                            control={siteForm.control}
                                             name="themeOutubroRosa"
                                             render={({ field }) => (
                                                 <FormItem className="flex items-center space-y-0">
@@ -858,7 +1197,7 @@ export default function SiteConfigPage() {
                                                                 field.onChange(checked);
                                                                 siteForm.setValue("activeTheme", checked ? "outubro_rosa" : "default");
                                                             }}
-                                                            className="data-[state=checked]:bg-pink-600 h-7 w-12"
+                                                            className="data-[state=checked]:bg-[#be5f77] h-7 w-12"
                                                         />
                                                     </FormControl>
                                                 </FormItem>
@@ -867,16 +1206,15 @@ export default function SiteConfigPage() {
                                     </div>
 
                                     {/* Badge Switch */}
-                                    <div className="rounded-2xl border border-slate-200/80 p-6 bg-white hover:border-pink-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="rounded-2xl border border-slate-200/80 p-6 bg-white hover:border-[#d68a9f]/60 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <div className="space-y-1">
                                             <span className="text-base font-bold text-slate-900">Exibir Selo Flutuante de Apoio à Causa</span>
                                             <p className="text-sm text-slate-500 max-w-xl">
-                                                Exibe um discreto laço informativo ("🎗️ Outubro Rosa") no canto inferior da tela pública com mensagem de conscientização.
+                                                Exibe uma pílula minimalista e elegante ("🎗️ Outubro Rosa") no canto inferior da tela pública que abre um modal clean e acolhedor de conscientização.
                                             </p>
                                         </div>
 
                                         <FormField
-                                            control={siteForm.control}
                                             name="themeOutubroRosaBadge"
                                             render={({ field }) => (
                                                 <FormItem className="flex items-center space-y-0">
@@ -885,7 +1223,7 @@ export default function SiteConfigPage() {
                                                             checked={field.value !== false}
                                                             onCheckedChange={field.onChange}
                                                             disabled={!siteForm.watch("themeOutubroRosa")}
-                                                            className="data-[state=checked]:bg-pink-600 h-7 w-12"
+                                                            className="data-[state=checked]:bg-[#be5f77] h-7 w-12"
                                                         />
                                                     </FormControl>
                                                 </FormItem>
@@ -896,55 +1234,55 @@ export default function SiteConfigPage() {
                                     {/* Harmonious Color Palette Presentation */}
                                     <div className="space-y-4">
                                         <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                                            Paleta de Cores Uniforme do Tema
+                                            Paleta Delicada e Suave do Tema
                                         </Label>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                                             <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
-                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#db2777" }}>
-                                                    #db2777
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#be5f77" }}>
+                                                    #be5f77
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-800">Rosa Vibrante</p>
-                                                    <p className="text-[11px] text-slate-500">Botões e Destaques</p>
+                                                    <p className="text-xs font-bold text-slate-800">Rose Quartz</p>
+                                                    <p className="text-[11px] text-slate-500">Botões e Primário Suave</p>
                                                 </div>
                                             </div>
 
                                             <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
-                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#be185d" }}>
-                                                    #be185d
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#d68a9f" }}>
+                                                    #d68a9f
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-800">Rosa Nobre</p>
-                                                    <p className="text-[11px] text-slate-500">Textos Principais</p>
+                                                    <p className="text-xs font-bold text-slate-800">Blush Suave</p>
+                                                    <p className="text-[11px] text-slate-500">Secundário e Detalhes</p>
                                                 </div>
                                             </div>
 
                                             <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
-                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#831843" }}>
-                                                    #831843
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#38222c" }}>
+                                                    #38222c
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-800">Vinho Profundo</p>
+                                                    <p className="text-xs font-bold text-slate-800">Malva Aveludado</p>
                                                     <p className="text-[11px] text-slate-500">Hero, Header e Rodapé</p>
                                                 </div>
                                             </div>
 
                                             <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
-                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#f43f5e" }}>
-                                                    #f43f5e
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#e8b4c0" }}>
+                                                    #e8b4c0
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-800">Rosa Acento</p>
-                                                    <p className="text-[11px] text-slate-500">Badges e Ícones</p>
+                                                    <p className="text-xs font-bold text-slate-800">Pétala Suave</p>
+                                                    <p className="text-[11px] text-slate-500">Badges e Bordas Leves</p>
                                                 </div>
                                             </div>
 
                                             <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
-                                                <div className="h-14 rounded-xl shadow-inner border border-pink-200 flex items-center justify-center text-pink-700 text-xs font-bold font-mono" style={{ backgroundColor: "#fdf2f8" }}>
-                                                    #fdf2f8
+                                                <div className="h-14 rounded-xl shadow-inner border border-[#e8b4c0]/50 flex items-center justify-center text-[#99475c] text-xs font-bold font-mono" style={{ backgroundColor: "#fbf6f7" }}>
+                                                    #fbf6f7
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-800">Rosa Suave</p>
+                                                    <p className="text-xs font-bold text-slate-800">Nude Soft</p>
                                                     <p className="text-[11px] text-slate-500">Superfícies e Cartões</p>
                                                 </div>
                                             </div>
@@ -959,21 +1297,21 @@ export default function SiteConfigPage() {
                                         <div className={cn(
                                             "rounded-3xl p-6 md:p-8 transition-all duration-500 border overflow-hidden",
                                             siteForm.watch("themeOutubroRosa")
-                                                ? "bg-gradient-to-br from-[#831843] via-[#701a75] to-[#500724] text-white border-pink-500/30 shadow-xl shadow-pink-900/10"
+                                                ? "bg-gradient-to-br from-[#38222c] via-[#482836] to-[#27161f] text-white border-[#e8b4c0]/25 shadow-xl shadow-[#38222c]/20"
                                                 : "bg-[#08454c] text-white border-slate-700"
                                         )}>
                                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                                                 <div className="space-y-2 max-w-xl">
                                                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-white/10 backdrop-blur-sm border border-white/20">
-                                                        <span>{siteForm.watch("themeOutubroRosa") ? "🎗️ Campanha Outubro Rosa" : "🏛️ Monteiro Seguros"}</span>
+                                                        <span>{siteForm.watch("themeOutubroRosa") ? "🎗️ Conscientização & Cuidado" : "🏛️ Monteiro Seguros"}</span>
                                                     </div>
                                                     <h4 className="text-2xl font-bold font-display leading-tight">
                                                         {siteForm.watch("themeOutubroRosa")
-                                                            ? "Cuidar de você e da sua família é o nosso maior compromisso."
+                                                            ? "Cuidar de você e da sua saúde é o gesto mais bonito de proteção."
                                                             : "Protegendo seu Futuro, Garantindo seu Legado."}
                                                     </h4>
                                                     <p className="text-sm text-white/80">
-                                                        Exemplo de como títulos, botões e cartões aparecerão para os visitantes do seu site.
+                                                        Exemplo de como títulos, botões e cartões aparecerão para os visitantes do seu site com cores aveludadas e acolhedoras.
                                                     </p>
                                                 </div>
 
@@ -983,7 +1321,7 @@ export default function SiteConfigPage() {
                                                         className={cn(
                                                             "px-6 py-3 rounded-full font-bold text-sm shadow-lg transition-all",
                                                             siteForm.watch("themeOutubroRosa")
-                                                                ? "bg-white text-[#be185d] hover:bg-white/90"
+                                                                ? "bg-white text-[#38222c] hover:bg-white/90"
                                                                 : "bg-white text-[#08454c] hover:bg-white/90"
                                                         )}
                                                     >
@@ -994,7 +1332,7 @@ export default function SiteConfigPage() {
                                                         className={cn(
                                                             "px-6 py-3 rounded-full font-bold text-sm transition-all border",
                                                             siteForm.watch("themeOutubroRosa")
-                                                                ? "bg-pink-600/90 text-white border-pink-400/30 hover:bg-pink-600"
+                                                                ? "bg-[#be5f77] text-white border-[#d68a9f]/30 hover:bg-[#b0536b]"
                                                                 : "bg-[#c65f54] text-white border-transparent hover:bg-[#c65f54]/90"
                                                         )}
                                                     >
@@ -1023,7 +1361,7 @@ export default function SiteConfigPage() {
                                         type="button"
                                         onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
                                         disabled={isUpdatingSettings}
-                                        className="h-11 px-6 bg-pink-600 hover:bg-pink-700 text-white rounded-xl gap-2 font-bold shadow-md shadow-pink-600/20 active:scale-95 transition-all"
+                                        className="h-11 px-6 bg-[#be5f77] hover:bg-[#b0536b] text-white rounded-xl gap-2 font-bold shadow-md shadow-[#be5f77]/20 active:scale-95 transition-all"
                                     >
                                         {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                                         Salvar Configuração do Tema
@@ -1097,8 +1435,32 @@ export default function SiteConfigPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="h-16 w-28 rounded-xl overflow-hidden shadow-inner bg-slate-100 flex items-center justify-center border border-slate-200">
-                                                            {slide.imageBase64 ? (
+                                                        <div className="h-16 w-28 rounded-xl overflow-hidden shadow-inner bg-slate-900 flex items-center justify-center border border-slate-200 relative group">
+                                                            {slide.mediaType === "video" || slide.videoUrl ? (
+                                                                <>
+                                                                    {slide.videoUrl && !slide.videoUrl.includes("youtube") && !slide.videoUrl.includes("vimeo") ? (
+                                                                        <video
+                                                                            src={slide.videoUrl}
+                                                                            muted
+                                                                            loop
+                                                                            autoPlay
+                                                                            playsInline
+                                                                            poster={slide.imageBase64 || undefined}
+                                                                            className={cn(
+                                                                                "w-full h-full",
+                                                                                slide.videoFit === "contain" ? "object-contain bg-black" : "object-cover"
+                                                                            )}
+                                                                        />
+                                                                    ) : slide.imageBase64 ? (
+                                                                        <img src={slide.imageBase64} alt={slide.title} className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        <Film className="h-6 w-6 text-amber-400" />
+                                                                    )}
+                                                                    <div className="absolute top-1 left-1 bg-black/80 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider text-amber-300 flex items-center gap-1 shadow-sm">
+                                                                        <Film className="h-2.5 w-2.5" /> VÍDEO
+                                                                    </div>
+                                                                </>
+                                                            ) : slide.imageBase64 ? (
                                                                 <img src={slide.imageBase64} alt={slide.title} className="w-full h-full object-cover" />
                                                             ) : (
                                                                 <ImageIcon className="h-6 w-6 text-slate-300" />
@@ -1106,8 +1468,20 @@ export default function SiteConfigPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div>
-                                                            <p className="font-bold text-slate-900 line-clamp-1">{slide.title}</p>
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-bold text-slate-900 line-clamp-1">{slide.title}</p>
+                                                                {(slide.mediaType === "video" || slide.videoUrl) && (
+                                                                    <Badge variant="outline" className={cn(
+                                                                        "text-[10px] px-1.5 py-0 font-semibold border",
+                                                                        slide.videoFit === "contain" 
+                                                                            ? "text-emerald-700 bg-emerald-50 border-emerald-300" 
+                                                                            : "text-blue-700 bg-blue-50 border-blue-300"
+                                                                    )}>
+                                                                        {slide.videoFit === "contain" ? "Sem Cortes (100%)" : "Cover"}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
                                                             <p className="text-xs text-slate-500 line-clamp-1">{slide.subtitle}</p>
                                                         </div>
                                                     </TableCell>

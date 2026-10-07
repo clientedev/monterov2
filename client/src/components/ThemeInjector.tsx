@@ -13,9 +13,9 @@ export function ThemeInjector() {
         if (isPinkOctober) {
             root.setAttribute("data-theme", "outubro-rosa");
             root.classList.add("theme-outubro-rosa");
-            root.style.setProperty("--primary-hex", "#db2777");
-            root.style.setProperty("--secondary-hex", "#f43f5e");
-            root.style.setProperty("--navbar-bg", "rgba(131, 24, 67, 0.95)");
+            root.style.setProperty("--primary-hex", "#be5f77");
+            root.style.setProperty("--secondary-hex", "#d68a9f");
+            root.style.setProperty("--navbar-bg", "rgba(54, 32, 43, 0.94)");
         } else {
             root.removeAttribute("data-theme");
             root.classList.remove("theme-outubro-rosa");

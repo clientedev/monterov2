@@ -3,7 +3,8 @@ import { Footer } from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Star, Loader2, MessageSquare, ShieldCheck,
-  Zap, Heart, Sparkles, Instagram, ExternalLink, Play, FileText
+  Zap, Heart, Sparkles, Instagram, ExternalLink, Play, FileText,
+  Volume2, VolumeX, Film
 } from "lucide-react";
 import { Link } from "wouter";
 import { useServices, usePosts } from "@/hooks/use-content";
@@ -15,6 +16,7 @@ import { ReviewsSection } from "@/components/ReviewsSection";
 import { cn } from "@/lib/utils";
 import { extractInstagramInfo } from "@/components/InstagramEmbed";
 import { InstagramCachedVideo } from "@/components/InstagramCachedVideo";
+import { getVideoEmbedInfo } from "@/lib/videoUtils";
 
 export default function Home() {
   const { data: services, isLoading: loadingServices } = useServices();
@@ -22,6 +24,7 @@ export default function Home() {
   const { settings, slides, isLoadingSettings: loadingSettings } = useSiteSettings();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [homePostsTab, setHomePostsTab] = useState<"all" | "instagram" | "articles">("all");
+  const [isHeroMuted, setIsHeroMuted] = useState(true);
 
   const fallbackPosts = [
     {
@@ -76,25 +79,40 @@ export default function Home() {
       id: 1,
       title: "Planos de Saúde Individuais & Familiares",
       subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
+      mediaType: "image",
       imageBase64: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
+      videoUrl: null,
+      videoFit: "cover",
       buttonText: "Cotação Individual",
       buttonLink: "/contact",
+      order: 0,
+      isActive: true,
     },
     {
       id: 2,
       title: "Benefícios Corporativos Sob Medida",
       subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
+      mediaType: "image",
       imageBase64: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
+      videoUrl: null,
+      videoFit: "cover",
       buttonText: "Cotação Corporativa",
       buttonLink: "/contact",
+      order: 1,
+      isActive: true,
     },
     {
       id: 3,
       title: "Planos de Saúde Premium & Reembolso",
       subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
+      mediaType: "image",
       imageBase64: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
+      videoUrl: null,
+      videoFit: "cover",
       buttonText: "Planos Premium",
       buttonLink: "/contact",
+      order: 2,
+      isActive: true,
     }
   ];
 
@@ -133,8 +151,13 @@ export default function Home() {
         ) : (
           <div className="w-full h-full relative z-10 min-h-[85vh] lg:min-h-[90vh] flex items-center">
             <AnimatePresence mode="wait">
-              {displaySlides.map((slide, idx) => (
-                idx === currentSlideIndex && (
+              {displaySlides.map((slide, idx) => {
+                if (idx !== currentSlideIndex) return null;
+                const isVideo = Boolean(slide.mediaType === "video" || slide.videoUrl);
+                const embed = isVideo ? getVideoEmbedInfo(slide.videoUrl, isHeroMuted) : { type: null };
+                const isContain = slide.videoFit === "contain";
+
+                return (
                   <motion.div
                     key={slide.id}
                     initial={{ opacity: 0 }}
@@ -143,18 +166,78 @@ export default function Home() {
                     transition={{ duration: 1.2, ease: "easeInOut" }}
                     className="absolute inset-0 w-full h-full flex items-center"
                   >
-                    {/* Full-bleed absolute background image */}
-                    <div className="absolute inset-0 z-0">
-                      <img
-                        src={slide.imageBase64}
-                        alt={slide.title}
-                        onError={(e) => {
-                          e.currentTarget.src = "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000";
-                        }}
-                        className="w-full h-full object-cover opacity-60"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#08454c] via-[#08454c]/70 to-transparent" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/60 via-transparent to-transparent" />
+                    {/* Background Media: Vídeo HD ou Imagem de Alto Impacto */}
+                    <div className="absolute inset-0 z-0 overflow-hidden bg-[#08454c]">
+                      {isVideo && slide.videoUrl ? (
+                        embed.type === "youtube" || embed.type === "vimeo" ? (
+                          <div className="relative w-full h-full overflow-hidden">
+                            {isContain && (
+                              <iframe
+                                src={embed.embedUrl}
+                                title="Background Ambient Blur"
+                                className="absolute inset-0 w-full h-full border-0 blur-2xl opacity-40 scale-125 pointer-events-none"
+                                allow="autoplay; encrypted-media"
+                              />
+                            )}
+                            <div className="w-full h-full relative z-0 flex items-center justify-center">
+                              <iframe
+                                src={embed.embedUrl}
+                                title={slide.title}
+                                className={cn(
+                                  "w-full h-full border-0 pointer-events-none",
+                                  isContain ? "object-contain max-h-[95vh] aspect-video" : "object-cover scale-105"
+                                )}
+                                allow="autoplay; encrypted-media"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative w-full h-full overflow-hidden">
+                            {/* Efeito Cinema Ambient Backdrop: Se estiver no modo sem cortes (contain), preenche as laterais com o brilho dinâmico do próprio vídeo */}
+                            {isContain && (
+                              <video
+                                src={slide.videoUrl}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                aria-hidden="true"
+                                className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110 pointer-events-none transform-gpu"
+                              />
+                            )}
+                            {/* Vídeo Principal em Alta Resolução */}
+                            <div className="absolute inset-0 w-full h-full flex items-center justify-center">
+                              <video
+                                src={slide.videoUrl}
+                                autoPlay
+                                loop
+                                muted={isHeroMuted}
+                                playsInline
+                                preload="auto"
+                                poster={slide.imageBase64 || undefined}
+                                className={cn(
+                                  "w-full h-full relative z-0 transition-all duration-700",
+                                  isContain ? "object-contain" : "object-cover opacity-85"
+                                )}
+                              />
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        /* Imagem Estática de Alta Resolução */
+                        <img
+                          src={slide.imageBase64 || "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000"}
+                          alt={slide.title}
+                          onError={(e) => {
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000";
+                          }}
+                          className="w-full h-full object-cover opacity-60"
+                        />
+                      )}
+
+                      {/* Gradientes Suaves: Legibilidade de Texto Impecável sem Escurecer o Vídeo */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#08454c]/95 via-[#08454c]/70 sm:via-[#08454c]/40 to-transparent pointer-events-none z-10" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/85 via-transparent to-transparent pointer-events-none z-10" />
                     </div>
 
                     <div className="container px-4 md:px-6 mx-auto relative z-10 py-12">
@@ -165,11 +248,18 @@ export default function Home() {
                           transition={{ duration: 0.8 }}
                           className="space-y-6"
                         >
-                          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight">
+                          {isVideo && (
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-amber-300">
+                              <Film className="w-3.5 h-3.5" />
+                              <span>{isContain ? "Vídeo HD • Visão Completa" : "Vídeo HD • Cinema"}</span>
+                            </div>
+                          )}
+
+                          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight drop-shadow-sm">
                             {slide.title}
                           </h1>
                           {slide.subtitle && (
-                            <p className="text-base sm:text-lg md:text-xl text-slate-200 font-light max-w-xl leading-relaxed">
+                            <p className="text-base sm:text-lg md:text-xl text-slate-200 font-light max-w-xl leading-relaxed drop-shadow-sm">
                               {slide.subtitle}
                             </p>
                           )}
@@ -194,9 +284,36 @@ export default function Home() {
                       </div>
                     </div>
                   </motion.div>
-                )
-              ))}
+                );
+              })}
             </AnimatePresence>
+
+            {/* Controle de Áudio Flutuante para Banners com Vídeo */}
+            {Boolean(
+              displaySlides[currentSlideIndex]?.mediaType === "video" || 
+              displaySlides[currentSlideIndex]?.videoUrl
+            ) && (
+              <div className="absolute bottom-8 right-6 z-20 hidden sm:flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setIsHeroMuted(!isHeroMuted)}
+                  className="h-10 px-4 rounded-full bg-black/60 hover:bg-black/85 border border-white/20 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all"
+                  title={isHeroMuted ? "Ativar som do vídeo" : "Silenciar áudio"}
+                >
+                  {isHeroMuted ? (
+                    <>
+                      <VolumeX className="w-4 h-4 text-slate-300" />
+                      <span>Áudio Mudo</span>
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="w-4 h-4 text-emerald-400 animate-pulse" />
+                      <span className="text-emerald-300">Som Ativo</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
 
             {/* Dots indicators for slide control */}
             {displaySlides.length > 1 && (
