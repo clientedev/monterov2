@@ -416,7 +416,7 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
 
             const curContent = form.getValues("content");
             if (!curContent) {
-                form.setValue("content", `Confira esta publicação exclusiva no nosso Instagram oficial @monteiroseguros.\n\nLink original: ${info.cleanUrl}`);
+                form.setValue("content", `Confira esta publicação exclusiva no nosso Instagram oficial @monteirosegurosebeneficios.\n\nLink original: ${info.cleanUrl}`);
             }
 
             const curSummary = form.getValues("summary");

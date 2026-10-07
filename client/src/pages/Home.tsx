@@ -828,7 +828,7 @@ export default function Home() {
                           <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
                           <span>•</span>
                           <span className="text-[#c65f54] font-medium">
-                            {isInstagram ? "@monteiroseguros" : "Blog Monteiro"}
+                            {isInstagram ? "@monteirosegurosebeneficios" : "Blog Monteiro"}
                           </span>
                         </div>
                         <h3 className="text-lg font-bold font-display text-[#163b52] mb-2 group-hover:text-[#08454c] transition-colors line-clamp-2">

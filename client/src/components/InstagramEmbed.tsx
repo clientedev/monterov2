@@ -92,7 +92,7 @@ export function InstagramEmbed({
 
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-sm text-slate-900 tracking-tight">monteiroseguros</span>
+              <span className="font-bold text-sm text-slate-900 tracking-tight">monteirosegurosebeneficios</span>
               <ShieldCheck className="w-4 h-4 text-sky-500 fill-sky-500" />
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888]">
                 <Instagram className="w-2.5 h-2.5" />
@@ -240,7 +240,7 @@ export function InstagramEmbed({
       {/* Caption & Info Snippet */}
       {summary && (
         <div className="px-4 pb-3.5 pt-1 text-xs text-slate-700 leading-relaxed bg-white">
-          <span className="font-bold mr-1.5 text-slate-900">monteiroseguros</span>
+          <span className="font-bold mr-1.5 text-slate-900">monteirosegurosebeneficios</span>
           <span className="text-slate-600">{summary}</span>
         </div>
       )}

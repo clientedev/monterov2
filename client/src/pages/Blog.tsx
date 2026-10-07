@@ -234,7 +234,7 @@ function ShareModal({ post, onClose }: { post: any; onClose: () => void }) {
       ctx.font = "28px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
-      ctx.fillText("monteiroseguros.com.br", W / 2, H - 60);
+      ctx.fillText("@monteirosegurosebeneficios", W / 2, H - 60);
 
       // Try Web Share API with files (works on mobile)
       canvas.toBlob(async (blob) => {
@@ -478,7 +478,7 @@ export default function Blog() {
               style={{ background: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" }}
             >
               <Instagram className="w-3.5 h-3.5" />
-              <span>@monteiroseguros</span>
+              <span>@monteirosegurosebeneficios</span>
             </a>
           </div>
         </div>
