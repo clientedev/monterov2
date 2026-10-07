@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSiteSettingsSchema, insertHeroSlideSchema, type InsertSiteSettings, type InsertHeroSlide, type HeroSlide, type SiteSettings } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -78,22 +78,36 @@ const CURATED_FONTS_DISPLAY = [
 
 const SAMPLE_PRESETS = [
     {
-        name: "Prédio Corporativo",
-        image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop",
-        title: "Proteção Corporativa de Alto Nível",
-        subtitle: "Garantindo a continuidade do seu negócio com excelência."
+        name: "Saúde Familiar",
+        image: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
+        title: "Planos de Saúde Individuais & Familiares",
+        subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
+        buttonText: "Cotação Individual",
+        buttonLink: "/contact"
     },
     {
-        name: "Segurança Familiar",
-        image: "https://images.unsplash.com/photo-1509059852496-f3822ae057bf?q=80&w=800&auto=format&fit=crop",
-        title: "O que Você mais Ama, Protegido",
-        subtitle: "Seguros de vida e residenciais sob medida para sua família."
+        name: "Corporativo",
+        image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
+        title: "Benefícios Corporativos Sob Medida",
+        subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
+        buttonText: "Cotação Corporativa",
+        buttonLink: "/contact"
     },
     {
-        name: "Confiança & Parceria",
-        image: "https://images.unsplash.com/photo-1521791136064-7986c29535a7?q=80&w=800&auto=format&fit=crop",
-        title: "Seu Parceiro de Todas as Horas",
-        subtitle: "Consultoria especializada para todas as etapas da sua vida."
+        name: "Planos Premium",
+        image: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
+        title: "Planos de Saúde Premium & Reembolso",
+        subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
+        buttonText: "Planos Premium",
+        buttonLink: "/contact"
+    },
+    {
+        name: "Vida & Sucessão",
+        image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=2000",
+        title: "Seguro de Vida e Sucessão Patrimonial",
+        subtitle: "Garantia de liquidez imediata, segurança sucessória e proteção irrestrita para sua família e patrimônio construído.",
+        buttonText: "Consultoria Especializada",
+        buttonLink: "/contact"
     }
 ];
 
@@ -120,10 +134,23 @@ function SlideDialog({
         }
     });
 
+    useEffect(() => {
+        if (open) {
+            form.reset(slide || {
+                title: "",
+                subtitle: "",
+                imageBase64: "",
+                buttonText: "Cotação Gratuita",
+                buttonLink: "/contact",
+                order: 0,
+                isActive: true
+            });
+        }
+    }, [open, slide, form]);
+
     const handleSave = (data: InsertHeroSlide) => {
         onSave(data);
         setOpen(false);
-        form.reset();
     };
 
     return (
@@ -329,25 +356,29 @@ export default function SiteConfigPage() {
     const siteForm = useForm<InsertSiteSettings>({
         resolver: zodResolver(insertSiteSettingsSchema),
         defaultValues: settings || {
-            siteName: "Monteiro Corretora",
-            primaryColor: "#0F6570",
-            secondaryColor: "#C45A4A",
+            siteName: "Monteiro Seguros e Benefícios",
+            primaryColor: "#08454c",
+            secondaryColor: "#c65f54",
             fontSans: "Inter",
             fontDisplay: "Outfit",
-            heroTitle: "Protegendo seu Futuro, Garantindo seu Legado",
-            heroSubtitle: "Experimente a tranquilidade de uma cobertura completa. Combinamos expertise tradicional com eficiência moderna.",
-            aboutTitle: "Sobre a Monteiro Corretora",
-            aboutContent: "Com décadas de experiência no mercado de seguros...",
-            servicesTitle: "Nossos Serviços",
-            servicesSubtitle: "Soluções abrangentes para todas as suas necessidades de proteção.",
-            blogTitle: "Últimas do Blog",
-            blogSubtitle: "Fique por dentro das novidades e dicas do mercado de seguros.",
-            contactEmail: "contato@monteiro.com",
-            contactPhone: "+55 (11) 9999-9999",
-            address: "Rua do Comércio, 123, São Paulo, SP",
-            footerText: "Oferecemos soluções premium em seguros personalizadas...",
-            logoScale: 150,
-            logoScaleMobile: 130,
+            heroTitle: "Proteção que Transforma,\nBenefícios que Cuidam",
+            heroSubtitle: "A Monteiro Seguros e Benefícios é especializada em consultoria estratégica em proteção e benefícios para empresas e famílias.",
+            aboutTitle: "Sobre a Monteiro Seguros e Benefícios",
+            aboutContent: "A Monteiro Seguros e Benefícios é especializada em oferecer consultoria estratégica em proteção e benefícios para empresas e famílias.\n\nMais do que comercializar seguros, atuamos como parceiros na construção de soluções que equilibram cuidado com pessoas, controle de custos e segurança financeira, tanto no ambiente corporativo quanto na vida pessoal.",
+            servicesTitle: "Seguros Estruturados & Benefícios Inteligentes",
+            servicesSubtitle: "Modelos boutique de apólices elaboradas para resguardar sua vida corporativa, saúde familiar e legado patrimonial de forma sustentável.",
+            blogTitle: "Nossos Posts & Publicações",
+            blogSubtitle: "Fique por dentro das novidades, orientações e publicações da Monteiro Seguros e Benefícios.",
+            contactEmail: "carolina@monteirocorretora.com.br",
+            contactPhone: "+55 (11) 94454-7444",
+            address: "Av. Santa Marina, 2569 - São Paulo, SP",
+            footerText: "Oferecemos uma verdadeira consultoria em seguros e benefícios para você e sua empresa.",
+            instagramUrl: "https://www.instagram.com/monteirosegurosebeneficios/",
+            facebookUrl: "",
+            linkedinUrl: "",
+            twitterUrl: "",
+            logoScale: 160,
+            logoScaleMobile: 140,
             smtpHost: "",
             smtpPort: 587,
             smtpUser: "",
@@ -364,6 +395,20 @@ export default function SiteConfigPage() {
         if (settings) {
             siteForm.reset({
                 ...settings,
+                siteName: settings.siteName || "Monteiro Seguros e Benefícios",
+                instagramUrl: settings.instagramUrl || "https://www.instagram.com/monteirosegurosebeneficios/",
+                contactPhone: settings.contactPhone || "+55 (11) 94454-7444",
+                contactEmail: settings.contactEmail || "carolina@monteirocorretora.com.br",
+                address: settings.address || "Av. Santa Marina, 2569 - São Paulo, SP",
+                servicesTitle: settings.servicesTitle || "Seguros Estruturados & Benefícios Inteligentes",
+                servicesSubtitle: settings.servicesSubtitle || "Modelos boutique de apólices elaboradas para resguardar sua vida corporativa, saúde familiar e legado patrimonial de forma sustentável.",
+                blogTitle: settings.blogTitle || "Nossos Posts & Publicações",
+                blogSubtitle: settings.blogSubtitle || "Fique por dentro das novidades, orientações e publicações da Monteiro Seguros e Benefícios.",
+                footerText: settings.footerText || "Oferecemos uma verdadeira consultoria em seguros e benefícios para você e sua empresa.",
+                aboutTitle: settings.aboutTitle || "Sobre a Monteiro Seguros e Benefícios",
+                facebookUrl: settings.facebookUrl || "",
+                linkedinUrl: settings.linkedinUrl || "",
+                twitterUrl: settings.twitterUrl || "",
                 smtpHost: settings.smtpHost || "",
                 smtpPort: settings.smtpPort || 587,
                 smtpUser: settings.smtpUser || "",
@@ -378,7 +423,42 @@ export default function SiteConfigPage() {
     }, [settings, siteForm]);
 
     const onSaveSettings = async (data: InsertSiteSettings) => {
-        await updateSettings(data);
+        try {
+            await updateSettings(data);
+        } catch (err: any) {
+            console.error("Erro ao salvar configurações:", err);
+        }
+    };
+
+    const onFormError = (errors: any) => {
+        console.error("Erros de validação em site-config:", errors);
+        const fields = Object.keys(errors);
+        toast({
+            title: "Atenção ao salvar",
+            description: `Revise os campos: ${fields.join(", ")}`,
+            variant: "destructive"
+        });
+    };
+
+    const handleMoveSlide = async (currentIndex: number, direction: "up" | "down") => {
+        if (!slides || slides.length < 2) return;
+        const sorted = [...slides].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+        if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+        const currentSlide = sorted[currentIndex];
+        const targetSlide = sorted[targetIndex];
+
+        const currentOrder = currentSlide.order ?? currentIndex;
+        const targetOrder = targetSlide.order ?? targetIndex;
+
+        try {
+            await updateSlide({ id: currentSlide.id, slide: { order: targetOrder } });
+            await updateSlide({ id: targetSlide.id, slide: { order: currentOrder } });
+            toast({ title: "Ordem dos slides atualizada com sucesso!" });
+        } catch (err: any) {
+            toast({ title: "Erro ao reordenar slides", description: err.message, variant: "destructive" });
+        }
     };
 
     if (isLoadingSettings || isLoadingSlides) {
@@ -397,7 +477,7 @@ export default function SiteConfigPage() {
                     <p className="text-slate-500 mt-2 text-lg">Controle total sobre a identidade visual e conteúdo das suas páginas.</p>
                 </div>
                 <Button
-                    onClick={siteForm.handleSubmit(onSaveSettings)}
+                    onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
                     disabled={isUpdatingSettings}
                     className="h-12 px-8 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-xl gap-2 active:scale-95 transition-all"
                 >
@@ -536,6 +616,17 @@ export default function SiteConfigPage() {
                                         />
                                     </div>
                                 </CardContent>
+                                <CardFooter className="bg-slate-50 border-t border-slate-100 p-6 flex justify-end">
+                                    <Button
+                                        type="button"
+                                        onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
+                                        disabled={isUpdatingSettings}
+                                        className="h-11 px-6 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold shadow-md shadow-primary/20 active:scale-95 transition-all"
+                                    >
+                                        {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        Salvar Identidade
+                                    </Button>
+                                </CardFooter>
                             </Card>
                         </TabsContent>
 
@@ -642,6 +733,17 @@ export default function SiteConfigPage() {
                                         />
                                     </div>
                                 </CardContent>
+                                <CardFooter className="bg-slate-50 border-t border-slate-100 p-6 flex justify-end">
+                                    <Button
+                                        type="button"
+                                        onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
+                                        disabled={isUpdatingSettings}
+                                        className="h-11 px-6 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold shadow-md shadow-primary/20 active:scale-95 transition-all"
+                                    >
+                                        {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        Salvar Estilo & Fontes
+                                    </Button>
+                                </CardFooter>
                             </Card>
                         </TabsContent>
 
@@ -916,6 +1018,17 @@ export default function SiteConfigPage() {
                                         </div>
                                     </div>
                                 </CardContent>
+                                <CardFooter className="bg-slate-50 border-t border-slate-100 p-6 flex justify-end">
+                                    <Button
+                                        type="button"
+                                        onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
+                                        disabled={isUpdatingSettings}
+                                        className="h-11 px-6 bg-pink-600 hover:bg-pink-700 text-white rounded-xl gap-2 font-bold shadow-md shadow-pink-600/20 active:scale-95 transition-all"
+                                    >
+                                        {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        Salvar Configuração do Tema
+                                    </Button>
+                                </CardFooter>
                             </Card>
                         </TabsContent>
 
@@ -954,15 +1067,31 @@ export default function SiteConfigPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {slides?.map((slide, index) => (
+                                            {([...(slides || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))).map((slide, index, sortedArr) => (
                                                 <TableRow key={slide.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
                                                     <TableCell className="pl-8">
                                                         <div className="flex flex-col items-center gap-1">
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-primary" onClick={() => updateSlide({ id: slide.id, slide: { order: slide.order - 1 } })} disabled={index === 0}>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-7 w-7 text-slate-400 hover:text-primary"
+                                                                onClick={() => handleMoveSlide(index, "up")}
+                                                                disabled={index === 0}
+                                                                title="Subir posição"
+                                                            >
                                                                 <MoveUp className="h-4 w-4" />
                                                             </Button>
-                                                            <span className="text-sm font-black text-slate-600 font-mono">{slide.order}</span>
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-primary" onClick={() => updateSlide({ id: slide.id, slide: { order: slide.order + 1 } })} disabled={index === slides.length - 1}>
+                                                            <span className="text-sm font-black text-slate-600 font-mono">{slide.order ?? index}</span>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-7 w-7 text-slate-400 hover:text-primary"
+                                                                onClick={() => handleMoveSlide(index, "down")}
+                                                                disabled={index === sortedArr.length - 1}
+                                                                title="Descer posição"
+                                                            >
                                                                 <MoveDown className="h-4 w-4" />
                                                             </Button>
                                                         </div>
@@ -990,15 +1119,17 @@ export default function SiteConfigPage() {
                                                             slide={slide}
                                                             onSave={(data) => updateSlide({ id: slide.id, slide: data })}
                                                             trigger={
-                                                                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-primary">
-                                                                    < ImageIcon className="h-4 w-4" />
+                                                                <Button type="button" variant="ghost" size="icon" className="text-slate-500 hover:text-primary hover:bg-slate-100 rounded-lg" title="Editar Slide">
+                                                                    <Edit3 className="h-4 w-4" />
                                                                 </Button>
                                                             }
                                                         />
                                                         <Button
+                                                            type="button"
                                                             variant="ghost"
                                                             size="icon"
                                                             className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl"
+                                                            title="Excluir Slide"
                                                             onClick={(e) => {
                                                                 e.preventDefault(); e.stopPropagation();
                                                                 deleteSlide(slide.id);
@@ -1090,6 +1221,17 @@ export default function SiteConfigPage() {
                                         </div>
                                     </div>
                                 </CardContent>
+                                <CardFooter className="bg-slate-50 border-t border-slate-100 p-6 flex justify-end">
+                                    <Button
+                                        type="button"
+                                        onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
+                                        disabled={isUpdatingSettings}
+                                        className="h-11 px-6 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold shadow-md shadow-primary/20 active:scale-95 transition-all"
+                                    >
+                                        {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        Salvar Títulos da Home
+                                    </Button>
+                                </CardFooter>
                             </Card>
                         </TabsContent>
 
@@ -1150,6 +1292,17 @@ export default function SiteConfigPage() {
                                         />
                                     </div>
                                 </CardContent>
+                                <CardFooter className="bg-slate-50 border-t border-slate-100 p-6 flex justify-end">
+                                    <Button
+                                        type="button"
+                                        onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
+                                        disabled={isUpdatingSettings}
+                                        className="h-11 px-6 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold shadow-md shadow-primary/20 active:scale-95 transition-all"
+                                    >
+                                        {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        Salvar Conteúdo Institucional
+                                    </Button>
+                                </CardFooter>
                             </Card>
                         </TabsContent>
 
@@ -1214,7 +1367,33 @@ export default function SiteConfigPage() {
                                                     <FormItem>
                                                         <FormLabel className="text-xs font-bold text-slate-500">Instagram URL</FormLabel>
                                                         <FormControl>
-                                                            <Input {...field} value={field.value || ""} placeholder="https://instagram.com/..." className="h-12 rounded-xl border-slate-200" />
+                                                            <Input {...field} value={field.value || ""} placeholder="https://instagram.com/monteirosegurosebeneficios/" className="h-12 rounded-xl border-slate-200" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={siteForm.control}
+                                                name="linkedinUrl"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs font-bold text-slate-500">LinkedIn URL</FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} value={field.value || ""} placeholder="https://linkedin.com/company/monteiroseguros" className="h-12 rounded-xl border-slate-200" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={siteForm.control}
+                                                name="facebookUrl"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs font-bold text-slate-500">Facebook URL</FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} value={field.value || ""} placeholder="https://facebook.com/monteiroseguros" className="h-12 rounded-xl border-slate-200" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -1236,6 +1415,17 @@ export default function SiteConfigPage() {
                                         </div>
                                     </div>
                                 </CardContent>
+                                <CardFooter className="bg-slate-50 border-t border-slate-100 p-6 flex justify-end">
+                                    <Button
+                                        type="button"
+                                        onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
+                                        disabled={isUpdatingSettings}
+                                        className="h-11 px-6 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold shadow-md shadow-primary/20 active:scale-95 transition-all"
+                                    >
+                                        {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        Salvar Contatos & Redes
+                                    </Button>
+                                </CardFooter>
                             </Card>
                         </TabsContent>
 
@@ -1355,6 +1545,17 @@ export default function SiteConfigPage() {
                                         </div>
                                     </div>
                                 </CardContent>
+                                <CardFooter className="bg-slate-50 border-t border-slate-100 p-6 flex justify-end">
+                                    <Button
+                                        type="button"
+                                        onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
+                                        disabled={isUpdatingSettings}
+                                        className="h-11 px-6 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold shadow-md shadow-primary/20 active:scale-95 transition-all"
+                                    >
+                                        {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        Salvar Servidor de E-mail
+                                    </Button>
+                                </CardFooter>
                             </Card>
                         </TabsContent>
 

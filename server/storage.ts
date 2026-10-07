@@ -1150,6 +1150,14 @@ export class DatabaseStorage implements IStorage {
         if (updated) {
           this.cachedSiteSettings = { ...this.cachedSiteSettings, ...updated };
         }
+      } else {
+        const [inserted] = await db
+          .insert(siteSettings)
+          .values({ ...settings, updatedAt: new Date() } as any)
+          .returning();
+        if (inserted) {
+          this.cachedSiteSettings = { ...this.cachedSiteSettings, ...inserted };
+        }
       }
     } catch (err: any) {
       console.warn("[SiteSettings] Updated in-memory, DB sync pending:", err.message);

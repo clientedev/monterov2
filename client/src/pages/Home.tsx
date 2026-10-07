@@ -98,7 +98,7 @@ export default function Home() {
     }
   ];
 
-  const dbActiveSlides = slides?.filter(s => s.isActive) || [];
+  const dbActiveSlides = (slides?.filter(s => s.isActive) || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const displaySlides = dbActiveSlides.length > 0 ? dbActiveSlides : defaultSlides;
 
   // Auto-play interval for smooth cross-fade dissolve transition
