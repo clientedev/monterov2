@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { cn } from "@/lib/utils";
+import { extractInstagramInfo } from "@/components/InstagramEmbed";
 
 export default function Home() {
   const { data: services, isLoading: loadingServices } = useServices();
@@ -798,28 +799,40 @@ export default function Home() {
                     </div>
 
                     {/* Media Preview */}
-                    <div className="overflow-hidden aspect-[16/10] w-full bg-slate-900 flex items-center justify-center relative group">
-                      <img
-                        src={post.coverImage || (isInstagram ? "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800" : "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800")}
-                        alt={post.title}
-                        onError={(e) => {
-                          e.currentTarget.src = isInstagram
-                            ? "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800"
-                            : "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
-                        }}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity pointer-events-none" />
-
-                      {isInstagram && (
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 backdrop-blur-[2px]">
-                          <span className="px-4 py-2 rounded-full bg-white text-slate-900 text-xs font-bold shadow-lg flex items-center gap-2">
-                            <Instagram className="w-4 h-4 text-pink-600" />
-                            Ver no Instagram
-                          </span>
+                    {isInstagram && post.instagramUrl ? (() => {
+                      const instaInfo = extractInstagramInfo(post.instagramUrl);
+                      return instaInfo ? (
+                        <div className="w-full bg-white border-b border-slate-100 relative overflow-hidden" style={{ height: '340px' }}>
+                          <iframe
+                            src={instaInfo.embedUrl}
+                            className="w-full h-full border-none"
+                            scrolling="no"
+                            allowTransparency={true}
+                            title={post.title}
+                            loading="lazy"
+                            style={{ pointerEvents: 'none' }}
+                          />
+                          {/* overlay transparente p/ manter hover do card sem interferir no iframe */}
+                          <div className="absolute inset-0" style={{ pointerEvents: 'none' }} />
                         </div>
-                      )}
-                    </div>
+                      ) : (
+                        <div className="overflow-hidden aspect-[16/10] w-full bg-gradient-to-br from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center relative">
+                          <Instagram className="w-16 h-16 text-white/60" />
+                        </div>
+                      );
+                    })() : (
+                      <div className="overflow-hidden aspect-[16/10] w-full bg-slate-900 flex items-center justify-center relative group">
+                        <img
+                          src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
+                          alt={post.title}
+                          onError={(e) => {
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
+                          }}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity pointer-events-none" />
+                      </div>
+                    )}
 
                     {/* Content */}
                     <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
