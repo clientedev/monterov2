@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import carolAvatar from "@assets/carolzinha.png";
-const carolAnim = carolAvatar;
+import carolAnim from "@assets/carol_anim_light.gif";
+
 
 interface Message {
     role: 'user' | 'assistant';

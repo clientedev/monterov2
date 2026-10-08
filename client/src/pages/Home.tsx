@@ -420,10 +420,10 @@ export default function Home() {
                 Últimas Publicações
               </div>
               <h2 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">
-                Conteúdos Recentes para Você
+                {settings?.blogTitle || "Conteúdos Recentes para Você"}
               </h2>
               <p className="text-white/70 text-sm md:text-base mt-2 max-w-xl font-light">
-                Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog.
+                {settings?.blogSubtitle || "Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog."}
               </p>
             </div>
             <Link href="/blog">
@@ -450,7 +450,7 @@ export default function Home() {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: index * 0.1, duration: 0.5 }}
-                      className="group cursor-pointer bg-white text-[#163b52] rounded-none overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
+                      className="group cursor-pointer bg-white text-[#163b52] rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
                     >
                       {/* Media Preview: se for Instagram, usa o vídeo do post perfeitamente enquadrado */}
                       {isInstagram ? (
@@ -488,9 +488,13 @@ export default function Home() {
                             </span>
                           </div>
                           <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300 line-clamp-2">
-                            {post.title && post.title.trim() ? post.title : "Publicação Monteiro Seguros"}
+                            {post.title && post.title.trim()
+                              ? (post.title.startsWith("Publicação do Instagram - Reel #")
+                                  ? `Reel Oficial • ${post.title.replace("Publicação do Instagram - Reel #", "Vídeo #")}`
+                                  : post.title)
+                              : "Publicação Monteiro Seguros"}
                           </h3>
-                          <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
+                          <p className="text-slate-600 text-sm font-light leading-relaxed line-clamp-3">
                             {post.summary && post.summary.trim() 
                               ? post.summary 
                               : (post.content && post.content.trim() 
@@ -789,10 +793,10 @@ export default function Home() {
                 <span>Nossos Posts &amp; Redes Sociais</span>
               </div>
               <h2 className="text-3xl md:text-5xl font-display font-bold text-[#163b52] leading-tight">
-                Nossos Posts
+                {settings?.blogTitle || "Nossos Posts"}
               </h2>
               <p className="text-slate-500 text-sm md:text-base mt-2 max-w-xl font-light">
-                Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog.
+                {settings?.blogSubtitle || "Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog."}
               </p>
             </div>
 
@@ -950,7 +954,11 @@ export default function Home() {
                           </span>
                         </div>
                         <h3 className="text-lg font-bold font-display text-[#163b52] mb-2 group-hover:text-[#08454c] transition-colors line-clamp-2">
-                          {post.title && post.title.trim() ? post.title : "Publicação Monteiro Seguros"}
+                          {post.title && post.title.trim()
+                            ? (post.title.startsWith("Publicação do Instagram - Reel #")
+                                ? `Reel Oficial • ${post.title.replace("Publicação do Instagram - Reel #", "Vídeo #")}`
+                                : post.title)
+                            : "Publicação Monteiro Seguros"}
                         </h3>
                         <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
                           {post.summary && post.summary.trim()

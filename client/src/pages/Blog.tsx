@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { usePosts } from "@/hooks/use-content";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "wouter";
@@ -405,6 +406,7 @@ function ShareModal({ post, onClose }: { post: any; onClose: () => void }) {
 ───────────────────────────────────────── */
 export default function Blog() {
   const { data: posts, isLoading, isError, error, refetch } = usePosts();
+  const { settings } = useSiteSettings();
   const { toast } = useToast();
   const [liked, setLiked] = useState<Set<number>>(new Set());
   const [saved, setSaved] = useState<Set<number>>(new Set());
@@ -461,10 +463,10 @@ export default function Blog() {
         <div className="container px-4 md:px-6 mx-auto relative z-10 text-center">
           <p className="text-[#c65f54] font-bold uppercase tracking-widest text-xs mb-3">Blog &amp; Redes Sociais</p>
           <h1 className="text-3xl md:text-5xl font-display font-bold text-white mb-3 leading-tight">
-            Artigos, Dicas &amp; Posts
+            {settings?.blogTitle || "Artigos, Dicas & Posts"}
           </h1>
           <p className="text-white/60 text-sm md:text-base max-w-md mx-auto font-light">
-            Acompanhe nossas publicações no Instagram e artigos completos sobre seguros e benefícios.
+            {settings?.blogSubtitle || "Acompanhe nossas publicações no Instagram e artigos completos sobre seguros e benefícios."}
           </p>
           <div className="flex items-center justify-center gap-3 mt-5 flex-wrap">
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs font-semibold">

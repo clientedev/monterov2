@@ -133,9 +133,14 @@ export default function PostDetail() {
               <span>{post.publishedAt && format(new Date(post.publishedAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-slate-900 leading-tight mb-8">
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-slate-900 leading-tight mb-4">
               {post.title}
             </h1>
+            {post.summary && (
+              <p className="text-lg md:text-xl text-slate-600 font-light leading-relaxed mb-8">
+                {post.summary}
+              </p>
+            )}
           </header>
 
           {post.instagramUrl ? (
