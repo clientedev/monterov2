@@ -184,6 +184,7 @@ export interface IStorage {
 
   // Hero Slides
   getHeroSlides(): Promise<HeroSlide[]>;
+  getHeroSlide(id: number): Promise<HeroSlide | undefined>;
   createHeroSlide(slide: InsertHeroSlide): Promise<HeroSlide>;
   updateHeroSlide(id: number, slide: Partial<InsertHeroSlide>): Promise<HeroSlide | undefined>;
   deleteHeroSlide(id: number): Promise<void>;
@@ -401,7 +402,7 @@ export class DatabaseStorage implements IStorage {
           summary: posts.summary,
           coverImage: sql<string>`CASE WHEN ${posts.coverImage} LIKE 'data:%' THEN '/api/posts/' || ${posts.id} || '/image' ELSE ${posts.coverImage} END`,
           likes: posts.likes,
-          videoUrl: posts.videoUrl,
+          videoUrl: sql<string>`CASE WHEN ${posts.videoUrl} LIKE 'data:%' THEN '/api/posts/' || ${posts.id} || '/video' ELSE ${posts.videoUrl} END`,
           youtubeUrl: posts.youtubeUrl,
           instagramUrl: posts.instagramUrl,
           postType: posts.postType,
@@ -427,6 +428,7 @@ export class DatabaseStorage implements IStorage {
       const result = rawList.map((p: any) => ({
         ...p,
         coverImage: p.coverImage && p.coverImage.startsWith("data:") ? `/api/posts/${p.id}/image` : (p.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"),
+        videoUrl: p.videoUrl && p.videoUrl.startsWith("data:") ? `/api/posts/${p.id}/video` : p.videoUrl,
       })) as any;
 
       this.postsCache.set(cacheKey, { data: result, expiresAt: Date.now() + 60_000 });
@@ -456,10 +458,15 @@ export class DatabaseStorage implements IStorage {
   async getPostBySlug(slug: string): Promise<Post | undefined> {
     try {
       const [post] = await db.select().from(posts).where(eq(posts.slug, slug));
-      if (post && post.coverImage && post.coverImage.startsWith("data:")) {
-        post.coverImage = `/api/posts/${post.id}/image`;
+      if (post) {
+        if (post.coverImage && post.coverImage.startsWith("data:")) {
+          post.coverImage = `/api/posts/${post.id}/image`;
+        }
+        if (post.videoUrl && post.videoUrl.startsWith("data:")) {
+          post.videoUrl = `/api/posts/${post.id}/video`;
+        }
+        return post;
       }
-      if (post) return post;
     } catch (err: any) {
       console.warn("[STORAGE] getPostBySlug error, checking fallback:", err.message);
     }
@@ -1250,14 +1257,29 @@ export class DatabaseStorage implements IStorage {
     try {
       const existing = await db.select().from(heroSlides).orderBy(heroSlides.order);
       if (existing && existing.length > 0) {
-        this.heroSlidesCache = { data: existing, expiresAt: now + 120_000 };
-        return existing;
+        const lightweightSlides = existing.map((s) => ({
+          ...s,
+          videoUrl: s.videoUrl && s.videoUrl.startsWith("data:") ? `/api/hero-slides/${s.id}/video` : s.videoUrl,
+          imageBase64: s.imageBase64 && s.imageBase64.startsWith("data:") ? `/api/hero-slides/${s.id}/image` : s.imageBase64,
+        }));
+        this.heroSlidesCache = { data: lightweightSlides, expiresAt: now + 120_000 };
+        return lightweightSlides;
       }
     } catch (err: any) {
       console.warn("[HeroSlides] Returning default slides (DB timeout/offline):", err.message);
       if (this.heroSlidesCache) return this.heroSlidesCache.data;
     }
     return defaultSlides;
+  }
+
+  async getHeroSlide(id: number): Promise<HeroSlide | undefined> {
+    try {
+      const [slide] = await db.select().from(heroSlides).where(eq(heroSlides.id, id));
+      return slide;
+    } catch (err: any) {
+      console.warn("[HeroSlides] getHeroSlide error:", err.message);
+      return undefined;
+    }
   }
 
   async createHeroSlide(slide: InsertHeroSlide): Promise<HeroSlide> {
@@ -2974,6 +2996,10 @@ export class MemStorage implements IStorage {
       this.heroSlidesData = defaultSlides;
     }
     return [...this.heroSlidesData].sort((a, b) => a.order - b.order);
+  }
+
+  async getHeroSlide(id: number): Promise<HeroSlide | undefined> {
+    return this.heroSlidesData.find(s => s.id === id);
   }
 
   async createHeroSlide(slide: InsertHeroSlide): Promise<HeroSlide> {

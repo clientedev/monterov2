@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import carolAnim from "@assets/carol_anim_light.gif";
+import carolAvatar from "@assets/carolzinha.png";
 
 
 interface Message {
@@ -16,6 +17,12 @@ export function ChatBubble() {
     // Chat component with Carol animated avatar support
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
+    const [isAnimReady, setIsAnimReady] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsAnimReady(true), 300);
+        return () => clearTimeout(timer);
+    }, []);
     const [messages, setMessages] = useState<Message[]>([
         { role: 'assistant', content: 'Olá! Sou a Carolzinha, especialista da Monteiro Corretora. Como posso ajudar com seus seguros e planos de saúde hoje?' }
     ]);
@@ -103,7 +110,10 @@ export function ChatBubble() {
                 {/* Pop-out Avatar */}
                 <div className="absolute bottom-2 left-2 w-14 h-14 z-20 pointer-events-none transition-all duration-500 ease-out group-hover:-translate-y-12 group-hover:scale-[2.2] origin-bottom">
                     <img 
-                        src={carolAnim} 
+                        src={isAnimReady ? carolAnim : carolAvatar}
+                        alt="Carolzinha Monteiro Seguros"
+                        loading="lazy"
+                        decoding="async" 
                         className="relative z-20 w-full h-full object-contain transition-transform duration-300" 
                     />
                 </div>
@@ -129,7 +139,10 @@ export function ChatBubble() {
                     <div className="relative">
                         <div className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center bg-white shrink-0 overflow-hidden">
                             <img 
-                                src={carolAnim} 
+                                src={isAnimReady ? carolAnim : carolAvatar}
+                                alt="Carolzinha Avatar"
+                                loading="lazy"
+                                decoding="async" 
                                 className="w-full h-full object-cover scale-150 mix-blend-multiply" 
                             />
                         </div>

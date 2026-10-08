@@ -136,6 +136,57 @@ export async function registerRoutes(
     }
   });
 
+  // Dynamic Video Server for Posts (Streams Base64 Video on Demand with Range Requests)
+  app.get("/api/posts/:id/video", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(404).end();
+
+      const post = await storage.getPost(id, true);
+      if (!post || !post.videoUrl) {
+        return res.status(404).end();
+      }
+
+      if (post.videoUrl.startsWith("data:")) {
+        const matches = post.videoUrl.match(/^data:([A-Za-z-+\/0-9]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const type = matches[1];
+          const buffer = Buffer.from(matches[2], 'base64');
+          const range = req.headers.range;
+          const total = buffer.length;
+
+          res.setHeader('Accept-Ranges', 'bytes');
+          res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+
+          if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+            const chunksize = (end - start) + 1;
+
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
+            res.setHeader('Content-Length', chunksize);
+            res.setHeader('Content-Type', type);
+            return res.send(buffer.subarray(start, end + 1));
+          } else {
+            res.setHeader('Content-Length', total);
+            res.setHeader('Content-Type', type);
+            return res.send(buffer);
+          }
+        }
+      }
+
+      if (post.videoUrl.startsWith("http://") || post.videoUrl.startsWith("https://") || post.videoUrl.startsWith("/")) {
+        return res.redirect(post.videoUrl);
+      }
+
+      return res.status(404).end();
+    } catch (error) {
+      res.status(500).end();
+    }
+  });
+
   // SEO / Blog Social Previews - ONLY match blog posts with slugs, NOT the blog list
   app.get("/blog/:slug", async (req, res, next) => {
     // Skip if it's the blog list itself or a static asset
@@ -2347,6 +2398,84 @@ export async function registerRoutes(
     const slides = await storage.getHeroSlides();
     res.setHeader("Cache-Control", "public, max-age=60, s-maxage=120, stale-while-revalidate=600");
     res.json(slides);
+  });
+
+  // Hero Slide Media Streamers (Offloads 8MB Base64 Video and Images to On-Demand Streaming)
+  app.get("/api/hero-slides/:id/video", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(404).end();
+
+      const slide = await storage.getHeroSlide(id);
+      if (!slide || !slide.videoUrl) return res.status(404).end();
+
+      if (slide.videoUrl.startsWith("data:")) {
+        const matches = slide.videoUrl.match(/^data:([A-Za-z-+\/0-9]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const type = matches[1];
+          const buffer = Buffer.from(matches[2], 'base64');
+          const range = req.headers.range;
+          const total = buffer.length;
+
+          res.setHeader('Accept-Ranges', 'bytes');
+          res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+
+          if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+            const chunksize = (end - start) + 1;
+
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
+            res.setHeader('Content-Length', chunksize);
+            res.setHeader('Content-Type', type);
+            return res.send(buffer.subarray(start, end + 1));
+          } else {
+            res.setHeader('Content-Length', total);
+            res.setHeader('Content-Type', type);
+            return res.send(buffer);
+          }
+        }
+      }
+
+      if (slide.videoUrl.startsWith("http://") || slide.videoUrl.startsWith("https://") || slide.videoUrl.startsWith("/")) {
+        return res.redirect(slide.videoUrl);
+      }
+
+      return res.status(404).end();
+    } catch (err) {
+      res.status(500).end();
+    }
+  });
+
+  app.get("/api/hero-slides/:id/image", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(404).end();
+
+      const slide = await storage.getHeroSlide(id);
+      if (!slide || !slide.imageBase64) return res.status(404).end();
+
+      if (slide.imageBase64.startsWith("data:")) {
+        const matches = slide.imageBase64.match(/^data:([A-Za-z-+\/0-9]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const type = matches[1];
+          const buffer = Buffer.from(matches[2], 'base64');
+          res.setHeader('Content-Type', type);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          return res.send(buffer);
+        }
+      }
+
+      if (slide.imageBase64.startsWith("http://") || slide.imageBase64.startsWith("https://") || slide.imageBase64.startsWith("/")) {
+        return res.redirect(slide.imageBase64);
+      }
+
+      return res.status(404).end();
+    } catch (err) {
+      res.status(500).end();
+    }
   });
 
   app.post("/api/hero-slides", isAuthenticated, isAdmin, async (req, res) => {

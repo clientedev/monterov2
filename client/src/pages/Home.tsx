@@ -243,6 +243,8 @@ export default function Home() {
                         <img
                           src={slide.imageBase64 || "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000"}
                           alt={slide.title}
+                          loading={idx === 0 ? "eager" : "lazy"}
+                          decoding="async"
                           onError={(e) => {
                             e.currentTarget.src = "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000";
                           }}
@@ -338,6 +340,8 @@ export default function Home() {
                 <img
                   src="/equipe.jpg"
                   alt="Equipe Monteiro Seguros"
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover scale-102 hover:scale-100 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-[#08454c]/10 mix-blend-overlay" />
@@ -775,6 +779,8 @@ export default function Home() {
                 <img
                   src={p.logo}
                   alt={p.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-12 md:h-16 w-auto object-contain max-w-[130px]"
                 />
               </a>
