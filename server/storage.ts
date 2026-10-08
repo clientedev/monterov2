@@ -323,6 +323,9 @@ export class DatabaseStorage implements IStorage {
     });
   }
   private postsCache: Map<string, { data: Post[]; expiresAt: number }> = new Map();
+  private servicesCache: { data: Service[]; expiresAt: number } | null = null;
+  private heroSlidesCache: { data: HeroSlide[]; expiresAt: number } | null = null;
+
   private invalidatePostsCache() {
     this.postsCache.clear();
   }
@@ -538,21 +541,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Services
+  private fallbackServices: Service[] = [
+    { id: 1, title: "Plano de Saúde Individual e Familiar", description: "Planos completos com ampla rede de atendimento, coberturas personalizadas e assistência médica de alta qualidade para você e sua família.", icon: "Shield", order: 1 },
+    { id: 2, title: "Plano de Saúde Empresarial", description: "Soluções corporativas customizadas que reduzem a sinistralidade e valorizam a sua equipe, desde pequenas até grandes empresas.", icon: "HeartHandshake", order: 2 },
+    { id: 3, title: "Seguro de Vida & Previdência", description: "Proteção financeira e planejamento sucessório com liquidez imediata para garantir a tranquilidade de quem você ama.", icon: "Briefcase", order: 3 },
+    { id: 4, title: "Planos Odontológicos", description: "Cobertura odontológica integrada com os melhores especialistas e clínicas do Brasil para a saúde bucal da sua família.", icon: "Smile", order: 4 },
+  ];
+
   async getServices(): Promise<Service[]> {
-    return await db.select().from(services).orderBy(asc(services.order));
+    const now = Date.now();
+    if (this.servicesCache && now < this.servicesCache.expiresAt) {
+      return this.servicesCache.data;
+    }
+    try {
+      const result = await db.select().from(services).orderBy(asc(services.order));
+      if (result && result.length > 0) {
+        this.servicesCache = { data: result, expiresAt: now + 120_000 };
+        return result;
+      }
+    } catch (err: any) {
+      console.warn("[STORAGE] getServices error, returning cached or fallback:", err.message);
+      if (this.servicesCache) return this.servicesCache.data;
+    }
+    return this.fallbackServices;
   }
 
   async createService(service: InsertService): Promise<Service> {
+    this.servicesCache = null;
     const [newService] = await db.insert(services).values(service).returning();
     return newService;
   }
 
   async updateService(id: number, service: Partial<InsertService>): Promise<Service | undefined> {
+    this.servicesCache = null;
     const [updated] = await db.update(services).set(service).where(eq(services.id, id)).returning();
     return updated;
   }
 
   async deleteService(id: number): Promise<void> {
+    this.servicesCache = null;
     await db.delete(services).where(eq(services.id, id));
   }
 
@@ -1114,7 +1141,7 @@ export class DatabaseStorage implements IStorage {
   // Site Settings
   async getSiteSettings(): Promise<SiteSettings> {
     const now = Date.now();
-    if (now - this.lastSettingsFetch < 10000) {
+    if (now - this.lastSettingsFetch < 120000) {
       return this.cachedSiteSettings;
     }
     try {
@@ -1167,6 +1194,11 @@ export class DatabaseStorage implements IStorage {
 
   // Hero Slides
   async getHeroSlides(): Promise<HeroSlide[]> {
+    const now = Date.now();
+    if (this.heroSlidesCache && now < this.heroSlidesCache.expiresAt) {
+      return this.heroSlidesCache.data;
+    }
+
     const defaultSlides: HeroSlide[] = [
       {
         id: 1,
@@ -1218,20 +1250,24 @@ export class DatabaseStorage implements IStorage {
     try {
       const existing = await db.select().from(heroSlides).orderBy(heroSlides.order);
       if (existing && existing.length > 0) {
+        this.heroSlidesCache = { data: existing, expiresAt: now + 120_000 };
         return existing;
       }
     } catch (err: any) {
       console.warn("[HeroSlides] Returning default slides (DB timeout/offline):", err.message);
+      if (this.heroSlidesCache) return this.heroSlidesCache.data;
     }
     return defaultSlides;
   }
 
   async createHeroSlide(slide: InsertHeroSlide): Promise<HeroSlide> {
+    this.heroSlidesCache = null;
     const [newSlide] = await db.insert(heroSlides).values(slide).returning();
     return newSlide;
   }
 
   async updateHeroSlide(id: number, slide: Partial<InsertHeroSlide>): Promise<HeroSlide | undefined> {
+    this.heroSlidesCache = null;
     const [updated] = await db
       .update(heroSlides)
       .set(slide)
@@ -1241,6 +1277,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteHeroSlide(id: number): Promise<void> {
+    this.heroSlidesCache = null;
     await db.delete(heroSlides).where(eq(heroSlides.id, id));
   }
 

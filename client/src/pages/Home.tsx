@@ -190,7 +190,7 @@ export default function Home() {
                               <iframe
                                 src={embed.embedUrl}
                                 title="Background Ambient Blur"
-                                className="absolute inset-0 w-full h-full border-0 blur-2xl opacity-40 scale-125 pointer-events-none"
+                                className="hidden md:block absolute inset-0 w-full h-full border-0 blur-2xl opacity-40 scale-125 pointer-events-none"
                                 allow="autoplay; encrypted-media"
                               />
                             )}
@@ -208,7 +208,7 @@ export default function Home() {
                           </div>
                         ) : (
                           <div className="relative w-full h-full overflow-hidden">
-                            {/* Efeito Cinema Ambient Backdrop: Se estiver no modo sem cortes (contain), preenche as laterais com o brilho dinâmico do próprio vídeo */}
+                            {/* Efeito Cinema Ambient Backdrop: Desktop-only para máxima performance mobile */}
                             {isContain && (
                               <video
                                 src={slide.videoUrl}
@@ -217,10 +217,10 @@ export default function Home() {
                                 muted
                                 playsInline
                                 aria-hidden="true"
-                                className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110 pointer-events-none transform-gpu"
+                                className="hidden md:block absolute inset-0 w-full h-full object-cover blur-3xl opacity-40 scale-110 pointer-events-none transform-gpu"
                               />
                             )}
-                            {/* Vídeo Principal em Alta Resolução */}
+                            {/* Vídeo Principal */}
                             <div className="absolute inset-0 w-full h-full flex items-center justify-center">
                               <video
                                 src={slide.videoUrl}
@@ -228,7 +228,7 @@ export default function Home() {
                                 loop
                                 muted
                                 playsInline
-                                preload="auto"
+                                preload="metadata"
                                 poster={slide.imageBase64 || undefined}
                                 className={cn(
                                   "w-full h-full relative z-0 transition-all duration-700",
@@ -422,6 +422,9 @@ export default function Home() {
               <h2 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">
                 Conteúdos Recentes para Você
               </h2>
+              <p className="text-white/70 text-sm md:text-base mt-2 max-w-xl font-light">
+                Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog.
+              </p>
             </div>
             <Link href="/blog">
               <button className="hidden md:flex items-center gap-2 px-6 py-3 rounded-full text-white bg-white/10 hover:bg-white/20 border border-white/15 transition-all duration-300 shadow-sm font-bold text-sm">
@@ -485,10 +488,14 @@ export default function Home() {
                             </span>
                           </div>
                           <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300 line-clamp-2">
-                            {post.title}
+                            {post.title && post.title.trim() ? post.title : "Publicação Monteiro Seguros"}
                           </h3>
                           <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
-                            {post.summary}
+                            {post.summary && post.summary.trim() 
+                              ? post.summary 
+                              : (post.content && post.content.trim() 
+                                  ? post.content.replace(/<[^>]*>?/gm, '').slice(0, 140) + "..."
+                                  : "Confira as melhores orientações sobre planos de saúde e seguros com nossa equipe especializada.")}
                           </p>
                         </div>
 
@@ -943,13 +950,15 @@ export default function Home() {
                           </span>
                         </div>
                         <h3 className="text-lg font-bold font-display text-[#163b52] mb-2 group-hover:text-[#08454c] transition-colors line-clamp-2">
-                          {post.title}
+                          {post.title && post.title.trim() ? post.title : "Publicação Monteiro Seguros"}
                         </h3>
-                        {post.summary && (
-                          <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
-                            {post.summary}
-                          </p>
-                        )}
+                        <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
+                          {post.summary && post.summary.trim()
+                            ? post.summary
+                            : (post.content && post.content.trim()
+                                ? post.content.replace(/<[^>]*>?/gm, '').slice(0, 140) + "..."
+                                : "Confira as melhores orientações sobre planos de saúde e seguros com nossa equipe especializada.")}
+                        </p>
                       </div>
 
                       {/* Action buttons */}

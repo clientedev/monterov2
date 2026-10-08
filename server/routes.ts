@@ -391,6 +391,7 @@ export async function registerRoutes(
   // Services
   app.get(api.services.list.path, async (req, res) => {
     const services = await storage.getServices();
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=120, stale-while-revalidate=600");
     res.json(services);
   });
 
@@ -2207,6 +2208,7 @@ export async function registerRoutes(
 
   app.get("/api/site-settings", async (req, res) => {
     const settings = await storage.getSiteSettings();
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=120, stale-while-revalidate=600");
     res.json(settings);
   });
 
@@ -2343,6 +2345,7 @@ export async function registerRoutes(
   // Hero Slides
   app.get("/api/hero-slides", async (req, res) => {
     const slides = await storage.getHeroSlides();
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=120, stale-while-revalidate=600");
     res.json(slides);
   });
 

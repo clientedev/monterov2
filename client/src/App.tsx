@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -23,35 +24,34 @@ import CustomerDashboard from "./pages/CustomerDashboard";
 import ProfilePage from "./pages/Profile";
 import CreatePasswordPage from "./pages/CreatePassword";
 
-// Admin CRM Pages
-import ContactsPage from "@/pages/admin-crm/contacts";
-import LeadsPage from "@/pages/admin-crm/leads";
-import InteractionsPage from "@/pages/admin-crm/interactions";
-import PostsPage from "@/pages/admin-crm/posts";
-import CommentsPage from "@/pages/admin-crm/comments";
-import ServicesPage from "@/pages/admin-crm/services";
-import AnalyticsPage from "@/pages/admin-crm/marketing/analytics";
-import CampaignsPage from "@/pages/admin-crm/marketing/campaigns";
-import UsersPage from "@/pages/admin-crm/users";
-import TasksPage from "@/pages/admin-crm/tasks";
-import AdminDashboard from "@/pages/admin-crm/dashboard";
 import AdminLayout from "@/pages/admin-crm/layout";
-import SiteConfigPage from "@/pages/admin-crm/site-config";
-import ReviewsPage from "@/pages/admin-crm/reviews";
-import ProspectingPage from "@/pages/admin-crm/prospecting";
-import CompanySearchPage from "@/pages/admin-crm/company-search";
-import TodoistModulePage from "@/pages/admin-crm/todoist";
-import NotasPage from "@/pages/admin-crm/notas";
 
-// Insurance Module Pages
-import DashboardSegurosPage from "@/pages/admin-crm/dashboard-seguros";
-import ClientesPage from "@/pages/admin-crm/clientes";
-import ClienteDetalhePage from "@/pages/admin-crm/cliente-detalhe";
-import ApolicesPage from "@/pages/admin-crm/apolices";
+// Admin CRM Pages (Code-split to ensure public mobile site loads instantly)
+const ContactsPage = lazy(() => import("@/pages/admin-crm/contacts"));
+const LeadsPage = lazy(() => import("@/pages/admin-crm/leads"));
+const InteractionsPage = lazy(() => import("@/pages/admin-crm/interactions"));
+const PostsPage = lazy(() => import("@/pages/admin-crm/posts"));
+const CommentsPage = lazy(() => import("@/pages/admin-crm/comments"));
+const ServicesPage = lazy(() => import("@/pages/admin-crm/services"));
+const AnalyticsPage = lazy(() => import("@/pages/admin-crm/marketing/analytics"));
+const CampaignsPage = lazy(() => import("@/pages/admin-crm/marketing/campaigns"));
+const UsersPage = lazy(() => import("@/pages/admin-crm/users"));
+const TasksPage = lazy(() => import("@/pages/admin-crm/tasks"));
+const AdminDashboard = lazy(() => import("@/pages/admin-crm/dashboard"));
+const SiteConfigPage = lazy(() => import("@/pages/admin-crm/site-config"));
+const ReviewsPage = lazy(() => import("@/pages/admin-crm/reviews"));
+const ProspectingPage = lazy(() => import("@/pages/admin-crm/prospecting"));
+const CompanySearchPage = lazy(() => import("@/pages/admin-crm/company-search"));
+const TodoistModulePage = lazy(() => import("@/pages/admin-crm/todoist"));
+const NotasPage = lazy(() => import("@/pages/admin-crm/notas"));
 
+// Insurance Module Pages (Code-split)
+const DashboardSegurosPage = lazy(() => import("@/pages/admin-crm/dashboard-seguros"));
+const ClientesPage = lazy(() => import("@/pages/admin-crm/clientes"));
+const ClienteDetalhePage = lazy(() => import("@/pages/admin-crm/cliente-detalhe"));
+const ApolicesPage = lazy(() => import("@/pages/admin-crm/apolices"));
 
-
-function ProtectedAdminRoute({ path, component: Component }: { path: string; component: React.ComponentType }) {
+function ProtectedAdminRoute({ path, component: Component }: { path: string; component: React.ComponentType<any> }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -69,7 +69,13 @@ function ProtectedAdminRoute({ path, component: Component }: { path: string; com
   return (
     <Route path={path}>
       <AdminLayout>
-        <Component />
+        <Suspense fallback={
+          <div className="flex items-center justify-center min-h-[350px]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        }>
+          <Component />
+        </Suspense>
       </AdminLayout>
     </Route>
   );
