@@ -422,23 +422,37 @@ export default function Home() {
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#c65f54]/15 border border-[#c65f54]/30 text-[#c65f54] text-xs font-bold uppercase tracking-wider mb-3">
-                <Sparkles className="w-3.5 h-3.5" />
-                Últimas Publicações
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-amber-500/20 border border-pink-400/30 text-pink-300 text-xs font-bold uppercase tracking-wider mb-3">
+                <Instagram className="w-3.5 h-3.5 text-pink-400" />
+                <span>Nossos Posts &amp; Redes Sociais</span>
               </div>
               <h2 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">
-                {settings?.blogTitle || "Conteúdos Recentes para Você"}
+                {(settings?.blogTitle && settings.blogTitle.trim()) || "Nossos Posts & Publicações"}
               </h2>
-              <p className="text-white/70 text-sm md:text-base mt-2 max-w-xl font-light">
-                {settings?.blogSubtitle || "Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog."}
+              <p className="text-white/80 text-sm md:text-base mt-2 max-w-xl font-light">
+                {(settings?.blogSubtitle && settings.blogSubtitle.trim()) || "Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog."}
               </p>
             </div>
-            <Link href="/blog">
-              <button className="hidden md:flex items-center gap-2 px-6 py-3 rounded-full text-white bg-white/10 hover:bg-white/20 border border-white/15 transition-all duration-300 shadow-sm font-bold text-sm">
-                Acessar Blog Completo
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <a
+                href="https://www.instagram.com/monteirosegurosebeneficios/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-md hover:opacity-95 transition-all hover:scale-105"
+                style={{ background: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" }}
+              >
+                <Instagram className="w-4 h-4" />
+                <span>Seguir no Instagram</span>
+              </a>
+
+              <Link href="/blog?tab=posts">
+                <button className="hidden sm:inline-flex items-center gap-2 px-5 py-3 rounded-full text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-all font-bold text-sm shadow-sm">
+                  <span>Acessar Blog Completo</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -458,7 +472,7 @@ export default function Home() {
                 >
                   <InstagramPostCard
                     post={post}
-                    aspectRatio="reel"
+                    aspectRatio={post.instagramUrl || post.postType === "instagram" ? "reel" : "video"}
                     className="h-full"
                   />
                 </motion.div>
@@ -746,16 +760,16 @@ export default function Home() {
                 <span>Nossos Posts &amp; Redes Sociais</span>
               </div>
               <h2 className="text-3xl md:text-5xl font-display font-bold text-[#163b52] leading-tight">
-                {settings?.blogTitle || "Nossos Posts"}
+                {(settings?.blogTitle && settings.blogTitle.trim()) || "Nossos Posts & Publicações"}
               </h2>
               <p className="text-slate-500 text-sm md:text-base mt-2 max-w-xl font-light">
-                {settings?.blogSubtitle || "Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog."}
+                {(settings?.blogSubtitle && settings.blogSubtitle.trim()) || "Acompanhe nossas publicações mais recentes no Instagram, dicas práticas de saúde e seguros, e novidades do blog."}
               </p>
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
               <a
-                href="https://www.instagram.com"
+                href="https://www.instagram.com/monteirosegurosebeneficios/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-md hover:opacity-95 transition-all hover:scale-105"

@@ -115,14 +115,25 @@ export function InstagramPostCard({
   const cleanCoverImage = isBadCover ? null : post.coverImage;
   const fallbackCover = cleanCoverImage || officialThumb || "/assets/reel_thumb_DaySDnWBdW6.jpg";
 
-  // Limpeza de texto da legenda/resumo
-  const captionText = (post.summary || post.content || "")
+  // Título e legenda com fallbacks garantidos
+  const rawTitle = (post.title || "").trim();
+  const isGenericTitle = !rawTitle || rawTitle.startsWith("Publicação do Instagram - Reel") || rawTitle === "Publicação Monteiro Seguros";
+  const displayTitle = isGenericTitle
+    ? (isInsta ? "Orientações & Dicas • Monteiro Seguros" : "Artigo Especial • Monteiro Seguros")
+    : rawTitle;
+
+  // Limpeza de texto da legenda/resumo com fallback garantido
+  const rawCaption = (post.summary || post.content || "")
     .replace(/<[^>]*>?/gm, "")
     .trim();
-  const isLongCaption = captionText.length > 150;
+  const fallbackCaption = isInsta
+    ? "Confira este conteúdo exclusivo em nosso perfil oficial no Instagram @monteirosegurosebeneficios com orientações e dicas práticas."
+    : "Confira as melhores orientações sobre planos de saúde e seguros com nossa equipe especializada da Monteiro Seguros.";
+  const resolvedCaption = rawCaption || fallbackCaption;
+  const isLongCaption = resolvedCaption.length > 150;
   const displayCaption = isExpanded || !isLongCaption 
-    ? captionText 
-    : `${captionText.slice(0, 150)}...`;
+    ? resolvedCaption 
+    : `${resolvedCaption.slice(0, 150)}...`;
 
   // Ações sociais
   const handleToggleLike = (e: React.MouseEvent) => {
@@ -330,27 +341,19 @@ export function InstagramPostCard({
             />
           </div>
         ) : (
-          /* Artigos Comuns & Imagens: Preserva 100% da imagem padrão SEM cortes e SEM redimensionamento */
-          <div className="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden">
-            {/* Fundo suave com efeito ambiental para preencher as bordas harmoniosamente */}
+          /* Artigos Comuns & Imagens: Enquadra a foto de acordo com a proporção sem sobras nem espaço vazio */
+          <div className="relative w-full h-full overflow-hidden bg-slate-100 flex items-center justify-center">
             <img
               src={fallbackCover}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 w-full h-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
-            />
-            {/* Imagem original completa que nunca corta nenhum detalhe */}
-            <img
-              src={fallbackCover}
-              alt={post.title}
+              alt={displayTitle}
               loading="lazy"
               decoding="async"
               onError={(e) => {
                 e.currentTarget.src = "/assets/reel_thumb_DaySDnWBdW6.jpg";
               }}
-              className="relative z-10 w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+              className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent pointer-events-none" />
           </div>
         )}
       </div>
@@ -358,38 +361,36 @@ export function InstagramPostCard({
       {/* ── 3. CORPO DO CARD ── */}
       <div className="p-4 md:p-5 flex-1 flex flex-col justify-between bg-white z-10">
         <div>
-          {/* Título da Postagem com altura mínima para manter alinhamento uniforme */}
+          {/* Título da Postagem */}
           {post.slug ? (
             <Link href={`/blog/${post.slug}`}>
-              <h3 className="font-bold text-base md:text-lg text-slate-900 hover:text-[#08454c] transition-colors leading-snug mb-2 font-display cursor-pointer line-clamp-2 min-h-[2.8rem]">
-                {post.title}
+              <h3 className="font-bold text-base md:text-lg text-slate-900 hover:text-[#08454c] transition-colors leading-snug mb-2 font-display cursor-pointer line-clamp-2">
+                {displayTitle}
               </h3>
             </Link>
           ) : (
-            <h3 className="font-bold text-base md:text-lg text-slate-900 leading-snug mb-2 font-display line-clamp-2 min-h-[2.8rem]">
-              {post.title}
+            <h3 className="font-bold text-base md:text-lg text-slate-900 leading-snug mb-2 font-display line-clamp-2">
+              {displayTitle}
             </h3>
           )}
 
-          {/* Legenda com opção de Ver Mais e altura uniforme */}
-          {captionText && (
-            <div className="text-xs md:text-sm text-slate-600 font-light leading-relaxed mb-3">
-              <p className="inline line-clamp-3 min-h-[3.6rem]">{displayCaption}</p>
-              {isLongCaption && (
-                <button
-                  type="button"
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="inline-block ml-1.5 font-bold text-[#c65f54] hover:underline cursor-pointer"
-                >
-                  {isExpanded ? "ver menos" : "ver mais"}
-                </button>
-              )}
-            </div>
-          )}
+          {/* Legenda com opção de Ver Mais */}
+          <div className="text-xs md:text-sm text-slate-600 font-light leading-relaxed mb-3">
+            <p className="inline line-clamp-3">{displayCaption}</p>
+            {isLongCaption && (
+              <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="inline-block ml-1.5 font-bold text-[#c65f54] hover:underline cursor-pointer"
+              >
+                {isExpanded ? "ver menos" : "ver mais"}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Rodapé de Ações Sociais fixado na base */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-slate-600 mt-auto">
+        {/* Rodapé de Ações Sociais */}
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-slate-600 mt-3">
           <div className="flex items-center gap-3">
             {/* Curtidas */}
             <button

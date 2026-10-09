@@ -733,20 +733,14 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
             </div>
           </a>
         ) : (
-          <>
-            <img
-              src={cover!}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 w-full h-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
-            />
-            <img
-              src={cover!}
-              alt={post.title}
-              className="relative z-10 w-full h-full object-contain"
-              onError={e => { (e.target as HTMLImageElement).src = "/assets/reel_thumb_DaySDnWBdW6.jpg"; }}
-            />
-          </>
+          <img
+            src={cover!}
+            alt={post.title}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            onError={e => { (e.target as HTMLImageElement).src = "/assets/reel_thumb_DaySDnWBdW6.jpg"; }}
+          />
         )}
 
         <AnimatePresence>

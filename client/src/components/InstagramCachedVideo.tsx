@@ -212,15 +212,7 @@ export function InstagramCachedVideo({
         className
       )}
     >
-      {/* Fundo ambiental borrado para preencher qualquer espaço com as cores da imagem sem cortar nada */}
-      <img
-        src={coverSrc}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
-      />
-
-      {/* Imagem principal inteira que nunca corta nenhuma borda */}
+      {/* Imagem principal enquadrada de acordo com o tamanho da foto */}
       <img
         src={coverSrc}
         alt={title || "Publicação"}
@@ -229,7 +221,7 @@ export function InstagramCachedVideo({
         onError={(e) => {
           e.currentTarget.src = defaultCover;
         }}
-        className="relative z-10 w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+        className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
       />
 
       {/* Gradientes elegantes de contraste */}
