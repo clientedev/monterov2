@@ -72,10 +72,32 @@ export function InstagramPostCard({
   const [isSaved, setIsSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLikeCount(post.likes ?? 0);
   }, [post.likes]);
+
+  // Economia de memória e CPU: só reproduz o vídeo quando o card estiver visível na tela
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [streamUrl]);
 
   // Formatação de data
   const formattedDate = post.publishedAt
@@ -92,7 +114,6 @@ export function InstagramPostCard({
   const isBadCover = Boolean(post.coverImage && (post.coverImage.includes("1611162617474") || post.coverImage.includes("unsplash.com")));
   const cleanCoverImage = isBadCover ? null : post.coverImage;
   const fallbackCover = cleanCoverImage || officialThumb || "/assets/reel_thumb_DaySDnWBdW6.jpg";
-  const [showEmbedPlayer, setShowEmbedPlayer] = useState(false);
 
   // Limpeza de texto da legenda/resumo
   const captionText = (post.summary || post.content || "")
@@ -160,32 +181,16 @@ export function InstagramPostCard({
     }
   };
 
-  const togglePlay = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
-      } else {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-    }
-  };
-
-  // Classes de proporção
-  const aspectClass =
-    aspectRatio === "vertical"
-      ? "aspect-[9/16]"
-      : aspectRatio === "reel"
-      ? "aspect-[4/5]"
-      : aspectRatio === "square"
-      ? "aspect-square"
-      : "aspect-[16/10]";
+  // Proporção precisa: Artigos comuns usam proporção horizontal fixa (16/10) sem cortar e sem redimensionar.
+  // Reels do Instagram usam proporção vertical padrão (4/5)
+  const aspectClass = isInsta
+    ? (aspectRatio === "vertical" ? "aspect-[9/16]" : "aspect-[4/5]")
+    : "aspect-[16/10]";
 
   return (
     <div
       className={cn(
-        "group relative bg-white text-slate-900 rounded-[20px] overflow-hidden border border-slate-200/90 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between hover:-translate-y-1",
+        "group relative bg-white text-slate-900 rounded-[20px] overflow-hidden border border-slate-200/90 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between hover:-translate-y-1 h-full",
         className
       )}
     >
@@ -265,56 +270,27 @@ export function InstagramPostCard({
       </div>
 
       {/* ── 2. ÁREA DE MÍDIA ── */}
-      <div className={cn("relative w-full max-h-[520px] bg-slate-950 overflow-hidden select-none flex items-center justify-center", aspectClass)}>
+      <div
+        ref={containerRef}
+        className={cn("relative w-full max-h-[520px] bg-slate-950 overflow-hidden select-none flex items-center justify-center", aspectClass)}
+      >
         {/* Badge de Data sobreposto */}
         <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold border border-white/10 shadow-xs pointer-events-none">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span>{formattedDate}</span>
         </div>
 
-        {/* Opção 1: Player Embed Ativo do Instagram ao Clicar */}
-        {showEmbedPlayer && isInsta && instaId ? (
-          <div className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
-            <iframe
-              src={embedUrl || `https://www.instagram.com/reel/${instaId}/embed/`}
-              title={post.title}
-              className="w-full h-full border-none"
-              style={{ minHeight: "360px" }}
-              loading="lazy"
-              allowTransparency
-              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-            />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowEmbedPlayer(false);
-              }}
-              className="absolute top-3 right-3 z-30 px-2.5 py-1 bg-black/80 hover:bg-black text-white text-[11px] font-bold rounded-full backdrop-blur-md border border-white/20 transition-all shadow-md"
-            >
-              ✕ Fechar
-            </button>
-          </div>
-        ) : Boolean(streamUrl) && !hasVideoError ? (
-          /* Opção 2: Tag <video> nativa (se houver stream direto disponível) */
-          <div className="relative w-full h-full cursor-pointer" onClick={togglePlay}>
+        {/* Reprodução de Vídeo Automática (Autoplay Muted Loop PlaysInline) */}
+        {Boolean(streamUrl) && !hasVideoError ? (
+          <div className="relative w-full h-full">
             <video
-              ref={(el) => {
-                (videoRef as any).current = el;
-                if (el) {
-                  el.muted = true;
-                  if (isPlaying) {
-                    el.play().catch(() => {});
-                  }
-                }
-              }}
+              ref={videoRef}
               src={streamUrl}
               autoPlay
               loop
               muted={isMuted}
               playsInline
-              controls={false}
-              preload="auto"
+              preload="metadata"
               poster={fallbackCover}
               onError={() => setHasVideoError(true)}
               onLoadedMetadata={(e) => {
@@ -324,51 +300,46 @@ export function InstagramPostCard({
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
             />
 
-            {/* Gradiente de contraste */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+            {/* Gradiente sutil de contraste */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 pointer-events-none" />
 
-            {/* Controles de Som & Play Flutuantes */}
-            <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2">
+            {/* Controle de Som Discreto (Apenas mute/unmute) */}
+            <div className="absolute bottom-3 right-3 z-20">
               <button
                 type="button"
                 onClick={toggleSound}
                 aria-label={isMuted ? "Ativar som" : "Desativar som"}
-                className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md hover:bg-black/80 text-white flex items-center justify-center transition-all border border-white/15 shadow-md active:scale-95"
+                className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md hover:bg-black/80 text-white flex items-center justify-center transition-all border border-white/15 shadow-md active:scale-95 cursor-pointer"
                 title={isMuted ? "Ativar áudio" : "Silenciar áudio"}
               >
                 {isMuted ? <VolumeX className="w-4 h-4 text-white/90" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
               </button>
-
-              <button
-                type="button"
-                onClick={togglePlay}
-                aria-label={isPlaying ? "Pausar vídeo" : "Reproduzir vídeo"}
-                className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md hover:bg-black/80 text-white flex items-center justify-center transition-all border border-white/15 shadow-md active:scale-95"
-                title={isPlaying ? "Pausar" : "Reproduzir"}
-              >
-                {isPlaying ? <Pause className="w-3.5 h-3.5 text-white/90" /> : <Play className="w-3.5 h-3.5 text-white ml-0.5 fill-white" />}
-              </button>
             </div>
-
-            {/* Play Overlay quando pausado */}
-            {!isPlaying && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px] pointer-events-none">
-                <div className="w-12 h-12 rounded-full bg-black/75 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-xl">
-                  <Play className="w-5 h-5 text-white ml-0.5 fill-white" />
-                </div>
-              </div>
-            )}
+          </div>
+        ) : isInsta && Boolean(embedUrl) ? (
+          /* Fallback oficial via Iframe Embed do Instagram caso o stream local falhe */
+          <div className="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden">
+            <iframe
+              src={embedUrl}
+              title={post.title}
+              className="w-full h-full border-none"
+              style={{ minHeight: "360px" }}
+              loading="lazy"
+              allowTransparency
+              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+            />
           </div>
         ) : (
-          /* Opção 3: Capa Autêntica em Alta Definição com Botão Interativo de Assistir Reel */
-          <div
-            className="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden cursor-pointer"
-            onClick={() => {
-              if (isInsta && instaId) {
-                setShowEmbedPlayer(true);
-              }
-            }}
-          >
+          /* Artigos Comuns & Imagens: Preserva 100% da imagem padrão SEM cortes e SEM redimensionamento */
+          <div className="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden">
+            {/* Fundo suave com efeito ambiental para preencher as bordas harmoniosamente */}
+            <img
+              src={fallbackCover}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
+            />
+            {/* Imagem original completa que nunca corta nenhum detalhe */}
             <img
               src={fallbackCover}
               alt={post.title}
@@ -377,18 +348,9 @@ export function InstagramPostCard({
               onError={(e) => {
                 e.currentTarget.src = "/assets/reel_thumb_DaySDnWBdW6.jpg";
               }}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              className="relative z-10 w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40 pointer-events-none" />
-
-            {isInsta && (
-              <div className="absolute inset-0 flex items-center justify-center transition-all duration-300">
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/75 hover:bg-black/90 backdrop-blur-md text-white border border-white/20 shadow-2xl group-hover:scale-110 transition-transform">
-                  <Play className="w-4 h-4 text-white fill-white ml-0.5" />
-                  <span className="text-xs font-bold tracking-wide">Assistir Reel</span>
-                </div>
-              </div>
-            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-10" />
           </div>
         )}
       </div>
@@ -396,23 +358,23 @@ export function InstagramPostCard({
       {/* ── 3. CORPO DO CARD ── */}
       <div className="p-4 md:p-5 flex-1 flex flex-col justify-between bg-white z-10">
         <div>
-          {/* Título da Postagem */}
+          {/* Título da Postagem com altura mínima para manter alinhamento uniforme */}
           {post.slug ? (
             <Link href={`/blog/${post.slug}`}>
-              <h3 className="font-bold text-base md:text-lg text-slate-900 hover:text-[#08454c] transition-colors leading-snug mb-2 font-display cursor-pointer line-clamp-2">
+              <h3 className="font-bold text-base md:text-lg text-slate-900 hover:text-[#08454c] transition-colors leading-snug mb-2 font-display cursor-pointer line-clamp-2 min-h-[2.8rem]">
                 {post.title}
               </h3>
             </Link>
           ) : (
-            <h3 className="font-bold text-base md:text-lg text-slate-900 leading-snug mb-2 font-display line-clamp-2">
+            <h3 className="font-bold text-base md:text-lg text-slate-900 leading-snug mb-2 font-display line-clamp-2 min-h-[2.8rem]">
               {post.title}
             </h3>
           )}
 
-          {/* Legenda com opção de Ver Mais */}
+          {/* Legenda com opção de Ver Mais e altura uniforme */}
           {captionText && (
             <div className="text-xs md:text-sm text-slate-600 font-light leading-relaxed mb-3">
-              <p className="inline">{displayCaption}</p>
+              <p className="inline line-clamp-3 min-h-[3.6rem]">{displayCaption}</p>
               {isLongCaption && (
                 <button
                   type="button"
@@ -426,8 +388,8 @@ export function InstagramPostCard({
           )}
         </div>
 
-        {/* Rodapé de Ações Sociais */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-slate-600 mt-2">
+        {/* Rodapé de Ações Sociais fixado na base */}
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-slate-600 mt-auto">
           <div className="flex items-center gap-3">
             {/* Curtidas */}
             <button

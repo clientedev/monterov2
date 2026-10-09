@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Volume2, VolumeX, Play, Pause, Instagram, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -102,76 +102,58 @@ export function InstagramCachedVideo({
     ? (officialCover || defaultCover)
     : (fallbackImage || officialCover || defaultCover);
 
-  // Modo Player Embed Oficial Ativo (quando o usuário clica para assistir)
-  if (showEmbedPlayer && instaId) {
-    return (
-      <div
-        className={cn(
-          "relative w-full overflow-hidden bg-black flex items-center justify-center",
-          aspectClass,
-          className
-        )}
-      >
-        <iframe
-          src={`https://www.instagram.com/reel/${instaId}/embed/`}
-          title={title || "Instagram Reel"}
-          className="w-full h-full border-none"
-          loading="lazy"
-          allowTransparency
-          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-        />
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowEmbedPlayer(false);
-          }}
-          className="absolute top-2 right-2 z-20 px-2.5 py-1 bg-black/80 hover:bg-black text-white text-[11px] font-bold rounded-full backdrop-blur-md border border-white/20 transition-all shadow-md"
-        >
-          ✕ Fechar
-        </button>
-      </div>
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Economia de memória: só reproduz quando o vídeo estiver visível no viewport
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.15 }
     );
-  }
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [directStreamUrl]);
 
   // Se tiver vídeo direto jogável (e sem erro de reprodução)
   if (hasPlayableVideo && !hasVideoError && directStreamUrl) {
     return (
       <div
-        onClick={togglePlay}
+        ref={containerRef}
         className={cn(
-          "relative w-full overflow-hidden bg-slate-950 group cursor-pointer select-none",
+          "relative w-full overflow-hidden bg-slate-950 group select-none flex items-center justify-center",
           aspectClass,
           className
         )}
-        title="Clique para pausar / reproduzir o vídeo"
       >
         <video
-          ref={(el) => {
-            (videoRef as any).current = el;
-            if (el) {
-              el.muted = true;
-              if (isPlaying) {
-                el.play().catch(() => {});
-              }
-            }
-          }}
+          ref={videoRef}
           src={directStreamUrl}
           autoPlay
           muted={isMuted}
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
           poster={coverSrc}
           onError={() => setHasVideoError(true)}
           onLoadedMetadata={(e) => {
             e.currentTarget.muted = true;
             e.currentTarget.play().catch(() => {});
           }}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
         />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 pointer-events-none" />
 
         {/* Badge do Instagram ou Vídeo */}
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold border border-white/10 shadow-sm pointer-events-none">
@@ -203,59 +185,42 @@ export function InstagramCachedVideo({
           </a>
         )}
 
-        {/* Controles de Som & Play */}
+        {/* Controle de Som Discreto (Apenas mute/unmute) */}
         <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2">
           {showSoundToggle && (
             <button
               type="button"
               onClick={toggleSound}
               aria-label={isMuted ? "Ativar som" : "Desativar som"}
-              className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md hover:bg-black/80 text-white flex items-center justify-center transition-all border border-white/15 shadow-md active:scale-95"
+              className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md hover:bg-black/80 text-white flex items-center justify-center transition-all border border-white/15 shadow-md active:scale-95 cursor-pointer"
               title={isMuted ? "Ativar som" : "Silenciar"}
             >
               {isMuted ? <VolumeX className="w-4 h-4 text-white/90" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
             </button>
           )}
-
-          <button
-            type="button"
-            onClick={togglePlay}
-            aria-label={isPlaying ? "Pausar" : "Tocar"}
-            className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md hover:bg-black/80 text-white flex items-center justify-center transition-all border border-white/15 shadow-md active:scale-95"
-            title={isPlaying ? "Pausar vídeo" : "Reproduzir vídeo"}
-          >
-            {isPlaying ? (
-              <Pause className="w-3.5 h-3.5 text-white/90" />
-            ) : (
-              <Play className="w-3.5 h-3.5 text-white ml-0.5 fill-white" />
-            )}
-          </button>
         </div>
-
-        {!isPlaying && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px] pointer-events-none">
-            <div className="w-12 h-12 rounded-full bg-black/75 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-xl">
-              <Play className="w-6 h-6 text-white ml-0.5 fill-white" />
-            </div>
-          </div>
-        )}
       </div>
     );
   }
 
-  // Se for Post do Instagram ou Imagem com visual do Reel/Instagram
+  // Se for Post do Instagram ou Imagem com visual do Reel/Instagram (Artigos e posts estáticos)
   return (
     <div
-      onClick={() => {
-        if (instaId) setShowEmbedPlayer(true);
-      }}
       className={cn(
-        "relative w-full overflow-hidden bg-slate-950 group select-none flex items-center justify-center cursor-pointer",
+        "relative w-full overflow-hidden bg-slate-900 group select-none flex items-center justify-center",
         aspectClass,
         className
       )}
     >
-      {/* Imagem de Capa em Alta Definição */}
+      {/* Fundo ambiental borrado para preencher qualquer espaço com as cores da imagem sem cortar nada */}
+      <img
+        src={coverSrc}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
+      />
+
+      {/* Imagem principal inteira que nunca corta nenhuma borda */}
       <img
         src={coverSrc}
         alt={title || "Publicação"}
@@ -264,39 +229,33 @@ export function InstagramCachedVideo({
         onError={(e) => {
           e.currentTarget.src = defaultCover;
         }}
-        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        className="relative z-10 w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
       />
 
       {/* Gradientes elegantes de contraste */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-10" />
 
       {/* Badge Reel / Instagram no canto superior esquerdo */}
-      <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold border border-white/10 shadow-sm pointer-events-none">
+      <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold border border-white/10 shadow-sm pointer-events-none">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         <Instagram className="w-3.5 h-3.5 text-[#f09433]" />
         <span>{instaId ? "Reel Oficial" : "Instagram"}</span>
       </div>
 
       {/* Botão para abrir no Instagram no canto superior direito */}
-      <a
-        href={cleanInstaUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
-        className="absolute top-3 right-3 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white text-[10px] font-bold border border-white/10 shadow-sm transition-all hover:scale-105"
-        title="Abrir no Instagram"
-      >
-        <span>@monteiro</span>
-        <ExternalLink className="w-2.5 h-2.5 text-white/80" />
-      </a>
-
-      {/* Botão Play / Assistir Reel central interativo */}
-      <div className="absolute inset-0 flex items-center justify-center transition-all duration-300">
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/75 hover:bg-black/90 backdrop-blur-md text-white border border-white/20 shadow-2xl group-hover:scale-110 transition-transform">
-          <Play className="w-4 h-4 text-white fill-white ml-0.5" />
-          <span className="text-xs font-bold tracking-wide">Assistir Reel</span>
-        </div>
-      </div>
+      {instaId && (
+        <a
+          href={cleanInstaUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-3 right-3 z-20 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white text-[10px] font-bold border border-white/10 shadow-sm transition-all hover:scale-105"
+          title="Abrir no Instagram"
+        >
+          <span>@monteiro</span>
+          <ExternalLink className="w-2.5 h-2.5 text-white/80" />
+        </a>
+      )}
     </div>
   );
 }

@@ -284,6 +284,11 @@ export async function registerRoutes(
     const cachePath = path.join(cacheDir, `${reelId}.mp4`);
     const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 
+    const localAssetPath = path.resolve(process.cwd(), "client", "public", "assets", `reel_${reelId}.mp4`);
+    if (fs.existsSync(localAssetPath)) {
+      return streamMp4File(req, res, localAssetPath);
+    }
+
     // 1. Verificação de Cache: se já existir e for válido (> 15KB e < 7 dias)
     if (fs.existsSync(cachePath)) {
       try {

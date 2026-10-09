@@ -717,7 +717,7 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
       {/* Media */}
       <div className="relative w-full aspect-[16/9] bg-slate-900 overflow-hidden cursor-pointer flex items-center justify-center p-1" onDoubleClick={triggerHeart}>
         {post.videoUrl ? (
-          <video src={post.videoUrl} controls playsInline className="w-full h-full object-contain bg-black" />
+          <video src={post.videoUrl} autoPlay loop muted playsInline preload="metadata" className="w-full h-full object-contain bg-black" />
         ) : post.youtubeUrl && vid ? (
           <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="block relative w-full h-full flex items-center justify-center">
             <img
@@ -733,11 +733,20 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
             </div>
           </a>
         ) : (
-          <img
-            src={cover!} alt={post.title}
-            className="w-full h-full object-contain"
-            onError={e => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=900"; }}
-          />
+          <>
+            <img
+              src={cover!}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover blur-md opacity-35 scale-110 pointer-events-none"
+            />
+            <img
+              src={cover!}
+              alt={post.title}
+              className="relative z-10 w-full h-full object-contain"
+              onError={e => { (e.target as HTMLImageElement).src = "/assets/reel_thumb_DaySDnWBdW6.jpg"; }}
+            />
+          </>
         )}
 
         <AnimatePresence>

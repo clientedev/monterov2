@@ -858,7 +858,7 @@ export default function Home() {
                 >
                   <InstagramPostCard
                     post={post}
-                    aspectRatio="reel"
+                    aspectRatio={post.instagramUrl || post.postType === "instagram" ? "reel" : "video"}
                     className="h-full"
                   />
                 </motion.div>

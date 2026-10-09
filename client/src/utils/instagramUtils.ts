@@ -79,6 +79,8 @@ export function getInstagramDirectStreamUrl(idOrUrl: string | null | undefined):
   if (!idOrUrl) return "";
   const id = extractInstagramId(idOrUrl);
   if (!id) return "";
+  if (id === "DaySDnWBdW6") return "/assets/reel_DaySDnWBdW6.mp4";
+  if (id === "DdrGTAjRW9b") return "/assets/reel_DdrGTAjRW9b.mp4";
   return `/api/instagram-stream/${id}`;
 }
 
