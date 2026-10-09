@@ -35,13 +35,19 @@ export function PinkOctoberBadge() {
   const isPinkOctober = Boolean(settings?.themeOutubroRosa || settings?.activeTheme === "outubro_rosa");
   const showBadge = settings?.themeOutubroRosaBadge !== false;
 
-  // Pop-up abre automaticamente após 1.2s ao entrar no site
+  // Pop-up abre automaticamente uma única vez por sessão após 2s ao entrar no site
   useEffect(() => {
     if (!isAdmin && isPinkOctober && showBadge && !hasAutoOpened) {
+      const alreadySeen = typeof window !== "undefined" && sessionStorage.getItem("seen_outubro_rosa_popup");
+      if (alreadySeen) return;
+
       const timer = setTimeout(() => {
         setIsInfoModalOpen(true);
         setHasAutoOpened(true);
-      }, 1200);
+        try {
+          sessionStorage.setItem("seen_outubro_rosa_popup", "true");
+        } catch {}
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [isAdmin, isPinkOctober, showBadge, hasAutoOpened]);

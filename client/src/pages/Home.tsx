@@ -211,6 +211,7 @@ export default function Home() {
                             {/* Efeito Cinema Ambient Backdrop: Desktop-only para máxima performance mobile */}
                             {isContain && (
                               <video
+                                ref={(el) => { if (el) { el.muted = true; el.play().catch(() => {}); } }}
                                 src={slide.videoUrl}
                                 autoPlay
                                 loop
@@ -223,6 +224,7 @@ export default function Home() {
                             {/* Vídeo Principal */}
                             <div className="absolute inset-0 w-full h-full flex items-center justify-center">
                               <video
+                                ref={(el) => { if (el) { el.muted = true; el.play().catch(() => {}); } }}
                                 src={slide.videoUrl}
                                 autoPlay
                                 loop

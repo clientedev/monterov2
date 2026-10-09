@@ -187,6 +187,38 @@ export async function registerRoutes(
     }
   });
 
+  // Dynamic Cover Image Server for Posts (Streams Base64 Cover Images on Demand)
+  app.get("/api/posts/:id/image", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(404).end();
+
+      const post = await storage.getPost(id, true);
+      if (!post || !post.coverImage) {
+        return res.status(404).end();
+      }
+
+      if (post.coverImage.startsWith("data:")) {
+        const matches = post.coverImage.match(/^data:([A-Za-z-+\/0-9]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const type = matches[1];
+          const buffer = Buffer.from(matches[2], 'base64');
+          res.setHeader('Content-Type', type);
+          res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+          return res.send(buffer);
+        }
+      }
+
+      if (post.coverImage.startsWith("http://") || post.coverImage.startsWith("https://") || post.coverImage.startsWith("/")) {
+        return res.redirect(post.coverImage);
+      }
+
+      return res.status(404).end();
+    } catch (error) {
+      res.status(500).end();
+    }
+  });
+
   // SEO / Blog Social Previews - ONLY match blog posts with slugs, NOT the blog list
   app.get("/blog/:slug", async (req, res, next) => {
     // Skip if it's the blog list itself or a static asset

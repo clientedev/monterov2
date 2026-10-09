@@ -1,6 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 
+const POSTS_CACHE_KEY = "monteiro_posts_cache_v2";
+const SERVICES_CACHE_KEY = "monteiro_services_cache_v2";
+
+function getLocalCache<T>(key: string): T | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function setLocalCache<T>(key: string, data: T): void {
+  if (typeof window === "undefined" || !data) return;
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+}
+
 export function usePosts() {
   return useQuery({
     queryKey: [api.posts.list.path],
@@ -9,9 +29,11 @@ export function usePosts() {
       if (!res.ok) throw new Error(`Erro ${res.status}: ${res.statusText}`);
       const data = await res.json();
       if (!Array.isArray(data)) return [];
+      setLocalCache(POSTS_CACHE_KEY, data);
       return data as any[];
     },
-    staleTime: 120_000,
+    initialData: () => getLocalCache<any[]>(POSTS_CACHE_KEY),
+    staleTime: 60_000,
     gcTime: 600_000,
     retry: 2,
   });
@@ -39,8 +61,15 @@ export function useServices() {
     queryFn: async () => {
       const res = await fetch(api.services.list.path);
       if (!res.ok) throw new Error("Failed to fetch services");
-      return api.services.list.responses[200].parse(await res.json());
+      const raw = await res.json();
+      const data = api.services.list.responses[200].parse(raw);
+      setLocalCache(SERVICES_CACHE_KEY, data);
+      return data;
     },
+    initialData: () => getLocalCache<any[]>(SERVICES_CACHE_KEY),
+    staleTime: 60_000,
+    gcTime: 600_000,
+    retry: 2,
   });
 }
 

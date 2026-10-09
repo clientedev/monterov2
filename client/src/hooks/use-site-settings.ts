@@ -1,7 +1,28 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SiteSettings, InsertSiteSettings, HeroSlide, InsertHeroSlide } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+const SETTINGS_CACHE_KEY = "monteiro_site_settings_cache_v2";
+const SLIDES_CACHE_KEY = "monteiro_hero_slides_cache_v2";
+
+function getLocalCache<T>(key: string): T | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function setLocalCache<T>(key: string, data: T): void {
+  if (typeof window === "undefined" || !data) return;
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+}
 
 export function useSiteSettings() {
     const { toast } = useToast();
@@ -9,11 +30,25 @@ export function useSiteSettings() {
 
     const { data: settings, isLoading: isLoadingSettings } = useQuery<SiteSettings>({
         queryKey: ["/api/site-settings"],
+        initialData: () => getLocalCache<SiteSettings>(SETTINGS_CACHE_KEY),
     });
 
     const { data: slides, isLoading: isLoadingSlides } = useQuery<HeroSlide[]>({
         queryKey: ["/api/hero-slides"],
+        initialData: () => getLocalCache<HeroSlide[]>(SLIDES_CACHE_KEY),
     });
+
+    useEffect(() => {
+        if (settings) {
+            setLocalCache(SETTINGS_CACHE_KEY, settings);
+        }
+    }, [settings]);
+
+    useEffect(() => {
+        if (slides && slides.length > 0) {
+            setLocalCache(SLIDES_CACHE_KEY, slides);
+        }
+    }, [slides]);
 
     const updateSettingsMutation = useMutation({
         mutationFn: async (newSettings: Partial<InsertSiteSettings>) => {

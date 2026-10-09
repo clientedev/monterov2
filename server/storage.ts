@@ -447,6 +447,9 @@ export class DatabaseStorage implements IStorage {
         if (!raw && post.coverImage && post.coverImage.startsWith("data:")) {
           post.coverImage = `/api/posts/${post.id}/image`;
         }
+        if (!raw && post.videoUrl && post.videoUrl.startsWith("data:")) {
+          post.videoUrl = `/api/posts/${post.id}/video`;
+        }
         return post;
       }
     } catch (err: any) {
@@ -1199,14 +1202,7 @@ export class DatabaseStorage implements IStorage {
     return this.cachedSiteSettings;
   }
 
-  // Hero Slides
-  async getHeroSlides(): Promise<HeroSlide[]> {
-    const now = Date.now();
-    if (this.heroSlidesCache && now < this.heroSlidesCache.expiresAt) {
-      return this.heroSlidesCache.data;
-    }
-
-    const defaultSlides: HeroSlide[] = [
+    private defaultHeroSlides: HeroSlide[] = [
       {
         id: 1,
         title: "Planos de Saúde Individuais & Familiares",
@@ -1254,6 +1250,13 @@ export class DatabaseStorage implements IStorage {
       }
     ];
 
+  // Hero Slides
+  async getHeroSlides(): Promise<HeroSlide[]> {
+    const now = Date.now();
+    if (this.heroSlidesCache && now < this.heroSlidesCache.expiresAt) {
+      return this.heroSlidesCache.data;
+    }
+
     try {
       const existing = await db.select().from(heroSlides).orderBy(heroSlides.order);
       if (existing && existing.length > 0) {
@@ -1269,17 +1272,17 @@ export class DatabaseStorage implements IStorage {
       console.warn("[HeroSlides] Returning default slides (DB timeout/offline):", err.message);
       if (this.heroSlidesCache) return this.heroSlidesCache.data;
     }
-    return defaultSlides;
+    return this.defaultHeroSlides;
   }
 
   async getHeroSlide(id: number): Promise<HeroSlide | undefined> {
     try {
       const [slide] = await db.select().from(heroSlides).where(eq(heroSlides.id, id));
-      return slide;
+      if (slide) return slide;
     } catch (err: any) {
       console.warn("[HeroSlides] getHeroSlide error:", err.message);
-      return undefined;
     }
+    return this.defaultHeroSlides.find((s: HeroSlide) => s.id === id);
   }
 
   async createHeroSlide(slide: InsertHeroSlide): Promise<HeroSlide> {
