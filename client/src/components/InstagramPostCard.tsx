@@ -88,8 +88,11 @@ export function InstagramPostCard({
       })()
     : "Recente";
 
-  // Imagem de fallback
-  const fallbackCover = post.coverImage || officialThumb || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
+  // Imagem de fallback autêntica (garante que nunca exiba imagens genéricas ou inválidas)
+  const isBadCover = Boolean(post.coverImage && (post.coverImage.includes("1611162617474") || post.coverImage.includes("unsplash.com")));
+  const cleanCoverImage = isBadCover ? null : post.coverImage;
+  const fallbackCover = cleanCoverImage || officialThumb || "/assets/reel_thumb_DaySDnWBdW6.jpg";
+  const [showEmbedPlayer, setShowEmbedPlayer] = useState(false);
 
   // Limpeza de texto da legenda/resumo
   const captionText = (post.summary || post.content || "")
@@ -269,8 +272,31 @@ export function InstagramPostCard({
           <span>{formattedDate}</span>
         </div>
 
-        {/* Tentativa 1: Tag <video> nativa do Instagram / Stream */}
-        {Boolean(streamUrl) && !hasVideoError ? (
+        {/* Opção 1: Player Embed Ativo do Instagram ao Clicar */}
+        {showEmbedPlayer && isInsta && instaId ? (
+          <div className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
+            <iframe
+              src={embedUrl || `https://www.instagram.com/reel/${instaId}/embed/`}
+              title={post.title}
+              className="w-full h-full border-none"
+              style={{ minHeight: "360px" }}
+              loading="lazy"
+              allowTransparency
+              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowEmbedPlayer(false);
+              }}
+              className="absolute top-3 right-3 z-30 px-2.5 py-1 bg-black/80 hover:bg-black text-white text-[11px] font-bold rounded-full backdrop-blur-md border border-white/20 transition-all shadow-md"
+            >
+              ✕ Fechar
+            </button>
+          </div>
+        ) : Boolean(streamUrl) && !hasVideoError ? (
+          /* Opção 2: Tag <video> nativa (se houver stream direto disponível) */
           <div className="relative w-full h-full cursor-pointer" onClick={togglePlay}>
             <video
               ref={(el) => {
@@ -333,45 +359,35 @@ export function InstagramPostCard({
               </div>
             )}
           </div>
-        ) : isInsta && Boolean(embedUrl) ? (
-          /* Tentativa 2: Fallback oficial via Iframe Embed do Instagram */
-          <div className="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden">
-            <iframe
-              src={embedUrl}
-              title={post.title}
-              className="w-full h-full border-none"
-              style={{ minHeight: "360px" }}
-              loading="lazy"
-              allowTransparency
-              onError={() => setHasVideoError(true)}
-            />
-          </div>
         ) : (
-          /* Tentativa 3: Imagem de Capa do Post com Overlay */
-          <div className="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden">
+          /* Opção 3: Capa Autêntica em Alta Definição com Botão Interativo de Assistir Reel */
+          <div
+            className="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden cursor-pointer"
+            onClick={() => {
+              if (isInsta && instaId) {
+                setShowEmbedPlayer(true);
+              }
+            }}
+          >
             <img
               src={fallbackCover}
               alt={post.title}
               loading="lazy"
               decoding="async"
               onError={(e) => {
-                e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
+                e.currentTarget.src = "/assets/reel_thumb_DaySDnWBdW6.jpg";
               }}
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40 pointer-events-none" />
 
             {isInsta && (
-              <a
-                href={permalink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="absolute inset-0 flex items-center justify-center group/play cursor-pointer"
-              >
-                <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-xl group-hover/play:scale-110 transition-transform">
-                  <Play className="w-5 h-5 text-white ml-0.5 fill-white" />
+              <div className="absolute inset-0 flex items-center justify-center transition-all duration-300">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/75 hover:bg-black/90 backdrop-blur-md text-white border border-white/20 shadow-2xl group-hover:scale-110 transition-transform">
+                  <Play className="w-4 h-4 text-white fill-white ml-0.5" />
+                  <span className="text-xs font-bold tracking-wide">Assistir Reel</span>
                 </div>
-              </a>
+              </div>
             )}
           </div>
         )}

@@ -189,7 +189,8 @@ export default function PostsPage() {
                                 }
                             }
                             if (data.instagramUrl && !data.coverImage) {
-                                data.coverImage = "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800";
+                                const id = extractInstagramId(data.instagramUrl);
+                                data.coverImage = id ? getInstagramThumbnailUrl(id) : "/assets/reel_thumb_DaySDnWBdW6.jpg";
                             }
                             if (!data.coverImage) {
                                 toast({
@@ -417,7 +418,7 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
             } else {
                 const curCover = form.getValues("coverImage");
                 if (!curCover) {
-                    form.setValue("coverImage", "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800");
+                    form.setValue("coverImage", info?.id ? getInstagramThumbnailUrl(info.id) : "/assets/reel_thumb_DaySDnWBdW6.jpg");
                 }
             }
 

@@ -81,6 +81,8 @@ export function InstagramCachedVideo({
     }
   };
 
+  const [showEmbedPlayer, setShowEmbedPlayer] = useState(false);
+
   const aspectClass =
     aspectRatio === "reel"
       ? "aspect-[4/5]"
@@ -88,9 +90,49 @@ export function InstagramCachedVideo({
       ? "aspect-square"
       : "aspect-[16/10]";
 
-  const defaultCover = "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800";
-  const officialCover = instaId ? `/api/instagram-preview/${instaId}` : null;
-  const coverSrc = fallbackImage && !fallbackImage.includes("unsplash") ? fallbackImage : (officialCover || fallbackImage || defaultCover);
+  const defaultCover = instaId
+    ? getInstagramThumbnailUrl(instaId)
+    : "/assets/reel_thumb_DaySDnWBdW6.jpg";
+  const officialCover = instaId ? getInstagramThumbnailUrl(instaId) : null;
+  const isInvalidCover =
+    !fallbackImage ||
+    fallbackImage.includes("1611162617474") ||
+    fallbackImage.includes("unsplash.com");
+  const coverSrc = isInvalidCover
+    ? (officialCover || defaultCover)
+    : (fallbackImage || officialCover || defaultCover);
+
+  // Modo Player Embed Oficial Ativo (quando o usuário clica para assistir)
+  if (showEmbedPlayer && instaId) {
+    return (
+      <div
+        className={cn(
+          "relative w-full overflow-hidden bg-black flex items-center justify-center",
+          aspectClass,
+          className
+        )}
+      >
+        <iframe
+          src={`https://www.instagram.com/reel/${instaId}/embed/`}
+          title={title || "Instagram Reel"}
+          className="w-full h-full border-none"
+          loading="lazy"
+          allowTransparency
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+        />
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowEmbedPlayer(false);
+          }}
+          className="absolute top-2 right-2 z-20 px-2.5 py-1 bg-black/80 hover:bg-black text-white text-[11px] font-bold rounded-full backdrop-blur-md border border-white/20 transition-all shadow-md"
+        >
+          ✕ Fechar
+        </button>
+      </div>
+    );
+  }
 
   // Se tiver vídeo direto jogável (e sem erro de reprodução)
   if (hasPlayableVideo && !hasVideoError && directStreamUrl) {
@@ -204,8 +246,11 @@ export function InstagramCachedVideo({
   // Se for Post do Instagram ou Imagem com visual do Reel/Instagram
   return (
     <div
+      onClick={() => {
+        if (instaId) setShowEmbedPlayer(true);
+      }}
       className={cn(
-        "relative w-full overflow-hidden bg-slate-950 group select-none flex items-center justify-center",
+        "relative w-full overflow-hidden bg-slate-950 group select-none flex items-center justify-center cursor-pointer",
         aspectClass,
         className
       )}
@@ -223,7 +268,7 @@ export function InstagramCachedVideo({
       />
 
       {/* Gradientes elegantes de contraste */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/30 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40 pointer-events-none" />
 
       {/* Badge Reel / Instagram no canto superior esquerdo */}
       <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold border border-white/10 shadow-sm pointer-events-none">
@@ -245,10 +290,11 @@ export function InstagramCachedVideo({
         <ExternalLink className="w-2.5 h-2.5 text-white/80" />
       </a>
 
-      {/* Botão Play central elegante indicando conteúdo multimídia */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">
-        <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-xl">
-          <Play className="w-5 h-5 text-white ml-0.5 fill-white" />
+      {/* Botão Play / Assistir Reel central interativo */}
+      <div className="absolute inset-0 flex items-center justify-center transition-all duration-300">
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/75 hover:bg-black/90 backdrop-blur-md text-white border border-white/20 shadow-2xl group-hover:scale-110 transition-transform">
+          <Play className="w-4 h-4 text-white fill-white ml-0.5" />
+          <span className="text-xs font-bold tracking-wide">Assistir Reel</span>
         </div>
       </div>
     </div>

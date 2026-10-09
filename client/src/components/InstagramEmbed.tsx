@@ -149,11 +149,11 @@ export function InstagramEmbed({
         /* Alternative Creative Card Mode */
         <div className="relative aspect-square w-full bg-slate-900 overflow-hidden group">
           <img
-            src={coverImage || "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800"}
+            src={coverImage && !coverImage.includes("1611162617474") ? coverImage : (info.id ? `/api/instagram-preview/${info.id}` : "/assets/reel_thumb_DaySDnWBdW6.jpg")}
             alt={title || "Instagram Post"}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800";
+              (e.target as HTMLImageElement).src = "/assets/reel_thumb_DaySDnWBdW6.jpg";
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5 text-white">

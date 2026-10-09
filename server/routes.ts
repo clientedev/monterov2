@@ -433,9 +433,15 @@ export async function registerRoutes(
           return res.send(buffer);
         }
       }
-      return res.redirect("https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800");
+      if (reelId === "DaySDnWBdW6") {
+        return res.redirect("/assets/reel_thumb_DaySDnWBdW6.jpg");
+      }
+      if (reelId === "DdrGTAjRW9b") {
+        return res.redirect("/assets/reel_thumb_DdrGTAjRW9b.jpg");
+      }
+      return res.redirect("/assets/reel_thumb_DaySDnWBdW6.jpg");
     } catch {
-      return res.redirect("https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800");
+      return res.redirect("/assets/reel_thumb_DaySDnWBdW6.jpg");
     }
   });
 

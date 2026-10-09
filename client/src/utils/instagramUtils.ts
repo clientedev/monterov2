@@ -69,7 +69,7 @@ export function getInstagramPermalink(idOrUrl: string): string {
  */
 export function getInstagramEmbedUrl(idOrUrl: string, captioned: boolean = false): string {
   const id = extractInstagramId(idOrUrl) || idOrUrl.trim();
-  return `https://www.instagram.com/p/${id}/embed/${captioned ? "captioned/" : ""}`;
+  return `https://www.instagram.com/reel/${id}/embed/${captioned ? "captioned/" : ""}`;
 }
 
 /**
@@ -87,7 +87,9 @@ export function getInstagramDirectStreamUrl(idOrUrl: string | null | undefined):
  */
 export function getInstagramThumbnailUrl(idOrUrl: string): string {
   const id = extractInstagramId(idOrUrl) || idOrUrl.trim();
-  return `https://www.instagram.com/p/${id}/media/?size=l`;
+  if (id === "DaySDnWBdW6") return "/assets/reel_thumb_DaySDnWBdW6.jpg";
+  if (id === "DdrGTAjRW9b") return "/assets/reel_thumb_DdrGTAjRW9b.jpg";
+  return `/api/instagram-preview/${id}`;
 }
 
 /**

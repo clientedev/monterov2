@@ -266,7 +266,10 @@ app.use((req, res, next) => {
       created_at TIMESTAMP DEFAULT NOW()
     )`,
     `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Ativo' NOT NULL;`,
-    `UPDATE posts SET video_url = NULL WHERE video_url LIKE '%insta_reel_preview%' OR video_url LIKE '%carol_anim%';`
+    `UPDATE posts SET video_url = NULL WHERE video_url LIKE '%insta_reel_preview%' OR video_url LIKE '%carol_anim%';`,
+    `UPDATE posts SET cover_image = '/assets/reel_thumb_DaySDnWBdW6.jpg', title = 'Seguro de Vida Empresarial • Funcionários Protegidos', summary = 'Proteja quem move a sua empresa: conheça o Seguro de Vida Empresarial da Monteiro Seguros.' WHERE instagram_url LIKE '%DaySDnWBdW6%' OR id = 82;`,
+    `UPDATE posts SET cover_image = '/assets/reel_thumb_DdrGTAjRW9b.jpg', title = 'Gestão Trabalhista sem Riscos • Carol Monteiro & Dr. Renato', summary = 'Orientações jurídicas e de benefícios essenciais para sua empresa crescer com tranquilidade.' WHERE instagram_url LIKE '%DdrGTAjRW9b%' OR id = 81;`,
+    `UPDATE posts SET cover_image = '/assets/reel_thumb_DaySDnWBdW6.jpg' WHERE cover_image LIKE '%photo-1611162617474%';`
   ];
 
   // Run database sync asynchronously or non-blockingly so server startup is instant
