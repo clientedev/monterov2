@@ -219,6 +219,226 @@ export async function registerRoutes(
     }
   });
 
+  // Helper para streaming de vídeo MP4 com suporte a HTTP Range (206 Partial Content)
+  function streamMp4File(req: any, res: any, filePath: string) {
+    try {
+      const stat = fs.statSync(filePath);
+      const fileSize = stat.size;
+      const range = req.headers.range;
+
+      res.setHeader("Content-Type", "video/mp4");
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+        if (start >= fileSize || end >= fileSize) {
+          res.status(416).setHeader("Content-Range", `bytes */${fileSize}`);
+          return res.end();
+        }
+
+        const chunksize = end - start + 1;
+        const stream = fs.createReadStream(filePath, { start, end });
+        res.writeHead(206, {
+          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+          "Content-Length": chunksize,
+        });
+        stream.pipe(res);
+      } else {
+        res.writeHead(200, {
+          "Content-Length": fileSize,
+        });
+        fs.createReadStream(filePath).pipe(res);
+      }
+    } catch (err) {
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Erro ao transmitir arquivo de vídeo" });
+      }
+    }
+  }
+
+  // PARTE 2: Backend Proxy & Cache de Vídeo MP4 do Instagram (GET /api/instagram-stream/:reel_id)
+  app.get("/api/instagram-stream/:reel_id", async (req, res) => {
+    const rawReelId = req.params.reel_id;
+    const reelId = rawReelId ? rawReelId.replace(/[^a-zA-Z0-9_-]/g, "") : "";
+    if (!reelId || reelId.length < 5 || reelId.length > 40) {
+      return res.status(400).json({ error: "Identificador do Instagram inválido" });
+    }
+
+    // Pasta de cache em disco local
+    let cacheDir = path.resolve(process.cwd(), "static", "ig_cache");
+    try {
+      if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
+      }
+    } catch {
+      cacheDir = path.resolve(process.cwd(), "ig_cache");
+      if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
+      }
+    }
+
+    const cachePath = path.join(cacheDir, `${reelId}.mp4`);
+    const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
+
+    // 1. Verificação de Cache: se já existir e for válido (> 15KB e < 7 dias)
+    if (fs.existsSync(cachePath)) {
+      try {
+        const stat = fs.statSync(cachePath);
+        const age = Date.now() - stat.mtimeMs;
+        if (stat.size > 15 * 1024 && age < MAX_AGE_MS) {
+          return streamMp4File(req, res, cachePath);
+        }
+      } catch (e) {
+        // Ignora erro de leitura e tenta re-baixar
+      }
+    }
+
+    // 2. Download / Extração do MP4 do Instagram
+    try {
+      const desktopUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
+      const targetUrls = [
+        `https://www.instagram.com/reel/${reelId}/embed/`,
+        `https://www.instagram.com/p/${reelId}/embed/`,
+        `https://www.instagram.com/reel/${reelId}/embed/captioned/`,
+        `https://www.instagram.com/p/${reelId}/embed/captioned/`,
+      ];
+
+      let extractedMp4Url: string | null = null;
+
+      for (const targetUrl of targetUrls) {
+        try {
+          const fetchResp = await fetch(targetUrl, {
+            headers: {
+              "User-Agent": desktopUserAgent,
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+              "Referer": "https://www.instagram.com/",
+            },
+          });
+
+          if (!fetchResp.ok) continue;
+          const html = await fetchResp.text();
+
+          // Regex para encontrar arquivos MP4 diretos ou escapados no HTML do embed
+          const candidates: string[] = [];
+          
+          const rawMatch = html.match(/(https?:[^\s"'\\]+?\.mp4[^\s"'\\]*)/gi);
+          if (rawMatch) candidates.push(...rawMatch);
+
+          const escapedMatch = html.match(/(https?:\\\/\\\/[^\s"'\\]+?\.mp4[^\s"'\\]*)/gi);
+          if (escapedMatch) {
+            candidates.push(...escapedMatch.map(u => u.replace(/\\\//g, "/").replace(/\\u0026/g, "&")));
+          }
+
+          const videoUrlKey = html.match(/video_url["']?\s*:\s*["']([^"']+)["']/i);
+          if (videoUrlKey && videoUrlKey[1]) {
+            candidates.push(videoUrlKey[1].replace(/\\\//g, "/").replace(/\\u0026/g, "&"));
+          }
+
+          const hdUrlKey = html.match(/"browser_native_hd_url":\s*"([^"]+)"/i);
+          if (hdUrlKey && hdUrlKey[1]) {
+            candidates.push(hdUrlKey[1].replace(/\\\//g, "/").replace(/\\u0026/g, "&"));
+          }
+
+          for (const cand of candidates) {
+            if (cand && cand.startsWith("http") && (cand.includes(".mp4") || cand.includes("cdninstagram") || cand.includes("fbcdn"))) {
+              extractedMp4Url = cand;
+              break;
+            }
+          }
+
+          if (extractedMp4Url) break;
+        } catch {
+          // Tentar próxima URL da lista
+        }
+      }
+
+      // Se encontrou a URL do MP4, faz o download para o cache local
+      if (extractedMp4Url) {
+        const videoDownloadResp = await fetch(extractedMp4Url, {
+          headers: {
+            "User-Agent": desktopUserAgent,
+            "Referer": "https://www.instagram.com/",
+          },
+        });
+
+        if (videoDownloadResp.ok) {
+          const arrayBuffer = await videoDownloadResp.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          if (buffer.length > 15 * 1024) {
+            const tempFile = path.join(cacheDir, `${reelId}.tmp.${Date.now()}`);
+            fs.writeFileSync(tempFile, buffer);
+            fs.renameSync(tempFile, cachePath);
+            return streamMp4File(req, res, cachePath);
+          }
+        }
+      }
+
+      // Se falhou na extração ou é post de foto/carrossel, retorna 404 para acionar fallback no frontend
+      return res.status(404).json({
+        error: "Instagram direct MP4 stream unavailable",
+        reelId,
+        fallback: true
+      });
+    } catch (error: any) {
+      console.warn(`[IG_STREAM] Falha ao processar reel ${reelId}:`, error?.message || error);
+      return res.status(500).json({
+        error: "Falha ao obter vídeo do Instagram",
+        reelId,
+        fallback: true
+      });
+    }
+  });
+
+  // Proxy e cache de miniatura oficial do Instagram em alta definição (JPEG)
+  app.get("/api/instagram-preview/:reel_id", async (req, res) => {
+    const rawReelId = req.params.reel_id;
+    const reelId = rawReelId ? rawReelId.replace(/[^a-zA-Z0-9_-]/g, "") : "";
+    if (!reelId) return res.status(400).end();
+
+    let cacheDir = path.resolve(process.cwd(), "static", "ig_cache");
+    if (!fs.existsSync(cacheDir)) {
+      try { fs.mkdirSync(cacheDir, { recursive: true }); } catch {}
+    }
+    const thumbCachePath = path.join(cacheDir, `${reelId}_thumb.jpg`);
+
+    if (fs.existsSync(thumbCachePath)) {
+      try {
+        const stat = fs.statSync(thumbCachePath);
+        if (stat.size > 5 * 1024) {
+          res.setHeader("Content-Type", "image/jpeg");
+          res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+          return fs.createReadStream(thumbCachePath).pipe(res);
+        }
+      } catch {}
+    }
+
+    try {
+      const igUrl = `https://www.instagram.com/p/${reelId}/media/?size=l`;
+      const resp = await fetch(igUrl, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        redirect: "follow",
+      });
+
+      if (resp.ok) {
+        const buffer = Buffer.from(await resp.arrayBuffer());
+        if (buffer.length > 5 * 1024) {
+          try { fs.writeFileSync(thumbCachePath, buffer); } catch {}
+          res.setHeader("Content-Type", "image/jpeg");
+          res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+          return res.send(buffer);
+        }
+      }
+      return res.redirect("https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800");
+    } catch {
+      return res.redirect("https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800");
+    }
+  });
+
   // SEO / Blog Social Previews - ONLY match blog posts with slugs, NOT the blog list
   app.get("/blog/:slug", async (req, res, next) => {
     // Skip if it's the blog list itself or a static asset

@@ -16,6 +16,7 @@ import { ReviewsSection } from "@/components/ReviewsSection";
 import { cn } from "@/lib/utils";
 import { extractInstagramInfo } from "@/components/InstagramEmbed";
 import { InstagramCachedVideo } from "@/components/InstagramCachedVideo";
+import { InstagramPostCard } from "@/components/InstagramPostCard";
 import { getVideoEmbedInfo } from "@/lib/videoUtils";
 
 function WhatsAppIcon({ className = "w-5 h-5" }: { className?: string }) {
@@ -325,8 +326,8 @@ export default function Home() {
 
       {/* Diferencial Monteiro - Logo abaixo do banner */}
       <section className="py-28 bg-[#eae4da] relative overflow-hidden">
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/3 h-[700px] bg-[#c65f54]/5 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute left-[-10%] top-[10%] w-[350px] h-[350px] bg-[#08454c]/5 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/3 h-[700px] bg-[#c65f54]/5 rounded-full blur-[140px] pointer-events-none hidden md:block" />
+        <div className="absolute left-[-10%] top-[10%] w-[350px] h-[350px] bg-[#08454c]/5 rounded-full blur-[100px] pointer-events-none hidden md:block" />
 
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="grid lg:grid-cols-12 gap-16 items-center">
@@ -334,7 +335,7 @@ export default function Home() {
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.05 }}
               transition={{ duration: 0.6 }}
               className="lg:col-span-6 relative"
             >
@@ -446,78 +447,22 @@ export default function Home() {
                 <div key={i} className="h-96 bg-white/5 rounded-[2rem] animate-pulse border border-white/10" />
               ))
             ) : (
-              displayRecentPosts.map((post, index) => {
-                const isInstagram = !!post.instagramUrl || post.postType === "instagram";
-
-                return (
-                  <Link key={post.id} href={`/blog/${post.slug}`}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 25 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.1, duration: 0.5 }}
-                      className="group cursor-pointer bg-white text-[#163b52] rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 h-full flex flex-col justify-between border border-white/20 relative"
-                    >
-                      {/* Media Preview: se for Instagram, usa o vídeo do post perfeitamente enquadrado */}
-                      {isInstagram ? (
-                        <div className="overflow-hidden aspect-[16/10] w-full bg-slate-950 flex items-center justify-center relative">
-                          <InstagramCachedVideo
-                            videoUrl={post.videoUrl}
-                            instagramUrl={post.instagramUrl}
-                            fallbackImage={post.coverImage}
-                            title={post.title}
-                            aspectRatio="video"
-                            className="w-full h-full"
-                          />
-                        </div>
-                      ) : (
-                        <div className="overflow-hidden aspect-[16/10] w-full bg-slate-900 flex items-center justify-center relative p-1">
-                          <img
-                            src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
-                            alt={post.title}
-                            onError={(e) => {
-                              e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
-                            }}
-                            className="w-full h-full object-contain"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity pointer-events-none" />
-                        </div>
-                      )}
-
-                      <div className="p-7 flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center gap-2 text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">
-                            <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
-                            <span>•</span>
-                            <span className="text-[#c65f54]">
-                              {isInstagram ? "@monteirosegurosebeneficios" : "Monteiro Blog"}
-                            </span>
-                          </div>
-                          <h3 className="text-xl font-bold font-display text-[#163b52] mb-3 group-hover:text-[#08454c] transition-colors duration-300 line-clamp-2">
-                            {post.title && post.title.trim()
-                              ? (post.title.startsWith("Publicação do Instagram - Reel #")
-                                  ? `Reel Oficial • ${post.title.replace("Publicação do Instagram - Reel #", "Vídeo #")}`
-                                  : post.title)
-                              : "Publicação Monteiro Seguros"}
-                          </h3>
-                          <p className="text-slate-600 text-sm font-light leading-relaxed line-clamp-3">
-                            {post.summary && post.summary.trim() 
-                              ? post.summary 
-                              : (post.content && post.content.trim() 
-                                  ? post.content.replace(/<[^>]*>?/gm, '').slice(0, 140) + "..."
-                                  : "Confira as melhores orientações sobre planos de saúde e seguros com nossa equipe especializada.")}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-xs font-bold text-[#c65f54] uppercase tracking-wider pt-6 mt-auto">
-                          <span>{isInstagram ? "Ver Detalhes do Post" : "Ler Artigo Completo"}</span>
-                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  </Link>
-                );
-              })
+              displayRecentPosts.map((post, index) => (
+                <motion.div
+                  key={post.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.05 }}
+                  transition={{ delay: index * 0.1, duration: 0.4 }}
+                  className="h-full"
+                >
+                  <InstagramPostCard
+                    post={post}
+                    aspectRatio="reel"
+                    className="h-full"
+                  />
+                </motion.div>
+              ))
             )}
           </div>
 
@@ -644,7 +589,7 @@ export default function Home() {
 
       {/* Seção B: Nossos Pilares de Cuidado */}
       <section className="py-28 bg-[#f5f2eb]/70 relative overflow-hidden border-t border-slate-100/50">
-        <div className="absolute right-[-10%] bottom-0 w-[500px] h-[500px] bg-[#c65f54]/3 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute right-[-10%] bottom-0 w-[500px] h-[500px] bg-[#c65f54]/3 rounded-full blur-[120px] pointer-events-none hidden md:block" />
         
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-20">
@@ -682,7 +627,7 @@ export default function Home() {
                 key={index}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.05 }}
                 transition={{ delay: index * 0.1, duration: 0.6 }}
                 className="group bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between"
               >
@@ -902,114 +847,22 @@ export default function Home() {
                 );
               }
 
-              return filtered.slice(0, 6).map((post, index) => {
-                const isInstagram = !!post.instagramUrl || post.postType === "instagram";
-
-                return (
-                  <motion.div
-                    key={post.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.08 }}
-                    className="group bg-white rounded-3xl overflow-hidden border border-slate-200/80 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 h-full flex flex-col justify-between shadow-sm relative"
-                  >
-                    {/* Badge de Categoria */}
-                    <div className="absolute top-3.5 left-3.5 z-20">
-                      {isInstagram ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-white shadow-md bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888]">
-                          <Instagram className="w-3.5 h-3.5" />
-                          Instagram
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold text-slate-700 bg-white/95 backdrop-blur-sm shadow-sm border border-slate-200">
-                          <FileText className="w-3 h-3 text-[#08454c]" />
-                          Artigo
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Media Preview: trecho do vídeo do Instagram rodando em cache sem gastar egress */}
-                    {isInstagram ? (
-                      <InstagramCachedVideo
-                        videoUrl={post.videoUrl}
-                        instagramUrl={post.instagramUrl}
-                        fallbackImage={post.coverImage}
-                        title={post.title}
-                        aspectRatio="video"
-                      />
-                    ) : (
-                      <div className="overflow-hidden aspect-[16/10] w-full bg-slate-900 flex items-center justify-center relative group">
-                        <img
-                          src={post.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"}
-                          alt={post.title}
-                          onError={(e) => {
-                            e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
-                          }}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity pointer-events-none" />
-                      </div>
-                    )}
-
-                    {/* Content */}
-                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-slate-400 mb-2 font-semibold">
-                          <span>{post.publishedAt ? format(new Date(post.publishedAt), 'dd/MM/yyyy') : 'Novidade'}</span>
-                          <span>•</span>
-                          <span className="text-[#c65f54] font-medium">
-                            {isInstagram ? "@monteirosegurosebeneficios" : "Blog Monteiro"}
-                          </span>
-                        </div>
-                        <h3 className="text-lg font-bold font-display text-[#163b52] mb-2 group-hover:text-[#08454c] transition-colors line-clamp-2">
-                          {post.title && post.title.trim()
-                            ? (post.title.startsWith("Publicação do Instagram - Reel #")
-                                ? `Reel Oficial • ${post.title.replace("Publicação do Instagram - Reel #", "Vídeo #")}`
-                                : post.title)
-                            : "Publicação Monteiro Seguros"}
-                        </h3>
-                        <p className="text-slate-500 text-sm font-light leading-relaxed line-clamp-3">
-                          {post.summary && post.summary.trim()
-                            ? post.summary
-                            : (post.content && post.content.trim()
-                                ? post.content.replace(/<[^>]*>?/gm, '').slice(0, 140) + "..."
-                                : "Confira as melhores orientações sobre planos de saúde e seguros com nossa equipe especializada.")}
-                        </p>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
-                        {isInstagram && post.instagramUrl ? (
-                          <>
-                            <a
-                              href={post.instagramUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs font-bold text-pink-600 hover:text-pink-700 transition-colors"
-                            >
-                              <Instagram className="w-3.5 h-3.5" />
-                              <span>Abrir no Insta</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                            <Link href={`/blog/${post.slug}`}>
-                              <span className="text-xs font-semibold text-slate-500 hover:text-[#08454c] cursor-pointer">
-                                Detalhes
-                              </span>
-                            </Link>
-                          </>
-                        ) : (
-                          <Link href={`/blog/${post.slug}`}>
-                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#c65f54] hover:text-[#a0443a] transition-colors uppercase tracking-wider cursor-pointer">
-                              <span>Ler Artigo Completo</span>
-                              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                            </span>
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              });
+              return filtered.slice(0, 6).map((post, index) => (
+                <motion.div
+                  key={post.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.05 }}
+                  transition={{ delay: index * 0.08 }}
+                  className="h-full"
+                >
+                  <InstagramPostCard
+                    post={post}
+                    aspectRatio="reel"
+                    className="h-full"
+                  />
+                </motion.div>
+              ));
             })()}
           </div>
 

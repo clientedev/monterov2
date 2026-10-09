@@ -18,8 +18,10 @@ export function ChatBubble() {
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [isAnimReady, setIsAnimReady] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
+        setIsMobile(typeof window !== "undefined" && window.innerWidth < 640);
         const timer = setTimeout(() => setIsAnimReady(true), 300);
         return () => clearTimeout(timer);
     }, []);
@@ -110,7 +112,7 @@ export function ChatBubble() {
                 {/* Pop-out Avatar */}
                 <div className="absolute bottom-2 left-2 w-14 h-14 z-20 pointer-events-none transition-all duration-500 ease-out group-hover:-translate-y-12 group-hover:scale-[2.2] origin-bottom">
                     <img 
-                        src={isAnimReady ? carolAnim : carolAvatar}
+                        src={!isMobile && isAnimReady ? carolAnim : carolAvatar}
                         alt="Carolzinha Monteiro Seguros"
                         loading="lazy"
                         decoding="async" 
@@ -139,7 +141,7 @@ export function ChatBubble() {
                     <div className="relative">
                         <div className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center bg-white shrink-0 overflow-hidden">
                             <img 
-                                src={isAnimReady ? carolAnim : carolAvatar}
+                                src={!isMobile && isAnimReady ? carolAnim : carolAvatar}
                                 alt="Carolzinha Avatar"
                                 loading="lazy"
                                 decoding="async" 

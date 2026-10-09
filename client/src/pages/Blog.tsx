@@ -18,6 +18,7 @@ import { useState, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { InstagramEmbed } from "@/components/InstagramEmbed";
+import { InstagramPostCard } from "@/components/InstagramPostCard";
 
 const formatDate = (d: string | Date | null | undefined) => {
   if (!d) return "";
@@ -602,22 +603,20 @@ export default function Blog() {
         )}
 
         {!isLoading && !isError && displayPosts?.map((post, index) => {
-          if (post.instagramUrl) {
+          if (post.instagramUrl || post.postType === "instagram") {
             return (
               <motion.div
                 key={post.id}
                 initial={{ opacity: 0, y: 18 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
+                viewport={{ once: true, amount: 0.05 }}
                 transition={{ delay: Math.min(index * 0.06, 0.3), duration: 0.45 }}
               >
-                <InstagramEmbed
-                  url={post.instagramUrl}
-                  title={post.title}
-                  summary={post.summary}
-                  coverImage={post.coverImage}
-                  likes={post.likes}
-                  compact={false}
+                <InstagramPostCard
+                  post={post}
+                  aspectRatio="reel"
+                  isLiked={liked.has(post.id)}
+                  onLike={() => likeMut.mutate(post.id)}
                 />
               </motion.div>
             );
@@ -667,7 +666,7 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
+      viewport={{ once: true, amount: 0.05 }}
       transition={{ delay: Math.min(index * 0.06, 0.3), duration: 0.45 }}
       className="bg-white rounded-none shadow-sm border border-slate-100 overflow-hidden"
     >

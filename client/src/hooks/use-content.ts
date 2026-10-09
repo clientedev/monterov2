@@ -1,14 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 
-const POSTS_CACHE_KEY = "monteiro_posts_cache_v2";
-const SERVICES_CACHE_KEY = "monteiro_services_cache_v2";
+const POSTS_CACHE_KEY = "monteiro_posts_cache_v4";
+const SERVICES_CACHE_KEY = "monteiro_services_cache_v4";
 
 function getLocalCache<T>(key: string): T | undefined {
   if (typeof window === "undefined") return undefined;
   try {
+    // Limpeza ativa de versões anteriores obsoletas
+    localStorage.removeItem("monteiro_posts_cache_v1");
+    localStorage.removeItem("monteiro_posts_cache_v2");
+    localStorage.removeItem("monteiro_posts_cache_v3");
+    localStorage.removeItem("monteiro_services_cache_v1");
+    localStorage.removeItem("monteiro_services_cache_v2");
+
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : undefined;
+    if (!raw) return undefined;
+    if (raw.includes("insta_reel_preview") || raw.includes("carol_anim")) {
+      localStorage.removeItem(key);
+      return undefined;
+    }
+    return JSON.parse(raw);
   } catch {
     return undefined;
   }

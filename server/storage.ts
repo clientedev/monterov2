@@ -425,11 +425,35 @@ export class DatabaseStorage implements IStorage {
         ) as any;
       }
       const rawList = await query.orderBy(desc(posts.publishedAt));
-      const result = rawList.map((p: any) => ({
-        ...p,
-        coverImage: p.coverImage && p.coverImage.startsWith("data:") ? `/api/posts/${p.id}/image` : (p.coverImage || "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800"),
-        videoUrl: p.videoUrl && p.videoUrl.startsWith("data:") ? `/api/posts/${p.id}/video` : p.videoUrl,
-      })) as any;
+      const result = rawList.map((p: any) => {
+        // Sanitiza vídeo: remove explicitamente qualquer link para avatar / mock mp4
+        let cleanVideoUrl = p.videoUrl;
+        if (cleanVideoUrl && (cleanVideoUrl.includes("insta_reel_preview") || cleanVideoUrl.includes("carol_anim"))) {
+          cleanVideoUrl = null;
+        } else if (cleanVideoUrl && cleanVideoUrl.startsWith("data:")) {
+          cleanVideoUrl = `/api/posts/${p.id}/video`;
+        }
+
+        // Se for post do Instagram e tiver capa genérica, usa rota de preview do Instagram
+        let cleanCoverImage = p.coverImage;
+        if (cleanCoverImage && cleanCoverImage.startsWith("data:")) {
+          cleanCoverImage = `/api/posts/${p.id}/image`;
+        } else if (p.instagramUrl && (!cleanCoverImage || cleanCoverImage.includes("unsplash"))) {
+          const match = p.instagramUrl.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i);
+          if (match && match[1]) {
+            cleanCoverImage = `/api/instagram-preview/${match[1]}`;
+          }
+        }
+        if (!cleanCoverImage) {
+          cleanCoverImage = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=800";
+        }
+
+        return {
+          ...p,
+          coverImage: cleanCoverImage,
+          videoUrl: cleanVideoUrl,
+        };
+      }) as any;
 
       this.postsCache.set(cacheKey, { data: result, expiresAt: Date.now() + 60_000 });
       return result;
@@ -446,9 +470,18 @@ export class DatabaseStorage implements IStorage {
       if (post) {
         if (!raw && post.coverImage && post.coverImage.startsWith("data:")) {
           post.coverImage = `/api/posts/${post.id}/image`;
+        } else if (!raw && post.instagramUrl && (!post.coverImage || post.coverImage.includes("unsplash"))) {
+          const match = post.instagramUrl.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i);
+          if (match && match[1]) {
+            post.coverImage = `/api/instagram-preview/${match[1]}`;
+          }
         }
-        if (!raw && post.videoUrl && post.videoUrl.startsWith("data:")) {
-          post.videoUrl = `/api/posts/${post.id}/video`;
+        if (!raw && post.videoUrl) {
+          if (post.videoUrl.includes("insta_reel_preview") || post.videoUrl.includes("carol_anim")) {
+            post.videoUrl = null;
+          } else if (post.videoUrl.startsWith("data:")) {
+            post.videoUrl = `/api/posts/${post.id}/video`;
+          }
         }
         return post;
       }

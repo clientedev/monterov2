@@ -1,7 +1,12 @@
 import React, { useState, useRef } from "react";
 import { Volume2, VolumeX, Play, Pause, Instagram, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { extractInstagramInfo } from "./InstagramEmbed";
+import { 
+  extractInstagramId, 
+  getInstagramPermalink, 
+  getInstagramDirectStreamUrl,
+  getInstagramThumbnailUrl 
+} from "@/utils/instagramUtils";
 
 interface InstagramCachedVideoProps {
   videoUrl?: string | null;
@@ -22,19 +27,30 @@ export function InstagramCachedVideo({
   aspectRatio = "video",
   showSoundToggle = false,
 }: InstagramCachedVideoProps) {
-  const instaInfo = extractInstagramInfo(instagramUrl || videoUrl);
-  const cleanInstaUrl = instaInfo?.cleanUrl || (typeof instagramUrl === "string" ? instagramUrl : "https://www.instagram.com/monteirosegurosebeneficios/");
+  // Ignora explicitamente arquivos antigos do avatar
+  const isBannedVideo = Boolean(
+    videoUrl && (videoUrl.includes("insta_reel_preview") || videoUrl.includes("carol_anim"))
+  );
+  const rawVideo = isBannedVideo ? null : videoUrl;
 
-  // Detect if there is a direct playable video URL
+  const instaId = extractInstagramId(instagramUrl || rawVideo);
+  const cleanInstaUrl = instaId 
+    ? getInstagramPermalink(instaId) 
+    : (typeof instagramUrl === "string" ? instagramUrl : "https://www.instagram.com/monteirosegurosebeneficios/");
+
+  // Rota de stream direto do backend com cache
+  const directStreamUrl = instaId 
+    ? getInstagramDirectStreamUrl(instaId) 
+    : (rawVideo && !rawVideo.includes("instagram.com") ? rawVideo : null);
+
   const hasPlayableVideo = Boolean(
-    videoUrl &&
-    !videoUrl.includes("instagram.com") &&
-    (videoUrl.startsWith("/api/posts/") ||
-     videoUrl.endsWith(".mp4") ||
-     videoUrl.endsWith(".webm") ||
-     videoUrl.startsWith("data:") ||
-     videoUrl.startsWith("blob:") ||
-     videoUrl.startsWith("http"))
+    directStreamUrl &&
+    (directStreamUrl.startsWith("/api/") ||
+     directStreamUrl.endsWith(".mp4") ||
+     directStreamUrl.endsWith(".webm") ||
+     directStreamUrl.startsWith("data:") ||
+     directStreamUrl.startsWith("blob:") ||
+     directStreamUrl.startsWith("http"))
   );
 
   const [isMuted, setIsMuted] = useState(true);
@@ -73,10 +89,11 @@ export function InstagramCachedVideo({
       : "aspect-[16/10]";
 
   const defaultCover = "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800";
-  const coverSrc = fallbackImage || defaultCover;
+  const officialCover = instaId ? `/api/instagram-preview/${instaId}` : null;
+  const coverSrc = fallbackImage && !fallbackImage.includes("unsplash") ? fallbackImage : (officialCover || fallbackImage || defaultCover);
 
   // Se tiver vídeo direto jogável (e sem erro de reprodução)
-  if (hasPlayableVideo && !hasVideoError) {
+  if (hasPlayableVideo && !hasVideoError && directStreamUrl) {
     return (
       <div
         onClick={togglePlay}
@@ -97,14 +114,18 @@ export function InstagramCachedVideo({
               }
             }
           }}
-          src={videoUrl!}
+          src={directStreamUrl}
           autoPlay
           muted={isMuted}
           loop
           playsInline
-          preload="metadata"
+          preload="auto"
           poster={coverSrc}
           onError={() => setHasVideoError(true)}
+          onLoadedMetadata={(e) => {
+            e.currentTarget.muted = true;
+            e.currentTarget.play().catch(() => {});
+          }}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
 
@@ -113,10 +134,10 @@ export function InstagramCachedVideo({
         {/* Badge do Instagram ou Vídeo */}
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold border border-white/10 shadow-sm pointer-events-none">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          {instaInfo ? (
+          {instaId ? (
             <>
               <Instagram className="w-3.5 h-3.5 text-[#f09433]" />
-              <span>{instaInfo.type === "reel" ? "Reel Oficial" : "Instagram"}</span>
+              <span>Instagram Reel</span>
             </>
           ) : (
             <>
@@ -126,7 +147,7 @@ export function InstagramCachedVideo({
           )}
         </div>
 
-        {instaInfo && (
+        {instaId && (
           <a
             href={cleanInstaUrl}
             target="_blank"
@@ -208,7 +229,7 @@ export function InstagramCachedVideo({
       <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold border border-white/10 shadow-sm pointer-events-none">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         <Instagram className="w-3.5 h-3.5 text-[#f09433]" />
-        <span>{instaInfo?.type === "reel" ? "Reel Oficial" : "Instagram"}</span>
+        <span>{instaId ? "Reel Oficial" : "Instagram"}</span>
       </div>
 
       {/* Botão para abrir no Instagram no canto superior direito */}

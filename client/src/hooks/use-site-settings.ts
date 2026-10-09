@@ -4,12 +4,19 @@ import { SiteSettings, InsertSiteSettings, HeroSlide, InsertHeroSlide } from "@s
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-const SETTINGS_CACHE_KEY = "monteiro_site_settings_cache_v2";
-const SLIDES_CACHE_KEY = "monteiro_hero_slides_cache_v2";
+const SETTINGS_CACHE_KEY = "monteiro_site_settings_cache_v4";
+const SLIDES_CACHE_KEY = "monteiro_hero_slides_cache_v4";
 
 function getLocalCache<T>(key: string): T | undefined {
   if (typeof window === "undefined") return undefined;
   try {
+    localStorage.removeItem("monteiro_site_settings_cache_v1");
+    localStorage.removeItem("monteiro_site_settings_cache_v2");
+    localStorage.removeItem("monteiro_site_settings_cache_v3");
+    localStorage.removeItem("monteiro_hero_slides_cache_v1");
+    localStorage.removeItem("monteiro_hero_slides_cache_v2");
+    localStorage.removeItem("monteiro_hero_slides_cache_v3");
+
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : undefined;
   } catch {

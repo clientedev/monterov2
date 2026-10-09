@@ -44,6 +44,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { InstagramEmbed, extractInstagramInfo } from "@/components/InstagramEmbed";
+import { extractInstagramId, getInstagramPermalink, getInstagramThumbnailUrl } from "@/utils/instagramUtils";
 
 function toDatetimeLocalString(dateInput?: Date | string | null): string {
     if (!dateInput) {
@@ -177,7 +178,16 @@ export default function PostsPage() {
                     <PostForm
                         initialData={editingPost}
                         onSubmit={(data: InsertPost) => {
-                            // Ensure fallback for Instagram posts if cover image not provided
+                            // Trata postagens do Instagram automaticamente
+                            if (data.instagramUrl) {
+                                const id = extractInstagramId(data.instagramUrl);
+                                if (id && (!data.coverImage || data.coverImage.includes("unsplash"))) {
+                                    data.coverImage = `/api/instagram-preview/${id}`;
+                                }
+                                if (data.videoUrl && (data.videoUrl.includes("insta_reel_preview") || data.videoUrl.includes("carol_anim"))) {
+                                    data.videoUrl = null;
+                                }
+                            }
                             if (data.instagramUrl && !data.coverImage) {
                                 data.coverImage = "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800";
                             }
@@ -400,9 +410,15 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                 form.setValue("slug", `insta-${info.id.toLowerCase()}`);
             }
 
-            const curCover = form.getValues("coverImage");
-            if (!curCover) {
-                form.setValue("coverImage", "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800");
+            const id = extractInstagramId(url) || info.id;
+            if (id) {
+                form.setValue("coverImage", `/api/instagram-preview/${id}`);
+                form.setValue("videoUrl", null);
+            } else {
+                const curCover = form.getValues("coverImage");
+                if (!curCover) {
+                    form.setValue("coverImage", "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800");
+                }
             }
 
             const curContent = form.getValues("content");

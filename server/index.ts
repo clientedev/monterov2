@@ -265,7 +265,8 @@ app.use((req, res, next) => {
       read BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
-    `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Ativo' NOT NULL;`
+    `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Ativo' NOT NULL;`,
+    `UPDATE posts SET video_url = NULL WHERE video_url LIKE '%insta_reel_preview%' OR video_url LIKE '%carol_anim%';`
   ];
 
   // Run database sync asynchronously or non-blockingly so server startup is instant
