@@ -1702,6 +1702,482 @@ export async function registerRoutes(
     res.json(result);
   });
 
+  // Endpoint para análise inteligente e detecção de duplicidades em planilhas
+  app.post("/api/clientes/analyze-import", isTeam, async (req, res) => {
+    try {
+      const { rows = [], matchCriteria = {} } = req.body;
+      const {
+        matchDoc = true,
+        matchEmail = true,
+        matchPhone = true,
+        matchName = false,
+        matchPolicy = true,
+      } = matchCriteria;
+
+      const allClientes = await db.select().from(clientes);
+      const allApolices = await db.select().from(apolices);
+
+      const normStr = (str: string) =>
+        (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+      const docMap = new Map<string, any>();
+      const emailMap = new Map<string, any>();
+      const phoneMap = new Map<string, any>();
+      const nameMap = new Map<string, any>();
+
+      for (const c of allClientes) {
+        const doc = (c.cpfCnpj || "").replace(/\D/g, "");
+        if (doc) docMap.set(doc, c);
+
+        const em = normStr(c.email || "");
+        if (em) emailMap.set(em, c);
+
+        const ph = (c.telefone || "").replace(/\D/g, "");
+        if (ph.length >= 8) phoneMap.set(ph.slice(-8), c);
+
+        const nm = normStr(c.nome || "");
+        if (nm) nameMap.set(nm, c);
+      }
+
+      const policyMap = new Map<string, any>();
+      const propMap = new Map<string, any>();
+      for (const a of allApolices) {
+        const apNum = (a.numeroApolice || "").trim().toLowerCase();
+        if (apNum) policyMap.set(apNum, a);
+
+        const propNum = (a.idProposta || a.numeroProposta || "").trim().toLowerCase();
+        if (propNum) propMap.set(propNum, a);
+
+        const apId = (a.idApolice || "").trim().toLowerCase();
+        if (apId) policyMap.set(apId, a);
+      }
+
+      // Track internal duplicates within the sheet
+      const fileDocs = new Map<string, number>();
+      const fileEmails = new Map<string, number>();
+      const filePhones = new Map<string, number>();
+      const filePolicies = new Map<string, number>();
+
+      let newCount = 0;
+      let existingClientCount = 0;
+      let existingPolicyCount = 0;
+      let duplicateInFileCount = 0;
+      let invalidCount = 0;
+
+      const analyzedRows = rows.map((row: any, idx: number) => {
+        const nome = (row.nome || "").trim();
+        const rawDoc = (row.cpfCnpj || "").replace(/\D/g, "");
+        const rawEmail = normStr(row.email || "");
+        const rawPhone = (row.telefone || "").replace(/\D/g, "");
+        const rawPolicy = (row.numeroApolice || row.idApolice || "").trim().toLowerCase();
+        const rawProp = (row.idProposta || row.numeroProposta || "").trim().toLowerCase();
+
+        // 1. Validation check
+        if (!nome) {
+          invalidCount++;
+          return {
+            index: idx,
+            status: "invalid",
+            badge: "Inválido",
+            reason: "Linha sem nome do cliente",
+            matchedCliente: null,
+            matchedApolice: null,
+            data: row,
+          };
+        }
+
+        // 2. Check internal duplicate within file
+        let isDuplicateInFile = false;
+        let dupReason = "";
+        if (rawDoc && fileDocs.has(rawDoc)) {
+          isDuplicateInFile = true;
+          dupReason = `Documento repetido na linha ${fileDocs.get(rawDoc)! + 1} da própria planilha`;
+        } else if (rawEmail && fileEmails.has(rawEmail)) {
+          isDuplicateInFile = true;
+          dupReason = `E-mail repetido na linha ${fileEmails.get(rawEmail)! + 1} da própria planilha`;
+        }
+
+        if (rawDoc) fileDocs.set(rawDoc, idx);
+        if (rawEmail) fileEmails.set(rawEmail, idx);
+        if (rawPhone.length >= 8) filePhones.set(rawPhone.slice(-8), idx);
+        if (rawPolicy) filePolicies.set(rawPolicy, idx);
+
+        if (isDuplicateInFile) {
+          duplicateInFileCount++;
+          return {
+            index: idx,
+            status: "duplicate_in_file",
+            badge: "Duplicado na Planilha",
+            reason: dupReason,
+            matchedCliente: null,
+            matchedApolice: null,
+            data: row,
+          };
+        }
+
+        // 3. Check existing policy in DB
+        let existingApolice: any = null;
+        let policyReason = "";
+        if (matchPolicy) {
+          if (rawPolicy && policyMap.has(rawPolicy)) {
+            existingApolice = policyMap.get(rawPolicy);
+            policyReason = `Apólice nº ${row.numeroApolice || row.idApolice} já cadastrada no sistema`;
+          } else if (rawProp && propMap.has(rawProp)) {
+            existingApolice = propMap.get(rawProp);
+            policyReason = `Proposta nº ${row.idProposta || row.numeroProposta} já cadastrada no sistema`;
+          }
+        }
+
+        // 4. Check existing client in DB
+        let existingCliente: any = null;
+        let matchReason = "";
+        if (matchDoc && rawDoc && docMap.has(rawDoc)) {
+          existingCliente = docMap.get(rawDoc);
+          matchReason = `CPF/CNPJ já cadastrado no banco: ${existingCliente.nome}`;
+        } else if (matchEmail && rawEmail && emailMap.has(rawEmail)) {
+          existingCliente = emailMap.get(rawEmail);
+          matchReason = `E-mail já cadastrado no banco: ${existingCliente.nome}`;
+        } else if (matchPhone && rawPhone.length >= 8 && phoneMap.has(rawPhone.slice(-8))) {
+          existingCliente = phoneMap.get(rawPhone.slice(-8));
+          matchReason = `Telefone já cadastrado no banco: ${existingCliente.nome}`;
+        } else if (matchName && nome && nameMap.has(normStr(nome))) {
+          existingCliente = nameMap.get(normStr(nome));
+          matchReason = `Nome exato já existente no CRM: ${existingCliente.nome}`;
+        }
+
+        if (existingApolice) {
+          existingPolicyCount++;
+          return {
+            index: idx,
+            status: "existing_policy",
+            badge: "Apólice Já Existe",
+            reason: policyReason,
+            matchedCliente: existingCliente ? { id: existingCliente.id, nome: existingCliente.nome, cpfCnpj: existingCliente.cpfCnpj } : null,
+            matchedApolice: { id: existingApolice.id, numeroApolice: existingApolice.numeroApolice },
+            data: row,
+          };
+        }
+
+        if (existingCliente) {
+          existingClientCount++;
+          return {
+            index: idx,
+            status: "existing_client",
+            badge: "Cliente Existente",
+            reason: matchReason,
+            matchedCliente: { id: existingCliente.id, nome: existingCliente.nome, cpfCnpj: existingCliente.cpfCnpj, email: existingCliente.email, telefone: existingCliente.telefone },
+            matchedApolice: null,
+            data: row,
+          };
+        }
+
+        newCount++;
+        return {
+          index: idx,
+          status: "new",
+          badge: "Novo Cliente",
+          reason: "Nenhum conflito detectado",
+          matchedCliente: null,
+          matchedApolice: null,
+          data: row,
+        };
+      });
+
+      res.json({
+        summary: {
+          total: rows.length,
+          newClients: newCount,
+          existingClients: existingClientCount,
+          existingPolicies: existingPolicyCount,
+          duplicateInFile: duplicateInFileCount,
+          invalidRows: invalidCount,
+        },
+        analyzedRows,
+      });
+    } catch (err: any) {
+      console.error("[ANALYZE-IMPORT] Error:", err);
+      res.status(500).json({ message: "Erro ao analisar dados da planilha", error: err.message });
+    }
+  });
+
+  // Endpoint para importação em lote com resolução inteligente de duplicados
+  app.post("/api/clientes/batch-import", isTeam, async (req, res) => {
+    try {
+      const { rows = [], duplicateStrategy = "merge" } = req.body;
+      let createdClients = 0;
+      let updatedClients = 0;
+      let createdApolices = 0;
+      let updatedApolices = 0;
+      const errors: Array<{ index: number; nome: string; error: string }> = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const item = rows[i];
+        try {
+          const {
+            idProposta,
+            idApolice,
+            numeroApolice,
+            pdfApolice,
+            cobertura,
+            premio,
+            dataEmissao,
+            inicioVigencia,
+            statusApolice,
+            numeroProposta,
+            seguradora,
+            fimVigencia,
+            linkFatura,
+            formaPagamento,
+            mesAtraso,
+            faturasAberto,
+            ...clientData
+          } = item;
+
+          if (!clientData.nome || !String(clientData.nome).trim()) {
+            errors.push({ index: i, nome: "Sem nome", error: "Nome obrigatório ausente" });
+            continue;
+          }
+
+          const parsedClientData = insertClienteSchema.parse(clientData);
+          const cleanDoc = (parsedClientData.cpfCnpj || "").replace(/\D/g, "");
+          const cleanEmail = (parsedClientData.email || "").trim().toLowerCase();
+          const cleanPhone = (parsedClientData.telefone || "").replace(/\D/g, "");
+          const cleanName = (parsedClientData.nome || "").trim().toLowerCase();
+
+          // Buscar cliente existente
+          const allDbClients = await db.select().from(clientes);
+          const existingCliente = allDbClients.find((candidate: any) => {
+            const candidateDoc = (candidate.cpfCnpj || "").replace(/\D/g, "");
+            const candidateEmail = (candidate.email || "").trim().toLowerCase();
+            const candidatePhone = (candidate.telefone || "").replace(/\D/g, "");
+            const candidateName = (candidate.nome || "").trim().toLowerCase();
+            if (cleanDoc && candidateDoc) return cleanDoc === candidateDoc;
+            if (cleanEmail && candidateEmail) return cleanEmail === candidateEmail;
+            return Boolean(cleanName && candidateName === cleanName && cleanPhone && candidatePhone === cleanPhone);
+          });
+
+          if (existingCliente && duplicateStrategy === "skip_existing") {
+            continue;
+          }
+
+          let cliente: any = null;
+          if (existingCliente) {
+            const updateData: any = {};
+            for (const key of Object.keys(parsedClientData)) {
+              const existingVal = (existingCliente as any)[key];
+              const newVal = (parsedClientData as any)[key];
+              if (duplicateStrategy === "overwrite") {
+                if (newVal !== undefined && newVal !== null && newVal !== "") {
+                  updateData[key] = newVal;
+                }
+              } else {
+                // "merge"
+                if (
+                  (existingVal === null || existingVal === "" || existingVal === undefined) &&
+                  newVal !== undefined && newVal !== null && newVal !== ""
+                ) {
+                  updateData[key] = newVal;
+                }
+              }
+            }
+            if (Object.keys(updateData).length > 0) {
+              cliente = await storage.updateCliente(existingCliente.id, updateData);
+            } else {
+              cliente = existingCliente;
+            }
+            updatedClients++;
+          } else {
+            cliente = await storage.createCliente(parsedClientData);
+            createdClients++;
+          }
+
+          // Vincular Contato no CRM
+          const cleanContactName = (cliente.nome || "").trim().toLowerCase();
+          const cleanContactDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+          const cleanContactEmail = (cliente.email || "").trim().toLowerCase();
+          const cleanContactPhone = (cliente.telefone || "").replace(/\D/g, "");
+          const allContacts = await storage.getContacts();
+          let existingContact: any = cliente.contactId
+            ? allContacts.find((c) => c.id === cliente.contactId)
+            : allContacts.find((candidate) => {
+                const candidateDoc = (candidate.document || "").replace(/\D/g, "");
+                const candidateEmail = (candidate.email || "").trim().toLowerCase();
+                const candidatePhone = (candidate.phone || "").replace(/\D/g, "");
+                const candidateName = (candidate.name || "").trim().toLowerCase();
+                if (cleanContactDoc && candidateDoc) return cleanContactDoc === candidateDoc;
+                if (cleanContactEmail && candidateEmail) return cleanContactEmail === candidateEmail;
+                return Boolean(cleanContactName && candidateName === cleanContactName && cleanContactPhone && candidatePhone === cleanContactPhone);
+              });
+
+          const numericDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+          const type = cliente.type || (numericDoc.length > 11 ? "company" : "individual");
+          const contactPayload: any = {
+            type,
+            name: cliente.nome,
+            email: cliente.email || null,
+            phone: cliente.telefone || null,
+            document: cliente.cpfCnpj || null,
+            address: cliente.endereco || null,
+            status: "Ativo",
+            responsibleName: cliente.nomeRepresentante || null,
+            internalResponsibleId: cliente.internalResponsibleId || cliente.responsavelComercialId || null,
+            anniversaryDate: cliente.anniversaryDate || cliente.dataNascimento || null,
+            productType: cliente.productType || null,
+            insurers: cliente.insurers || null,
+            contactOrigin: cliente.contactOrigin || null,
+            isReferral: cliente.isReferral || false,
+            referredByContactId: cliente.referredByContactId || null,
+            notes: cliente.observacoes || null,
+            assignedTo: cliente.responsavelComercialId || null,
+          };
+
+          if (existingContact) {
+            existingContact = await storage.updateContact(existingContact.id, contactPayload);
+          } else {
+            const result = await storage.upsertContact(contactPayload);
+            existingContact = result.contact;
+          }
+
+          cliente = await storage.updateCliente(cliente.id, { contactId: existingContact.id, type });
+
+          // Seguradora
+          let seguradoraId: number | null = null;
+          if (seguradora && String(seguradora).trim() !== "") {
+            const cleanSegName = String(seguradora).trim().toLowerCase();
+            const [existingSeg] = await db
+              .select()
+              .from(seguradoras)
+              .where(eq(sql`lower(nome)`, cleanSegName));
+            if (existingSeg) {
+              seguradoraId = existingSeg.id;
+            } else {
+              const newSeg = await storage.createSeguradora({ nome: String(seguradora).trim() });
+              seguradoraId = newSeg.id;
+            }
+          }
+
+          // Apólice
+          const hasPolicyFields =
+            numeroApolice || idProposta || idApolice || seguradoraId || premio ||
+            inicioVigencia || fimVigencia || pdfApolice || cobertura || dataEmissao ||
+            numeroProposta || linkFatura || formaPagamento || mesAtraso || faturasAberto;
+
+          if (hasPolicyFields) {
+            const parseExcelDate = (val: any): Date | null => {
+              if (!val) return null;
+              if (val instanceof Date) return val;
+              if (typeof val === "number" || !isNaN(Number(val))) {
+                const num = Number(val);
+                if (num > 20000 && num < 70000) {
+                  return new Date((num - 25569) * 86400 * 1000);
+                }
+              }
+              const str = String(val).trim();
+              if (!str) return null;
+              const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+              if (dmy) {
+                return new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
+              }
+              const ymd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+              if (ymd) {
+                return new Date(parseInt(ymd[1]), parseInt(ymd[2]) - 1, parseInt(ymd[3]));
+              }
+              const parsed = new Date(str);
+              return isNaN(parsed.getTime()) ? null : parsed;
+            };
+
+            let statusMap = "ativa";
+            const rawStatus = (statusApolice || "").toLowerCase().trim();
+            if (rawStatus.includes("venc") || rawStatus.includes("exp")) statusMap = "vencida";
+            else if (rawStatus.includes("canc")) statusMap = "cancelada";
+            else if (rawStatus.includes("pend")) statusMap = "pendente";
+            else if (rawStatus.includes("atraso") || rawStatus.includes("aberto") || rawStatus.includes("inadimpl")) statusMap = "em_atraso";
+
+            const apolQuery: any[] = [];
+            if (numeroApolice && String(numeroApolice).trim() !== "") {
+              apolQuery.push(eq(apolices.numeroApolice, String(numeroApolice).trim()));
+            }
+            if (idProposta && String(idProposta).trim() !== "") {
+              apolQuery.push(eq(apolices.idProposta, String(idProposta).trim()));
+            }
+            if (idApolice && String(idApolice).trim() !== "") {
+              apolQuery.push(eq(apolices.idApolice, String(idApolice).trim()));
+            }
+
+            let existingApolice: any = null;
+            if (apolQuery.length > 0) {
+              [existingApolice] = await db
+                .select()
+                .from(apolices)
+                .where(or(...apolQuery));
+            }
+
+            const apolData = {
+              clienteId: cliente.id,
+              seguradoraId,
+              numeroApolice: numeroApolice ? String(numeroApolice).trim() : null,
+              status: statusMap,
+              inicioVigencia: parseExcelDate(inicioVigencia),
+              fimVigencia: parseExcelDate(fimVigencia),
+              premio: premio ? (() => {
+                const raw = String(premio).trim().replace(/^R\$\s*/i, "").trim();
+                if (raw.includes(",") && raw.includes(".")) return raw.replace(/\./g, "").replace(",", ".");
+                if (raw.includes(",")) return raw.replace(",", ".");
+                return raw;
+              })() : null,
+              idProposta: idProposta ? String(idProposta).trim() : null,
+              idApolice: idApolice ? String(idApolice).trim() : null,
+              pdfApolice: pdfApolice ? String(pdfApolice).trim() : null,
+              cobertura: cobertura ? String(cobertura).trim() : null,
+              dataEmissao: parseExcelDate(dataEmissao),
+              numeroProposta: numeroProposta ? String(numeroProposta).trim() : null,
+              linkFatura: linkFatura ? String(linkFatura).trim() : null,
+              formaPagamento: formaPagamento ? String(formaPagamento).trim() : null,
+              mesAtraso: mesAtraso ? String(mesAtraso).trim() : null,
+              faturasAberto: faturasAberto ? String(faturasAberto).trim() : null,
+            };
+
+            if (existingApolice) {
+              const apolUpdate: any = {};
+              for (const key of Object.keys(apolData)) {
+                const existingVal = (existingApolice as any)[key];
+                const newVal = (apolData as any)[key];
+                if (
+                  (existingVal === null || existingVal === "" || existingVal === undefined) &&
+                  newVal !== undefined && newVal !== null && newVal !== ""
+                ) {
+                  apolUpdate[key] = newVal;
+                }
+              }
+              if (Object.keys(apolUpdate).length > 0) {
+                await storage.updateApolice(existingApolice.id, apolUpdate);
+              }
+              updatedApolices++;
+            } else {
+              await storage.createApolice(apolData as any);
+              createdApolices++;
+            }
+          }
+        } catch (rowErr: any) {
+          console.error(`Error importing row ${i}:`, rowErr);
+          errors.push({ index: i, nome: item.nome || `Linha ${i + 1}`, error: rowErr.message });
+        }
+      }
+
+      res.json({
+        success: true,
+        createdClients,
+        updatedClients,
+        createdApolices,
+        updatedApolices,
+        errors,
+      });
+    } catch (err: any) {
+      console.error("[BATCH-IMPORT] Fatal error:", err);
+      res.status(500).json({ message: "Erro no processamento da importação", error: err.message });
+    }
+  });
+
   app.get("/api/clientes/:id", isTeam, async (req, res) => {
     const cliente = await storage.getCliente(parseInt(req.params.id));
     if (!cliente) return res.status(404).json({ message: "Cliente não encontrado" });

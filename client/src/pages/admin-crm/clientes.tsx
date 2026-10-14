@@ -23,11 +23,12 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, Download, Upload, FileSpreadsheet, CheckCircle2, User as UserIcon, X, Filter } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Users, Search, Eye, Phone, Mail, Download, Upload, FileSpreadsheet, CheckCircle2, User as UserIcon, X, Filter, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
 import { ProductSelector, STANDARD_PRODUCTS } from "@/components/ProductSelector";
 import { ContactFormModal } from "@/components/ContactFormModal";
+import { SmartSpreadsheetImporter } from "@/components/SmartSpreadsheetImporter";
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
@@ -86,10 +87,8 @@ export default function ClientesPage() {
     const [editTarget, setEditTarget] = useState<Cliente | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
     const [selectedContactImport, setSelectedContactImport] = useState("");
-    const [showImportModal, setShowImportModal] = useState(false);
-    const [previewClients, setPreviewClients] = useState<ParsedClient[]>([]);
-    const [importing, setImporting] = useState(false);
-    const [importProgress, setImportProgress] = useState(0);
+    const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+    const [showSmartImportModal, setShowSmartImportModal] = useState(false);
 
     const [formData, setFormData] = useState({
         type: "individual" as "individual" | "company",
@@ -241,197 +240,12 @@ export default function ClientesPage() {
         toast({ title: "Modelo baixado!", description: "Use este modelo no formato Azos para importar apólices." });
     };
 
-    // Normalize string for comparison (remove accents, lowercase)
-    const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-
-    // Excel File Upload & Parse — reads Azos format + fallback generic
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            try {
-                const bstr = evt.target?.result;
-                const wb = XLSX.read(bstr, { type: "binary" });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const rawData = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
-
-                if (rawData.length === 0) {
-                    toast({ title: "Arquivo vazio", description: "A planilha selecionada não contém linhas.", variant: "destructive" });
-                    return;
-                }
-
-                // Flexible field finder: tries multiple aliases, normalized
-                const findVal = (row: Record<string, any>, ...keys: string[]) => {
-                    const normalizedRow: Record<string, string> = {};
-                    for (const k of Object.keys(row)) {
-                        normalizedRow[norm(k)] = String(row[k] ?? "").trim();
-                    }
-                    for (const k of keys) {
-                        const val = normalizedRow[norm(k)];
-                        if (val !== undefined && val !== "" && val !== "undefined") return val;
-                    }
-                    // Partial match fallback
-                    for (const k of keys) {
-                        const normK = norm(k);
-                        for (const rowKey of Object.keys(normalizedRow)) {
-                            if (rowKey.includes(normK) || normK.includes(rowKey)) {
-                                const val = normalizedRow[rowKey];
-                                if (val && val !== "undefined") return val;
-                            }
-                        }
-                    }
-                    return "";
-                };
-
-                const stripPremio = (val: string) => {
-                    const raw = val.replace(/^R\$\s*/i, "").trim();
-                    // Brazilian: 1.234,56 → remove dot thousands sep, comma→dot
-                    if (raw.includes(",") && raw.includes(".")) return raw.replace(/\./g, "").replace(",", ".");
-                    // Brazilian: 1234,56 → comma as decimal
-                    if (raw.includes(",")) return raw.replace(",", ".");
-                    // ISO/US: 356.16 already valid
-                    return raw;
-                };
-
-                const parsed: ParsedClient[] = rawData.map((row) => {
-                    const premio = findVal(row,
-                        "Premio", "Prêmio", "premio", "prêmio", "valor premio", "valor do premio"
-                    );
-                    return {
-                        nome: findVal(row,
-                            "Nome do cliente", "nome completo", "nome", "cliente", "razao social", "razão social"
-                        ),
-                        cpfCnpj: findVal(row,
-                            "CPF do cliente", "cpf_cnpj", "cpf/cnpj", "cpf", "cnpj", "documento"
-                        ),
-                        dataNascimento: findVal(row,
-                            "data_nascimento", "data de nascimento", "nascimento", "data nasc"
-                        ),
-                        telefone: findVal(row,
-                            "Telefone do cliente", "telefone", "tel", "celular", "fone"
-                        ),
-                        whatsapp: findVal(row, "whatsapp", "whats", "zap"),
-                        email: findVal(row, "email", "e-mail", "correio"),
-                        endereco: findVal(row, "endereco", "endereço", "logradouro", "rua"),
-                        cidade: findVal(row, "cidade", "municipio"),
-                        estado: findVal(row, "estado", "uf"),
-                        observacoes: findVal(row, "observacoes", "observações", "obs", "notas"),
-                        tags: findVal(row, "tags", "categoria", "tag"),
-                        nomeRepresentante: findVal(row,
-                            "Nome do responsável", "Nome do representante", "representante",
-                            "nome do responsavel", "nome responsavel", "nome representante"
-                        ),
-                        telefoneRepresentante: findVal(row,
-                            "Telefone do responsável", "Telefone do representante",
-                            "telefone do responsavel", "telefone responsavel", "telefone representante"
-                        ),
-                        emailRepresentante: findVal(row,
-                            "Email do responsável", "Email do representante",
-                            "email do responsavel", "email responsavel", "email representante"
-                        ),
-                        idProposta: findVal(row,
-                            "ID da proposta", "id da prop", "id proposta"
-                        ),
-                        idApolice: findVal(row,
-                            "ID da apólice", "ID da apolice", "id da apol", "id apolice", "id apol"
-                        ),
-                        numeroApolice: findVal(row,
-                            "Número da apólice", "Numero da apolice", "numero da apolice",
-                            "número da apólice", "nº apolice", "nº da apólice", "numero apolice"
-                        ),
-                        pdfApolice: findVal(row,
-                            "PDF da apólice", "PDF da apolice", "pdf da apolice",
-                            "pdf apolice", "link pdf", "pdf"
-                        ),
-                        cobertura: findVal(row,
-                            "Coberturas", "Cobertura", "coberturas", "cobertura"
-                        ),
-                        premio: premio ? stripPremio(premio) : "",
-                        dataEmissao: findVal(row,
-                            "Data de emissão da apólice", "Data de emissao da apolice",
-                            "data de emissão", "data de emissao", "data emissao", "data de em"
-                        ),
-                        inicioVigencia: findVal(row,
-                            "Data Início da vigência da apólice", "Data Inicio da vigencia da apolice",
-                            "data início", "data inicio", "data inicio vigencia", "data de inicio",
-                            "inicio vigencia", "inicio da vigencia"
-                        ),
-                        statusApolice: findVal(row,
-                            "Status da apólice (ativo, cancelado, em atraso)",
-                            "Status da apolice (ativo, cancelado, em atraso)",
-                            "status da apólice", "status da apolice", "status"
-                        ),
-                        numeroProposta: findVal(row,
-                            "Nº da Proposta de Endosso", "Nº da proposta de endosso",
-                            "nº da proposta", "numero da proposta", "num proposta", "proposta"
-                        ),
-                        seguradora: findVal(row, "Seguradora", "seguradora", "segurador"),
-                        fimVigencia: findVal(row,
-                            "Data de vencimento da fatura", "Data de vencimento da apólice",
-                            "data de vencimento", "vencimento", "fim vigencia", "fim da vigencia"
-                        ),
-                        linkFatura: findVal(row,
-                            "link da fatura", "Link da fatura", "link fatura", "fatura", "link"
-                        ),
-                        formaPagamento: findVal(row,
-                            "Forma de pagamento", "forma de pagamento", "forma de p", "pagamento"
-                        ),
-                        mesAtraso: findVal(row,
-                            "Mês em aberto", "Mes em aberto", "mês em atraso", "mes em atraso",
-                            "mes em at", "atraso", "mes aberto"
-                        ),
-                        faturasAberto: findVal(row,
-                            "Número de faturas em aberto", "Numero de faturas em aberto",
-                            "faturas em aberto", "faturas aberto", "abertas", "faturas"
-                        ),
-                    };
-                }).filter(c => c.nome.length > 0);
-
-                if (parsed.length === 0) {
-                    toast({ title: "Coluna 'Nome do cliente' não encontrada", description: "Certifique-se de que a planilha possui a coluna 'Nome do cliente' ou similar.", variant: "destructive" });
-                    return;
-                }
-
-                setPreviewClients(parsed);
-                setShowImportModal(true);
-            } catch (err: any) {
-                toast({ title: "Erro ao ler arquivo", description: err.message, variant: "destructive" });
-            }
-        };
-        reader.readAsBinaryString(file);
+        setUploadedFile(file);
+        setShowSmartImportModal(true);
         e.target.value = "";
-    };
-
-    // Execute Import
-    const runImport = async () => {
-        setImporting(true);
-        setImportProgress(0);
-        let successCount = 0;
-
-        for (let i = 0; i < previewClients.length; i++) {
-            const c = previewClients[i];
-            try {
-                await apiRequest("POST", "/api/clientes", c);
-                successCount++;
-            } catch (e) {
-                console.error(`Erro ao importar ${c.nome}:`, e);
-            }
-            setImportProgress(Math.round(((i + 1) / previewClients.length) * 100));
-        }
-
-        queryClient.invalidateQueries({ queryKey: ["/api/clientes"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/seguros/dashboard"] });
-        setImporting(false);
-        setShowImportModal(false);
-        setPreviewClients([]);
-
-        toast({
-            title: "Importação concluída!",
-            description: `${successCount} de ${previewClients.length} clientes/apólices foram cadastrados com sucesso.`,
-        });
     };
 
     // Client-side search filter (applied on top of server-side filters)
@@ -462,8 +276,9 @@ export default function ClientesPage() {
                     <Button variant="outline" className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50" onClick={handleDownloadTemplate}>
                         <Download className="h-4 w-4" /> Baixar Modelo Excel
                     </Button>
-                    <Button variant="outline" className="gap-2 border-[#0F6570] text-[#0F6570] hover:bg-[#0F6570]/10" onClick={() => fileInputRef.current?.click()}>
-                        <Upload className="h-4 w-4" /> Subir Excel
+                    <Button variant="outline" className="gap-2 border-[#0F6570] text-[#0F6570] hover:bg-[#0F6570]/10 font-semibold" onClick={() => fileInputRef.current?.click()}>
+                        <Sparkles className="h-4 w-4 text-emerald-600" />
+                        Subir Planilha (Importação Inteligente)
                     </Button>
                     <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileChange} />
                     <Button onClick={openCreate} className="gap-2 font-semibold">
@@ -627,91 +442,18 @@ export default function ClientesPage() {
                 </div>
             )}
 
-            {/* Excel Import Preview Dialog */}
-            <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
-                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-emerald-700">
-                            <FileSpreadsheet className="h-5 w-5" /> Importar via Excel — {previewClients.length} linha(s) encontrada(s)
-                        </DialogTitle>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-2">
-                        <p className="text-sm text-muted-foreground">
-                            Confira os dados extraídos antes de confirmar. Clientes duplicados serão atualizados; apólices novas serão criadas.
-                        </p>
-
-                        <div className="max-h-72 overflow-y-auto rounded-lg border">
-                            <Table>
-                                <TableHeader className="bg-gray-50 sticky top-0">
-                                    <TableRow>
-                                        <TableHead className="text-xs">Nome</TableHead>
-                                        <TableHead className="text-xs">CPF/CNPJ</TableHead>
-                                        <TableHead className="text-xs">Telefone</TableHead>
-                                        <TableHead className="text-xs">Seguradora</TableHead>
-                                        <TableHead className="text-xs">Nº Apólice</TableHead>
-                                        <TableHead className="text-xs">Prêmio</TableHead>
-                                        <TableHead className="text-xs">Status</TableHead>
-                                        <TableHead className="text-xs">Cobertura</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {previewClients.map((c, i) => {
-                                        const status = STATUS_LABELS[c.statusApolice?.toLowerCase() === "em atraso" ? "em_atraso" : c.statusApolice?.toLowerCase() === "cancelado" ? "cancelada" : c.statusApolice?.toLowerCase() === "ativo" ? "ativa" : c.statusApolice || ""] || null;
-                                        return (
-                                            <TableRow key={i}>
-                                                <TableCell className="font-semibold text-xs">{c.nome}</TableCell>
-                                                <TableCell className="font-mono text-xs">{c.cpfCnpj || "—"}</TableCell>
-                                                <TableCell className="text-xs">{c.telefone || "—"}</TableCell>
-                                                <TableCell className="text-xs text-emerald-800 font-semibold">{c.seguradora || "—"}</TableCell>
-                                                <TableCell className="text-xs font-mono">{c.numeroApolice || c.idProposta || "—"}</TableCell>
-                                                <TableCell className="text-xs font-semibold">
-                                                    {(() => {
-                                                        if (!c.premio) return "—";
-                                                        let raw = c.premio.replace(/^R\$\s*/i, "").replace(/\s/g, "");
-                                                        if (raw.includes(",") && raw.includes(".")) raw = raw.replace(/\./g, "").replace(",", ".");
-                                                        else if (raw.includes(",")) raw = raw.replace(",", ".");
-                                                        const num = parseFloat(raw);
-                                                        return isNaN(num) ? c.premio : `R$ ${num.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
-                                                    })()}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {status ? (
-                                                        <Badge className={`text-[10px] ${status.color}`}>{status.label}</Badge>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-400">{c.statusApolice || "—"}</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-xs max-w-[160px] truncate">{c.cobertura || "—"}</TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                        {importing && (
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-xs font-semibold text-gray-700">
-                                    <span>Cadastrando clientes e apólices...</span>
-                                    <span>{importProgress}%</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                    <div className="bg-[#0F6570] h-2 transition-all duration-300" style={{ width: `${importProgress}%` }} />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowImportModal(false)} disabled={importing}>Cancelar</Button>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2" onClick={runImport} disabled={importing}>
-                            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                            Importar {previewClients.length} Registro(s)
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Smart Universal Spreadsheet Importer */}
+            <SmartSpreadsheetImporter
+                open={showSmartImportModal}
+                onOpenChange={setShowSmartImportModal}
+                file={uploadedFile}
+                onImportSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/clientes"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/seguros/dashboard"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/apolices"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+                }}
+            />
 
             <ContactFormModal
                 open={showForm}
