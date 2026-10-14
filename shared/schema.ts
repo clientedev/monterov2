@@ -314,6 +314,7 @@ export const clientes = pgTable("clientes", {
   nomeRepresentante: text("nome_representante"),
   telefoneRepresentante: text("telefone_representante"),
   emailRepresentante: text("email_representante"),
+  dadosAdicionais: json("dados_adicionais"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -356,6 +357,7 @@ export const apolices = pgTable("apolices", {
   formaPagamento: text("forma_pagamento"),
   mesAtraso: text("mes_atraso"),
   faturasAberto: text("faturas_aberto"),
+  dadosAdicionais: json("dados_adicionais"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -60,6 +60,10 @@ export async function registerRoutes(
     console.error("[POSTS] Failed to auto-approve posts on startup:", err)
   );
 
+  // Auto-ensure dynamic fields column exists for custom/renamed spreadsheet columns
+  db.execute(sql`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS dados_adicionais json DEFAULT '{}'::json`).catch(() => {});
+  db.execute(sql`ALTER TABLE apolices ADD COLUMN IF NOT EXISTS dados_adicionais json DEFAULT '{}'::json`).catch(() => {});
+
   // AI Chat Route (Groq Cloud + Ollama Local + Intelligent DB Fallback)
   app.post("/api/chat", async (req, res) => {
     try {
@@ -1938,7 +1942,29 @@ export async function registerRoutes(
             continue;
           }
 
-          const parsedClientData = insertClienteSchema.parse(clientData);
+          const knownClientKeys = new Set([
+            "type", "nome", "cpfCnpj", "dataNascimento", "telefone", "whatsapp", "email",
+            "endereco", "cidade", "estado", "observacoes", "tags", "anniversaryDate",
+            "productType", "insurers", "contactOrigin", "isReferral", "referredByContactId",
+            "internalResponsibleId", "responsavelComercialId", "nomeRepresentante",
+            "telefoneRepresentante", "emailRepresentante", "dadosAdicionais"
+          ]);
+
+          const dynamicCustomFields: Record<string, any> = { ...(clientData.dadosAdicionais || {}) };
+          const standardClientPayload: Record<string, any> = {};
+
+          for (const [k, v] of Object.entries(clientData)) {
+            if (knownClientKeys.has(k)) {
+              standardClientPayload[k] = v;
+            } else if (v !== undefined && v !== null && v !== "") {
+              dynamicCustomFields[k] = v;
+            }
+          }
+          if (Object.keys(dynamicCustomFields).length > 0) {
+            standardClientPayload.dadosAdicionais = dynamicCustomFields;
+          }
+
+          const parsedClientData = insertClienteSchema.parse(standardClientPayload);
           const cleanDoc = (parsedClientData.cpfCnpj || "").replace(/\D/g, "");
           const cleanEmail = (parsedClientData.email || "").trim().toLowerCase();
           const cleanPhone = (parsedClientData.telefone || "").replace(/\D/g, "");
@@ -1964,6 +1990,7 @@ export async function registerRoutes(
           if (existingCliente) {
             const updateData: any = {};
             for (const key of Object.keys(parsedClientData)) {
+              if (key === "dadosAdicionais") continue;
               const existingVal = (existingCliente as any)[key];
               const newVal = (parsedClientData as any)[key];
               if (duplicateStrategy === "overwrite") {
@@ -1979,6 +2006,12 @@ export async function registerRoutes(
                   updateData[key] = newVal;
                 }
               }
+            }
+            if (parsedClientData.dadosAdicionais) {
+              const currentCustom = (existingCliente.dadosAdicionais as Record<string, any>) || {};
+              updateData.dadosAdicionais = duplicateStrategy === "overwrite"
+                ? parsedClientData.dadosAdicionais
+                : { ...currentCustom, ...(parsedClientData.dadosAdicionais as Record<string, any>) };
             }
             if (Object.keys(updateData).length > 0) {
               cliente = await storage.updateCliente(existingCliente.id, updateData);
