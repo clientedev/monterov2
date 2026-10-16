@@ -314,6 +314,7 @@ export const clientes = pgTable("clientes", {
   nomeRepresentante: text("nome_representante"),
   telefoneRepresentante: text("telefone_representante"),
   emailRepresentante: text("email_representante"),
+  status: text("status").notNull().default("ativo"),
   dadosAdicionais: json("dados_adicionais"),
   createdAt: timestamp("created_at").defaultNow(),
 });

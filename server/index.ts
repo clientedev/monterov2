@@ -148,6 +148,7 @@ app.use((req, res, next) => {
     `ALTER TABLE clientes ADD COLUMN IF NOT EXISTS is_referral boolean DEFAULT false NOT NULL`,
     `ALTER TABLE clientes ADD COLUMN IF NOT EXISTS referred_by_contact_id integer`,
     `ALTER TABLE clientes ADD COLUMN IF NOT EXISTS internal_responsible_id integer REFERENCES users(id)`,
+    `ALTER TABLE clientes ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ativo'`,
     `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS internal_responsible_id integer REFERENCES users(id)`,
     `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS insurers text`,
     `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS contact_origin text`,

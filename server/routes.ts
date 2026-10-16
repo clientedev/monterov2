@@ -6,6 +6,7 @@ import fs from "fs";
 import crypto from "crypto";
 import { api } from "@shared/routes";
 import { processAiChat, parseTaskWithGemini } from "./ai-service";
+import { parsePolicyPdf } from "./pdf-policy-parser";
 import Groq from "groq-sdk";
 import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
@@ -2554,6 +2555,23 @@ export async function registerRoutes(
   app.delete("/api/apolices/:id", isAuthenticated, isAdmin, async (req, res) => {
     await storage.deleteApolice(parseInt(req.params.id));
     res.sendStatus(204);
+  });
+
+  // Leitura inteligente de PDF de apólice (extrai dados das primeiras páginas)
+  app.post("/api/apolices/parse-pdf", isTeam, async (req, res) => {
+    try {
+      const { base64, filename } = req.body;
+      if (!base64) {
+        return res.status(400).json({ message: "Arquivo PDF em formato base64 é obrigatório" });
+      }
+      const cleanBase64 = String(base64).replace(/^data:application\/pdf;base64,/, "");
+      const buffer = Buffer.from(cleanBase64, "base64");
+      const result = await parsePolicyPdf(buffer, filename || "apolice.pdf");
+      res.json(result);
+    } catch (err: any) {
+      console.error("[PARSE-PDF] Error:", err);
+      res.status(500).json({ message: "Erro ao processar PDF da apólice", error: err.message });
+    }
   });
 
   // Seguradoras

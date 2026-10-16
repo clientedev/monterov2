@@ -27,6 +27,7 @@ import {
 import { format, differenceInDays, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLocation, useSearch } from "wouter";
+import { ApoliceDialog } from "@/components/ApoliceDialog";
 
 /** Converte qualquer formato de prêmio para número, retorna null se inválido */
 function parsePremio(val: string | null | undefined): number | null {
@@ -107,6 +108,8 @@ export default function ApolicesPage() {
     const [filterCorretor, setFilterCorretor] = useState<string>("all");
 
     const [deleteTarget, setDeleteTarget] = useState<Apolice | null>(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingApolice, setEditingApolice] = useState<Apolice | null>(null);
 
     const { data: apolices, isLoading } = useQuery<Apolice[]>({
         queryKey: ["/api/apolices"],
@@ -157,11 +160,20 @@ export default function ApolicesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-display font-bold text-gray-900">Apólices de Seguro</h2>
                     <p className="text-muted-foreground mt-1">Gerenciamento e filtros de todas as apólices — {filtered.length} registrada(s).</p>
                 </div>
+                <Button
+                    onClick={() => {
+                        setEditingApolice(null);
+                        setShowCreateModal(true);
+                    }}
+                    className="bg-[#0F6570] hover:bg-[#0A454D] text-white font-bold gap-2 shadow-lg shadow-[#0F6570]/20 h-11 px-5 rounded-xl shrink-0"
+                >
+                    <Plus className="h-4 w-4" /> Criar Apólice
+                </Button>
             </div>
 
             {/* Filters Bar */}
@@ -302,8 +314,11 @@ export default function ApolicesPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
-                                            <Button size="sm" variant="ghost" onClick={() => setLocation(`/admin/clientes/${a.clienteId}`)}>
+                                            <Button size="sm" variant="ghost" title="Ver Perfil do Cliente" onClick={() => setLocation(`/admin/clientes/${a.clienteId}`)}>
                                                 <Eye className="h-4 w-4" />
+                                            </Button>
+                                            <Button size="sm" variant="ghost" title="Editar Apólice" onClick={() => { setEditingApolice(a); setShowCreateModal(true); }}>
+                                                <Pencil className="h-4 w-4 text-[#0F6570]" />
                                             </Button>
                                             {isAdmin && (
                                                 <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => setDeleteTarget(a)}>
@@ -318,6 +333,13 @@ export default function ApolicesPage() {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Apolice Create / Edit Dialog with PDF Smart Reader */}
+            <ApoliceDialog
+                open={showCreateModal}
+                onOpenChange={setShowCreateModal}
+                editApolice={editingApolice}
+            />
 
             {/* Delete Confirmation */}
             <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

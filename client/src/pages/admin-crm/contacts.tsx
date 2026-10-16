@@ -85,6 +85,7 @@ import {
     RotateCcw,
     ChevronLeft,
     ChevronRight,
+    CheckCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -594,6 +595,58 @@ export default function ContactsPage() {
                         <FileSpreadsheet className="mr-2 h-4 w-4" />
                         Importar Excel
                     </Button>
+                </div>
+            </div>
+
+            {/* ── Top Stats & Contact Counters ──────────────────────────────── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5 hover:border-slate-300 transition-all">
+                    <div className="p-3 bg-[#0F6570]/10 text-[#0F6570] rounded-xl shrink-0">
+                        <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total de Contatos</p>
+                        <p className="text-2xl font-bold font-display text-slate-900">{contacts?.length || 0}</p>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5 hover:border-emerald-300 transition-all">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+                        <CheckCircle2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Contatos Ativos</p>
+                        <p className="text-2xl font-bold font-display text-emerald-600">
+                            {contacts?.filter(c => c.status === "Ativo").length || 0}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5 hover:border-amber-300 transition-all">
+                    <div className="p-3 bg-amber-50 text-amber-600 rounded-xl shrink-0">
+                        <TrendingUp className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Prospects</p>
+                        <p className="text-2xl font-bold font-display text-amber-600">
+                            {contacts?.filter(c => c.status === "Prospects").length || 0}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5 hover:border-indigo-300 transition-all">
+                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl shrink-0">
+                        <Building className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pessoas Jurídicas</p>
+                        <p className="text-2xl font-bold font-display text-indigo-600">
+                            {contacts?.filter(c => c.type === "company").length || 0}
+                            <span className="text-xs font-normal text-slate-400 ml-1.5 font-sans">
+                                ({contacts?.filter(c => c.type !== "company").length || 0} PF)
+                            </span>
+                        </p>
+                    </div>
                 </div>
             </div>
 

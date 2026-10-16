@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { ApoliceDialog } from "@/components/ApoliceDialog";
 
 /** Converte qualquer formato de valor monetário para número, retorna null se inválido */
 function parsePremio(val: string | null | undefined): number | null {
@@ -129,41 +130,11 @@ export default function ClienteDetalhePage() {
 
     const openCreateApolice = () => {
         setEditApolice(null);
-        setApoliceForm({
-            numeroApolice: "", produtoId: "", seguradoraId: "", status: "ativa",
-            inicioVigencia: "", fimVigencia: "", premio: "", valorSegurado: "",
-            comissao: "", corretorId: "", observacoes: "",
-            idProposta: "", idApolice: "", pdfApolice: "", cobertura: "", dataEmissao: "",
-            numeroProposta: "", linkFatura: "", formaPagamento: "", mesAtraso: "", faturasAberto: ""
-        });
         setShowApoliceForm(true);
     };
 
     const openEditApolice = (a: any) => {
         setEditApolice(a);
-        setApoliceForm({
-            numeroApolice: a.numeroApolice || "",
-            produtoId: a.produtoId ? String(a.produtoId) : "",
-            seguradoraId: a.seguradoraId ? String(a.seguradoraId) : "",
-            status: a.status || "ativa",
-            inicioVigencia: a.inicioVigencia ? format(new Date(a.inicioVigencia), "yyyy-MM-dd") : "",
-            fimVigencia: a.fimVigencia ? format(new Date(a.fimVigencia), "yyyy-MM-dd") : "",
-            premio: a.premio || "",
-            valorSegurado: a.valorSegurado || "",
-            comissao: a.comissao || "",
-            corretorId: a.corretorId ? String(a.corretorId) : "",
-            observacoes: a.observacoes || "",
-            idProposta: a.idProposta || "",
-            idApolice: a.idApolice || "",
-            pdfApolice: a.pdfApolice || "",
-            cobertura: a.cobertura || "",
-            dataEmissao: a.dataEmissao ? format(new Date(a.dataEmissao), "yyyy-MM-dd") : "",
-            numeroProposta: a.numeroProposta || "",
-            linkFatura: a.linkFatura || "",
-            formaPagamento: a.formaPagamento || "",
-            mesAtraso: a.mesAtraso || "",
-            faturasAberto: a.faturasAberto || "",
-        });
         setShowApoliceForm(true);
     };
 
@@ -498,140 +469,13 @@ export default function ClienteDetalhePage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Apolice Create/Edit Dialog */}
-            <Dialog open={showApoliceForm} onOpenChange={setShowApoliceForm}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>{editApolice ? "Editar Apólice" : "Nova Apólice"}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={e => { e.preventDefault(); saveApoliceMutation.mutate(); }}>
-                        <div className="grid grid-cols-2 gap-4 py-2">
-                            <div>
-                                <Label>Número da Apólice</Label>
-                                <Input value={apoliceForm.numeroApolice} onChange={e => setField("numeroApolice", e.target.value)} placeholder="Ex: 12345-6" />
-                            </div>
-                            <div>
-                                <Label>Status</Label>
-                                <Select value={apoliceForm.status} onValueChange={v => setField("status", v)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label>Produto *</Label>
-                                <SearchableSelect
-                                    options={(produtos ?? []).map(p => ({ value: String(p.id), label: p.nome }))}
-                                    value={apoliceForm.produtoId}
-                                    onValueChange={v => setField("produtoId", v)}
-                                    placeholder="Selecionar produto..."
-                                    searchPlaceholder="Pesquisar produto..."
-                                    triggerClassName="h-10 rounded-md"
-                                />
-                            </div>
-                            <div>
-                                <Label>Seguradora</Label>
-                                <SearchableSelect
-                                    options={(seguradoras ?? []).map(s => ({ value: String(s.id), label: s.nome }))}
-                                    value={apoliceForm.seguradoraId}
-                                    onValueChange={v => setField("seguradoraId", v)}
-                                    placeholder="Selecionar seguradora..."
-                                    searchPlaceholder="Pesquisar seguradora..."
-                                    triggerClassName="h-10 rounded-md"
-                                    clearable
-                                />
-                            </div>
-                            <div>
-                                <Label>Início da Vigência</Label>
-                                <Input type="date" value={apoliceForm.inicioVigencia} onChange={e => setField("inicioVigencia", e.target.value)} />
-                            </div>
-                            <div>
-                                <Label>Fim da Vigência</Label>
-                                <Input type="date" value={apoliceForm.fimVigencia} onChange={e => setField("fimVigencia", e.target.value)} />
-                            </div>
-                            <div>
-                                <Label>Valor do Prêmio (R$)</Label>
-                                <Input type="number" step="0.01" value={apoliceForm.premio} onChange={e => setField("premio", e.target.value)} placeholder="1500.00" />
-                            </div>
-                            <div>
-                                <Label>Valor Segurado (R$)</Label>
-                                <Input type="number" step="0.01" value={apoliceForm.valorSegurado} onChange={e => setField("valorSegurado", e.target.value)} placeholder="100000.00" />
-                            </div>
-                            <div>
-                                <Label>Comissão (%)</Label>
-                                <Input type="number" step="0.01" value={apoliceForm.comissao} onChange={e => setField("comissao", e.target.value)} placeholder="15.5" />
-                            </div>
-                            <div>
-                                <Label>Corretor Responsável</Label>
-                                <SearchableSelect
-                                    options={(users ?? []).map(u => ({ value: String(u.id), label: u.name }))}
-                                    value={apoliceForm.corretorId}
-                                    onValueChange={v => setField("corretorId", v)}
-                                    placeholder="Selecionar corretor..."
-                                    searchPlaceholder="Pesquisar corretor..."
-                                    triggerClassName="h-10 rounded-md"
-                                    clearable
-                                />
-                            </div>
-                            <div className="col-span-2 border-t pt-4 mt-2 font-semibold text-sm text-[#0F6570]">
-                                Detalhes de Emissão, Proposta e Cobrança
-                            </div>
-                            <div>
-                                <Label>ID da Proposta</Label>
-                                <Input value={apoliceForm.idProposta} onChange={e => setField("idProposta", e.target.value)} placeholder="PROP-12345" />
-                            </div>
-                            <div>
-                                <Label>ID da Apólice</Label>
-                                <Input value={apoliceForm.idApolice} onChange={e => setField("idApolice", e.target.value)} placeholder="AP-998822" />
-                            </div>
-                            <div>
-                                <Label>Nº da Proposta</Label>
-                                <Input value={apoliceForm.numeroProposta} onChange={e => setField("numeroProposta", e.target.value)} placeholder="12345" />
-                            </div>
-                            <div>
-                                <Label>Data de Emissão</Label>
-                                <Input type="date" value={apoliceForm.dataEmissao} onChange={e => setField("dataEmissao", e.target.value)} />
-                            </div>
-                            <div>
-                                <Label>Cobertura</Label>
-                                <Input value={apoliceForm.cobertura} onChange={e => setField("cobertura", e.target.value)} placeholder="Ex: Incêndio, Colisão" />
-                            </div>
-                            <div>
-                                <Label>Forma de Pagamento</Label>
-                                <Input value={apoliceForm.formaPagamento} onChange={e => setField("formaPagamento", e.target.value)} placeholder="Ex: Boleto, Cartão" />
-                            </div>
-                            <div>
-                                <Label>Mês em Atraso</Label>
-                                <Input value={apoliceForm.mesAtraso} onChange={e => setField("mesAtraso", e.target.value)} placeholder="Ex: Junho/2026" />
-                            </div>
-                            <div>
-                                <Label>Número de Faturas em Aberto</Label>
-                                <Input value={apoliceForm.faturasAberto} onChange={e => setField("faturasAberto", e.target.value)} placeholder="Ex: 2" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label>PDF da Apólice (URL)</Label>
-                                <Input value={apoliceForm.pdfApolice} onChange={e => setField("pdfApolice", e.target.value)} placeholder="https://exemplo.com/doc.pdf" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label>Link da Fatura (URL)</Label>
-                                <Input value={apoliceForm.linkFatura} onChange={e => setField("linkFatura", e.target.value)} placeholder="https://exemplo.com/fatura.pdf" />
-                            </div>
-                            <div className="col-span-2">
-                                <Label>Observações</Label>
-                                <Textarea value={apoliceForm.observacoes} onChange={e => setField("observacoes", e.target.value)} rows={3} placeholder="Notas sobre esta apólice..." />
-                            </div>
-                        </div>
-                        <DialogFooter className="mt-4">
-                            <Button type="button" variant="outline" onClick={() => setShowApoliceForm(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={saveApoliceMutation.isPending}>
-                                {saveApoliceMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                {editApolice ? "Salvar" : "Criar Apólice"}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            {/* Apolice Create/Edit Dialog with PDF Smart Reader */}
+            <ApoliceDialog
+                open={showApoliceForm}
+                onOpenChange={setShowApoliceForm}
+                defaultClienteId={clienteId}
+                editApolice={editApolice}
+            />
 
             {/* Delete Apolice Confirm */}
             <AlertDialog open={!!deleteApolice} onOpenChange={() => setDeleteApolice(null)}>
