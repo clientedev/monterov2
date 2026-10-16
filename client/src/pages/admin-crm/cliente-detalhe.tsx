@@ -373,7 +373,19 @@ export default function ClienteDetalhePage() {
                                             <p className="font-semibold text-gray-700">{getCorretorNome(a.corretorId)}</p>
                                         </div>
                                     </div>
-                                    <div className="px-4 pb-4 flex gap-2" onClick={e => e.stopPropagation()}>
+                                    <div className="px-4 pb-4 flex gap-2 items-center flex-wrap" onClick={e => e.stopPropagation()}>
+                                        {a.pdfApolice && (
+                                            <a
+                                                href={a.pdfApolice}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#0F6570]/30 bg-[#0F6570]/5 hover:bg-[#0F6570]/15 text-[#0F6570] text-xs font-bold transition-all shadow-xs"
+                                                title="Visualizar documento PDF da apólice"
+                                            >
+                                                <FileText className="h-3.5 w-3.5 text-[#0F6570]" />
+                                                Ver PDF
+                                            </a>
+                                        )}
                                         <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => openEditApolice(a)}>
                                             <Pencil className="h-3 w-3" /> Editar
                                         </Button>

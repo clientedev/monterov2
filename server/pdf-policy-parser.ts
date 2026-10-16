@@ -132,18 +132,22 @@ export function extractPolicyFieldsRegex(text: string): ExtractedPolicyData {
   }
 
   // 4. Vigência: Início e Fim
-  // Ex: "Vigência: das 24h de 10/05/2026 até às 24h de 10/05/2027" ou "Início: 10/05/2026 ... Fim: 10/05/2027"
-  const vigenciaRangeMatch = normalizedText.match(/vig[êe]ncia[^\n\r\d]*?(?:das\s+24(?::00)?(?:h)?\s+d[eo]\s+dia\s+|de\s+|a\s+partir\s+de\s+)?(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})[^\n\r\d]*?(?:at[ée]\s+(?:[àa]s\s+)?24(?::00)?(?:h)?\s+d[eo]\s+dia\s+|a\s+|at[ée]\s+)?(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})/i);
+  // Ex: "Vigência: das 24h de 10/05/2026 até às 24h de 10/05/2027" ou "10/05/2026 a 10/05/2027"
+  const vigenciaRangeMatch =
+    normalizedText.match(/(?:vig[êe]ncia|per[íi]odo\s+de\s+cobertura)[^\n\r\d]*?(?:das\s+24(?::00)?(?:h)?\s+d[eo]\s+dia\s+|de\s+|a\s+partir\s+de\s+)?(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})[^\n\r\d]*?(?:at[ée]\s+(?:[àa]s\s+)?24(?::00)?(?:h)?\s+d[eo]\s+dia\s+|a\s+|at[ée]\s+)(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})/i) ||
+    normalizedText.match(/vig[êe]ncia[^\n\r\d]*?(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})\s*(?:a|at[ée]|\-)\s*(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})/i);
   if (vigenciaRangeMatch) {
     result.inicioVigencia = formatBRDateToISO(vigenciaRangeMatch[1]);
     result.fimVigencia = formatBRDateToISO(vigenciaRangeMatch[2]);
   } else {
     // Início isolado
-    const inicioMatch = normalizedText.match(/(?:in[íi]cio\s+da\s+vig[êe]ncia|in[íi]cio\s+de\s+vig[êe]ncia|vig[êe]ncia\s+inicial|a\s+partir\s+de)[\s:]+(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})/i);
+    const inicioMatch =
+      normalizedText.match(/(?:in[íi]cio\s+da\s+vig[êe]ncia|in[íi]cio\s+de\s+vig[êe]ncia|vig[êe]ncia\s+inicial|data\s+in[íi]cio|a\s+partir\s+de)[\s:]+(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})/i);
     if (inicioMatch) result.inicioVigencia = formatBRDateToISO(inicioMatch[1]);
 
     // Fim isolado
-    const fimMatch = normalizedText.match(/(?:fim\s+da\s+vig[êe]ncia|fim\s+de\s+vig[êe]ncia|vig[êe]ncia\s+final|t[ée]rmino(?:\s+da\s+vig[êe]ncia)?)[\s:]+(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})/i);
+    const fimMatch =
+      normalizedText.match(/(?:fim\s+da\s+vig[êe]ncia|fim\s+de\s+vig[êe]ncia|vig[êe]ncia\s+final|t[ée]rmino(?:\s+da\s+vig[êe]ncia)?|data\s+t[ée]rmino|data\s+fim|vencimento(?:\s+da\s+ap[óo]lice)?)[\s:]+(\d{2}[\/\.\-]\d{2}[\/\.\-]\d{4})/i);
     if (fimMatch) result.fimVigencia = formatBRDateToISO(fimMatch[1]);
   }
 
@@ -153,17 +157,17 @@ export function extractPolicyFieldsRegex(text: string): ExtractedPolicyData {
     result.dataEmissao = formatBRDateToISO(emissaoMatch[1]);
   }
 
-  // 6. Prêmio Total / Líquido
+  // 6. Prêmio Total / Líquido / Valor
   const premioMatch =
-    normalizedText.match(/(?:pr[êe]mio\s+total|total\s+a\s+pagar|valor\s+total|pr[êe]mio\s+l[íi]quido)[\s:]*R?\$?\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2}|[0-9]+,[0-9]{2}|[0-9]+\.[0-9]{2})/i) ||
-    normalizedText.match(/pr[êe]mio[^\n\r\d]*?R?\$?\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})/i);
+    normalizedText.match(/(?:pr[êe]mio\s+total|pr[êe]mio\s+bruto|pr[êe]mio\s+comercial|total\s+a\s+pagar|valor\s+total(?:\s+do\s+seguro)?|valor\s+do\s+pr[êe]mio|pr[êe]mio\s+l[íi]quido|valor\s+da\s+ap[óo]lice)[\s:]*R?\$?\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2}|[0-9]+,[0-9]{2}|[0-9]+\.[0-9]{2})/i) ||
+    normalizedText.match(/pr[êe]mio[^\n\r\d]*?R?\$?\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2}|[0-9]+\.[0-9]{2})/i);
   if (premioMatch) {
     result.premio = parseCurrencyString(premioMatch[1]);
   }
 
-  // 7. Valor Segurado / Importância Segurada (LMG / IS)
+  // 7. Valor Segurado / Importância Segurada (LMG / IS) / Capital Segurado
   const isMatch =
-    normalizedText.match(/(?:import[âa]ncia\s+segurada|limite\s+m[áa]ximo\s+de\s+garantia|lmg|is\s+total|valor\s+do\s+bem|valor\s+segurado)[\s:]*R?\$?\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2}|[0-9]+,[0-9]{2}|[0-9]+\.[0-9]{2})/i);
+    normalizedText.match(/(?:import[âa]ncia\s+segurada|limite\s+m[áa]ximo\s+de\s+garantia|capital\s+segurado|lmg|is\s+total|valor\s+do\s+bem|valor\s+segurado)[\s:]*R?\$?\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2}|[0-9]+,[0-9]{2}|[0-9]+\.[0-9]{2})/i);
   if (isMatch) {
     result.valorSegurado = parseCurrencyString(isMatch[1]);
   }

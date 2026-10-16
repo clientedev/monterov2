@@ -313,7 +313,18 @@ export default function ApolicesPage() {
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-1">
+                                        <div className="flex justify-end gap-1 items-center">
+                                            {a.pdfApolice && (
+                                                <a
+                                                    href={a.pdfApolice}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1.5 text-[#0F6570] hover:bg-[#0F6570]/10 rounded-md transition-colors"
+                                                    title="Abrir arquivo PDF da apólice"
+                                                >
+                                                    <FileText className="h-4 w-4" />
+                                                </a>
+                                            )}
                                             <Button size="sm" variant="ghost" title="Ver Perfil do Cliente" onClick={() => setLocation(`/admin/clientes/${a.clienteId}`)}>
                                                 <Eye className="h-4 w-4" />
                                             </Button>
