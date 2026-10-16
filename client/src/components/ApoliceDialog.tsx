@@ -35,6 +35,25 @@ function dateToISO(val: string): string | null {
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+function safeDateInput(val: any): string {
+  if (!val) return "";
+  if (typeof val === "string") {
+    val = val.trim();
+    if (!val) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    if (/^\d{4}-\d{2}-\d{2}T/.test(val)) return val.split("T")[0];
+    const m = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return format(d, "yyyy-MM-dd");
+    }
+  } catch {}
+  return "";
+}
+
 interface ApoliceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -98,8 +117,8 @@ export function ApoliceDialog({
         setProdutoId(editApolice.produtoId ? String(editApolice.produtoId) : "");
         setSeguradoraId(editApolice.seguradoraId ? String(editApolice.seguradoraId) : "");
         setStatus(editApolice.status || "ativa");
-        setInicioVigencia(editApolice.inicioVigencia ? format(new Date(editApolice.inicioVigencia), "yyyy-MM-dd") : "");
-        setFimVigencia(editApolice.fimVigencia ? format(new Date(editApolice.fimVigencia), "yyyy-MM-dd") : "");
+        setInicioVigencia(safeDateInput(editApolice.inicioVigencia));
+        setFimVigencia(safeDateInput(editApolice.fimVigencia));
         setPremio(editApolice.premio || "");
         setValorSegurado(editApolice.valorSegurado || "");
         setComissao(editApolice.comissao || "");
@@ -108,7 +127,7 @@ export function ApoliceDialog({
         setIdProposta(editApolice.idProposta || "");
         setIdApolice(editApolice.idApolice || "");
         setNumeroProposta(editApolice.numeroProposta || "");
-        setDataEmissao(editApolice.dataEmissao ? format(new Date(editApolice.dataEmissao), "yyyy-MM-dd") : "");
+        setDataEmissao(safeDateInput(editApolice.dataEmissao));
         setCobertura(editApolice.cobertura || "");
         setFormaPagamento(editApolice.formaPagamento || "");
         setLinkFatura(editApolice.linkFatura || "");
