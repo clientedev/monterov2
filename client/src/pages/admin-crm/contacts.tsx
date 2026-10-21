@@ -2,9 +2,25 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, InsertContact, insertContactSchema, Lead, Product, User as UserType } from "@shared/schema";
 
-// Calculate age from "DD/MM/AAAA" string
-function calcAge(dateStr: string | null | undefined): number | null {
-    if (!dateStr) return null;
+// Calculate age from "DD/MM/AAAA" string or Date or ISO string
+function calcAge(dateVal: any): number | null {
+    if (!dateVal) return null;
+    let dateStr = "";
+    if (dateVal instanceof Date) {
+        if (isNaN(dateVal.getTime())) return null;
+        const day = String(dateVal.getDate()).padStart(2, "0");
+        const month = String(dateVal.getMonth() + 1).padStart(2, "0");
+        const year = dateVal.getFullYear();
+        dateStr = `${day}/${month}/${year}`;
+    } else if (typeof dateVal === "string") {
+        dateStr = dateVal.trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+            const [y, m, d] = dateStr.substring(0, 10).split("-");
+            dateStr = `${d}/${m}/${y}`;
+        }
+    } else {
+        return null;
+    }
     const parts = dateStr.split("/");
     if (parts.length !== 3) return null;
     const [day, month, year] = parts.map(Number);
@@ -15,18 +31,27 @@ function calcAge(dateStr: string | null | undefined): number | null {
     return age >= 0 ? age : null;
 }
 
-function toDateInputValue(value: string | null | undefined): string {
+function toDateInputValue(value: any): string {
     if (!value) return "";
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-        const [day, month, year] = value.split("/");
+    if (value instanceof Date) {
+        if (isNaN(value.getTime())) return "";
+        return value.toISOString().split("T")[0];
+    }
+    if (typeof value !== "string") return "";
+    const clean = value.trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(clean)) {
+        const [day, month, year] = clean.split("/");
         return `${year}-${month}-${day}`;
     }
-    return value;
+    if (/^\d{4}-\d{2}-\d{2}/.test(clean)) {
+        return clean.substring(0, 10);
+    }
+    return "";
 }
 
 function fromDateInputValue(value: string): string {
-    if (!value) return "";
-    const [year, month, day] = value.split("-");
+    if (!value || typeof value !== "string") return "";
+    const [year, month, day] = value.trim().split("-");
     return year && month && day ? `${day}/${month}/${year}` : value;
 }
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -960,9 +985,9 @@ export default function ContactsPage() {
                                                                     ${contact.type === 'individual' ? 'bg-primary' : 'bg-secondary'}
                                                                 `}>
                                                                     {displayAvatar ? (
-                                                                        <img src={displayAvatar} alt={contact.name} className="w-full h-full object-cover" />
+                                                                        <img src={displayAvatar} alt={contact.name || ""} className="w-full h-full object-cover" />
                                                                     ) : (
-                                                                        contact.name.charAt(0).toUpperCase()
+                                                                        (contact.name || "?").charAt(0).toUpperCase()
                                                                     )}
                                                                 </div>
                                                                 <div className="flex flex-col">

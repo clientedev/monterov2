@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -33,9 +34,25 @@ import { Loader2, CalendarDays, UserPlus } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ProductSelector } from "@/components/ProductSelector";
 
-// Calculate age from "DD/MM/AAAA" string
-function calcAge(dateStr: string | null | undefined): number | null {
-    if (!dateStr) return null;
+// Calculate age from "DD/MM/AAAA" string or Date or ISO string
+function calcAge(dateVal: any): number | null {
+    if (!dateVal) return null;
+    let dateStr = "";
+    if (dateVal instanceof Date) {
+        if (isNaN(dateVal.getTime())) return null;
+        const day = String(dateVal.getDate()).padStart(2, "0");
+        const month = String(dateVal.getMonth() + 1).padStart(2, "0");
+        const year = dateVal.getFullYear();
+        dateStr = `${day}/${month}/${year}`;
+    } else if (typeof dateVal === "string") {
+        dateStr = dateVal.trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+            const [y, m, d] = dateStr.substring(0, 10).split("-");
+            dateStr = `${d}/${m}/${y}`;
+        }
+    } else {
+        return null;
+    }
     const parts = dateStr.split("/");
     if (parts.length !== 3) return null;
     const [day, month, year] = parts.map(Number);
@@ -46,18 +63,27 @@ function calcAge(dateStr: string | null | undefined): number | null {
     return age >= 0 ? age : null;
 }
 
-function toDateInputValue(value: string | null | undefined): string {
+function toDateInputValue(value: any): string {
     if (!value) return "";
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-        const [day, month, year] = value.split("/");
+    if (value instanceof Date) {
+        if (isNaN(value.getTime())) return "";
+        return value.toISOString().split("T")[0];
+    }
+    if (typeof value !== "string") return "";
+    const clean = value.trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(clean)) {
+        const [day, month, year] = clean.split("/");
         return `${year}-${month}-${day}`;
     }
-    return value;
+    if (/^\d{4}-\d{2}-\d{2}/.test(clean)) {
+        return clean.substring(0, 10);
+    }
+    return "";
 }
 
 function fromDateInputValue(value: string): string {
-    if (!value) return "";
-    const [year, month, day] = value.split("-");
+    if (!value || typeof value !== "string") return "";
+    const [year, month, day] = value.trim().split("-");
     return year && month && day ? `${day}/${month}/${year}` : value;
 }
 
@@ -170,12 +196,13 @@ export function ContactFormModal({
 
         if (usersList) {
             usersList
-                .filter((u) => u.role === "admin" || u.role === "employee")
+                .filter((u) => (u.role === "admin" || u.role === "employee") && u.name)
                 .forEach((u) => {
                     opts.push({
                         value: `user_${u.id}`,
                         label: `👔 ${u.name} (Colaborador)`,
                         sublabel: u.email ?? "Equipe Monteiro",
+                        id: u.id,
                         name: u.name,
                     });
                 });
@@ -183,7 +210,7 @@ export function ContactFormModal({
 
         if (contacts) {
             contacts
-                .filter((c) => c.type === "individual" && (!contactId || c.id !== contactId))
+                .filter((c) => c.type === "individual" && (!contactId || c.id !== contactId) && c.name)
                 .forEach((c) => {
                     opts.push({
                         value: `contact_${c.id}`,
@@ -501,28 +528,26 @@ export function ContactFormModal({
                                         <FormLabel className="text-gray-600 font-bold">
                                             Selecione um Colaborador da Equipe ou Contato da Base
                                         </FormLabel>
-                                        <FormControl>
-                                            <SearchableSelect
-                                                options={responsibleOptions}
-                                                value={field.value ? (responsibleOptions.find(o => o.id === field.value)?.value || `contact_${field.value}`) : ""}
-                                                onValueChange={(val) => {
-                                                    if (!val) {
-                                                        field.onChange(null);
-                                                        form.setValue("responsibleName", "");
-                                                        return;
-                                                    }
-                                                    const selected = responsibleOptions.find(o => o.value === val);
-                                                    if (selected) {
-                                                        field.onChange(selected.id ?? null);
-                                                        form.setValue("responsibleName", selected.name);
-                                                    }
-                                                }}
-                                                placeholder="Escolha um colaborador ou cliente da base..."
-                                                searchPlaceholder="Pesquisar por nome ou e-mail..."
-                                                triggerClassName="border-primary/20 bg-white"
-                                                clearable
-                                            />
-                                        </FormControl>
+                                        <SearchableSelect
+                                            options={responsibleOptions}
+                                            value={field.value ? (responsibleOptions.find(o => o.id === field.value)?.value || `contact_${field.value}`) : ""}
+                                            onValueChange={(val) => {
+                                                if (!val) {
+                                                    field.onChange(null);
+                                                    form.setValue("responsibleName", "");
+                                                    return;
+                                                }
+                                                const selected = responsibleOptions.find(o => o.value === val);
+                                                if (selected) {
+                                                    field.onChange(selected.id ?? null);
+                                                    form.setValue("responsibleName", selected.name);
+                                                }
+                                            }}
+                                            placeholder="Escolha um colaborador ou cliente da base..."
+                                            searchPlaceholder="Pesquisar por nome ou e-mail..."
+                                            triggerClassName="border-primary/20 bg-white"
+                                            clearable
+                                        />
                                         <FormMessage />
                                     </FormItem>
                                 )}

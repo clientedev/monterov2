@@ -9,3 +9,4 @@ vite.config.ts.*
 .gemini
 errors.txt
 errors_utf8.txt
+scratch/

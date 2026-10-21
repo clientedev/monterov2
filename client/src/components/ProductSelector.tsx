@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useMemo, useRef } from "react";
 import { Input } from "@/components/ui/input";
 
@@ -57,14 +58,14 @@ export const PRODUCT_SYNONYMS: Record<string, StandardProduct> = {
 };
 
 export function normalizeProductName(name: string): string {
-    if (!name) return "";
+    if (!name || typeof name !== "string") return "";
     const clean = name.trim();
     const key = clean.toLowerCase();
     return PRODUCT_SYNONYMS[key] || clean;
 }
 
 interface ProductSelectorProps {
-    value?: string | null;
+    value?: string | string[] | null;
     onChange: (value: string) => void;
     className?: string;
 }
@@ -78,7 +79,14 @@ interface ProductSelectorProps {
 export function ProductSelector({ value = "", onChange, className = "" }: ProductSelectorProps) {
     // Derive state purely from the controlled `value` prop — no useState/useEffect
     const { selectedStandard, isOutroSelected, outroText } = useMemo(() => {
-        const raw = (value || "").trim();
+        let raw = "";
+        if (typeof value === "string") {
+            raw = value.trim();
+        } else if (Array.isArray(value)) {
+            raw = value.filter(Boolean).map(String).join(", ").trim();
+        } else if (value) {
+            raw = String(value).trim();
+        }
         if (!raw) return { selectedStandard: [] as string[], isOutroSelected: false, outroText: "" };
 
         const items = raw.split(",").map((s) => s.trim()).filter(Boolean);

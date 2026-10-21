@@ -57,6 +57,18 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const DEFAULT_THERMOMETER_WA_TEMPLATE =
+  "Olá {nome}! Tudo bem? Sou consultor corporativo da Monteiro Seguros. Localizei o perfil da {empresa} e gostaria de compartilhar uma proposta especial de Benefícios (Vale Alimentação e Refeição) com isenção fiscal pelo PAT e economia direta. Teriam 5 minutinhos hoje para conversarmos?";
+
+const DEFAULT_THERMOMETER_EMAIL_BODY =
+  "Olá {nome},\n\nIdentificamos a {empresa} como uma empresa de destaque na nossa região e gostaríamos de apresentar condições diferenciadas para a implantação e otimização de Benefícios Corporativos (Vale Alimentação, Vale Refeição e Seguro de Vida Empresarial).\n\nNossas soluções reduzem encargos tributários através do PAT e ampliam a satisfação da sua equipe sem custos operacionais adicionais.\n\nPodemos agendar uma rápida conversa de 10 minutos esta semana?\n\nAtenciosamente,\nEquipe Monteiro Seguros & Benefícios Corporativos\n(11) 4004-0000";
+
+const DEFAULT_THERMOMETER_EMAIL_SUBJECT = "Oportunidade em Gestão de Benefícios Corporativos - {empresa}";
+
+const STORAGE_KEY_THERMOMETER_WA = "monteiro_thermometer_whatsapp_template";
+const STORAGE_KEY_THERMOMETER_EMAIL_BODY = "monteiro_thermometer_email_body";
+const STORAGE_KEY_THERMOMETER_EMAIL_SUBJECT = "monteiro_thermometer_email_subject";
+
 interface ThermometerLead {
     placeId: string;
     name: string;
@@ -131,19 +143,72 @@ export default function LeadsThermometer() {
     const [pageSize, setPageSize] = useState(9);
 
     // Formulário de Disparo de E-mail
-    const [emailSubject, setEmailSubject] = useState("Oportunidade em Gestão de Benefícios Corporativos - {empresa}");
-    const [emailBody, setEmailBody] = useState(
-      "Olá {nome},\n\nIdentificamos a {empresa} como uma empresa de destaque na nossa região e gostaríamos de apresentar condições diferenciadas para a implantação e otimização de Benefícios Corporativos (Vale Alimentação, Vale Refeição e Seguro de Vida Empresarial).\n\nNossas soluções reduzem encargos tributários através do PAT e ampliam a satisfação da sua equipe sem custos operacionais adicionais.\n\nPodemos agendar uma rápida conversa de 10 minutos esta semana?\n\nAtenciosamente,\nEquipe Monteiro Seguros & Benefícios Corporativos\n(11) 4004-0000"
-    );
+    const [emailSubject, setEmailSubject] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY_THERMOMETER_EMAIL_SUBJECT);
+            if (saved !== null && saved.trim().length > 0) return saved;
+        } catch {}
+        return DEFAULT_THERMOMETER_EMAIL_SUBJECT;
+    });
+
+    const [emailBody, setEmailBody] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY_THERMOMETER_EMAIL_BODY);
+            if (saved !== null && saved.trim().length > 0) return saved;
+        } catch {}
+        return DEFAULT_THERMOMETER_EMAIL_BODY;
+    });
+
     const [isSendingEmail, setIsSendingEmail] = useState(false);
     const [emailDispatchResult, setEmailDispatchResult] = useState<any>(null);
 
     // Formulário de Disparo de WhatsApp
-    const [whatsappTemplate, setWhatsappTemplate] = useState(
-      "Olá {nome}! Tudo bem? Sou consultor corporativo da Monteiro Seguros. Localizei o perfil da {empresa} e gostaria de compartilhar uma proposta especial de Benefícios (Vale Alimentação e Refeição) com isenção fiscal pelo PAT e economia direta. Teriam 5 minutinhos hoje para conversarmos?"
-    );
+    const [whatsappTemplate, setWhatsappTemplate] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY_THERMOMETER_WA);
+            if (saved !== null && saved.trim().length > 0) return saved;
+        } catch {}
+        return DEFAULT_THERMOMETER_WA_TEMPLATE;
+    });
     const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
     const [whatsappDispatchResult, setWhatsappDispatchResult] = useState<any>(null);
+
+    const handleWhatsappTemplateChange = (val: string) => {
+        setWhatsappTemplate(val);
+        try {
+            localStorage.setItem(STORAGE_KEY_THERMOMETER_WA, val);
+        } catch {}
+    };
+
+    const handleResetWhatsappTemplate = () => {
+        setWhatsappTemplate(DEFAULT_THERMOMETER_WA_TEMPLATE);
+        try {
+            localStorage.setItem(STORAGE_KEY_THERMOMETER_WA, DEFAULT_THERMOMETER_WA_TEMPLATE);
+        } catch {}
+    };
+
+    const handleEmailBodyChange = (val: string) => {
+        setEmailBody(val);
+        try {
+            localStorage.setItem(STORAGE_KEY_THERMOMETER_EMAIL_BODY, val);
+        } catch {}
+    };
+
+    const handleEmailSubjectChange = (val: string) => {
+        setEmailSubject(val);
+        try {
+            localStorage.setItem(STORAGE_KEY_THERMOMETER_EMAIL_SUBJECT, val);
+        } catch {}
+    };
+
+    const handleResetEmailTemplate = () => {
+        setEmailBody(DEFAULT_THERMOMETER_EMAIL_BODY);
+        setEmailSubject(DEFAULT_THERMOMETER_EMAIL_SUBJECT);
+        try {
+            localStorage.setItem(STORAGE_KEY_THERMOMETER_EMAIL_BODY, DEFAULT_THERMOMETER_EMAIL_BODY);
+            localStorage.setItem(STORAGE_KEY_THERMOMETER_EMAIL_SUBJECT, DEFAULT_THERMOMETER_EMAIL_SUBJECT);
+        } catch {}
+    };
 
     // Formulário de Criação de Grupos de Disparo
     const [groupName, setGroupName] = useState("");
@@ -1437,19 +1502,34 @@ export default function LeadsThermometer() {
                                     <Label className="text-xs font-bold text-slate-700">Assunto do E-mail</Label>
                                     <Input
                                         value={emailSubject}
-                                        onChange={(e) => setEmailSubject(e.target.value)}
+                                        onChange={(e) => handleEmailSubjectChange(e.target.value)}
                                         className="bg-white border-slate-200 text-xs font-medium"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-bold text-slate-700">Corpo do E-mail (HTML / Texto)</Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold text-slate-700">Corpo do E-mail (HTML / Texto)</Label>
+                                        <span className="text-[10px] text-slate-400">{emailBody.length} caracteres</span>
+                                    </div>
                                     <Textarea
                                         rows={8}
                                         value={emailBody}
-                                        onChange={(e) => setEmailBody(e.target.value)}
+                                        onChange={(e) => handleEmailBodyChange(e.target.value)}
                                         className="bg-white border-slate-200 text-xs font-mono leading-relaxed"
                                     />
+                                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                                        <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                            <Check className="w-3.5 h-3.5" /> Salvo automaticamente (última versão lembrada)
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={handleResetEmailTemplate}
+                                            className="text-[11px] text-slate-400 hover:text-rose-600 underline transition-colors"
+                                        >
+                                            Restaurar modelo padrão
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Preview of First Lead */}
@@ -1507,13 +1587,28 @@ export default function LeadsThermometer() {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-bold text-slate-700">Mensagem para Disparo WhatsApp</Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold text-slate-700">Mensagem para Disparo WhatsApp</Label>
+                                        <span className="text-[10px] text-slate-400">{whatsappTemplate.length} caracteres</span>
+                                    </div>
                                     <Textarea
                                         rows={6}
                                         value={whatsappTemplate}
-                                        onChange={(e) => setWhatsappTemplate(e.target.value)}
+                                        onChange={(e) => handleWhatsappTemplateChange(e.target.value)}
                                         className="bg-white border-slate-200 text-xs leading-relaxed"
                                     />
+                                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                                        <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                            <Check className="w-3.5 h-3.5" /> Salvo automaticamente (última versão lembrada)
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={handleResetWhatsappTemplate}
+                                            className="text-[11px] text-slate-400 hover:text-rose-600 underline transition-colors"
+                                        >
+                                            Restaurar modelo padrão
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <Button

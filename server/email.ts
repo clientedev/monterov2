@@ -402,8 +402,28 @@ export async function sendClientWelcomeEmail(params: {
 export function buildBirthdayEmail(params: {
   recipientName: string;
   age?: number | null;
+  customMessage?: string;
+  customSubject?: string;
 }): { subject: string; html: string } {
-  const { recipientName, age } = params;
+  const { recipientName, age, customMessage, customSubject } = params;
+
+  let messageHtml = '';
+  if (customMessage && customMessage.trim()) {
+    messageHtml = customMessage
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(line => `<p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">${line}</p>`)
+      .join('');
+  } else {
+    messageHtml = `
+      <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+        Em nome de toda a equipe da <strong>Monteiro Seguros & Benefícios</strong>, desejamos a você um dia repleto de alegrias, saúde, paz e muitas realizações! ${age ? `Parabéns pelos seus <strong>${age} anos</strong>!` : ""}
+      </p>
+      <p style="color: #64748B; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+        Agradecemos imensamente por sua parceria e confiança em nosso trabalho. É um privilégio enorme tê-lo(a) conosco!
+      </p>`;
+  }
 
   const content = `
     <div style="text-align: center; padding: 10px 0;">
@@ -411,12 +431,7 @@ export function buildBirthdayEmail(params: {
       <h2 style="color: #08454C; font-size: 24px; margin-bottom: 16px; font-weight: 800;">
         Feliz Aniversário, ${recipientName}!
       </h2>
-      <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-        Em nome de toda a equipe da <strong>Monteiro Seguros & Benefícios</strong>, desejamos a você um dia repleto de alegrias, saúde, paz e muitas realizações! ${age ? `Parabéns pelos seus <strong>${age} anos</strong>!` : ""}
-      </p>
-      <p style="color: #64748B; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
-        Agradecemos imensamente por sua parceria e confiança em nosso trabalho. É um privilégio enorme tê-lo(a) conosco!
-      </p>
+      ${messageHtml}
       <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 16px; padding: 18px; margin-bottom: 24px;">
         <p style="margin: 0; color: #047857; font-weight: 700; font-size: 14px;">
           ✨ Monteiro Seguros &bull; Protegendo o que mais importa para você.
@@ -425,7 +440,7 @@ export function buildBirthdayEmail(params: {
     </div>`;
 
   return {
-    subject: `🎂 Feliz Aniversário, ${recipientName}! ✨ Monteiro Seguros`,
+    subject: customSubject || `🎂 Feliz Aniversário, ${recipientName}! ✨ Monteiro Seguros`,
     html: baseLayout({
       title: `Feliz Aniversário! 🎉`,
       badge: "Dia Especial",
@@ -437,8 +452,14 @@ export function buildBirthdayEmail(params: {
 }
 
 /** Send birthday email directly to a contact */
-export async function sendBirthdayEmailToContact(email: string, name: string, age?: number | null): Promise<{ success: boolean; error?: string }> {
-  const { subject, html } = buildBirthdayEmail({ recipientName: name, age });
+export async function sendBirthdayEmailToContact(
+  email: string,
+  name: string,
+  age?: number | null,
+  customMessage?: string,
+  customSubject?: string
+): Promise<{ success: boolean; error?: string }> {
+  const { subject, html } = buildBirthdayEmail({ recipientName: name, age, customMessage, customSubject });
   const res = await sendEmail({ to: email, subject, html });
   await logNotification(null, "birthday_email", "contact", 0, res.success ? "sent" : "failed", res.error);
   return res;

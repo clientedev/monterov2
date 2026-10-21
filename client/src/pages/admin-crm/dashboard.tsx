@@ -38,7 +38,10 @@ import {
     Eye,
     EyeOff,
     Building,
-    Award
+    Award,
+    Copy,
+    Edit3,
+    ExternalLink
 } from "lucide-react";
 import {
     Dialog,
@@ -50,6 +53,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
     BarChart as ReBarChart,
     Bar,
@@ -75,6 +80,20 @@ function calcAge(dateStr: string | null | undefined): number | null {
     let age = today.getFullYear() - year;
     if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
     return age >= 0 ? age : null;
+}
+
+const STORAGE_KEY_BIRTHDAY_TEMPLATE = "monteiro_birthday_message_template";
+const DEFAULT_BIRTHDAY_TEMPLATE =
+    "Olá, {nome}! 🎉 Desejamos a você um Feliz Aniversário repleto de alegrias, saúde e sucesso! É uma honra tê-lo(a) como cliente e parceiro(a) da Monteiro Seguros e Benefícios! 🎂🎁";
+
+function formatBirthdayText(template: string, contact: { name: string; anniversaryDate?: string | null }) {
+    const age = calcAge(contact.anniversaryDate);
+    const firstName = contact.name.trim().split(" ")[0] || contact.name;
+    return template
+        .replace(/\{nome\}/gi, contact.name)
+        .replace(/\{primeiro_nome\}/gi, firstName)
+        .replace(/\{idade\}/gi, age !== null ? `${age} anos` : "")
+        .replace(/\{empresa\}/gi, "Monteiro Seguros e Benefícios");
 }
 
 export interface WidgetItem {
@@ -115,6 +134,57 @@ export default function AdminDashboard() {
     const [customizeOpen, setCustomizeOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [sendingContactId, setSendingContactId] = useState<number | null>(null);
+
+    // Birthday Message Template State (persisted in localStorage)
+    const [birthdayTemplate, setBirthdayTemplate] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY_BIRTHDAY_TEMPLATE);
+            if (saved !== null && saved.trim().length > 0) return saved;
+        } catch {}
+        return DEFAULT_BIRTHDAY_TEMPLATE;
+    });
+    const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+
+    // Individual contact dispatch modal state
+    const [dispatchContact, setDispatchContact] = useState<{
+        id: number;
+        name: string;
+        email?: string | null;
+        phone?: string | null;
+        anniversaryDate?: string | null;
+        productType?: string | null;
+        isEmployee?: boolean;
+    } | null>(null);
+    const [customizedMessage, setCustomizedMessage] = useState("");
+    const [saveAsNewDefault, setSaveAsNewDefault] = useState(true);
+
+    const handleBirthdayTemplateChange = (val: string) => {
+        setBirthdayTemplate(val);
+        try {
+            localStorage.setItem(STORAGE_KEY_BIRTHDAY_TEMPLATE, val);
+        } catch {}
+    };
+
+    const handleResetBirthdayTemplate = () => {
+        setBirthdayTemplate(DEFAULT_BIRTHDAY_TEMPLATE);
+        try {
+            localStorage.setItem(STORAGE_KEY_BIRTHDAY_TEMPLATE, DEFAULT_BIRTHDAY_TEMPLATE);
+        } catch {}
+        toast({ title: "Modelo de mensagem restaurado ao padrão" });
+    };
+
+    const openDispatchModal = (contact: {
+        id: number;
+        name: string;
+        email?: string | null;
+        phone?: string | null;
+        anniversaryDate?: string | null;
+        productType?: string | null;
+        isEmployee?: boolean;
+    }) => {
+        setDispatchContact(contact);
+        setCustomizedMessage(formatBirthdayText(birthdayTemplate, contact));
+    };
 
     // Layout configuration state
     const [widgets, setWidgets] = useState<WidgetItem[]>(DEFAULT_WIDGETS);
@@ -296,9 +366,11 @@ export default function AdminDashboard() {
     }, [monthlyBirthdayContacts, currentDayNum]);
 
     const sendEmailMutation = useMutation({
-        mutationFn: async (contactId: number) => {
+        mutationFn: async ({ contactId, customMessage }: { contactId: number; customMessage?: string }) => {
             setSendingContactId(contactId);
-            const res = await apiRequest("POST", `/api/contacts/${contactId}/send-birthday-email`);
+            const res = await apiRequest("POST", `/api/contacts/${contactId}/send-birthday-email`, {
+                customMessage
+            });
             return await res.json();
         },
         onSuccess: (data) => {
@@ -1119,6 +1191,63 @@ export default function AdminDashboard() {
                     </DialogHeader>
 
                     <div className="p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50/50">
+                        {/* ── Editor do Modelo Padrão de Aniversário ── */}
+                        <div className="bg-white rounded-2xl border border-rose-200/90 shadow-sm overflow-hidden transition-all">
+                            <div
+                                onClick={() => setShowTemplateEditor(!showTemplateEditor)}
+                                className="px-4 py-3 bg-gradient-to-r from-rose-50/80 via-pink-50/60 to-amber-50/40 flex items-center justify-between cursor-pointer hover:bg-rose-100/50 transition-colors"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-rose-500" />
+                                    <span className="text-xs font-bold text-slate-800">
+                                        Modelo da Mensagem de Aniversário
+                                    </span>
+                                    <Badge variant="outline" className="text-[10px] bg-white border-rose-200 text-rose-600 font-bold px-1.5 py-0">
+                                        Salvo Automático
+                                    </Badge>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-100/60 gap-1 px-2"
+                                >
+                                    <Edit3 className="h-3 w-3" />
+                                    {showTemplateEditor ? "Ocultar Editor ▲" : "Editar Modelo Padrão ▼"}
+                                </Button>
+                            </div>
+
+                            {showTemplateEditor && (
+                                <div className="p-4 space-y-3 bg-white border-t border-rose-100">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                                        <span className="text-[11px]">
+                                            Tags disponíveis: <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-mono">{"{nome}"}</code>, <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-mono">{"{primeiro_nome}"}</code>, <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-mono">{"{idade}"}</code>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={handleResetBirthdayTemplate}
+                                            className="text-[11px] text-slate-400 hover:text-rose-600 underline transition-colors"
+                                        >
+                                            Restaurar Padrão
+                                        </button>
+                                    </div>
+                                    <Textarea
+                                        rows={3}
+                                        value={birthdayTemplate}
+                                        onChange={(e) => handleBirthdayTemplateChange(e.target.value)}
+                                        className="text-xs border-rose-200 focus:border-rose-400 rounded-xl leading-relaxed resize-none"
+                                        placeholder="Escreva sua mensagem de parabéns..."
+                                    />
+                                    <div className="flex items-center justify-between text-[11px]">
+                                        <span className="text-emerald-600 font-medium flex items-center gap-1">
+                                            <Check className="h-3.5 w-3.5" /> A última mensagem editada fica salva automaticamente.
+                                        </span>
+                                        <span className="text-slate-400 font-mono">{birthdayTemplate.length} caracteres</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         {monthlyBirthdayContacts.length === 0 ? (
                             <div className="text-center py-12 text-slate-400 space-y-2">
                                 <Cake className="h-12 w-12 mx-auto opacity-30 text-rose-400" />
@@ -1132,9 +1261,8 @@ export default function AdminDashboard() {
                                 const isToday = parseInt(dayStr, 10) === currentDayNum;
                                 const age = calcAge(contact.anniversaryDate);
                                 const cleanPhone = contact.phone?.replace(/\D/g, "");
-                                const waMsg = encodeURIComponent(
-                                    `Olá, ${contact.name}! 🎉 Desejamos a você um Feliz Aniversário repleto de alegrias, saúde e sucesso! É uma honra tê-lo(a) como cliente da Monteiro Seguros e Benefícios! 🎂🎁`
-                                );
+                                const formattedPhone = cleanPhone && cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+                                const personalizedMsg = formatBirthdayText(birthdayTemplate, contact);
 
                                 return (
                                     <div
@@ -1180,9 +1308,20 @@ export default function AdminDashboard() {
                                         </div>
 
                                         <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                onClick={() => openDispatchModal(contact)}
+                                                className="rounded-xl font-bold bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white text-xs h-9 px-3 gap-1.5 shadow-sm"
+                                                title="Revisar e personalizar mensagem antes de disparar"
+                                            >
+                                                <Edit3 className="h-3.5 w-3.5" />
+                                                Disparar
+                                            </Button>
+
                                             {contact.phone && cleanPhone && (
                                                 <a
-                                                    href={`https://wa.me/55${cleanPhone}?text=${waMsg}`}
+                                                    href={`https://wa.me/${formattedPhone}?text=${encodeURIComponent(personalizedMsg)}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                 >
@@ -1191,7 +1330,7 @@ export default function AdminDashboard() {
                                                         variant="outline"
                                                         size="sm"
                                                         className="rounded-xl font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 text-xs h-9 px-3 gap-1.5 shadow-sm"
-                                                        title="Enviar parabéns pelo WhatsApp"
+                                                        title="Abrir WhatsApp direto com modelo atual"
                                                     >
                                                         <MessageCircle className="h-4 w-4 text-emerald-600" />
                                                         WhatsApp
@@ -1201,28 +1340,156 @@ export default function AdminDashboard() {
 
                                             <Button
                                                 type="button"
+                                                variant="outline"
                                                 size="sm"
                                                 disabled={!contact.email || (sendEmailMutation.isPending && sendingContactId === contact.id)}
-                                                onClick={() => sendEmailMutation.mutate(contact.id)}
-                                                className={`rounded-xl font-bold text-xs h-9 px-3.5 gap-1.5 shadow-sm ${
+                                                onClick={() => sendEmailMutation.mutate({ contactId: contact.id, customMessage: personalizedMsg })}
+                                                className={`rounded-xl font-bold text-xs h-9 px-3 gap-1.5 shadow-sm ${
                                                     isToday
-                                                        ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200"
-                                                        : "bg-primary hover:bg-primary/90 text-white"
+                                                        ? "border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700"
+                                                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
                                                 }`}
-                                                title={contact.email ? "Disparar e-mail de feliz aniversário" : "Contato sem e-mail"}
+                                                title={contact.email ? "Disparar e-mail com o modelo atual" : "Contato sem e-mail"}
                                             >
                                                 {sendEmailMutation.isPending && sendingContactId === contact.id ? (
                                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                 ) : (
-                                                    <Mail className="h-3.5 w-3.5" />
+                                                    <Mail className="h-3.5 w-3.5 text-rose-500" />
                                                 )}
-                                                Disparar E-mail
+                                                E-mail
                                             </Button>
                                         </div>
                                     </div>
                                 );
                             })
                         )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Modal de Edição e Disparo Personalizado ──────────────────────── */}
+            <Dialog open={dispatchContact !== null} onOpenChange={(open) => !open && setDispatchContact(null)}>
+                <DialogContent className="sm:max-w-[550px] w-full rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-white">
+                    <DialogHeader className="p-5 bg-gradient-to-r from-rose-500 via-pink-600 to-rose-600 text-white shrink-0">
+                        <DialogTitle className="text-xl font-display font-bold flex items-center gap-2 text-white">
+                            <Gift className="h-5 w-5 text-amber-300" />
+                            Disparar Parabéns de Aniversário
+                        </DialogTitle>
+                        <DialogDescription className="text-rose-100 text-xs mt-0.5">
+                            Edite e confira a mensagem antes de disparar para <strong className="text-white">{dispatchContact?.name}</strong>.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-5 space-y-4">
+                        <div className="flex items-center justify-between p-3 bg-rose-50/70 rounded-2xl border border-rose-100 text-xs">
+                            <div className="space-y-0.5">
+                                <div className="font-bold text-slate-900 text-sm">{dispatchContact?.name}</div>
+                                <div className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
+                                    {dispatchContact?.phone ? <span>📱 {dispatchContact.phone}</span> : <span className="text-slate-400">Sem telefone</span>}
+                                    <span>•</span>
+                                    {dispatchContact?.email ? <span>✉️ {dispatchContact.email}</span> : <span className="text-slate-400">Sem e-mail</span>}
+                                </div>
+                            </div>
+                            {calcAge(dispatchContact?.anniversaryDate) !== null && (
+                                <Badge variant="outline" className="bg-white border-rose-200 text-rose-700 font-bold">
+                                    🎂 {calcAge(dispatchContact?.anniversaryDate)} anos
+                                </Badge>
+                            )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold text-slate-700">Mensagem Comemorativa</Label>
+                                <span className="text-[10px] text-slate-400 font-mono">{customizedMessage.length} caracteres</span>
+                            </div>
+                            <Textarea
+                                rows={5}
+                                value={customizedMessage}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setCustomizedMessage(val);
+                                    if (saveAsNewDefault) {
+                                        handleBirthdayTemplateChange(val);
+                                    }
+                                }}
+                                className="text-xs border-slate-200 focus:border-rose-400 rounded-xl leading-relaxed resize-none"
+                                placeholder="Escreva a mensagem personalizada..."
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <input
+                                type="checkbox"
+                                id="saveBirthdayAsDefault"
+                                checked={saveAsNewDefault}
+                                onChange={(e) => setSaveAsNewDefault(e.target.checked)}
+                                className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 h-4 w-4 cursor-pointer"
+                            />
+                            <label htmlFor="saveBirthdayAsDefault" className="text-xs text-slate-700 font-medium cursor-pointer">
+                                Salvar este texto como novo modelo padrão para os próximos disparos
+                            </label>
+                        </div>
+
+                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(customizedMessage);
+                                    toast({ title: "Mensagem copiada para a área de transferência!" });
+                                }}
+                                className="rounded-xl text-xs h-9 w-full sm:w-auto font-medium"
+                            >
+                                <Copy className="h-3.5 w-3.5 mr-1" /> Copiar Texto
+                            </Button>
+
+                            {dispatchContact?.phone && (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => {
+                                        if (saveAsNewDefault) {
+                                            handleBirthdayTemplateChange(customizedMessage);
+                                        }
+                                        const cleanPhone = dispatchContact.phone?.replace(/\D/g, "");
+                                        const formattedPhone = cleanPhone && cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+                                        const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(customizedMessage)}`;
+                                        window.open(waUrl, "_blank", "noopener,noreferrer");
+                                        setDispatchContact(null);
+                                    }}
+                                    className="rounded-xl font-bold text-xs h-9 bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto gap-1.5 shadow-md shadow-emerald-600/20"
+                                >
+                                    <MessageCircle className="h-4 w-4" /> Abrir no WhatsApp
+                                </Button>
+                            )}
+
+                            {dispatchContact?.email && (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={sendEmailMutation.isPending && sendingContactId === dispatchContact.id}
+                                    onClick={() => {
+                                        if (saveAsNewDefault) {
+                                            handleBirthdayTemplateChange(customizedMessage);
+                                        }
+                                        sendEmailMutation.mutate({
+                                            contactId: dispatchContact.id,
+                                            customMessage: customizedMessage
+                                        });
+                                        setDispatchContact(null);
+                                    }}
+                                    className="rounded-xl font-bold text-xs h-9 bg-rose-600 hover:bg-rose-700 text-white w-full sm:w-auto gap-1.5 shadow-md shadow-rose-600/20"
+                                >
+                                    {sendEmailMutation.isPending && sendingContactId === dispatchContact.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Mail className="h-3.5 w-3.5" />
+                                    )}
+                                    Disparar E-mail
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

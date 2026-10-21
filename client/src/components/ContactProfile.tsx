@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, Interaction, Lead, Task, InsertContact, ContactFile } from "@shared/schema";
@@ -49,8 +50,25 @@ import {
     Download
 } from "lucide-react";
 
-function calcAge(dateStr: string | null | undefined): number | null {
-    if (!dateStr) return null;
+// Calculate age from "DD/MM/AAAA" string or Date or ISO string
+function calcAge(dateVal: any): number | null {
+    if (!dateVal) return null;
+    let dateStr = "";
+    if (dateVal instanceof Date) {
+        if (isNaN(dateVal.getTime())) return null;
+        const day = String(dateVal.getDate()).padStart(2, "0");
+        const month = String(dateVal.getMonth() + 1).padStart(2, "0");
+        const year = dateVal.getFullYear();
+        dateStr = `${day}/${month}/${year}`;
+    } else if (typeof dateVal === "string") {
+        dateStr = dateVal.trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+            const [y, m, d] = dateStr.substring(0, 10).split("-");
+            dateStr = `${d}/${m}/${y}`;
+        }
+    } else {
+        return null;
+    }
     const parts = dateStr.split("/");
     if (parts.length !== 3) return null;
     const [day, month, year] = parts.map(Number);
@@ -59,6 +77,30 @@ function calcAge(dateStr: string | null | undefined): number | null {
     let age = today.getFullYear() - year;
     if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
     return age >= 0 ? age : null;
+}
+
+function toDateInputValue(value: any): string {
+    if (!value) return "";
+    if (value instanceof Date) {
+        if (isNaN(value.getTime())) return "";
+        return value.toISOString().split("T")[0];
+    }
+    if (typeof value !== "string") return "";
+    const clean = value.trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(clean)) {
+        const [day, month, year] = clean.split("/");
+        return `${year}-${month}-${day}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}/.test(clean)) {
+        return clean.substring(0, 10);
+    }
+    return "";
+}
+
+function fromDateInputValue(value: string): string {
+    if (!value || typeof value !== "string") return "";
+    const [year, month, day] = value.trim().split("-");
+    return year && month && day ? `${day}/${month}/${year}` : value;
 }
 
 interface ContactProfileProps {
@@ -135,19 +177,20 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
         const opts: { value: string; label: string; sublabel?: string; id?: number; name: string }[] = [];
         if (usersList) {
             usersList
-                .filter((u: any) => u.role === "admin" || u.role === "employee")
+                .filter((u: any) => (u.role === "admin" || u.role === "employee") && u.name)
                 .forEach((u: any) => {
                     opts.push({
                         value: `user_${u.id}`,
                         label: `👔 ${u.name} (Colaborador)`,
                         sublabel: u.email ?? "Equipe Monteiro",
+                        id: u.id,
                         name: u.name,
                     });
                 });
         }
         if (allContacts) {
             allContacts
-                .filter((c: any) => c.type === "individual" && c.id !== contactId)
+                .filter((c: any) => c.type === "individual" && c.id !== contactId && c.name)
                 .forEach((c: any) => {
                     opts.push({
                         value: `contact_${c.id}`,
@@ -732,7 +775,7 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                             {userAccount?.avatar || (contact as any).avatar ? (
                                                 <img src={userAccount?.avatar || (contact as any).avatar} alt={contact.name} className="w-full h-full object-cover" />
                                             ) : (
-                                                (formData.name || contact.name).charAt(0).toUpperCase()
+                                                (formData.name || contact.name || "?").charAt(0).toUpperCase()
                                             )}
                                         </div>
                                         <div className="space-y-1 min-w-0 flex-1">
@@ -922,12 +965,9 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                 <Label className="text-xs font-bold text-slate-700">Data Comemorativa (DD/MM/AAAA)</Label>
                                                 <Input
                                                     type="date"
-                                                    value={formData.anniversaryDate?.match(/^\d{2}\/\d{2}\/\d{4}$/)
-                                                        ? formData.anniversaryDate.split("/").reverse().join("-")
-                                                        : formData.anniversaryDate}
+                                                    value={toDateInputValue(formData.anniversaryDate)}
                                                     onChange={(e) => {
-                                                        const [year, month, day] = e.target.value.split("-");
-                                                        setFormData(prev => ({ ...prev, anniversaryDate: year && month && day ? `${day}/${month}/${year}` : "" }));
+                                                        setFormData(prev => ({ ...prev, anniversaryDate: fromDateInputValue(e.target.value) }));
                                                     }}
                                                     placeholder="15/08/1990"
                                                     className="rounded-xl h-11 bg-white"

@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,8 +45,8 @@ interface SearchableSelectProps {
  * Replaces plain <Select> whenever the list can be large (contacts, clientes, etc.)
  * and wherever quick keyboard navigation is useful.
  */
-export function SearchableSelect({
-  options,
+export const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectProps>(function SearchableSelect({
+  options = [],
   value,
   onValueChange,
   placeholder = "Selecione...",
@@ -57,14 +58,16 @@ export function SearchableSelect({
   clearable = false,
   onAddNew,
   addNewLabel = "Adicionar novo...",
-}: SearchableSelectProps) {
+}: SearchableSelectProps, ref) {
   const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.value === value);
+  const safeOptions = Array.isArray(options) ? options.filter(Boolean) : [];
+  const selected = safeOptions.find((o) => o && o.value === value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          ref={ref}
           variant="outline"
           role="combobox"
           aria-expanded={open}
@@ -148,11 +151,11 @@ export function SearchableSelect({
                   Limpar seleção
                 </CommandItem>
               )}
-              {options.map((option) => (
+              {safeOptions.map((option) => (
                 <CommandItem
                   key={option.value}
                   // cmdk uses this for client-side filtering
-                  value={`${option.label} ${option.sublabel ?? ""} ${option.value}`}
+                  value={`${option.label || ""} ${option.sublabel ?? ""} ${option.value || ""}`}
                   onSelect={() => {
                     onValueChange(option.value);
                     setOpen(false);
@@ -164,7 +167,7 @@ export function SearchableSelect({
                       value === option.value ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  <span className="flex-1 whitespace-normal break-words">{option.label}</span>
+                  <span className="flex-1 whitespace-normal break-words">{option.label || ""}</span>
                   {option.sublabel && (
                     <span className="ml-2 text-muted-foreground text-xs shrink-0">
                       {option.sublabel}
@@ -178,4 +181,4 @@ export function SearchableSelect({
       </PopoverContent>
     </Popover>
   );
-}
+});

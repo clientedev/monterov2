@@ -923,6 +923,8 @@ export async function registerRoutes(
       if (!contact) return res.status(404).json({ message: "Contato não encontrado" });
       if (!contact.email) return res.status(400).json({ message: "Contato não possui e-mail cadastrado" });
 
+      const { customMessage, subject } = req.body || {};
+
       let age: number | null = null;
       if (contact.anniversaryDate) {
         const parts = contact.anniversaryDate.split("/");
@@ -932,7 +934,7 @@ export async function registerRoutes(
         }
       }
 
-      const result = await sendBirthdayEmailToContact(contact.email, contact.name, age);
+      const result = await sendBirthdayEmailToContact(contact.email, contact.name, age, customMessage, subject);
       if (!result.success) {
         return res.status(500).json({ message: result.error || "Falha ao enviar e-mail comemorativo" });
       }
@@ -943,7 +945,7 @@ export async function registerRoutes(
         contactId: contact.id,
         userId,
         type: "E-mail Aniversário",
-        description: `E-mail comemorativo de aniversário enviado com sucesso para ${contact.email}.`,
+        description: `E-mail comemorativo de aniversário enviado com sucesso para ${contact.email}.${customMessage ? ' (Mensagem personalizada)' : ''}`,
         date: new Date(),
       }).catch(() => {});
 
