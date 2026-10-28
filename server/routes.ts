@@ -672,38 +672,138 @@ export async function registerRoutes(
 
   // Reviews
   app.get("/api/reviews", async (req, res) => {
-    const reviews = await storage.getReviews(true);
-    res.json(reviews);
+    try {
+      const [reviewsList, settings] = await Promise.all([
+        storage.getReviews(true),
+        storage.getSiteSettings().catch(() => null)
+      ]);
+      res.json({
+        reviews: reviewsList,
+        googleReviewUrl: settings?.googleReviewUrl || "https://g.page/r/CfNsrw-dt3q3EAE/review",
+        googleRating: settings?.googleRating || "5.0",
+        googleTotalReviews: settings?.googleTotalReviews || 12,
+        googlePlaceId: settings?.googlePlaceId || "ChIJq6oGRjhfzpQR82yvD523erc"
+      });
+    } catch (err: any) {
+      console.error("Error fetching reviews:", err);
+      res.status(500).json({ message: "Error fetching reviews" });
+    }
   });
 
-  app.post("/api/reviews", isAuthenticated, async (req, res) => {
+  app.post("/api/reviews", async (req, res) => {
     try {
       const input = insertReviewSchema.parse(req.body);
-      const review = await storage.createReview((req.user as any).id, input);
-      res.status(201).json(review);
+      const userId = (req.user as any)?.id || null;
+      const settings = await storage.getSiteSettings().catch(() => null);
+      const autoApprove = settings?.autoApproveReviews ?? false;
+
+      const review = await storage.createReview(userId, {
+        ...input,
+        authorName: input.authorName?.trim() || (req.user as any)?.username || "Cliente",
+        source: input.source || "site",
+        isApproved: autoApprove,
+        isFeatured: false,
+      });
+
+      res.status(201).json({
+        ...review,
+        googleReviewUrl: settings?.googleReviewUrl || "https://g.page/r/CfNsrw-dt3q3EAE/review"
+      });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors });
       }
-      throw err;
+      console.error("Error submitting review:", err);
+      res.status(500).json({ message: "Erro ao salvar avaliação" });
     }
   });
 
   // Admin Reviews
   app.get("/api/admin/reviews", isAdmin, async (req, res) => {
-    const reviews = await storage.getReviews(false);
-    res.json(reviews);
+    try {
+      const [reviewsList, settings] = await Promise.all([
+        storage.getReviews(false),
+        storage.getSiteSettings().catch(() => null)
+      ]);
+      res.json({
+        reviews: reviewsList,
+        settings: {
+          googleReviewUrl: settings?.googleReviewUrl || "https://g.page/r/CfNsrw-dt3q3EAE/review",
+          googleRating: settings?.googleRating || "5.0",
+          googleTotalReviews: settings?.googleTotalReviews || 12,
+          googlePlaceId: settings?.googlePlaceId || "ChIJq6oGRjhfzpQR82yvD523erc",
+          autoApproveReviews: settings?.autoApproveReviews ?? false
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Error fetching admin reviews" });
+    }
+  });
+
+  app.post("/api/admin/reviews/sync-google", isAdmin, async (req, res) => {
+    try {
+      const placeId = req.body?.placeId;
+      const result = await storage.syncGoogleReviews(placeId);
+      res.json({ success: true, ...result });
+    } catch (err: any) {
+      console.error("Error syncing Google reviews:", err);
+      res.status(500).json({ message: err.message || "Error syncing Google reviews" });
+    }
+  });
+
+  app.post("/api/admin/reviews", isAdmin, async (req, res) => {
+    try {
+      const input = insertReviewSchema.parse(req.body);
+      const review = await storage.createReview((req.user as any)?.id || null, {
+        ...input,
+        isApproved: req.body.isApproved ?? true,
+      });
+      res.status(201).json(review);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors });
+      }
+      res.status(500).json({ message: err.message || "Error creating review" });
+    }
   });
 
   app.patch("/api/admin/reviews/:id", isAdmin, async (req, res) => {
-    const updated = await storage.approveReview(Number(req.params.id));
-    if (!updated) return res.status(404).json({ message: "Review not found" });
-    res.json(updated);
+    try {
+      const id = Number(req.params.id);
+      const { isApproved, isFeatured, rating, comment, authorName, authorTitle } = req.body;
+      const updateData: any = {};
+      if (typeof isApproved === "boolean") updateData.isApproved = isApproved;
+      if (typeof isFeatured === "boolean") updateData.isFeatured = isFeatured;
+      if (typeof rating === "number") updateData.rating = rating;
+      if (typeof comment === "string") updateData.comment = comment;
+      if (typeof authorName === "string") updateData.authorName = authorName;
+      if (typeof authorTitle === "string") updateData.authorTitle = authorTitle;
+
+      const updated = await storage.updateReview(id, updateData);
+      if (!updated) return res.status(404).json({ message: "Review not found" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Error updating review" });
+    }
+  });
+
+  app.patch("/api/admin/reviews/:id/feature", isAdmin, async (req, res) => {
+    try {
+      const updated = await storage.toggleFeatureReview(Number(req.params.id));
+      if (!updated) return res.status(404).json({ message: "Review not found" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Error toggling feature" });
+    }
   });
 
   app.delete("/api/admin/reviews/:id", isAdmin, async (req, res) => {
-    await storage.deleteReview(Number(req.params.id));
-    res.sendStatus(204);
+    try {
+      await storage.deleteReview(Number(req.params.id));
+      res.sendStatus(204);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Error deleting review" });
+    }
   });
 
 

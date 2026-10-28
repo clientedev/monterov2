@@ -219,6 +219,13 @@ export const siteSettings = pgTable("site_settings", {
   themeOutubroRosa: boolean("theme_outubro_rosa").notNull().default(false),
   themeOutubroRosaBadge: boolean("theme_outubro_rosa_badge").notNull().default(true),
 
+  // Google Reviews Integration
+  googleReviewUrl: text("google_review_url").notNull().default("https://g.page/r/CfNsrw-dt3q3EAE/review"),
+  googlePlaceId: text("google_place_id").default("ChIJq6oGRjhfzpQR82yvD523erc"),
+  googleRating: text("google_rating").default("5.0"),
+  googleTotalReviews: integer("google_total_reviews").default(12),
+  autoApproveReviews: boolean("auto_approve_reviews").default(false),
+
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -269,9 +276,17 @@ export const prospectingChecklists = pgTable("prospecting_checklists", {
 // Reviews
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
+  userId: integer("user_id").references(() => users.id),
+  authorName: text("author_name"),
+  authorPhoto: text("author_photo"),
+  authorTitle: text("author_title"),
   rating: integer("rating").notNull(),
   comment: text("comment").notNull(),
+  source: text("source").notNull().default("site"), // 'google' | 'site' | 'manual'
+  googleReviewId: text("google_review_id"),
+  googleReviewUrl: text("google_review_url"),
+  relativeTime: text("relative_time"),
+  isFeatured: boolean("is_featured").default(false).notNull(),
   isApproved: boolean("is_approved").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -410,7 +425,17 @@ export const insertHeroSlideSchema = createInsertSchema(heroSlides, {
 }).omit({ id: true, createdAt: true });
 export const insertProspectingChecklistSchema = createInsertSchema(prospectingChecklists).omit({ id: true, createdAt: true });
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true, createdAt: true, isApproved: true });
-export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, isApproved: true, userId: true });
+export const insertReviewSchema = createInsertSchema(reviews, {
+  rating: z.coerce.number().min(1).max(5).default(5),
+  authorName: z.string().optional().nullable(),
+  authorPhoto: z.string().optional().nullable(),
+  authorTitle: z.string().optional().nullable(),
+  source: z.string().default("site"),
+  googleReviewId: z.string().optional().nullable(),
+  googleReviewUrl: z.string().optional().nullable(),
+  relativeTime: z.string().optional().nullable(),
+  isFeatured: z.boolean().default(false),
+}).omit({ id: true, createdAt: true });
 
 // Insurance Module Schemas
 export const insertClienteSchema = createInsertSchema(clientes).omit({ id: true, createdAt: true });

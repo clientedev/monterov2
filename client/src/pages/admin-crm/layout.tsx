@@ -169,7 +169,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <nav className="space-y-1">
                             <NavLink href="/admin/posts" icon={FileText} label="Blog Central" />
                             <NavLink href="/admin/comments" icon={MessageSquare} label="Moderar Comentários" />
-                            <NavLink href="/admin/reviews" icon={Star} label="Moderar Avaliações" />
+                            <NavLink href="/admin/reviews" icon={Star} label="Avaliações & Google" />
                             <NavLink href="/admin/services" icon={Briefcase} label="Portfólio de Serviços" />
                         </nav>
                     </div>

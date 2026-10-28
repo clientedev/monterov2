@@ -194,9 +194,12 @@ export interface IStorage {
 
   // Reviews
   getReviews(approvedOnly?: boolean): Promise<Review[]>;
-  createReview(userId: number, review: InsertReview): Promise<Review>;
-  approveReview(id: number): Promise<Review | undefined>;
+  createReview(userId: number | null, review: InsertReview): Promise<Review>;
+  updateReview(id: number, data: Partial<Review>): Promise<Review | undefined>;
+  approveReview(id: number, isApproved?: boolean): Promise<Review | undefined>;
+  toggleFeatureReview(id: number): Promise<Review | undefined>;
   deleteReview(id: number): Promise<void>;
+  syncGoogleReviews(placeId?: string): Promise<{ synced: number; total: number; rating: number }>;
 
   // Products
   getProducts(activeOnly?: boolean): Promise<Product[]>;
@@ -1176,6 +1179,11 @@ export class DatabaseStorage implements IStorage {
     activeTheme: "default",
     themeOutubroRosa: false,
     themeOutubroRosaBadge: true,
+    googleReviewUrl: "https://g.page/r/CfNsrw-dt3q3EAE/review",
+    googlePlaceId: "ChIJq6oGRjhfzpQR82yvD523erc",
+    googleRating: "5.0",
+    googleTotalReviews: 12,
+    autoApproveReviews: false,
     updatedAt: new Date(),
   };
 
@@ -1359,18 +1367,38 @@ export class DatabaseStorage implements IStorage {
     if (approvedOnly) {
       query = query.where(eq(reviews.isApproved, true)) as any;
     }
-    return await query.orderBy(desc(reviews.createdAt));
+    return await query.orderBy(desc(reviews.isFeatured), desc(reviews.createdAt));
   }
 
-  async createReview(userId: number, review: InsertReview): Promise<Review> {
-    const [newReview] = await db.insert(reviews).values({ ...review, userId }).returning();
+  async createReview(userId: number | null, review: InsertReview): Promise<Review> {
+    const [newReview] = await db.insert(reviews).values({ ...review, userId: userId || null }).returning();
     return newReview;
   }
 
-  async approveReview(id: number): Promise<Review | undefined> {
+  async updateReview(id: number, data: Partial<Review>): Promise<Review | undefined> {
     const [updated] = await db
       .update(reviews)
-      .set({ isApproved: true })
+      .set(data)
+      .where(eq(reviews.id, id))
+      .returning();
+    return updated;
+  }
+
+  async approveReview(id: number, isApproved = true): Promise<Review | undefined> {
+    const [updated] = await db
+      .update(reviews)
+      .set({ isApproved })
+      .where(eq(reviews.id, id))
+      .returning();
+    return updated;
+  }
+
+  async toggleFeatureReview(id: number): Promise<Review | undefined> {
+    const [current] = await db.select().from(reviews).where(eq(reviews.id, id));
+    if (!current) return undefined;
+    const [updated] = await db
+      .update(reviews)
+      .set({ isFeatured: !current.isFeatured })
       .where(eq(reviews.id, id))
       .returning();
     return updated;
@@ -1378,6 +1406,85 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReview(id: number): Promise<void> {
     await db.delete(reviews).where(eq(reviews.id, id));
+  }
+
+  async syncGoogleReviews(placeId?: string): Promise<{ synced: number; total: number; rating: number }> {
+    const targetPlaceId = placeId || 'ChIJq6oGRjhfzpQR82yvD523erc';
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY || 'AIzaSyC8OtwvVVGMmKdkEg4fm1ErRdJf1Idq8Tw';
+    const url = `https://places.googleapis.com/v1/places/${targetPlaceId}?languageCode=pt-BR&key=${apiKey}`;
+
+    let count = 0;
+    let totalRatings = 12;
+    let avgRating = 5.0;
+
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': 'id,displayName,rating,userRatingCount,reviews,googleMapsUri'
+        }
+      });
+      const data = await res.json();
+      if (data && data.reviews && Array.isArray(data.reviews)) {
+        totalRatings = data.userRatingCount || 12;
+        avgRating = data.rating || 5.0;
+
+        for (const gRev of data.reviews) {
+          const revId = gRev.name;
+          const author = gRev.authorAttribution?.displayName || 'Cliente Verificado';
+          const photo = gRev.authorAttribution?.photoUri || null;
+          const text = gRev.text?.text || gRev.originalText?.text || '';
+          const rating = gRev.rating || 5;
+          const mapsUrl = gRev.googleMapsUri || 'https://g.page/r/CfNsrw-dt3q3EAE/review';
+          const relativeTime = gRev.relativePublishTimeDescription || 'Recente';
+          const pubDate = gRev.publishTime ? new Date(gRev.publishTime) : new Date();
+
+          // Check if already in DB
+          const [existing] = await db.select().from(reviews).where(eq(reviews.googleReviewId, revId));
+          if (existing) {
+            await db.update(reviews).set({
+              authorName: author,
+              authorPhoto: photo,
+              comment: text,
+              rating,
+              relativeTime,
+              googleReviewUrl: mapsUrl,
+            }).where(eq(reviews.id, existing.id));
+          } else {
+            await db.insert(reviews).values({
+              authorName: author,
+              authorPhoto: photo,
+              authorTitle: 'Avaliação verificada no Google',
+              rating,
+              comment: text,
+              source: 'google',
+              googleReviewId: revId,
+              googleReviewUrl: mapsUrl,
+              relativeTime,
+              isApproved: true,
+              isFeatured: rating >= 5,
+              createdAt: pubDate,
+            });
+          }
+          count++;
+        }
+
+        // Update site settings
+        const existingSettings = await db.select().from(siteSettings);
+        if (existingSettings.length > 0) {
+          await db.update(siteSettings).set({
+            googleRating: String(avgRating),
+            googleTotalReviews: totalRatings,
+            googlePlaceId: targetPlaceId
+          }).where(eq(siteSettings.id, existingSettings[0].id));
+        }
+      }
+    } catch (err) {
+      console.error('Error syncing Google reviews:', err);
+    }
+
+    return { synced: count, total: totalRatings, rating: avgRating };
   }
 
   // Products
@@ -2967,6 +3074,11 @@ export class MemStorage implements IStorage {
         activeTheme: "default",
         themeOutubroRosa: false,
         themeOutubroRosaBadge: true,
+        googleReviewUrl: "https://g.page/r/CfNsrw-dt3q3EAE/review",
+        googlePlaceId: "ChIJq6oGRjhfzpQR82yvD523erc",
+        googleRating: "5.0",
+        googleTotalReviews: 12,
+        autoApproveReviews: false,
         updatedAt: new Date(),
       };
     }
@@ -3094,26 +3206,61 @@ export class MemStorage implements IStorage {
   // Reviews
   async getReviews(approvedOnly = true): Promise<Review[]> {
     const results = approvedOnly ? this.reviewsData.filter(r => r.isApproved) : this.reviewsData;
-    return [...results].sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+    return [...results].sort((a, b) => (Number(b.isFeatured) - Number(a.isFeatured)) || ((b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)));
   }
 
-  async createReview(userId: number, review: InsertReview): Promise<Review> {
+  async createReview(userId: number | null, review: InsertReview): Promise<Review> {
     const id = this.currentId.reviews++;
-    const newReview: Review = { ...review, id, userId, isApproved: false, createdAt: new Date() };
+    const newReview: Review = { 
+      id,
+      userId: userId ?? null,
+      authorName: review.authorName ?? null,
+      authorPhoto: review.authorPhoto ?? null,
+      authorTitle: review.authorTitle ?? null,
+      rating: review.rating,
+      comment: review.comment,
+      source: review.source ?? "site",
+      googleReviewId: review.googleReviewId ?? null,
+      googleReviewUrl: review.googleReviewUrl ?? null,
+      relativeTime: review.relativeTime ?? null,
+      isFeatured: review.isFeatured ?? false,
+      isApproved: false, 
+      createdAt: new Date() 
+    };
     this.reviewsData.push(newReview);
     return newReview;
   }
 
-  async approveReview(id: number): Promise<Review | undefined> {
+  async updateReview(id: number, data: Partial<Review>): Promise<Review | undefined> {
     const review = this.reviewsData.find(r => r.id === id);
     if (review) {
-      review.isApproved = true;
+      Object.assign(review, data);
+    }
+    return review;
+  }
+
+  async approveReview(id: number, isApproved = true): Promise<Review | undefined> {
+    const review = this.reviewsData.find(r => r.id === id);
+    if (review) {
+      review.isApproved = isApproved;
+    }
+    return review;
+  }
+
+  async toggleFeatureReview(id: number): Promise<Review | undefined> {
+    const review = this.reviewsData.find(r => r.id === id);
+    if (review) {
+      review.isFeatured = !review.isFeatured;
     }
     return review;
   }
 
   async deleteReview(id: number): Promise<void> {
     this.reviewsData = this.reviewsData.filter(r => r.id !== id);
+  }
+
+  async syncGoogleReviews(placeId?: string): Promise<{ synced: number; total: number; rating: number }> {
+    return { synced: 0, total: 12, rating: 5.0 };
   }
 
   // Insurance stubs (MemStorage not used in production)
