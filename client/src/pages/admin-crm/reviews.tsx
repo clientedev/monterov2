@@ -24,7 +24,10 @@ import {
   Filter,
   Eye,
   SlidersHorizontal,
-  X
+  X,
+  Info,
+  Layers,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -33,6 +36,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -71,7 +75,7 @@ export default function ReviewsPage() {
   const settings = adminData?.settings || {
     googleReviewUrl: "https://g.page/r/CfNsrw-dt3q3EAE/review",
     googleRating: "5.0",
-    googleTotalReviews: 12,
+    googleTotalReviews: 54,
     googlePlaceId: "ChIJq6oGRjhfzpQR82yvD523erc",
     autoApproveReviews: false,
   };
@@ -79,6 +83,9 @@ export default function ReviewsPage() {
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved" | "google">("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [batchText, setBatchText] = useState("");
+  const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
   const [selectedReviewText, setSelectedReviewText] = useState<{ author: string; text: string } | null>(null);
 
   // New review form state
@@ -139,6 +146,58 @@ export default function ReviewsPage() {
     );
   };
 
+  // Processador de importação em lote (linhas com: Nome | Comentário ou blocos de texto)
+  const handleBatchImport = async () => {
+    if (!batchText.trim()) return;
+    setIsBatchSubmitting(true);
+
+    try {
+      // Divide por linhas ou quebras duplas
+      const entries = batchText
+        .split("\n\n")
+        .map((b) => b.trim())
+        .filter(Boolean);
+
+      for (const entry of entries) {
+        // Tenta dividir se tiver "Nome: ... Comentário: ..." ou "Nome | Comentário"
+        let name = "Cliente Verificado";
+        let commentText = entry;
+        let stars = 5;
+
+        if (entry.includes("|")) {
+          const parts = entry.split("|");
+          name = parts[0].trim();
+          commentText = parts.slice(1).join("|").trim();
+        } else if (entry.includes("\n")) {
+          const lines = entry.split("\n");
+          name = lines[0].replace(/^(Nome:|Autor:)/i, "").trim();
+          commentText = lines.slice(1).join(" ").trim();
+        }
+
+        if (commentText) {
+          await createReviewMutation.mutateAsync({
+            authorName: name,
+            authorTitle: "Avaliação verificada no Google",
+            rating: stars,
+            comment: commentText,
+            source: "google",
+            isApproved: true,
+            isFeatured: true,
+            relativeTime: "Recente",
+            googleReviewUrl: settings.googleReviewUrl,
+          });
+        }
+      }
+
+      setBatchText("");
+      setIsBatchModalOpen(false);
+    } catch (err) {
+      console.error("Erro na importação em lote:", err);
+    } finally {
+      setIsBatchSubmitting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-24 space-y-4">
@@ -155,14 +214,14 @@ export default function ReviewsPage() {
         <div>
           <h1 className="text-3xl font-display font-bold text-slate-900 flex items-center gap-3">
             <Star className="w-8 h-8 text-amber-500 fill-amber-500" />
-            Controle de Avaliações & Google Reviews
+            Controle de Avaliações & Letreiro Google
           </h1>
           <p className="text-slate-600 mt-1">
-            Gerencie, modere e espelhe as avaliações do Google Meu Negócio e do site em tempo real
+            Gerencie, modere e espelhe as avaliações no letreiro animado da página inicial
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Button
             onClick={handleSyncGoogle}
             disabled={syncGoogleMutation.isPending}
@@ -173,7 +232,16 @@ export default function ReviewsPage() {
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            <span>Sincronizar com Google</span>
+            <span>Sincronizar Google</span>
+          </Button>
+
+          <Button
+            onClick={() => setIsBatchModalOpen(true)}
+            variant="outline"
+            className="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold flex items-center gap-2"
+          >
+            <Layers className="w-4 h-4 text-[#08454c]" />
+            <span>Importar em Lote</span>
           </Button>
 
           <Button
@@ -191,7 +259,7 @@ export default function ReviewsPage() {
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-center flex-shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-center shrink-0">
                 <GoogleIcon className="w-8 h-8" />
               </div>
               <div>
@@ -204,7 +272,7 @@ export default function ReviewsPage() {
                 <p className="text-xs text-slate-500 mt-0.5">
                   Place ID: <span className="font-mono text-slate-700">{settings.googlePlaceId}</span> • Nota Média:{" "}
                   <strong className="text-amber-600">{settings.googleRating} ★</strong> ({settings.googleTotalReviews}{" "}
-                  avaliações)
+                  avaliações totais registradas)
                 </p>
               </div>
             </div>
@@ -237,15 +305,28 @@ export default function ReviewsPage() {
         </CardContent>
       </Card>
 
+      {/* Explicação Importante sobre a limitação de 5 avaliações do Google API */}
+      <Alert className="bg-amber-50/80 border-amber-200/80 text-amber-900 rounded-2xl">
+        <Info className="h-4 w-4 text-amber-600" />
+        <AlertTitle className="font-bold text-sm text-amber-950 flex items-center gap-2">
+          Por que a sincronização do Google retorna 5 avaliações por vez?
+        </AlertTitle>
+        <AlertDescription className="text-xs text-amber-900/90 leading-relaxed mt-1">
+          Por política oficial e limitação técnica da própria Google (Google Places API), qualquer consulta pública retorna até <strong>5 avaliações mais recentes/relevantes</strong>.
+          <br className="hidden sm:inline" /> 
+          <strong>Como ter todas no site?</strong> O banco de dados da Monteiro <strong>armazena e acumula permanentemente</strong> todas as avaliações já sincronizadas, todas as enviadas pelos clientes no site e permite usar o botão <strong>"Importar em Lote"</strong> para adicionar rapidamente qualquer outra avaliação do seu perfil para rodar no letreiro contínuo!
+        </AlertDescription>
+      </Alert>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-slate-100 shadow-xs rounded-2xl bg-white p-5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Geral</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total no Banco</span>
             <MessageSquare className="w-4 h-4 text-slate-400" />
           </div>
           <div className="mt-2 text-2xl font-bold text-slate-900">{reviews.length}</div>
-          <p className="text-[11px] text-slate-400 mt-1">Todas as avaliações no banco</p>
+          <p className="text-[11px] text-slate-400 mt-1">Cadastradas no sistema</p>
         </Card>
 
         <Card className="border-slate-100 shadow-xs rounded-2xl bg-white p-5">
@@ -254,16 +335,16 @@ export default function ReviewsPage() {
             <GoogleIcon className="w-4 h-4" />
           </div>
           <div className="mt-2 text-2xl font-bold text-blue-600">{googleReviews.length}</div>
-          <p className="text-[11px] text-slate-400 mt-1">Sincronizadas do Google Maps</p>
+          <p className="text-[11px] text-slate-400 mt-1">Sincronizadas ou importadas</p>
         </Card>
 
         <Card className="border-slate-100 shadow-xs rounded-2xl bg-white p-5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Aprovadas no Site</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">No Letreiro do Site</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="mt-2 text-2xl font-bold text-emerald-600">{approvedReviews.length}</div>
-          <p className="text-[11px] text-slate-400 mt-1">Visíveis publicamente</p>
+          <p className="text-[11px] text-slate-400 mt-1">Ativas no carrossel</p>
         </Card>
 
         <Card className="border-slate-100 shadow-xs rounded-2xl bg-white p-5">
@@ -282,7 +363,7 @@ export default function ReviewsPage() {
           <div>
             <CardTitle className="text-lg font-bold text-slate-900">Moderação de Avaliações</CardTitle>
             <CardDescription>
-              Aprove, oculte, destaque no topo ou remova avaliações de clientes
+              Aprove, oculte, destaque no topo ou remova avaliações de clientes que rodam no letreiro
             </CardDescription>
           </div>
 
@@ -362,13 +443,13 @@ export default function ReviewsPage() {
                             <img
                               src={review.authorPhoto}
                               alt={review.authorName || "Cliente"}
-                              className="w-9 h-9 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                              className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
                               onError={(e) => {
                                 (e.target as HTMLElement).style.display = "none";
                               }}
                             />
                           ) : (
-                            <div className="w-9 h-9 rounded-full bg-[#08454c]/10 text-[#08454c] font-bold text-xs flex items-center justify-center flex-shrink-0 border border-[#08454c]/15">
+                            <div className="w-9 h-9 rounded-full bg-[#08454c]/10 text-[#08454c] font-bold text-xs flex items-center justify-center shrink-0 border border-[#08454c]/15">
                               {(review.authorName || "C").slice(0, 1).toUpperCase()}
                             </div>
                           )}
@@ -426,7 +507,7 @@ export default function ReviewsPage() {
                       <TableCell className="text-center">
                         {review.isApproved ? (
                           <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
-                            Publicado
+                            No Letreiro
                           </Badge>
                         ) : (
                           <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold animate-pulse">
@@ -461,7 +542,7 @@ export default function ReviewsPage() {
                               variant="ghost"
                               className="h-8 w-8 text-blue-600 hover:bg-blue-50"
                               asChild
-                              title="Ver avaliação original no Google"
+                              title="Ver avaliação original no Google Maps"
                             >
                               <a href={review.googleReviewUrl} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="w-3.5 h-3.5" />
@@ -514,6 +595,65 @@ export default function ReviewsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Modal: Importar em Lote */}
+      <Dialog open={isBatchModalOpen} onOpenChange={setIsBatchModalOpen}>
+        <DialogContent className="sm:max-w-xl rounded-3xl p-6 bg-white border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-[#08454c]" />
+              Importar Avaliações do Google em Lote
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 leading-relaxed mt-1">
+              Cole abaixo as avaliações do seu perfil do Google Maps para incluir de uma só vez no letreiro do site.
+              Você pode separar cada avaliação por uma linha em branco. Formato sugerido:
+              <br />
+              <code className="bg-slate-100 px-2 py-0.5 rounded text-[11px] text-slate-700 font-mono mt-1 inline-block">
+                Nome do Cliente | Texto do comentário
+              </code>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-2">
+            <Textarea
+              placeholder={`Exemplo:\nCarlos Mendes | Excelente atendimento da Carol, muito prestativa!\n\nMariana Souza | Contratei meu plano de saúde e foi super rápido e descomplicado.`}
+              value={batchText}
+              onChange={(e) => setBatchText(e.target.value)}
+              className="min-h-[180px] text-xs font-mono rounded-xl resize-none p-3.5 leading-relaxed"
+            />
+
+            <div className="bg-slate-50 p-3 rounded-xl text-[11px] text-slate-500 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Todas as avaliações importadas serão marcadas automaticamente como 5 estrelas e aprovadas para o letreiro.</span>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsBatchModalOpen(false)}
+              className="rounded-xl text-xs font-bold"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBatchImport}
+              disabled={isBatchSubmitting || !batchText.trim()}
+              className="bg-[#08454c] text-white hover:bg-[#08454c]/90 rounded-xl text-xs font-bold px-5"
+            >
+              {isBatchSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                  Importando...
+                </>
+              ) : (
+                "Importar Avaliações Agora"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal: Full Review Text Viewer */}
       <Dialog open={!!selectedReviewText} onOpenChange={() => setSelectedReviewText(null)}>

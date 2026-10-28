@@ -295,4 +295,13 @@
 }
 [data-theme="outubro-rosa"] .premium-card:hover {
   box-shadow: 0 20px 50px rgba(190, 95, 119, 0.12) !important;
+}
+
+/* Utilitário para ocultar barras de rolagem nativas preservando a rolagem suave */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
