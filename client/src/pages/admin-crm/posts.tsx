@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
     Loader2, Plus, Trash2, Pencil, Image as ImageIcon, Star,
-    Calendar, Clock, Instagram, FileText, CheckCircle2, Sparkles, ExternalLink
+    Calendar, Clock, Instagram, FileText, CheckCircle2, Sparkles, ExternalLink, Check
 } from "lucide-react";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
@@ -166,49 +166,62 @@ export default function PostsPage() {
                 setOpen(val);
                 if (!val) setEditingPost(null);
             }}>
-                <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-[#163b52]">
-                            {editingPost ? "Editar Publicação" : "Criar Nova Publicação"}
-                        </DialogTitle>
-                        <DialogDescription>
-                            Escolha se deseja publicar um Artigo completo ou incorporar um Post diretamente do Instagram.
-                        </DialogDescription>
+                <DialogContent className="max-w-4xl w-[96vw] max-h-[92vh] p-0 overflow-hidden flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 bg-white">
+                    <DialogHeader className="px-5 sm:px-8 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-50/70 shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-[#08454c]/10 text-[#08454c] border border-[#08454c]/20 shrink-0">
+                                <Sparkles className="w-5 h-5 text-[#08454c]" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-xl sm:text-2xl font-bold text-[#163b52] tracking-tight">
+                                    {editingPost ? "Editar Publicação" : "Nova Publicação"}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                                    Publique um artigo completo ou incorpore um post do Instagram oficial.
+                                </DialogDescription>
+                            </div>
+                        </div>
                     </DialogHeader>
-                    <PostForm
-                        initialData={editingPost}
-                        existingPosts={posts || []}
-                        onSubmit={(data: InsertPost) => {
-                            // Trata postagens do Instagram automaticamente
-                            if (data.instagramUrl) {
-                                const id = extractInstagramId(data.instagramUrl);
-                                if (id && (!data.coverImage || data.coverImage.includes("unsplash"))) {
-                                    data.coverImage = `/api/instagram-preview/${id}`;
+                    <div className="overflow-y-auto px-5 sm:px-8 py-6 flex-1 bg-white">
+                        <PostForm
+                            initialData={editingPost}
+                            existingPosts={posts || []}
+                            onCancel={() => {
+                                setOpen(false);
+                                setEditingPost(null);
+                            }}
+                            onSubmit={(data: InsertPost) => {
+                                // Trata postagens do Instagram automaticamente
+                                if (data.instagramUrl) {
+                                    const id = extractInstagramId(data.instagramUrl);
+                                    if (id && (!data.coverImage || data.coverImage.includes("unsplash"))) {
+                                        data.coverImage = `/api/instagram-preview/${id}`;
+                                    }
+                                    if (data.videoUrl && (data.videoUrl.includes("insta_reel_preview") || data.videoUrl.includes("carol_anim"))) {
+                                        data.videoUrl = null;
+                                    }
                                 }
-                                if (data.videoUrl && (data.videoUrl.includes("insta_reel_preview") || data.videoUrl.includes("carol_anim"))) {
-                                    data.videoUrl = null;
+                                if (data.instagramUrl && !data.coverImage) {
+                                    const id = extractInstagramId(data.instagramUrl);
+                                    data.coverImage = id ? getInstagramThumbnailUrl(id) : "/assets/reel_thumb_DaySDnWBdW6.jpg";
                                 }
-                            }
-                            if (data.instagramUrl && !data.coverImage) {
-                                const id = extractInstagramId(data.instagramUrl);
-                                data.coverImage = id ? getInstagramThumbnailUrl(id) : "/assets/reel_thumb_DaySDnWBdW6.jpg";
-                            }
-                            if (!data.coverImage) {
-                                toast({
-                                    title: "Imagem necessária",
-                                    description: "Por favor, selecione uma imagem de capa para o post.",
-                                    variant: "destructive"
-                                });
-                                return;
-                            }
-                            if (editingPost) {
-                                updateMutation.mutate({ id: editingPost.id, data });
-                            } else {
-                                createMutation.mutate(data);
-                            }
-                        }}
-                        isSubmitting={createMutation.isPending || updateMutation.isPending}
-                    />
+                                if (!data.coverImage) {
+                                    toast({
+                                        title: "Imagem necessária",
+                                        description: "Por favor, selecione uma imagem de capa para o post.",
+                                        variant: "destructive"
+                                    });
+                                    return;
+                                }
+                                if (editingPost) {
+                                    updateMutation.mutate({ id: editingPost.id, data });
+                                } else {
+                                    createMutation.mutate(data);
+                                }
+                            }}
+                            isSubmitting={createMutation.isPending || updateMutation.isPending}
+                        />
+                    </div>
                 </DialogContent>
             </Dialog>
 
@@ -346,7 +359,19 @@ function slugify(text: string): string {
         .replace(/^-+|-+$/g, "");
 }
 
-function PostForm({ initialData, existingPosts = [], onSubmit, isSubmitting }: { initialData?: any; existingPosts?: Post[]; onSubmit: (data: InsertPost) => void; isSubmitting: boolean }) {
+function PostForm({
+    initialData,
+    existingPosts = [],
+    onCancel,
+    onSubmit,
+    isSubmitting
+}: {
+    initialData?: any;
+    existingPosts?: Post[];
+    onCancel?: () => void;
+    onSubmit: (data: InsertPost) => void;
+    isSubmitting: boolean;
+}) {
     const { toast } = useToast();
     const initialIsInsta = !!(initialData?.instagramUrl || initialData?.postType === "instagram");
     const [activeTab, setActiveTab] = useState<"article" | "instagram">(initialIsInsta ? "instagram" : "article");
@@ -476,42 +501,121 @@ function PostForm({ initialData, existingPosts = [], onSubmit, isSubmitting }: {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleFormSubmit, onError)} className="space-y-6">
-                {/* Visual Mode Selector (Tabs) */}
-                <Tabs
-                    value={activeTab}
-                    onValueChange={(val: any) => {
-                        setActiveTab(val);
-                        form.setValue("postType", val);
-                        if (val === "article" && !initialData?.instagramUrl) {
-                            form.setValue("instagramUrl", "");
-                        }
-                    }}
-                    className="w-full"
-                >
-                    <TabsList className="grid w-full grid-cols-2 p-1 bg-slate-100 rounded-xl h-12">
-                        <TabsTrigger
-                            value="article"
-                            className="flex items-center justify-center gap-2 rounded-lg font-bold text-sm data-[state=active]:bg-white data-[state=active]:text-[#08454c] data-[state=active]:shadow-sm transition-all"
-                        >
-                            <FileText className="w-4 h-4" />
-                            <span>Artigo Completo</span>
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="instagram"
-                            className="flex items-center justify-center gap-2 rounded-lg font-bold text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#f09433] data-[state=active]:via-[#dc2743] data-[state=active]:to-[#bc1888] data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
-                        >
-                            <Instagram className="w-4 h-4" />
-                            <span>Post do Instagram</span>
-                            <span className="text-[10px] uppercase tracking-wider py-0.5 px-1.5 rounded-full bg-white/20 ml-1">
-                                Novo
-                            </span>
-                        </TabsTrigger>
-                    </TabsList>
+                {/* Seletor Visual de Tipo de Publicação (Cards de Alto Contraste) */}
+                <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                            Tipo de Publicação
+                        </Label>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                            Selecione o formato desejado
+                        </span>
+                    </div>
 
-                    {/* ========================================================= */}
-                    {/* ABA INSTAGRAM: Cole o link e entra perfeitamente no site */}
-                    {/* ========================================================= */}
-                    <TabsContent value="instagram" className="mt-5 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        {/* Opção Artigo Completo */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setActiveTab("article");
+                                form.setValue("postType", "article");
+                                if (!initialData?.instagramUrl) {
+                                    form.setValue("instagramUrl", "");
+                                }
+                            }}
+                            className={`group relative p-4 rounded-2xl border-2 text-left transition-all flex items-start gap-3.5 cursor-pointer ${
+                                activeTab === "article"
+                                    ? "border-[#08454c] bg-teal-50/70 shadow-sm ring-2 ring-[#08454c]/15"
+                                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80"
+                            }`}
+                        >
+                            <div className={`p-2.5 rounded-xl shrink-0 transition-colors ${
+                                activeTab === "article"
+                                    ? "bg-[#08454c] text-white shadow-sm"
+                                    : "bg-slate-100 text-slate-600 group-hover:bg-slate-200"
+                            }`}>
+                                <FileText className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0 pr-6">
+                                <div className="flex items-center gap-2">
+                                    <span className={`font-bold text-sm leading-tight ${
+                                        activeTab === "article" ? "text-[#08454c]" : "text-slate-900"
+                                    }`}>
+                                        Artigo Completo
+                                    </span>
+                                    {activeTab === "article" && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#08454c] text-white">
+                                            Selecionado
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                    Redija texto tradicional com imagens, vídeos, títulos e formatação livre.
+                                </p>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                activeTab === "article"
+                                    ? "border-[#08454c] bg-[#08454c] text-white"
+                                    : "border-slate-300 bg-white group-hover:border-slate-400"
+                            }`}>
+                                {activeTab === "article" && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                        </button>
+
+                        {/* Opção Post do Instagram */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setActiveTab("instagram");
+                                form.setValue("postType", "instagram");
+                            }}
+                            className={`group relative p-4 rounded-2xl border-2 text-left transition-all flex items-start gap-3.5 cursor-pointer ${
+                                activeTab === "instagram"
+                                    ? "border-[#dc2743] bg-gradient-to-br from-pink-50/90 via-purple-50/40 to-amber-50/40 shadow-sm ring-2 ring-[#dc2743]/20"
+                                    : "border-slate-200 bg-white hover:border-pink-300 hover:bg-pink-50/30"
+                            }`}
+                        >
+                            <div className={`p-2.5 rounded-xl shrink-0 transition-all ${
+                                activeTab === "instagram"
+                                    ? "bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white shadow-sm"
+                                    : "bg-pink-100 text-pink-700 group-hover:bg-pink-200"
+                            }`}>
+                                <Instagram className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0 pr-6">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className={`font-bold text-sm leading-tight ${
+                                        activeTab === "instagram" ? "text-[#b91c1c]" : "text-slate-900"
+                                    }`}>
+                                        Post do Instagram
+                                    </span>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                        activeTab === "instagram"
+                                            ? "bg-[#dc2743] text-white"
+                                            : "bg-pink-100 text-pink-700 border border-pink-200"
+                                    }`}>
+                                        {activeTab === "instagram" ? "Selecionado" : "Novo"}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                    Cole o link de uma foto ou Reel para incorporar o card social automático no site.
+                                </p>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                activeTab === "instagram"
+                                    ? "border-[#dc2743] bg-[#dc2743] text-white"
+                                    : "border-slate-300 bg-white group-hover:border-pink-400"
+                            }`}>
+                                {activeTab === "instagram" && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Conteúdo da Aba Instagram */}
+                {activeTab === "instagram" && (
+                    <div className="space-y-6 pt-2 animate-in fade-in-50 duration-200">
                         <div className="p-4 rounded-2xl bg-gradient-to-br from-pink-50 via-purple-50 to-amber-50 border border-pink-200/70 space-y-3">
                             <div className="flex items-center gap-2 text-pink-700 font-bold text-sm">
                                 <Sparkles className="w-4 h-4" />
@@ -751,12 +855,12 @@ function PostForm({ initialData, existingPosts = [], onSubmit, isSubmitting }: {
                                 )}
                             />
                         </div>
-                    </TabsContent>
+                    </div>
+                )}
 
-                    {/* ========================================================= */}
-                    {/* ABA ARTIGO: Formulário tradicional de artigo longo */}
-                    {/* ========================================================= */}
-                    <TabsContent value="article" className="mt-5 space-y-4">
+                {/* Conteúdo da Aba Artigo */}
+                {activeTab === "article" && (
+                    <div className="space-y-5 pt-2 animate-in fade-in-50 duration-200">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
@@ -982,29 +1086,68 @@ function PostForm({ initialData, existingPosts = [], onSubmit, isSubmitting }: {
                                 )}
                             />
                         </div>
-                    </TabsContent>
-                </Tabs>
+                    </div>
+                )}
 
-                {/* Botão de Envio adaptativo */}
-                <Button
-                    type="submit"
-                    className={`w-full text-white font-bold py-6 text-base shadow-lg transition-all ${
-                        activeTab === "instagram"
-                            ? "bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-95"
-                            : "bg-[#08454c] hover:bg-[#06373d]"
-                    }`}
-                    disabled={isSubmitting}
-                >
-                    {isSubmitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                    {activeTab === "instagram" ? (
-                        <span className="flex items-center gap-2">
-                            <Instagram className="w-5 h-5" />
-                            {initialData ? "Atualizar Post do Instagram" : "Publicar Post do Instagram"}
-                        </span>
-                    ) : (
-                        <span>{initialData ? "Atualizar Artigo" : "Publicar Artigo"}</span>
-                    )}
-                </Button>
+                {/* Rodapé Fixo de Ações com Alto Contraste e Responsividade */}
+                <div className="sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-5 sm:px-8 py-4 -mx-5 sm:-mx-8 -mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] z-30">
+                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
+                        {onCancel && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={onCancel}
+                                className="text-slate-600 hover:text-slate-900 border-slate-300 font-medium"
+                            >
+                                Cancelar
+                            </Button>
+                        )}
+                        <FormField
+                            control={form.control}
+                            name="isFeatured"
+                            render={({ field }) => (
+                                <div className="flex items-center gap-2">
+                                    <Switch
+                                        id="isFeaturedSwitch"
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                    <Label htmlFor="isFeaturedSwitch" className="text-xs font-semibold text-slate-700 cursor-pointer flex items-center gap-1 select-none">
+                                        <Star className={`w-3.5 h-3.5 ${field.value ? "text-amber-500 fill-amber-500" : "text-slate-400"}`} />
+                                        Destacar na Home
+                                    </Label>
+                                </div>
+                            )}
+                        />
+                    </div>
+
+                    <Button
+                        type="submit"
+                        className={`w-full sm:w-auto min-w-[220px] text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all h-11 ${
+                            activeTab === "instagram"
+                                ? "bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-95 shadow-pink-500/25"
+                                : "bg-[#08454c] hover:bg-[#06373d] shadow-teal-900/20"
+                        }`}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
+                                Salvando...
+                            </>
+                        ) : activeTab === "instagram" ? (
+                            <span className="flex items-center justify-center gap-2 text-white font-bold">
+                                <Instagram className="w-4 h-4 text-white" />
+                                {initialData ? "Atualizar Post do Instagram" : "Publicar Post do Instagram"}
+                            </span>
+                        ) : (
+                            <span className="flex items-center justify-center gap-2 text-white font-bold">
+                                <FileText className="w-4 h-4 text-white" />
+                                {initialData ? "Atualizar Artigo" : "Publicar Artigo Completo"}
+                            </span>
+                        )}
+                    </Button>
+                </div>
             </form>
         </Form>
     );
