@@ -92,7 +92,7 @@ import {
   type LeadDispatchGroup,
   type InsertLeadDispatchGroup,
 } from "@shared/schema";
-import { sql, and, desc, eq, asc, lte, or, isNull, inArray, gte, like } from "drizzle-orm";
+import { sql, and, desc, eq, asc, lte, or, isNull, inArray, gte, like, ne } from "drizzle-orm";
 
 export function normalizePhone(phone: string | null | undefined): string {
   if (!phone) return "";
@@ -512,10 +512,46 @@ export class DatabaseStorage implements IStorage {
     return this.fallbackPosts.find((p) => p.slug === slug);
   }
 
+  private async ensureUniqueSlug(baseSlug?: string, title?: string, excludeId?: number): Promise<string> {
+    let cleanSlug = (baseSlug || title || "post")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    if (!cleanSlug) {
+      cleanSlug = `post-${Date.now()}`;
+    }
+
+    let candidate = cleanSlug;
+    let suffix = 2;
+
+    while (true) {
+      const existing = await db
+        .select({ id: posts.id })
+        .from(posts)
+        .where(
+          excludeId
+            ? and(eq(posts.slug, candidate), ne(posts.id, excludeId))
+            : eq(posts.slug, candidate)
+        );
+
+      if (existing.length === 0) {
+        return candidate;
+      }
+
+      candidate = `${cleanSlug}-${suffix}`;
+      suffix++;
+    }
+  }
+
   async createPost(post: InsertPost): Promise<Post> {
     this.invalidatePostsCache();
+    const uniqueSlug = await this.ensureUniqueSlug(post.slug, post.title);
     const postToInsert = {
       ...post,
+      slug: uniqueSlug,
       isApproved: post.isApproved ?? true,
     };
     const [newPost] = await db.insert(posts).values(postToInsert).returning();
@@ -524,7 +560,11 @@ export class DatabaseStorage implements IStorage {
 
   async updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined> {
     this.invalidatePostsCache();
-    const [updated] = await db.update(posts).set(post).where(eq(posts.id, id)).returning();
+    const postToUpdate = { ...post };
+    if (postToUpdate.slug) {
+      postToUpdate.slug = await this.ensureUniqueSlug(postToUpdate.slug, postToUpdate.title, id);
+    }
+    const [updated] = await db.update(posts).set(postToUpdate).where(eq(posts.id, id)).returning();
     return updated;
   }
 
@@ -2528,10 +2568,34 @@ export class MemStorage implements IStorage {
     return this.posts.find((p) => p.slug === slug);
   }
 
+  private ensureUniqueSlugMem(baseSlug?: string, title?: string, excludeId?: number): string {
+    let cleanSlug = (baseSlug || title || "post")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    if (!cleanSlug) {
+      cleanSlug = `post-${Date.now()}`;
+    }
+
+    let candidate = cleanSlug;
+    let suffix = 2;
+
+    while (this.posts.some((p) => p.slug === candidate && (excludeId ? p.id !== excludeId : true))) {
+      candidate = `${cleanSlug}-${suffix}`;
+      suffix++;
+    }
+    return candidate;
+  }
+
   async createPost(post: InsertPost): Promise<Post> {
     const id = this.currentId.posts++;
+    const uniqueSlug = this.ensureUniqueSlugMem(post.slug, post.title);
     const newPost: Post = {
       ...post,
+      slug: uniqueSlug,
       id,
       likes: 0,
       videoUrl: post.videoUrl || null,
@@ -2550,7 +2614,11 @@ export class MemStorage implements IStorage {
   async updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined> {
     const index = this.posts.findIndex((p) => p.id === id);
     if (index === -1) return undefined;
-    this.posts[index] = { ...this.posts[index], ...post };
+    const postToUpdate = { ...post };
+    if (postToUpdate.slug) {
+      postToUpdate.slug = this.ensureUniqueSlugMem(postToUpdate.slug, postToUpdate.title, id);
+    }
+    this.posts[index] = { ...this.posts[index], ...postToUpdate };
     return this.posts[index];
   }
 

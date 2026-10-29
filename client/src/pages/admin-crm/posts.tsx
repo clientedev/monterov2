@@ -177,6 +177,7 @@ export default function PostsPage() {
                     </DialogHeader>
                     <PostForm
                         initialData={editingPost}
+                        existingPosts={posts || []}
                         onSubmit={(data: InsertPost) => {
                             // Trata postagens do Instagram automaticamente
                             if (data.instagramUrl) {
@@ -336,7 +337,16 @@ export default function PostsPage() {
     );
 }
 
-function PostForm({ initialData, onSubmit, isSubmitting }: any) {
+function slugify(text: string): string {
+    return (text || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+
+function PostForm({ initialData, existingPosts = [], onSubmit, isSubmitting }: { initialData?: any; existingPosts?: Post[]; onSubmit: (data: InsertPost) => void; isSubmitting: boolean }) {
     const { toast } = useToast();
     const initialIsInsta = !!(initialData?.instagramUrl || initialData?.postType === "instagram");
     const [activeTab, setActiveTab] = useState<"article" | "instagram">(initialIsInsta ? "instagram" : "article");
@@ -447,12 +457,25 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
         });
     };
 
+    const handleFormSubmit = (data: InsertPost) => {
+        let finalSlug = (data.slug || "").trim();
+        if (!finalSlug) {
+            finalSlug = slugify(data.title) || `post-${Date.now()}`;
+        } else {
+            finalSlug = slugify(finalSlug);
+        }
+        onSubmit({
+            ...data,
+            slug: finalSlug,
+        });
+    };
+
     const watchedInstaUrl = form.watch("instagramUrl") || instaLinkInput;
     const instaInfo = extractInstagramInfo(watchedInstaUrl);
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleFormSubmit, onError)} className="space-y-6">
                 {/* Visual Mode Selector (Tabs) */}
                 <Tabs
                     value={activeTab}
@@ -565,7 +588,18 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                                     <FormItem>
                                         <FormLabel>Título de Exibição</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Título descritivo do post" {...field} />
+                                            <Input
+                                                placeholder="Título descritivo do post"
+                                                {...field}
+                                                onChange={(e) => {
+                                                    field.onChange(e);
+                                                    const curSlug = form.getValues("slug");
+                                                    const prevAuto = slugify(field.value);
+                                                    if (!initialData && (!curSlug || curSlug === prevAuto)) {
+                                                        form.setValue("slug", slugify(e.target.value), { shouldValidate: true });
+                                                    }
+                                                }}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -575,15 +609,38 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                             <FormField
                                 control={form.control}
                                 name="slug"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Slug (URL amigável)</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="ex: post-insta-saude-familiar" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                                render={({ field }) => {
+                                    const isDuplicate = existingPosts?.some(
+                                        (p: Post) => p.slug === field.value && p.id !== initialData?.id
+                                    );
+                                    return (
+                                        <FormItem>
+                                            <FormLabel className="flex items-center justify-between">
+                                                <span>Slug (URL amigável)</span>
+                                                {isDuplicate && (
+                                                    <span className="text-[10px] text-amber-600 font-semibold">
+                                                        (Já existe: sufixo automático)
+                                                    </span>
+                                                )}
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="ex: post-insta-saude-familiar"
+                                                    {...field}
+                                                    onChange={(e) => {
+                                                        field.onChange(slugify(e.target.value));
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            {isDuplicate && (
+                                                <p className="text-[11px] text-amber-600">
+                                                    Esse slug já existe. Ao salvar, um sufixo numérico será adicionado para não conflitar.
+                                                </p>
+                                            )}
+                                            <FormMessage />
+                                        </FormItem>
+                                    );
+                                }}
                             />
                         </div>
 
@@ -708,7 +765,18 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                                     <FormItem>
                                         <FormLabel>Título</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Título do artigo" {...field} />
+                                            <Input
+                                                placeholder="Título do artigo"
+                                                {...field}
+                                                onChange={(e) => {
+                                                    field.onChange(e);
+                                                    const curSlug = form.getValues("slug");
+                                                    const prevAuto = slugify(field.value);
+                                                    if (!initialData && (!curSlug || curSlug === prevAuto)) {
+                                                        form.setValue("slug", slugify(e.target.value), { shouldValidate: true });
+                                                    }
+                                                }}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -717,15 +785,38 @@ function PostForm({ initialData, onSubmit, isSubmitting }: any) {
                             <FormField
                                 control={form.control}
                                 name="slug"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Slug (URL)</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="titulo-do-artigo" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                                render={({ field }) => {
+                                    const isDuplicate = existingPosts?.some(
+                                        (p: Post) => p.slug === field.value && p.id !== initialData?.id
+                                    );
+                                    return (
+                                        <FormItem>
+                                            <FormLabel className="flex items-center justify-between">
+                                                <span>Slug (URL)</span>
+                                                {isDuplicate && (
+                                                    <span className="text-[10px] text-amber-600 font-semibold">
+                                                        (Já existe: sufixo automático)
+                                                    </span>
+                                                )}
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="titulo-do-artigo"
+                                                    {...field}
+                                                    onChange={(e) => {
+                                                        field.onChange(slugify(e.target.value));
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            {isDuplicate && (
+                                                <p className="text-[11px] text-amber-600">
+                                                    Esse slug já existe em outro post. Ao salvar, um sufixo numérico será adicionado para não conflitar.
+                                                </p>
+                                            )}
+                                            <FormMessage />
+                                        </FormItem>
+                                    );
+                                }}
                             />
                         </div>
 

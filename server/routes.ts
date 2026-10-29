@@ -584,6 +584,14 @@ export async function registerRoutes(
   app.patch("/api/posts/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       console.log(`[POSTS] Updating post ${req.params.id}... Payload size: ${JSON.stringify(req.body).length} bytes`);
+      if (req.body.slug && typeof req.body.slug === "string") {
+        req.body.slug = req.body.slug
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      }
       const input = insertPostSchema.partial().parse(req.body);
       const post = await storage.updatePost(parseInt(req.params.id), input);
       if (!post) return res.status(404).json({ message: "Post not found" });
@@ -592,6 +600,9 @@ export async function registerRoutes(
       console.error(`[POSTS] Update failed for post ${req.params.id}:`, error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors });
+      }
+      if (error?.code === "23505" || error?.cause?.code === "23505") {
+        return res.status(409).json({ message: "Já existe uma publicação com este slug. Por favor, altere o slug." });
       }
       res.status(500).json({ message: error.message || "Internal server error" });
     }
@@ -605,8 +616,29 @@ export async function registerRoutes(
 
   app.post("/api/posts", isAuthenticated, async (req, res) => {
     try {
+      let rawSlug = req.body.slug && typeof req.body.slug === "string" ? req.body.slug.trim() : "";
+      if (!rawSlug && req.body.title) {
+        rawSlug = req.body.title
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      }
+      if (!rawSlug) {
+        rawSlug = `post-${Date.now()}`;
+      } else {
+        rawSlug = rawSlug
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      }
+
       const input = insertPostSchema.parse({
         ...req.body,
+        slug: rawSlug,
         isApproved: req.body.isApproved ?? true,
       });
       console.log(`[POSTS] Creating new post... Payload size: ${JSON.stringify(input).length} bytes`);
@@ -617,6 +649,9 @@ export async function registerRoutes(
       console.error("[POSTS] Creation failed:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors });
+      }
+      if (error?.code === "23505" || error?.cause?.code === "23505") {
+        return res.status(409).json({ message: "Já existe uma publicação com este slug. O sistema tentou ajustar, mas tente alterar o título ou slug." });
       }
       // Include the underlying DB cause in the response for easier debugging
       const cause = error?.cause?.message || error?.cause?.detail || "";
