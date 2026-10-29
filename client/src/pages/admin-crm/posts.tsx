@@ -45,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { InstagramEmbed, extractInstagramInfo } from "@/components/InstagramEmbed";
 import { extractInstagramId, getInstagramPermalink, getInstagramThumbnailUrl } from "@/utils/instagramUtils";
+import { clearPostsCache } from "@/hooks/use-content";
 
 function toDatetimeLocalString(dateInput?: Date | string | null): string {
     if (!dateInput) {
@@ -81,6 +82,7 @@ export default function PostsPage() {
             return await res.json();
         },
         onSuccess: () => {
+            clearPostsCache();
             queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
             toast({ title: "Post criado com sucesso!" });
             setOpen(false);
@@ -100,6 +102,7 @@ export default function PostsPage() {
             return await res.json();
         },
         onSuccess: () => {
+            clearPostsCache();
             queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
             toast({ title: "Post atualizado com sucesso!" });
             setOpen(false);
@@ -119,6 +122,7 @@ export default function PostsPage() {
             await apiRequest("DELETE", `/api/posts/${id}`);
         },
         onSuccess: () => {
+            clearPostsCache();
             queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
             toast({ title: "Post excluído com sucesso" });
         },
@@ -489,8 +493,10 @@ function PostForm({
         } else {
             finalSlug = slugify(finalSlug);
         }
+        clearPostsCache();
         onSubmit({
             ...data,
+            isApproved: true,
             slug: finalSlug,
         });
     };

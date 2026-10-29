@@ -70,13 +70,14 @@ export default function Home() {
     },
   ];
 
-  // Filter only published posts (publishedAt <= now)
+  // Filter only published posts (with 4h timezone tolerance)
   const now = new Date();
+  const gracePeriod = new Date(now.getTime() + 4 * 60 * 60 * 1000);
   const sourcePosts = (posts && posts.length > 0) ? posts : fallbackPosts;
   const validPosts = sourcePosts.filter((p: any) => {
     if (!p.publishedAt) return true;
     const d = new Date(p.publishedAt);
-    return !isNaN(d.getTime()) && d <= now;
+    return !isNaN(d.getTime()) && d <= gracePeriod;
   });
 
   // Sempre os 3 últimos posts postados/publicados (ordenação decrescente por data)

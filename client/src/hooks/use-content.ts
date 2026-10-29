@@ -33,6 +33,13 @@ function setLocalCache<T>(key: string, data: T): void {
   } catch {}
 }
 
+export function clearPostsCache(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(POSTS_CACHE_KEY);
+  } catch {}
+}
+
 export function usePosts() {
   return useQuery({
     queryKey: [api.posts.list.path],
@@ -45,7 +52,9 @@ export function usePosts() {
       return data as any[];
     },
     initialData: () => getLocalCache<any[]>(POSTS_CACHE_KEY),
-    staleTime: 60_000,
+    staleTime: 5_000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     gcTime: 600_000,
     retry: 2,
   });
@@ -61,7 +70,9 @@ export function usePost(slug: string) {
       if (!res.ok) throw new Error("Failed to fetch post");
       return api.posts.get.responses[200].parse(await res.json());
     },
-    staleTime: 120_000,
+    staleTime: 5_000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     gcTime: 600_000,
     enabled: !!slug,
   });

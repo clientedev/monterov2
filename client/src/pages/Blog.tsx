@@ -431,7 +431,8 @@ export default function Blog() {
   });
 
   const now = new Date();
-  const gracePeriod = new Date(now.getTime() + 5 * 60 * 1000);
+  // Tolerância de 4 horas para absorver variações de fuso horário (UTC vs BRT)
+  const gracePeriod = new Date(now.getTime() + 4 * 60 * 60 * 1000);
   const visiblePosts = posts?.filter((p) => {
     if (!p.publishedAt) return true;
     const d = new Date(p.publishedAt);

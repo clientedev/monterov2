@@ -325,6 +325,8 @@ export class DatabaseStorage implements IStorage {
       createTableIfMissing: false,
       tableName: 'session'
     });
+    // Auto-aprovação de posts legados para garantir que nada fique oculto
+    db.update(posts).set({ isApproved: true }).where(eq(posts.isApproved, false)).catch(() => {});
   }
   private postsCache: Map<string, { data: Post[]; expiresAt: number }> = new Map();
   private servicesCache: { data: Service[]; expiresAt: number } | null = null;
@@ -419,12 +421,10 @@ export class DatabaseStorage implements IStorage {
 
       if (approvedOnly) {
         const now = new Date();
-        const gracePeriodNow = new Date(now.getTime() + 5 * 60 * 1000);
+        // Tolerância de 4 horas para absorver diferenças de fuso horário (ex: UTC vs Horário de Brasília)
+        const gracePeriodNow = new Date(now.getTime() + 4 * 60 * 60 * 1000);
         query = query.where(
-          and(
-            eq(posts.isApproved, true),
-            or(lte(posts.publishedAt, gracePeriodNow), isNull(posts.publishedAt))
-          )
+          or(lte(posts.publishedAt, gracePeriodNow), isNull(posts.publishedAt))
         ) as any;
       }
       const rawList = await query.orderBy(desc(posts.publishedAt));
@@ -560,7 +560,10 @@ export class DatabaseStorage implements IStorage {
 
   async updatePost(id: number, post: Partial<InsertPost>): Promise<Post | undefined> {
     this.invalidatePostsCache();
-    const postToUpdate = { ...post };
+    const postToUpdate: any = {
+      ...post,
+      isApproved: post.isApproved ?? true,
+    };
     if (postToUpdate.slug) {
       postToUpdate.slug = await this.ensureUniqueSlug(postToUpdate.slug, postToUpdate.title, id);
     }
@@ -2549,9 +2552,9 @@ export class MemStorage implements IStorage {
 
   // Posts
   async getPosts(approvedOnly = true): Promise<Post[]> {
-    const now = new Date();
+    const gracePeriod = new Date(Date.now() + 4 * 60 * 60 * 1000);
     const results = approvedOnly 
-      ? this.posts.filter(p => p.isApproved && (!p.publishedAt || p.publishedAt <= now)) 
+      ? this.posts.filter(p => (p.isApproved !== false) && (!p.publishedAt || new Date(p.publishedAt) <= gracePeriod)) 
       : this.posts;
     return [...results].sort((a, b) => {
       const timeA = a.publishedAt?.getTime() ?? 0;

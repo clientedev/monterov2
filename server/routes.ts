@@ -556,7 +556,9 @@ export async function registerRoutes(
     const requestAll = req.query.all === "true" || req.query.admin === "true";
     const approvedOnly = !(isAdminUser && requestAll);
     const posts = await storage.getPosts(approvedOnly);
-    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=120, stale-while-revalidate=600");
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     res.json(posts);
   });
 
@@ -567,12 +569,14 @@ export async function registerRoutes(
     }
     const isAdminUser = req.isAuthenticated() && (req.user as any).role === "admin";
     if (!isAdminUser) {
-      const now = new Date();
-      if (!post.isApproved || (post.publishedAt && new Date(post.publishedAt) > now)) {
+      const gracePeriod = new Date(Date.now() + 4 * 60 * 60 * 1000);
+      if (post.isApproved === false || (post.publishedAt && new Date(post.publishedAt) > gracePeriod)) {
         return res.status(404).json({ message: 'Post not found' });
       }
     }
-    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     res.json(post);
   });
 
@@ -592,7 +596,10 @@ export async function registerRoutes(
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-+|-+$/g, "");
       }
-      const input = insertPostSchema.partial().parse(req.body);
+      const input = insertPostSchema.partial().parse({
+        ...req.body,
+        isApproved: req.body.isApproved ?? true,
+      });
       const post = await storage.updatePost(parseInt(req.params.id), input);
       if (!post) return res.status(404).json({ message: "Post not found" });
       res.json(post);
