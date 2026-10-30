@@ -227,6 +227,90 @@ const DEFAULT_WIDGETS: WidgetItem[] = [
 ];
 
 const STORAGE_KEY = "montero_crm_dashboard_layout_v5";
+const STORAGE_CARD_THEME_KEY = "montero_crm_cards_theme_v1";
+
+export interface CardThemeOption {
+    id: string;
+    label: string;
+    description: string;
+    colorDot: string;
+    // Classes de gradiente e fundo
+    headerBannerGrad: string;
+    pipelineHeaderGrad: string;
+    pipelineStageActiveGrad: string;
+    kanbanBtnStyle: string;
+    chartAccentColor: string;
+}
+
+export const CARD_THEME_OPTIONS: CardThemeOption[] = [
+    {
+        id: "monteiro_dark",
+        label: "Escuro Clássico (Monteiro)",
+        description: "Tons nobres de verde petróleo, teal e grafite escuro",
+        colorDot: "#08454c",
+        headerBannerGrad: "from-[#08454c] via-[#0F6570] to-[#163b52]",
+        pipelineHeaderGrad: "from-[#08454c] via-[#0F6570] to-[#163b52]",
+        pipelineStageActiveGrad: "from-[#08454c] to-teal-500",
+        kanbanBtnStyle: "bg-white text-[#08454c] hover:bg-amber-50",
+        chartAccentColor: "#08454c",
+    },
+    {
+        id: "midnight_black",
+        label: "Preto Absoluto (Onyx)",
+        description: "Visual dark moderno com preto profundo e detalhes âmbar",
+        colorDot: "#090d16",
+        headerBannerGrad: "from-slate-950 via-slate-900 to-zinc-950 border-b border-amber-400/20",
+        pipelineHeaderGrad: "from-slate-950 via-slate-900 to-zinc-950",
+        pipelineStageActiveGrad: "from-slate-900 to-amber-500",
+        kanbanBtnStyle: "bg-amber-400 text-slate-950 hover:bg-amber-300",
+        chartAccentColor: "#0f172a",
+    },
+    {
+        id: "ocean_blue",
+        label: "Azul Safira",
+        description: "Gradiente elegante de azul marinho profundo e ciano vibrante",
+        colorDot: "#1e3a8a",
+        headerBannerGrad: "from-blue-950 via-blue-900 to-indigo-950",
+        pipelineHeaderGrad: "from-blue-950 via-blue-900 to-indigo-950",
+        pipelineStageActiveGrad: "from-blue-700 to-cyan-500",
+        kanbanBtnStyle: "bg-white text-blue-900 hover:bg-blue-50",
+        chartAccentColor: "#1d4ed8",
+    },
+    {
+        id: "emerald_forest",
+        label: "Verde Esmeralda",
+        description: "Tons executivos de esmeralda e menta corporativo",
+        colorDot: "#065f46",
+        headerBannerGrad: "from-emerald-950 via-teal-900 to-slate-950",
+        pipelineHeaderGrad: "from-emerald-950 via-teal-900 to-slate-950",
+        pipelineStageActiveGrad: "from-emerald-600 to-teal-400",
+        kanbanBtnStyle: "bg-white text-emerald-900 hover:bg-emerald-50",
+        chartAccentColor: "#059669",
+    },
+    {
+        id: "terracota_vital",
+        label: "Terracota & Vinho",
+        description: "Estilo sofisticado alinhado ao Terracota Vital da Monteiro",
+        colorDot: "#881337",
+        headerBannerGrad: "from-rose-950 via-rose-900 to-amber-950",
+        pipelineHeaderGrad: "from-rose-950 via-rose-900 to-amber-950",
+        pipelineStageActiveGrad: "from-[#c65f54] to-amber-500",
+        kanbanBtnStyle: "bg-white text-rose-950 hover:bg-rose-50",
+        chartAccentColor: "#c65f54",
+    },
+    {
+        id: "royal_purple",
+        label: "Roxo Imperial",
+        description: "Tons futuristas de violeta nobre e ametista",
+        colorDot: "#4c1d95",
+        headerBannerGrad: "from-purple-950 via-violet-900 to-slate-950",
+        pipelineHeaderGrad: "from-purple-950 via-violet-900 to-slate-950",
+        pipelineStageActiveGrad: "from-purple-600 to-indigo-400",
+        kanbanBtnStyle: "bg-white text-purple-950 hover:bg-purple-50",
+        chartAccentColor: "#7c3aed",
+    },
+];
+
 const CHART_COLORS = ["#0F6570", "#0d9488", "#c65f54", "#f59e0b", "#6366f1", "#10b981", "#ec4899", "#8b5cf6"];
 
 function CustomChartTooltip({ active, payload, label, suffix = "" }: any) {
@@ -263,6 +347,28 @@ export default function AdminDashboard() {
     const [customizeOpen, setCustomizeOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [sendingContactId, setSendingContactId] = useState<number | null>(null);
+
+    // Seletor de Cor / Tema dos Cards
+    const [cardThemeId, setCardThemeId] = useState<string>(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_CARD_THEME_KEY);
+            if (saved && CARD_THEME_OPTIONS.some(t => t.id === saved)) return saved;
+        } catch {}
+        return "monteiro_dark";
+    });
+
+    const activeCardTheme = useMemo(
+        () => CARD_THEME_OPTIONS.find(t => t.id === cardThemeId) || CARD_THEME_OPTIONS[0],
+        [cardThemeId]
+    );
+
+    const handleSelectCardTheme = (themeId: string) => {
+        setCardThemeId(themeId);
+        try {
+            localStorage.setItem(STORAGE_CARD_THEME_KEY, themeId);
+        } catch {}
+        toast({ title: "Cor dos cards atualizada!", description: `Tema aplicado: ${CARD_THEME_OPTIONS.find(t => t.id === themeId)?.label}` });
+    };
 
     // Interactive Pipeline Centerpiece State
     const [selectedPipelineStage, setSelectedPipelineStage] = useState<string>("all");
@@ -1186,7 +1292,7 @@ export default function AdminDashboard() {
                 return (
                     <Card className="rounded-3xl bg-white border border-slate-200/80 shadow-lg overflow-hidden">
                         {/* Executive Pipeline Header */}
-                        <div className="px-6 py-5 bg-gradient-to-r from-[#08454c] via-[#0F6570] to-[#163b52] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className={`px-6 py-5 bg-gradient-to-r ${activeCardTheme.pipelineHeaderGrad} text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300`}>
                             <div className="flex items-center gap-3.5">
                                 <div className="h-11 w-11 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 flex items-center justify-center shrink-0">
                                     <Layers className="h-5 w-5 text-amber-300" />
@@ -1223,7 +1329,7 @@ export default function AdminDashboard() {
                                     type="button"
                                     size="sm"
                                     onClick={() => setLocation("/admin/leads")}
-                                    className="h-9 rounded-xl text-xs font-bold bg-white text-[#08454c] hover:bg-amber-50 shadow-sm gap-1.5 px-4"
+                                    className={`h-9 rounded-xl text-xs font-bold ${activeCardTheme.kanbanBtnStyle} shadow-sm gap-1.5 px-4 transition-all`}
                                 >
                                     Abrir Kanban Completo
                                     <ArrowUpRight className="h-4 w-4" />
@@ -2533,18 +2639,17 @@ export default function AdminDashboard() {
     return (
         <div className="space-y-8 pb-12">
             {/* ── Executive Command Header com Humor Diário da Equipe ── */}
-            <div className="rounded-3xl bg-gradient-to-br from-[#08454c] via-[#0F6570] to-[#163b52] p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+            <div className={`rounded-3xl bg-gradient-to-br ${activeCardTheme.headerBannerGrad} p-6 sm:p-8 text-white shadow-xl relative overflow-hidden transition-all duration-300`}>
                 <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-teal-300/10 blur-3xl" />
                 <div className="pointer-events-none absolute left-1/3 -bottom-16 h-48 w-48 rounded-full bg-amber-400/10 blur-3xl" />
 
                 <div className="relative flex flex-col gap-6">
-                    {/* Linha superior: Saudação + Data + Botões de Ação */}
+                    {/* Linha superior: Saudação + Data + Controles de Ação e Cores */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="space-y-1">
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold uppercase tracking-wider text-teal-100">
                                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                                 <span className="capitalize">{formattedTodayFull}</span>
-                                <span className="text-teal-300/70">• Reseta à meia-noite</span>
                             </div>
                             <h2 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight">
                                 Olá, {userFirstName}! Como está seu humor hoje?
@@ -2552,6 +2657,32 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+                            {/* Seletor de Cores dos Cards (acima/ao lado dos botões de personalização) */}
+                            <div className="flex items-center gap-1.5 bg-black/25 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/15">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-200 hidden md:inline">
+                                    Cor dos Cards:
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                    {CARD_THEME_OPTIONS.map((theme) => {
+                                        const isCurrent = cardThemeId === theme.id;
+                                        return (
+                                            <button
+                                                key={theme.id}
+                                                type="button"
+                                                onClick={() => handleSelectCardTheme(theme.id)}
+                                                className={`h-5 w-5 rounded-full border-2 transition-all shrink-0 hover:scale-125 ${
+                                                    isCurrent
+                                                        ? "border-amber-300 ring-2 ring-white scale-110 shadow-md"
+                                                        : "border-white/40 opacity-70 hover:opacity-100"
+                                                }`}
+                                                style={{ backgroundColor: theme.colorDot }}
+                                                title={`${theme.label} — ${theme.description}`}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
                             <Button
                                 type="button"
                                 onClick={() => setLocation("/admin/leads")}
