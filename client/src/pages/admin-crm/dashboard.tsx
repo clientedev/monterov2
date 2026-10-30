@@ -227,88 +227,191 @@ const DEFAULT_WIDGETS: WidgetItem[] = [
 ];
 
 const STORAGE_KEY = "montero_crm_dashboard_layout_v5";
-const STORAGE_CARD_THEME_KEY = "montero_crm_cards_theme_v1";
 
-export interface CardThemeOption {
-    id: string;
+export interface MoodThemeStyle {
+    key: string;
     label: string;
-    description: string;
-    colorDot: string;
-    // Classes de gradiente e fundo
     headerBannerGrad: string;
     pipelineHeaderGrad: string;
     pipelineStageActiveGrad: string;
     kanbanBtnStyle: string;
+    glow1: string;
+    glow2: string;
+    badgeBorder: string;
+    badgeText: string;
+    subtextColor: string;
     chartAccentColor: string;
 }
 
-export const CARD_THEME_OPTIONS: CardThemeOption[] = [
-    {
-        id: "monteiro_dark",
-        label: "Escuro Clássico (Monteiro)",
-        description: "Tons nobres de verde petróleo, teal e grafite escuro",
-        colorDot: "#08454c",
-        headerBannerGrad: "from-[#08454c] via-[#0F6570] to-[#163b52]",
-        pipelineHeaderGrad: "from-[#08454c] via-[#0F6570] to-[#163b52]",
-        pipelineStageActiveGrad: "from-[#08454c] to-teal-500",
-        kanbanBtnStyle: "bg-white text-[#08454c] hover:bg-amber-50",
-        chartAccentColor: "#08454c",
+export const DEFAULT_MONTEIRO_THEME: MoodThemeStyle = {
+    key: "monteiro_default",
+    label: "Padrão Monteiro",
+    headerBannerGrad: "from-[#08454c] via-[#0F6570] to-[#163b52] border-b border-teal-400/20",
+    pipelineHeaderGrad: "from-[#08454c] via-[#0F6570] to-[#163b52]",
+    pipelineStageActiveGrad: "from-[#08454c] to-teal-500",
+    kanbanBtnStyle: "bg-white text-[#08454c] hover:bg-teal-50",
+    glow1: "bg-teal-300/15",
+    glow2: "bg-amber-400/10",
+    badgeBorder: "border-teal-400/30",
+    badgeText: "text-teal-100",
+    subtextColor: "text-teal-200/90",
+    chartAccentColor: "#08454c",
+};
+
+export const MOOD_THEMES: Record<string, MoodThemeStyle> = {
+    motivado: {
+        key: "motivado",
+        label: "Motivado a Vencer",
+        headerBannerGrad: "from-[#78350f] via-[#b45309] to-[#ea580c] border-b border-amber-400/30",
+        pipelineHeaderGrad: "from-[#78350f] via-[#b45309] to-[#9a3412]",
+        pipelineStageActiveGrad: "from-amber-600 to-orange-500",
+        kanbanBtnStyle: "bg-amber-300 text-slate-950 hover:bg-amber-200",
+        glow1: "bg-amber-400/25",
+        glow2: "bg-orange-500/20",
+        badgeBorder: "border-amber-400/40",
+        badgeText: "text-amber-200",
+        subtextColor: "text-amber-200/90",
+        chartAccentColor: "#d97706",
     },
-    {
-        id: "midnight_black",
-        label: "Preto Absoluto (Onyx)",
-        description: "Visual dark moderno com preto profundo e detalhes âmbar",
-        colorDot: "#090d16",
-        headerBannerGrad: "from-slate-950 via-slate-900 to-zinc-950 border-b border-amber-400/20",
-        pipelineHeaderGrad: "from-slate-950 via-slate-900 to-zinc-950",
-        pipelineStageActiveGrad: "from-slate-900 to-amber-500",
-        kanbanBtnStyle: "bg-amber-400 text-slate-950 hover:bg-amber-300",
-        chartAccentColor: "#0f172a",
-    },
-    {
-        id: "ocean_blue",
-        label: "Azul Safira",
-        description: "Gradiente elegante de azul marinho profundo e ciano vibrante",
-        colorDot: "#1e3a8a",
-        headerBannerGrad: "from-blue-950 via-blue-900 to-indigo-950",
-        pipelineHeaderGrad: "from-blue-950 via-blue-900 to-indigo-950",
-        pipelineStageActiveGrad: "from-blue-700 to-cyan-500",
-        kanbanBtnStyle: "bg-white text-blue-900 hover:bg-blue-50",
-        chartAccentColor: "#1d4ed8",
-    },
-    {
-        id: "emerald_forest",
-        label: "Verde Esmeralda",
-        description: "Tons executivos de esmeralda e menta corporativo",
-        colorDot: "#065f46",
-        headerBannerGrad: "from-emerald-950 via-teal-900 to-slate-950",
-        pipelineHeaderGrad: "from-emerald-950 via-teal-900 to-slate-950",
+    feliz: {
+        key: "feliz",
+        label: "Feliz & Radiante",
+        headerBannerGrad: "from-[#064e3b] via-[#047857] to-[#0f766e] border-b border-emerald-400/30",
+        pipelineHeaderGrad: "from-[#064e3b] via-[#047857] to-[#0f766e]",
         pipelineStageActiveGrad: "from-emerald-600 to-teal-400",
-        kanbanBtnStyle: "bg-white text-emerald-900 hover:bg-emerald-50",
+        kanbanBtnStyle: "bg-emerald-300 text-slate-950 hover:bg-emerald-200",
+        glow1: "bg-emerald-400/25",
+        glow2: "bg-teal-300/20",
+        badgeBorder: "border-emerald-400/40",
+        badgeText: "text-emerald-200",
+        subtextColor: "text-emerald-200/90",
         chartAccentColor: "#059669",
     },
-    {
-        id: "terracota_vital",
-        label: "Terracota & Vinho",
-        description: "Estilo sofisticado alinhado ao Terracota Vital da Monteiro",
-        colorDot: "#881337",
-        headerBannerGrad: "from-rose-950 via-rose-900 to-amber-950",
-        pipelineHeaderGrad: "from-rose-950 via-rose-900 to-amber-950",
-        pipelineStageActiveGrad: "from-[#c65f54] to-amber-500",
-        kanbanBtnStyle: "bg-white text-rose-950 hover:bg-rose-50",
-        chartAccentColor: "#c65f54",
+    focado: {
+        key: "focado",
+        label: "Focado & Estratégico",
+        headerBannerGrad: "from-[#0f172a] via-[#1e3a8a] to-[#1e1b4b] border-b border-sky-400/30",
+        pipelineHeaderGrad: "from-[#0f172a] via-[#1e3a8a] to-[#1e1b4b]",
+        pipelineStageActiveGrad: "from-blue-700 to-sky-500",
+        kanbanBtnStyle: "bg-sky-300 text-slate-950 hover:bg-sky-200",
+        glow1: "bg-sky-400/25",
+        glow2: "bg-blue-500/20",
+        badgeBorder: "border-sky-400/40",
+        badgeText: "text-sky-200",
+        subtextColor: "text-sky-200/90",
+        chartAccentColor: "#0284c7",
     },
-    {
-        id: "royal_purple",
-        label: "Roxo Imperial",
-        description: "Tons futuristas de violeta nobre e ametista",
-        colorDot: "#4c1d95",
-        headerBannerGrad: "from-purple-950 via-violet-900 to-slate-950",
-        pipelineHeaderGrad: "from-purple-950 via-violet-900 to-slate-950",
+    tranquilo: {
+        key: "tranquilo",
+        label: "Tranquilo & Seguro",
+        headerBannerGrad: "from-[#134e4a] via-[#0e7490] to-[#164e63] border-b border-teal-300/30",
+        pipelineHeaderGrad: "from-[#134e4a] via-[#0e7490] to-[#164e63]",
+        pipelineStageActiveGrad: "from-teal-600 to-cyan-400",
+        kanbanBtnStyle: "bg-teal-200 text-slate-950 hover:bg-teal-100",
+        glow1: "bg-teal-300/25",
+        glow2: "bg-cyan-400/20",
+        badgeBorder: "border-teal-300/40",
+        badgeText: "text-teal-200",
+        subtextColor: "text-teal-200/90",
+        chartAccentColor: "#0d9488",
+    },
+    desafiado: {
+        key: "desafiado",
+        label: "Pronto pro Desafio",
+        headerBannerGrad: "from-[#2e1065] via-[#581c87] to-[#4c1d95] border-b border-violet-400/30",
+        pipelineHeaderGrad: "from-[#2e1065] via-[#581c87] to-[#4c1d95]",
         pipelineStageActiveGrad: "from-purple-600 to-indigo-400",
-        kanbanBtnStyle: "bg-white text-purple-950 hover:bg-purple-50",
+        kanbanBtnStyle: "bg-purple-300 text-slate-950 hover:bg-purple-200",
+        glow1: "bg-purple-400/25",
+        glow2: "bg-violet-500/20",
+        badgeBorder: "border-violet-400/40",
+        badgeText: "text-purple-200",
+        subtextColor: "text-purple-200/90",
         chartAccentColor: "#7c3aed",
     },
+    cansado: {
+        key: "cansado",
+        label: "Buscando Energia",
+        headerBannerGrad: "from-[#4c0519] via-[#881337] to-[#451a03] border-b border-rose-400/30",
+        pipelineHeaderGrad: "from-[#4c0519] via-[#881337] to-[#451a03]",
+        pipelineStageActiveGrad: "from-[#c65f54] to-amber-500",
+        kanbanBtnStyle: "bg-rose-200 text-slate-950 hover:bg-rose-100",
+        glow1: "bg-rose-400/25",
+        glow2: "bg-amber-400/20",
+        badgeBorder: "border-rose-400/40",
+        badgeText: "text-rose-200",
+        subtextColor: "text-rose-200/90",
+        chartAccentColor: "#c65f54",
+    },
+};
+
+export const MOOD_OPTIONS = [
+    {
+        key: "motivado",
+        label: "Motivado a Vencer",
+        emoji: "🚀",
+        color: "from-amber-400 to-orange-500",
+        quotes: [
+            "O sucesso não é um acidente, é trabalho duro e paixão por proteger o cliente!",
+            "Foco na meta e sangue nos olhos: hoje vamos bater novos recordes!",
+            "Grandes desafios constroem grandes profissionais. Para cima!"
+        ]
+    },
+    {
+        key: "feliz",
+        label: "Feliz & Radiante",
+        emoji: "😄",
+        color: "from-emerald-400 to-teal-500",
+        quotes: [
+            "A alegria de servir e transformar vidas é o nosso maior diferencial!",
+            "Gratidão por cada conquista e entusiasmo em cada conversa hoje!",
+            "Sorriso no rosto e confiança inabalável para abrir novos caminhos!"
+        ]
+    },
+    {
+        key: "focado",
+        label: "Focado & Estratégico",
+        emoji: "🎯",
+        color: "from-sky-400 to-blue-600",
+        quotes: [
+            "Disciplina é a ponte que liga o planejamento aos resultados extraordinários.",
+            "Execução afiada, prioridade clara e atenção total a cada oportunidade.",
+            "O detalhe faz o fechamento: foco no que realmente gera valor hoje."
+        ]
+    },
+    {
+        key: "tranquilo",
+        label: "Tranquilo & Seguro",
+        emoji: "🌿",
+        color: "from-teal-400 to-cyan-600",
+        quotes: [
+            "Com calma, clareza e segurança encontramos a solução perfeita para o cliente.",
+            "Paz de espírito gera clareza nas melhores decisões de negócios.",
+            "Segurança não é sorte, é planejamento consistente dia após dia."
+        ]
+    },
+    {
+        key: "desafiado",
+        label: "Pronto pro Desafio",
+        emoji: "⚡",
+        color: "from-purple-400 to-indigo-600",
+        quotes: [
+            "Onde outros veem barreiras, nós enxergamos a nossa próxima grande vitória!",
+            "Nenhum mar calmo fez bom marinheiro. Vamos encarar e vencer hoje!",
+            "Com garra e método, qualquer obstáculo vira degrau rumo ao topo."
+        ]
+    },
+    {
+        key: "cansado",
+        label: "Buscando Energia",
+        emoji: "☕",
+        color: "from-rose-400 to-pink-500",
+        quotes: [
+            "Tome aquele café forte, respire fundo e lembre-se do propósito que te move!",
+            "Um passo de cada vez: sua dedicação de hoje constrói o seu futuro de amanhã.",
+            "O cansaço é passageiro, o orgulho de vencer dura para sempre. Força!"
+        ]
+    }
 ];
 
 const CHART_COLORS = ["#0F6570", "#0d9488", "#c65f54", "#f59e0b", "#6366f1", "#10b981", "#ec4899", "#8b5cf6"];
@@ -348,27 +451,8 @@ export default function AdminDashboard() {
     const [isEditMode, setIsEditMode] = useState(false);
     const [sendingContactId, setSendingContactId] = useState<number | null>(null);
 
-    // Seletor de Cor / Tema dos Cards
-    const [cardThemeId, setCardThemeId] = useState<string>(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_CARD_THEME_KEY);
-            if (saved && CARD_THEME_OPTIONS.some(t => t.id === saved)) return saved;
-        } catch {}
-        return "monteiro_dark";
-    });
-
-    const activeCardTheme = useMemo(
-        () => CARD_THEME_OPTIONS.find(t => t.id === cardThemeId) || CARD_THEME_OPTIONS[0],
-        [cardThemeId]
-    );
-
-    const handleSelectCardTheme = (themeId: string) => {
-        setCardThemeId(themeId);
-        try {
-            localStorage.setItem(STORAGE_CARD_THEME_KEY, themeId);
-        } catch {}
-        toast({ title: "Cor dos cards atualizada!", description: `Tema aplicado: ${CARD_THEME_OPTIONS.find(t => t.id === themeId)?.label}` });
-    };
+    // Estado de humor otimista para feedback visual imediato na UI
+    const [optimisticMoodKey, setOptimisticMoodKey] = useState<string | null>(null);
 
     // Interactive Pipeline Centerpiece State
     const [selectedPipelineStage, setSelectedPipelineStage] = useState<string>("all");
@@ -500,6 +584,18 @@ export default function AdminDashboard() {
         refetchInterval: 30000,
     });
 
+    // Humor ativo do usuário logado hoje (ou humor otimista recém clicado)
+    const currentLoggedUserMood = todayMoodsData?.moods?.find(m => m.userId === user?.id);
+    const activeMoodKey = optimisticMoodKey ?? currentLoggedUserMood?.moodKey ?? null;
+
+    // Tema dinâmico dos Cards: Padrão Monteiro Seguros (#08454c / #0F6570), adaptando-se ao humor diário quando selecionado
+    const activeCardTheme: MoodThemeStyle = useMemo(() => {
+        if (activeMoodKey && MOOD_THEMES[activeMoodKey]) {
+            return MOOD_THEMES[activeMoodKey];
+        }
+        return DEFAULT_MONTEIRO_THEME;
+    }, [activeMoodKey]);
+
     const setMoodMutation = useMutation({
         mutationFn: async (payload: { moodKey: string; moodLabel: string; moodEmoji: string; quote: string }) => {
             const res = await apiRequest("POST", "/api/user-moods", payload);
@@ -507,9 +603,10 @@ export default function AdminDashboard() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["/api/user-moods/today"] });
-            toast({ title: "Humor registrado!", description: "Sua mensagem inspiradora já está visível para a equipe." });
+            toast({ title: "Humor registrado!", description: "Os cards da sua visão geral agora refletem a sua energia." });
         },
         onError: (err: any) => {
+            setOptimisticMoodKey(null);
             toast({ title: "Erro ao registrar humor", description: err.message, variant: "destructive" });
         }
     });
@@ -2547,76 +2644,6 @@ export default function AdminDashboard() {
         );
     };
 
-    const MOOD_OPTIONS = [
-        {
-            key: "motivado",
-            label: "Motivado a Vencer",
-            emoji: "🚀",
-            color: "from-amber-400 to-orange-500",
-            quotes: [
-                "O sucesso não é um acidente, é trabalho duro e paixão por proteger o cliente!",
-                "Foco na meta e sangue nos olhos: hoje vamos bater novos recordes!",
-                "Grandes desafios constroem grandes profissionais. Para cima!"
-            ]
-        },
-        {
-            key: "feliz",
-            label: "Feliz & Radiante",
-            emoji: "😄",
-            color: "from-emerald-400 to-teal-500",
-            quotes: [
-                "A alegria de servir e transformar vidas é o nosso maior diferencial!",
-                "Gratidão por cada conquista e entusiasmo em cada conversa hoje!",
-                "Sorriso no rosto e confiança inabalável para abrir novos caminhos!"
-            ]
-        },
-        {
-            key: "focado",
-            label: "Focado & Estratégico",
-            emoji: "🎯",
-            color: "from-sky-400 to-blue-600",
-            quotes: [
-                "Disciplina é a ponte que liga o planejamento aos resultados extraordinários.",
-                "Execução afiada, prioridade clara e atenção total a cada oportunidade.",
-                "O detalhe faz o fechamento: foco no que realmente gera valor hoje."
-            ]
-        },
-        {
-            key: "tranquilo",
-            label: "Tranquilo & Seguro",
-            emoji: "🌿",
-            color: "from-teal-400 to-cyan-600",
-            quotes: [
-                "Com calma, clareza e segurança encontramos a solução perfeita para o cliente.",
-                "Paz de espírito gera clareza nas melhores decisões de negócios.",
-                "Segurança não é sorte, é planejamento consistente dia após dia."
-            ]
-        },
-        {
-            key: "desafiado",
-            label: "Pronto pro Desafio",
-            emoji: "⚡",
-            color: "from-purple-400 to-indigo-600",
-            quotes: [
-                "Onde outros veem barreiras, nós enxergamos a nossa próxima grande vitória!",
-                "Nenhum mar calmo fez bom marinheiro. Vamos encarar e vencer hoje!",
-                "Com garra e método, qualquer obstáculo vira degrau rumo ao topo."
-            ]
-        },
-        {
-            key: "cansado",
-            label: "Buscando Energia",
-            emoji: "☕",
-            color: "from-rose-400 to-pink-500",
-            quotes: [
-                "Tome aquele café forte, respire fundo e lembre-se do propósito que te move!",
-                "Um passo de cada vez: sua dedicação de hoje constrói o seu futuro de amanhã.",
-                "O cansaço é passageiro, o orgulho de vencer dura para sempre. Força!"
-            ]
-        }
-    ];
-
-    const currentLoggedUserMood = todayMoodsData?.moods?.find(m => m.userId === user?.id);
     const userFirstName = user?.name?.trim().split(" ")[0] || "Monteiro";
     const formattedTodayFull = new Intl.DateTimeFormat("pt-BR", {
         weekday: "long",
@@ -2626,6 +2653,7 @@ export default function AdminDashboard() {
     }).format(new Date());
 
     const handleSelectMood = (mood: typeof MOOD_OPTIONS[0]) => {
+        setOptimisticMoodKey(mood.key);
         // Escolhe uma frase de efeito aleatória do humor escolhido
         const quote = mood.quotes[Math.floor(Math.random() * mood.quotes.length)];
         setMoodMutation.mutate({
@@ -2639,15 +2667,15 @@ export default function AdminDashboard() {
     return (
         <div className="space-y-8 pb-12">
             {/* ── Executive Command Header com Humor Diário da Equipe ── */}
-            <div className={`rounded-3xl bg-gradient-to-br ${activeCardTheme.headerBannerGrad} p-6 sm:p-8 text-white shadow-xl relative overflow-hidden transition-all duration-300`}>
-                <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-teal-300/10 blur-3xl" />
-                <div className="pointer-events-none absolute left-1/3 -bottom-16 h-48 w-48 rounded-full bg-amber-400/10 blur-3xl" />
+            <div className={`rounded-3xl bg-gradient-to-br ${activeCardTheme.headerBannerGrad} p-6 sm:p-8 text-white shadow-xl relative overflow-hidden transition-all duration-500`}>
+                <div className={`pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full ${activeCardTheme.glow1} blur-3xl transition-all duration-500`} />
+                <div className={`pointer-events-none absolute left-1/3 -bottom-16 h-48 w-48 rounded-full ${activeCardTheme.glow2} blur-3xl transition-all duration-500`} />
 
                 <div className="relative flex flex-col gap-6">
-                    {/* Linha superior: Saudação + Data + Controles de Ação e Cores */}
+                    {/* Linha superior: Saudação + Data + Controles de Ação */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="space-y-1">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold uppercase tracking-wider text-teal-100">
+                            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border ${activeCardTheme.badgeBorder} text-[11px] font-bold uppercase tracking-wider ${activeCardTheme.badgeText}`}>
                                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                                 <span className="capitalize">{formattedTodayFull}</span>
                             </div>
@@ -2657,32 +2685,6 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-                            {/* Seletor de Cores dos Cards (acima/ao lado dos botões de personalização) */}
-                            <div className="flex items-center gap-1.5 bg-black/25 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/15">
-                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-200 hidden md:inline">
-                                    Cor dos Cards:
-                                </span>
-                                <div className="flex items-center gap-1.5">
-                                    {CARD_THEME_OPTIONS.map((theme) => {
-                                        const isCurrent = cardThemeId === theme.id;
-                                        return (
-                                            <button
-                                                key={theme.id}
-                                                type="button"
-                                                onClick={() => handleSelectCardTheme(theme.id)}
-                                                className={`h-5 w-5 rounded-full border-2 transition-all shrink-0 hover:scale-125 ${
-                                                    isCurrent
-                                                        ? "border-amber-300 ring-2 ring-white scale-110 shadow-md"
-                                                        : "border-white/40 opacity-70 hover:opacity-100"
-                                                }`}
-                                                style={{ backgroundColor: theme.colorDot }}
-                                                title={`${theme.label} — ${theme.description}`}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
                             <Button
                                 type="button"
                                 onClick={() => setLocation("/admin/leads")}
@@ -2733,7 +2735,7 @@ export default function AdminDashboard() {
                         {/* Botões dos 6 Humores */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                             {MOOD_OPTIONS.map(mood => {
-                                const isSelected = currentLoggedUserMood?.moodKey === mood.key;
+                                const isSelected = activeMoodKey === mood.key;
                                 return (
                                     <button
                                         key={mood.key}
