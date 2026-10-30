@@ -388,6 +388,26 @@ export default function AdminDashboard() {
     const { data: apolices } = useQuery<Apolice[]>({ queryKey: ["/api/apolices"] });
     const { data: seguroStats } = useQuery<any>({ queryKey: ["/api/seguros/dashboard"] });
 
+    // Humor Diário da Equipe
+    const { data: todayMoodsData, refetch: refetchMoods } = useQuery<{ date: string; moods: Array<{ id: number; userId: number; userName: string; moodKey: string; moodLabel: string; moodEmoji: string; quote: string; date: string; updatedAt: string }> }>({
+        queryKey: ["/api/user-moods/today"],
+        refetchInterval: 30000,
+    });
+
+    const setMoodMutation = useMutation({
+        mutationFn: async (payload: { moodKey: string; moodLabel: string; moodEmoji: string; quote: string }) => {
+            const res = await apiRequest("POST", "/api/user-moods", payload);
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/user-moods/today"] });
+            toast({ title: "Humor registrado!", description: "Sua mensagem inspiradora já está visível para a equipe." });
+        },
+        onError: (err: any) => {
+            toast({ title: "Erro ao registrar humor", description: err.message, variant: "destructive" });
+        }
+    });
+
     // Pipeline Columns from Site Settings
     const leadColumns = useMemo(() => {
         if (settings?.leadColumns) {
@@ -2421,6 +2441,76 @@ export default function AdminDashboard() {
         );
     };
 
+    const MOOD_OPTIONS = [
+        {
+            key: "motivado",
+            label: "Motivado a Vencer",
+            emoji: "🚀",
+            color: "from-amber-400 to-orange-500",
+            quotes: [
+                "O sucesso não é um acidente, é trabalho duro e paixão por proteger o cliente!",
+                "Foco na meta e sangue nos olhos: hoje vamos bater novos recordes!",
+                "Grandes desafios constroem grandes profissionais. Para cima!"
+            ]
+        },
+        {
+            key: "feliz",
+            label: "Feliz & Radiante",
+            emoji: "😄",
+            color: "from-emerald-400 to-teal-500",
+            quotes: [
+                "A alegria de servir e transformar vidas é o nosso maior diferencial!",
+                "Gratidão por cada conquista e entusiasmo em cada conversa hoje!",
+                "Sorriso no rosto e confiança inabalável para abrir novos caminhos!"
+            ]
+        },
+        {
+            key: "focado",
+            label: "Focado & Estratégico",
+            emoji: "🎯",
+            color: "from-sky-400 to-blue-600",
+            quotes: [
+                "Disciplina é a ponte que liga o planejamento aos resultados extraordinários.",
+                "Execução afiada, prioridade clara e atenção total a cada oportunidade.",
+                "O detalhe faz o fechamento: foco no que realmente gera valor hoje."
+            ]
+        },
+        {
+            key: "tranquilo",
+            label: "Tranquilo & Seguro",
+            emoji: "🌿",
+            color: "from-teal-400 to-cyan-600",
+            quotes: [
+                "Com calma, clareza e segurança encontramos a solução perfeita para o cliente.",
+                "Paz de espírito gera clareza nas melhores decisões de negócios.",
+                "Segurança não é sorte, é planejamento consistente dia após dia."
+            ]
+        },
+        {
+            key: "desafiado",
+            label: "Pronto pro Desafio",
+            emoji: "⚡",
+            color: "from-purple-400 to-indigo-600",
+            quotes: [
+                "Onde outros veem barreiras, nós enxergamos a nossa próxima grande vitória!",
+                "Nenhum mar calmo fez bom marinheiro. Vamos encarar e vencer hoje!",
+                "Com garra e método, qualquer obstáculo vira degrau rumo ao topo."
+            ]
+        },
+        {
+            key: "cansado",
+            label: "Buscando Energia",
+            emoji: "☕",
+            color: "from-rose-400 to-pink-500",
+            quotes: [
+                "Tome aquele café forte, respire fundo e lembre-se do propósito que te move!",
+                "Um passo de cada vez: sua dedicação de hoje constrói o seu futuro de amanhã.",
+                "O cansaço é passageiro, o orgulho de vencer dura para sempre. Força!"
+            ]
+        }
+    ];
+
+    const currentLoggedUserMood = todayMoodsData?.moods?.find(m => m.userId === user?.id);
     const userFirstName = user?.name?.trim().split(" ")[0] || "Monteiro";
     const formattedTodayFull = new Intl.DateTimeFormat("pt-BR", {
         weekday: "long",
@@ -2429,60 +2519,164 @@ export default function AdminDashboard() {
         year: "numeric",
     }).format(new Date());
 
+    const handleSelectMood = (mood: typeof MOOD_OPTIONS[0]) => {
+        // Escolhe uma frase de efeito aleatória do humor escolhido
+        const quote = mood.quotes[Math.floor(Math.random() * mood.quotes.length)];
+        setMoodMutation.mutate({
+            moodKey: mood.key,
+            moodLabel: mood.label,
+            moodEmoji: mood.emoji,
+            quote,
+        });
+    };
+
     return (
         <div className="space-y-8 pb-12">
-            {/* ── Executive Command Header ── */}
+            {/* ── Executive Command Header com Humor Diário da Equipe ── */}
             <div className="rounded-3xl bg-gradient-to-br from-[#08454c] via-[#0F6570] to-[#163b52] p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
                 <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-teal-300/10 blur-3xl" />
                 <div className="pointer-events-none absolute left-1/3 -bottom-16 h-48 w-48 rounded-full bg-amber-400/10 blur-3xl" />
 
-                <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div className="space-y-2">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold uppercase tracking-wider text-teal-100">
-                            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                            <span className="capitalize">{formattedTodayFull}</span>
+                <div className="relative flex flex-col gap-6">
+                    {/* Linha superior: Saudação + Data + Botões de Ação */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold uppercase tracking-wider text-teal-100">
+                                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                                <span className="capitalize">{formattedTodayFull}</span>
+                                <span className="text-teal-300/70">• Reseta à meia-noite</span>
+                            </div>
+                            <h2 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight">
+                                Olá, {userFirstName}! Como está seu humor hoje?
+                            </h2>
                         </div>
-                        <h2 className="text-3xl sm:text-4xl font-display font-bold text-white tracking-tight">
-                            Olá, {userFirstName}
-                        </h2>
-                        <p className="text-teal-100/90 text-sm sm:text-base max-w-2xl">
-                            Visão executiva consolidada: <strong className="text-white">{activeLeads} leads</strong> em negociação ({formatBRL(activePipelineValue)}),{" "}
-                            <strong className="text-white">{totalApolicesAtivas} apólices</strong> ativas e{" "}
-                            <strong className="text-white">{pendingTasks} tarefas</strong> na fila operacional.
-                        </p>
+
+                        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+                            <Button
+                                type="button"
+                                onClick={() => setLocation("/admin/leads")}
+                                className="h-9 px-3.5 rounded-xl font-bold text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md gap-1.5"
+                            >
+                                <Layers className="h-4 w-4" />
+                                Pipeline
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsEditMode(!isEditMode)}
+                                className={`h-9 px-3.5 rounded-xl font-bold text-xs transition-all gap-1.5 border ${
+                                    isEditMode
+                                        ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-400 ring-2 ring-amber-300/50 animate-pulse"
+                                        : "bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                                }`}
+                            >
+                                <Move className="h-3.5 w-3.5" />
+                                {isEditMode ? "Concluir" : "Arrastar"}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setCustomizeOpen(true)}
+                                className="h-9 px-3.5 rounded-xl font-bold text-xs bg-white/10 border-white/20 hover:bg-white/20 text-white gap-1.5"
+                            >
+                                <SlidersHorizontal className="h-3.5 w-3.5 text-amber-300" />
+                                Personalizar
+                            </Button>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-                        <Button
-                            type="button"
-                            onClick={() => setLocation("/admin/leads")}
-                            className="h-10 px-4 rounded-xl font-bold text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md gap-1.5"
-                        >
-                            <Layers className="h-4 w-4" />
-                            Pipeline de Leads
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setIsEditMode(!isEditMode)}
-                            className={`h-10 px-4 rounded-xl font-bold text-xs transition-all gap-2 border ${
-                                isEditMode
-                                    ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-400 ring-2 ring-amber-300/50 animate-pulse"
-                                    : "bg-white/10 border-white/20 hover:bg-white/20 text-white"
-                            }`}
-                        >
-                            <Move className="h-4 w-4" />
-                            {isEditMode ? "Concluir Arraste" : "Arrastar Cards"}
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setCustomizeOpen(true)}
-                            className="h-10 px-4 rounded-xl font-bold text-xs bg-white/10 border-white/20 hover:bg-white/20 text-white gap-2"
-                        >
-                            <SlidersHorizontal className="h-4 w-4 text-amber-300" />
-                            Personalizar
-                        </Button>
+                    {/* Linha do Seletor de Humor do Usuário */}
+                    <div className="bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/10 space-y-3">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <span className="text-xs font-bold uppercase tracking-wider text-teal-200 flex items-center gap-1.5">
+                                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                                Escolha seu estado de espírito para hoje:
+                            </span>
+                            {currentLoggedUserMood && (
+                                <span className="text-xs text-teal-100 font-medium">
+                                    Seu registro hoje: <strong className="text-amber-300">{currentLoggedUserMood.moodEmoji} {currentLoggedUserMood.moodLabel}</strong>
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Botões dos 6 Humores */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                            {MOOD_OPTIONS.map(mood => {
+                                const isSelected = currentLoggedUserMood?.moodKey === mood.key;
+                                return (
+                                    <button
+                                        key={mood.key}
+                                        type="button"
+                                        onClick={() => handleSelectMood(mood)}
+                                        disabled={setMoodMutation.isPending}
+                                        className={`group relative flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left ${
+                                            isSelected
+                                                ? "bg-white text-slate-900 border-amber-400 shadow-lg shadow-amber-500/20 ring-2 ring-amber-300 scale-[1.02]"
+                                                : "bg-white/10 hover:bg-white/20 text-white border-white/15 hover:border-white/30"
+                                        }`}
+                                    >
+                                        <span className="text-xl shrink-0 group-hover:scale-110 transition-transform">
+                                            {mood.emoji}
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className={`text-xs font-extrabold truncate ${isSelected ? "text-slate-900" : "text-white"}`}>
+                                                {mood.label.split(" ")[0]}
+                                            </p>
+                                            <p className={`text-[10px] truncate ${isSelected ? "text-slate-500 font-bold" : "text-teal-200/80"}`}>
+                                                {mood.label.split(" ").slice(1).join(" ") || "Hoje"}
+                                            </p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Frase de Efeito Ativa do Usuário Logado */}
+                        {currentLoggedUserMood?.quote && (
+                            <div className="pt-1 flex items-start gap-2 text-xs text-amber-200 font-medium italic bg-amber-400/10 rounded-xl p-2.5 border border-amber-300/20">
+                                <span className="text-base leading-none">💡</span>
+                                <div>
+                                    <strong className="text-white not-italic">Sua frase de motivação: </strong>
+                                    "{currentLoggedUserMood.quote}"
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Mural Coletivo de Respostas da Equipe */}
+                    <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold uppercase tracking-wider text-teal-200 flex items-center gap-1.5">
+                                <Users className="h-3.5 w-3.5" />
+                                Energia da Equipe Hoje ({todayMoodsData?.moods?.length || 0} respostas):
+                            </span>
+                            <span className="text-[11px] text-teal-300/80 font-medium">
+                                Todos os registros da equipe aparecem aqui em tempo real
+                            </span>
+                        </div>
+
+                        {(!todayMoodsData?.moods || todayMoodsData.moods.length === 0) ? (
+                            <div className="bg-white/5 rounded-xl p-3 border border-white/10 text-xs text-teal-100/70 flex items-center gap-2">
+                                <span>🌱</span>
+                                <span>Nenhum membro da equipe registrou o humor hoje ainda. Seja o primeiro a inspirar o time!</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {todayMoodsData.moods.map((m) => (
+                                    <div
+                                        key={m.id}
+                                        className="inline-flex items-center gap-2 bg-white/15 hover:bg-white/20 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full text-xs text-white shadow-sm transition-all"
+                                        title={`"${m.quote}"`}
+                                    >
+                                        <span className="font-extrabold text-amber-300">{m.userName.split(" ")[0]}:</span>
+                                        <span className="flex items-center gap-1 text-teal-100 font-semibold">
+                                            <span>{m.moodEmoji}</span>
+                                            <span>{m.moodLabel}</span>
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

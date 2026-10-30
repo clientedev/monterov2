@@ -267,6 +267,19 @@ app.use((req, res, next) => {
       created_at TIMESTAMP DEFAULT NOW()
     )`,
     `ALTER TABLE contacts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Ativo' NOT NULL;`,
+    `CREATE TABLE IF NOT EXISTS user_moods (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      user_name TEXT NOT NULL,
+      mood_key TEXT NOT NULL,
+      mood_label TEXT NOT NULL,
+      mood_emoji TEXT NOT NULL,
+      quote TEXT NOT NULL,
+      date TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );`,
+    `CREATE INDEX IF NOT EXISTS idx_user_moods_date ON user_moods(date);`,
     `ALTER TABLE reviews ALTER COLUMN user_id DROP NOT NULL;`,
     `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS author_name text;`,
     `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS author_photo text;`,

@@ -10,7 +10,7 @@ import { parsePolicyPdf } from "./pdf-policy-parser";
 import Groq from "groq-sdk";
 import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { sql, eq, or, and, desc, asc } from "drizzle-orm";
 import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact, sendClientWelcomeEmail, sendOpportunityNotificationEmail, sendEmail } from "./email";
 import {
@@ -6151,6 +6151,89 @@ export async function registerRoutes(
   // Registra as rotas de consulta (suporta GET e POST para máxima compatibilidade)
   app.get(lookupRoutes, externalApiKeyAuth, handleContactLookup);
   app.post(lookupRoutes, externalApiKeyAuth, handleContactLookup);
+
+  // ── ROTAS DE HUMOR DIÁRIO DA EQUIPE ──────────────────────────────────────────
+  const getTodayDateStr = () => {
+    // Fuso horário de Brasília (UTC-3)
+    const now = new Date();
+    const brDate = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const y = brDate.getFullYear();
+    const m = String(brDate.getMonth() + 1).padStart(2, "0");
+    const d = String(brDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  app.get("/api/user-moods/today", isTeam, async (req, res) => {
+    try {
+      const todayStr = getTodayDateStr();
+      const result = await pool.query(
+        `SELECT id, user_id as "userId", user_name as "userName", mood_key as "moodKey",
+                mood_label as "moodLabel", mood_emoji as "moodEmoji", quote, date,
+                updated_at as "updatedAt"
+         FROM user_moods
+         WHERE date = $1
+         ORDER BY updated_at DESC`,
+        [todayStr]
+      );
+      res.json({
+        date: todayStr,
+        moods: result.rows || [],
+      });
+    } catch (err: any) {
+      console.error("[user-moods] Erro ao carregar humores do dia:", err);
+      res.status(500).json({ error: err.message, moods: [] });
+    }
+  });
+
+  app.post("/api/user-moods", isTeam, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const userName = (req.user as any).name || (req.user as any).username || "Membro da equipe";
+      const { moodKey, moodLabel, moodEmoji, quote } = req.body;
+
+      if (!moodKey || !moodLabel) {
+        return res.status(400).json({ error: "moodKey e moodLabel são obrigatórios" });
+      }
+
+      const todayStr = getTodayDateStr();
+
+      // Upsert: se já respondeu hoje, atualiza para o novo humor
+      const existing = await pool.query(
+        `SELECT id FROM user_moods WHERE user_id = $1 AND date = $2 LIMIT 1`,
+        [userId, todayStr]
+      );
+
+      if (existing.rows.length > 0) {
+        await pool.query(
+          `UPDATE user_moods
+           SET mood_key = $1, mood_label = $2, mood_emoji = $3, quote = $4, user_name = $5, updated_at = NOW()
+           WHERE id = $6`,
+          [moodKey, moodLabel, moodEmoji || "✨", quote || "", userName, existing.rows[0].id]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO user_moods (user_id, user_name, mood_key, mood_label, mood_emoji, quote, date)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [userId, userName, moodKey, moodLabel, moodEmoji || "✨", quote || "", todayStr]
+        );
+      }
+
+      const allToday = await pool.query(
+        `SELECT id, user_id as "userId", user_name as "userName", mood_key as "moodKey",
+                mood_label as "moodLabel", mood_emoji as "moodEmoji", quote, date,
+                updated_at as "updatedAt"
+         FROM user_moods
+         WHERE date = $1
+         ORDER BY updated_at DESC`,
+        [todayStr]
+      );
+
+      res.json({ success: true, date: todayStr, moods: allToday.rows || [] });
+    } catch (err: any) {
+      console.error("[user-moods] Erro ao salvar humor:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   return httpServer;
 }

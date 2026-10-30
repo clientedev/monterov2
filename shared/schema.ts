@@ -713,4 +713,23 @@ export const insertLeadDispatchGroupSchema = createInsertSchema(leadDispatchGrou
 export type LeadDispatchGroup = typeof leadDispatchGroups.$inferSelect;
 export type InsertLeadDispatchGroup = z.infer<typeof insertLeadDispatchGroupSchema>;
 
+// Humor Diário dos Usuários da Equipe (reseta todo dia meia-noite)
+export const userMoods = pgTable("user_moods", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userName: text("user_name").notNull(),
+  moodKey: text("mood_key").notNull(), // 'feliz' | 'focado' | 'motivado' | 'tranquilo' | 'cansado' | 'desafiado'
+  moodLabel: text("mood_label").notNull(), // e.g. "Feliz", "Motivado a vencer"
+  moodEmoji: text("mood_emoji").notNull(), // e.g. "😄", "🚀"
+  quote: text("quote").notNull(), // Frase de efeito / motivação gerada
+  date: text("date").notNull(), // Formato YYYY-MM-DD para garantir reset diário
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUserMoodSchema = createInsertSchema(userMoods).omit({ id: true, createdAt: true, updatedAt: true });
+export type UserMood = typeof userMoods.$inferSelect;
+export type InsertUserMood = z.infer<typeof insertUserMoodSchema>;
+
+
 
