@@ -2,13 +2,13 @@ import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { 
   Menu, X, LogOut, User as UserIcon, LayoutDashboard, 
-  ChevronRight, ArrowRight, Phone, MessageSquare, Sparkles,
-  ShieldCheck, Home, Briefcase, FileText, Info
+  ArrowRight, Phone
 } from "lucide-react";
 import logo from "@assets/logo_monteiro_v2.png";
 import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { useAuth } from "@/hooks/use-auth";
+import { LoginModal } from "@/components/LoginModal";
 
 function WhatsAppIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -25,8 +25,9 @@ function WhatsAppIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
   const { settings } = useSiteSettings();
   const { user, logoutMutation } = useAuth();
 
@@ -62,11 +63,11 @@ export function Navbar() {
   }, [isOpen]);
 
   const navLinks = [
-    { name: "Início", href: "/", icon: Home },
-    { name: "Serviços", href: "/services", icon: Briefcase },
-    { name: "Sobre", href: "/sobre", icon: Info },
-    { name: "Blog", href: "/blog", icon: FileText },
-    { name: "Contato", href: "/contact", icon: Phone },
+    { name: "Início", href: "/" },
+    { name: "Serviços", href: "/services" },
+    { name: "Sobre", href: "/sobre" },
+    { name: "Blog", href: "/blog" },
+    { name: "Contato", href: "/contact" },
   ];
 
   const darkHeroPaths = ["/", "/sobre", "/services"];
@@ -171,7 +172,7 @@ export function Navbar() {
                   </Link>
                   <Link href={user.role === "client" ? "/dashboard" : "/admin"} asChild>
                     <a className={cn(
-                      "text-sm font-bold flex items-center gap-2 px-4 py-2.5 rounded-2xl transition-all duration-300 shadow-sm bg-[#c65f54] text-white hover:bg-[#c65f54]/90"
+                      "text-sm font-bold flex items-center gap-2 px-4 py-2.5 rounded-2xl transition-all duration-300 shadow-sm bg-[#c65f54] text-white hover:bg-[#c65f54]/90 cursor-pointer"
                     )}>
                       <LayoutDashboard className="h-4 w-4" />
                       <span className="hidden lg:inline">
@@ -183,7 +184,7 @@ export function Navbar() {
                     onClick={() => logoutMutation.mutate()}
                     disabled={logoutMutation.isPending}
                     className={cn(
-                      "p-2.5 rounded-2xl transition-all duration-300 border border-transparent text-white/60 hover:text-red-400 hover:bg-white/10"
+                      "p-2.5 rounded-2xl transition-all duration-300 border border-transparent text-white/60 hover:text-red-400 hover:bg-white/10 cursor-pointer"
                     )}
                     title="Sair"
                   >
@@ -192,13 +193,15 @@ export function Navbar() {
                 </div>
               ) : (
                 <>
-                  <Link href="/login" asChild>
-                    <a className={cn(
+                  <button
+                    type="button"
+                    onClick={() => setIsLoginModalOpen(true)}
+                    className={cn(
                       "text-sm font-bold cursor-pointer transition-colors duration-300 text-white hover:text-[#c65f54]"
-                    )}>
-                      Entrar
-                    </a>
-                  </Link>
+                    )}
+                  >
+                    Login
+                  </button>
                   <Link href="/contact" asChild>
                     <button className={cn(
                       "px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-500 transform hover:-translate-y-0.5 shadow-md cursor-pointer",
@@ -214,7 +217,7 @@ export function Navbar() {
             </div>
           </nav>
    
-          {/* Botão Hambúrguer Mobile (Touch-friendly & Alto Contraste) */}
+          {/* Botão Hambúrguer Mobile */}
           <button
             type="button"
             className={cn(
@@ -232,8 +235,8 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* ── PAINEL / DRAWER MOBILE REFORMULADO (0% BUGADO, 100% FLUIDO) ── */}
-      {/* Backdrop com desfoque e fechamento ao clicar fora */}
+      {/* ── PAINEL / DRAWER MOBILE (ESTÉTICA BOUTIQUE, 0% CARA DE I.A) ── */}
+      {/* Backdrop */}
       <div
         className={cn(
           "md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300",
@@ -246,7 +249,7 @@ export function Navbar() {
       {/* Gaveta do Menu Mobile */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 right-0 z-50 w-[88vw] max-w-[360px] shadow-2xl flex flex-col justify-between transition-transform duration-300 ease-out",
+          "md:hidden fixed inset-y-0 right-0 z-50 w-[85vw] max-w-[340px] shadow-2xl flex flex-col justify-between transition-transform duration-300 ease-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
         style={{
@@ -254,13 +257,16 @@ export function Navbar() {
           color: "#ffffff"
         }}
       >
-        {/* Cabeçalho do Menu Mobile */}
+        {/* Cabeçalho Limpo */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             <img 
               src={settings?.logoBase64 || logo} 
               alt="Monteiro Seguros" 
-              className="h-9 w-auto object-contain" 
+              className="h-9 w-auto object-contain brightness-0 invert" 
+              onError={(e) => {
+                e.currentTarget.src = logo;
+              }}
             />
           </div>
 
@@ -274,71 +280,56 @@ export function Navbar() {
           </button>
         </div>
 
-        {/* Conteúdo com Rolagem Suave Nativa */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 overscroll-contain">
-          {/* Lista de Navegação Principal */}
-          <nav className="space-y-1.5">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-[#809ba6] mb-3 px-3">
-              Navegação
-            </p>
+        {/* Links de Navegação Sofisticados */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 overscroll-contain flex flex-col justify-between">
+          <nav className="flex flex-col space-y-1">
             {navLinks.map((link) => {
               const isActive = location === link.href;
-              const IconComp = link.icon;
               return (
                 <Link key={link.name} href={link.href} asChild>
                   <a
                     onClick={handleLinkClick}
                     className={cn(
-                      "flex items-center justify-between px-3.5 py-3 rounded-2xl text-base font-semibold transition-all duration-200 cursor-pointer",
+                      "py-3 px-3.5 text-lg font-display tracking-wide rounded-xl transition-all cursor-pointer flex items-center justify-between",
                       isActive
-                        ? "bg-[#c65f54] text-white shadow-md shadow-[#c65f54]/20"
-                        : "text-white/85 hover:text-white hover:bg-white/10 active:bg-white/15"
+                        ? "text-[#c65f54] font-bold bg-white/5"
+                        : "text-white/90 hover:text-white hover:bg-white/5 active:bg-white/10"
                     )}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "w-8 h-8 rounded-xl flex items-center justify-center text-sm",
-                        isActive ? "bg-white/20 text-white" : "bg-white/5 text-[#809ba6]"
-                      )}>
-                        <IconComp className="w-4 h-4" />
-                      </div>
-                      <span>{link.name}</span>
-                    </div>
-                    <ChevronRight className={cn("w-4 h-4 transition-transform", isActive ? "text-white" : "text-white/40")} />
+                    <span>{link.name}</span>
+                    {isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#c65f54]" />
+                    )}
                   </a>
                 </Link>
               );
             })}
           </nav>
 
-          {/* Ações do Usuário / Login */}
-          <div className="pt-4 border-t border-white/10 space-y-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-[#809ba6] mb-2 px-3">
-              Acesso
-            </p>
-
+          {/* Ações / Login */}
+          <div className="space-y-3 pt-4 border-t border-white/10">
             {user ? (
               <div className="space-y-2">
                 <Link href={user.role === "client" ? "/dashboard" : "/admin"} asChild>
                   <a
                     onClick={handleLinkClick}
-                    className="flex items-center justify-between px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm transition-all border border-white/10"
+                    className="flex items-center justify-between px-4 py-3 rounded-2xl bg-[#c65f54] text-white font-bold text-sm shadow-md cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
-                      <LayoutDashboard className="w-4 h-4 text-[#c65f54]" />
+                      <LayoutDashboard className="w-4 h-4" />
                       <span>{user.role === "client" ? "Área do Cliente" : "Painel Admin"}</span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-white/50" />
+                    <ArrowRight className="w-4 h-4" />
                   </a>
                 </Link>
 
                 <Link href="/profile" asChild>
                   <a
                     onClick={handleLinkClick}
-                    className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-white/80 hover:text-white text-sm font-semibold transition-all"
+                    className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-white/80 hover:text-white text-sm font-semibold transition-all cursor-pointer"
                   >
-                    <UserIcon className="w-4 h-4 text-slate-400" />
-                    <span>Meu Perfil ({user.username || user.name})</span>
+                    <UserIcon className="w-4 h-4 text-slate-300" />
+                    <span>Meu Perfil</span>
                   </a>
                 </Link>
 
@@ -348,7 +339,7 @@ export function Navbar() {
                     logoutMutation.mutate();
                     handleLinkClick();
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-400 hover:text-red-300 transition-colors cursor-pointer text-left"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sair da conta</span>
@@ -360,55 +351,47 @@ export function Navbar() {
                   <button
                     type="button"
                     onClick={handleLinkClick}
-                    className="w-full py-3.5 px-5 rounded-2xl font-bold bg-[#c65f54] hover:bg-[#c65f54]/95 text-white shadow-lg shadow-[#c65f54]/25 flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer text-sm"
+                    className="w-full py-3.5 px-5 rounded-full font-bold bg-[#c65f54] hover:bg-[#c65f54]/95 text-white shadow-md flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer text-sm"
                   >
                     <span>Solicitar Cotação</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </Link>
 
-                <Link href="/login" asChild>
-                  <a
-                    onClick={handleLinkClick}
-                    className="w-full py-3 px-5 rounded-2xl font-bold bg-white/10 hover:bg-white/15 text-white border border-white/15 flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer text-sm"
-                  >
-                    <UserIcon className="w-4 h-4 text-[#c65f54]" />
-                    <span>Entrar no Sistema</span>
-                  </a>
-                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    setIsLoginModalOpen(true);
+                  }}
+                  className="w-full py-3 px-5 rounded-full font-semibold text-white hover:bg-white/10 border border-white/20 flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer text-sm"
+                >
+                  <UserIcon className="w-4 h-4 text-white/80" />
+                  <span>Login</span>
+                </button>
               </div>
             )}
           </div>
-
-          {/* Card Rápido de Atendimento WhatsApp */}
-          <div className="p-4 rounded-2xl bg-black/20 border border-white/10 space-y-2.5">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Consultoria Boutique Monteiro</span>
-            </div>
-            <p className="text-[12px] text-white/70 leading-relaxed font-light">
-              Tire dúvidas diretamente com nossos corretores especialistas.
-            </p>
-            <a
-              href={`https://wa.me/${whatsappNumber}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={handleLinkClick}
-              className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-xs"
-            >
-              <WhatsAppIcon className="w-4 h-4" />
-              <span>Chamar no WhatsApp</span>
-            </a>
-          </div>
         </div>
 
-        {/* Rodapé da Gaveta */}
-        <div className="px-6 py-4 border-t border-white/10 text-center shrink-0">
-          <p className="text-[11px] text-white/50 font-medium">
-            Monteiro Seguros &amp; Benefícios © {new Date().getFullYear()}
-          </p>
+        {/* Rodapé Elegante com WhatsApp Direto */}
+        <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center justify-between text-xs text-white/60">
+          <a
+            href={`https://wa.me/${whatsappNumber}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleLinkClick}
+            className="flex items-center gap-2 text-white/80 hover:text-emerald-400 transition-colors"
+          >
+            <WhatsAppIcon className="w-4 h-4 text-emerald-400" />
+            <span>WhatsApp</span>
+          </a>
+          <span>© {new Date().getFullYear()} Monteiro</span>
         </div>
       </div>
+
+      {/* Modal de Login Global */}
+      <LoginModal open={isLoginModalOpen} onOpenChange={setIsLoginModalOpen} />
     </>
   );
 }

@@ -155,7 +155,7 @@ export default function Home() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative min-h-[88vh] sm:min-h-[95vh] lg:min-h-screen flex items-start sm:items-center pt-20 sm:pt-24 pb-12 sm:pb-16 overflow-hidden bg-[#08454c] text-white">
+      <section className="relative min-h-[90vh] lg:min-h-screen flex items-center justify-center overflow-hidden bg-[#08454c] text-white">
         {/* Dynamic Blurry Glow Orbs */}
         <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none hidden md:block" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#809ba6]/10 rounded-full blur-[140px] pointer-events-none hidden md:block" />
@@ -166,7 +166,7 @@ export default function Home() {
             <Loader2 className="w-10 h-10 animate-spin text-white/40" />
           </div>
         ) : (
-          <div className="w-full h-full relative z-10 min-h-[75vh] sm:min-h-[85vh] lg:min-h-[90vh] flex items-start sm:items-center pt-6 sm:pt-0">
+          <div className="w-full h-full relative z-10 min-h-[85vh] lg:min-h-[90vh] flex items-center justify-center">
             <AnimatePresence mode="wait">
               {displaySlides.map((slide, idx) => {
                 if (idx !== currentSlideIndex) return null;
@@ -181,7 +181,7 @@ export default function Home() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 1.2, ease: "easeInOut" }}
-                    className="absolute inset-0 w-full h-full flex items-start sm:items-center"
+                    className="absolute inset-0 w-full h-full flex items-center justify-center"
                   >
                     {/* Background Media: Vídeo HD ou Imagem de Alto Impacto */}
                     <div className="absolute inset-0 z-0 overflow-hidden bg-[#08454c]">
@@ -257,29 +257,29 @@ export default function Home() {
                       )}
 
                       {/* Gradientes Suaves: Legibilidade de Texto Impecável sem Escurecer o Vídeo */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#08454c]/95 via-[#08454c]/70 sm:via-[#08454c]/40 to-transparent pointer-events-none z-10" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/85 via-transparent to-transparent pointer-events-none z-10" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/95 via-[#08454c]/65 to-[#08454c]/75 pointer-events-none z-10" />
+                      <div className="absolute inset-0 bg-black/35 pointer-events-none z-10" />
                     </div>
 
-                    <div className="container px-4 md:px-6 mx-auto relative z-10 pt-4 pb-12 sm:py-12">
-                      <div className="max-w-3xl space-y-5 sm:space-y-8 text-left">
+                    <div className="container px-4 md:px-6 mx-auto relative z-10 flex flex-col items-center justify-center text-center py-12">
+                      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 text-center flex flex-col items-center">
                         <motion.div
-                          initial={{ opacity: 0, y: 30 }}
+                          initial={{ opacity: 0, y: 25 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.8 }}
-                          className="space-y-4 sm:space-y-6"
+                          className="space-y-4 sm:space-y-6 flex flex-col items-center text-center"
                         >
-                          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.15] sm:leading-[1.1] tracking-tight drop-shadow-sm">
+                          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.15] sm:leading-[1.1] tracking-tight drop-shadow-md text-center max-w-3xl mx-auto">
                             {slide.title}
                           </h1>
                           {slide.subtitle && (
-                            <p className="text-sm sm:text-base md:text-xl text-slate-200 font-light max-w-xl leading-relaxed drop-shadow-sm">
+                            <p className="text-sm sm:text-base md:text-xl text-slate-200 font-light max-w-2xl mx-auto leading-relaxed drop-shadow-sm text-center">
                               {slide.subtitle}
                             </p>
                           )}
-                          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4">
+                          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-3 sm:pt-4 w-full sm:w-auto">
                             <Link href={slide.buttonLink || "/contact"}>
-                              <button className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-[#c65f54] text-white font-bold text-base sm:text-lg hover:bg-[#c65f54]/95 transition-all hover:shadow-lg hover:shadow-[#c65f54]/25 hover:-translate-y-0.5 flex items-center justify-center gap-2.5 sm:gap-3 group">
+                              <button className="w-full sm:w-auto px-8 py-3.5 sm:px-9 sm:py-4 rounded-full bg-[#c65f54] text-white font-bold text-base sm:text-lg hover:bg-[#c65f54]/95 transition-all hover:shadow-lg hover:shadow-[#c65f54]/25 hover:-translate-y-0.5 flex items-center justify-center gap-2.5 sm:gap-3 group cursor-pointer">
                                 {slide.buttonText || "Consultoria Premium"}
                                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                               </button>
@@ -288,7 +288,7 @@ export default function Home() {
                               href={`https://wa.me/${whatsappNumber}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-white font-bold text-base sm:text-lg hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2.5 sm:gap-3 group/wa"
+                              className="w-full sm:w-auto px-8 py-3.5 sm:px-9 sm:py-4 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm text-white font-bold text-base sm:text-lg hover:bg-white/20 hover:border-white/30 transition-all flex items-center justify-center gap-2.5 sm:gap-3 group/wa cursor-pointer"
                             >
                               <WhatsAppIcon className="w-5 h-5 text-[#25D366] transition-transform group-hover/wa:scale-110" />
                               <span>WhatsApp</span>
