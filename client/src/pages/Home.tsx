@@ -11,7 +11,7 @@ import { useServices, usePosts } from "@/hooks/use-content";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { ServiceCard } from "@/components/ServiceCard";
 import { format } from "date-fns";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { cn } from "@/lib/utils";
 import { extractInstagramInfo } from "@/components/InstagramEmbed";
@@ -131,19 +131,37 @@ export default function Home() {
     }
   ];
 
-  const dbActiveSlides = (slides?.filter(s => s.isActive) || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  const displaySlides = dbActiveSlides.length > 0 ? dbActiveSlides : defaultSlides;
+  // Slides ativos ordenados e memoizados para evitar reinicializações espúrias do timer
+  const dbActiveSlides = useMemo(() => {
+    return (slides?.filter(s => s.isActive) || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [slides]);
 
-  // Auto-play dinâmico respeitando o tempo selecionado de cada slide/vídeo
+  const displaySlides = useMemo(() => {
+    return dbActiveSlides.length > 0 ? dbActiveSlides : defaultSlides;
+  }, [dbActiveSlides]);
+
+  // Garante que o índice não fique fora dos limites caso a lista de slides mude
+  useEffect(() => {
+    if (currentSlideIndex >= displaySlides.length) {
+      setCurrentSlideIndex(0);
+    }
+  }, [displaySlides.length, currentSlideIndex]);
+
+  // Auto-play rigoroso que respeita o tempo exato (slideDuration) do slide atualmente ativo
   useEffect(() => {
     if (displaySlides.length <= 1) return;
-    const currentSlide = displaySlides[currentSlideIndex];
-    const durationSeconds = (currentSlide as any)?.slideDuration || 7;
+
+    const activeSlide = displaySlides[currentSlideIndex] || displaySlides[0];
+    const rawDuration = Number((activeSlide as any)?.slideDuration);
+    // Duração configurada em segundos (mínimo de 3s, padrão 7s)
+    const durationSeconds = (!isNaN(rawDuration) && rawDuration >= 2) ? rawDuration : 7;
+
     const timer = setTimeout(() => {
       setCurrentSlideIndex((prev) => (prev + 1) % displaySlides.length);
-    }, Math.max(3, durationSeconds) * 1000);
+    }, durationSeconds * 1000);
+
     return () => clearTimeout(timer);
-  }, [displaySlides, currentSlideIndex]);
+  }, [currentSlideIndex, displaySlides]);
 
   // Sanitize phone for dynamic WhatsApp links
   const whatsappNumber = settings?.contactPhone 

@@ -520,13 +520,17 @@ section.bg-\[\#08454c\] .bg-white span,
    Garante 60fps constantes em smartphones, toque ágil e baixo consumo de GPU.
    ========================================================================== */
 
-/* Suavização nativa de toque e rolagem sem travamentos */
-html, body {
+/* Suavização nativa de toque e rolagem 100% livre e fluida */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: clip;
+  min-height: 100%;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  overscroll-behavior-y: none;
-  max-width: 100vw;
-  overflow-x: hidden;
 }
 
 /* Previne recálculo forçado de tamanho de texto no Safari iOS */
