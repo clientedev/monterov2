@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Volume2, VolumeX, Play, Pause, Instagram, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { 
-  extractInstagramId, 
-  getInstagramPermalink, 
+import {
+  extractInstagramId,
+  getInstagramPermalink,
   getInstagramDirectStreamUrl,
-  getInstagramThumbnailUrl 
+  getInstagramThumbnailUrl
 } from "@/utils/instagramUtils";
 
 interface InstagramCachedVideoProps {
@@ -34,23 +34,23 @@ export function InstagramCachedVideo({
   const rawVideo = isBannedVideo ? null : videoUrl;
 
   const instaId = extractInstagramId(instagramUrl || rawVideo);
-  const cleanInstaUrl = instaId 
-    ? getInstagramPermalink(instaId) 
+  const cleanInstaUrl = instaId
+    ? getInstagramPermalink(instaId)
     : (typeof instagramUrl === "string" ? instagramUrl : "https://www.instagram.com/monteirosegurosebeneficios/");
 
   // Rota de stream direto do backend com cache
-  const directStreamUrl = instaId 
-    ? getInstagramDirectStreamUrl(instaId) 
+  const directStreamUrl = instaId
+    ? getInstagramDirectStreamUrl(instaId)
     : (rawVideo && !rawVideo.includes("instagram.com") ? rawVideo : null);
 
   const hasPlayableVideo = Boolean(
     directStreamUrl &&
     (directStreamUrl.startsWith("/api/") ||
-     directStreamUrl.endsWith(".mp4") ||
-     directStreamUrl.endsWith(".webm") ||
-     directStreamUrl.startsWith("data:") ||
-     directStreamUrl.startsWith("blob:") ||
-     directStreamUrl.startsWith("http"))
+      directStreamUrl.endsWith(".mp4") ||
+      directStreamUrl.endsWith(".webm") ||
+      directStreamUrl.startsWith("data:") ||
+      directStreamUrl.startsWith("blob:") ||
+      directStreamUrl.startsWith("http"))
   );
 
   const [isMuted, setIsMuted] = useState(true);
@@ -73,7 +73,7 @@ export function InstagramCachedVideo({
     e.preventDefault();
     if (videoRef.current) {
       if (videoRef.current.paused) {
-        videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+        videoRef.current.play().then(() => setIsPlaying(true)).catch(() => { });
       } else {
         videoRef.current.pause();
         setIsPlaying(false);
@@ -87,8 +87,8 @@ export function InstagramCachedVideo({
     aspectRatio === "reel"
       ? "aspect-[4/5]"
       : aspectRatio === "square"
-      ? "aspect-square"
-      : "aspect-[16/10]";
+        ? "aspect-square"
+        : "aspect-[16/10]";
 
   const defaultCover = instaId
     ? getInstagramThumbnailUrl(instaId)
@@ -116,7 +116,7 @@ export function InstagramCachedVideo({
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          video.play().catch(() => {});
+          video.play().catch(() => { });
         } else {
           video.pause();
         }
@@ -151,7 +151,7 @@ export function InstagramCachedVideo({
           onError={() => setHasVideoError(true)}
           onLoadedMetadata={(e) => {
             e.currentTarget.muted = true;
-            e.currentTarget.play().catch(() => {});
+            e.currentTarget.play().catch(() => { });
           }}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
         />
