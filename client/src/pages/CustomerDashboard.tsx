@@ -161,23 +161,22 @@ export default function CustomerDashboard() {
               <Card className="border-slate-200 shadow-sm overflow-hidden">
                 <CardHeader className="bg-slate-900 text-white border-b-0">
                   <CardTitle className="text-xl flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-amber-500" />
-                    Assistente Virtual
+                    <ShieldCheck className="h-5 w-5 text-amber-500" />
+                    Atendimento e Suporte
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-                    Precisa de ajuda rápida? Nossa IA "Carolzinha" está pronta para responder suas dúvidas sobre seguros e nossos serviços agora mesmo.
+                    Precisa de ajuda rápida? Nossa equipe de consultores está pronta para tirar suas dúvidas sobre apólices, sinistros e coberturas agora mesmo.
                   </p>
-                  <Button
-                    className="w-full justify-between font-bold h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl"
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent('open-carol-chat'));
-                    }}
-                  >
-                    Falar com a Carolzinha
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
+                  <Link href="/contact">
+                    <Button
+                      className="w-full justify-between font-bold h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl"
+                    >
+                      Falar com Consultor
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
 

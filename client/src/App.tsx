@@ -9,7 +9,6 @@ import { Loader2 } from "lucide-react";
 import { ThemeInjector } from "@/components/ThemeInjector";
 import { PinkOctoberBadge } from "@/components/PinkOctoberBadge";
 import { BlueNovemberBadge } from "@/components/BlueNovemberBadge";
-import { ChatBubble } from "@/components/ChatBubble";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
@@ -168,8 +167,7 @@ function App() {
           <Router />
           <PinkOctoberBadge />
           <BlueNovemberBadge />
-          <ChatBubble />
-          <Toaster />
+                    <Toaster />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

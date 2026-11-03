@@ -155,7 +155,7 @@ export default function Home() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative min-h-[95vh] lg:min-h-screen flex items-center pt-24 pb-16 overflow-hidden bg-[#08454c] text-white">
+      <section className="relative min-h-[88vh] sm:min-h-[95vh] lg:min-h-screen flex items-start sm:items-center pt-20 sm:pt-24 pb-12 sm:pb-16 overflow-hidden bg-[#08454c] text-white">
         {/* Dynamic Blurry Glow Orbs */}
         <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none hidden md:block" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#809ba6]/10 rounded-full blur-[140px] pointer-events-none hidden md:block" />
@@ -166,7 +166,7 @@ export default function Home() {
             <Loader2 className="w-10 h-10 animate-spin text-white/40" />
           </div>
         ) : (
-          <div className="w-full h-full relative z-10 min-h-[85vh] lg:min-h-[90vh] flex items-center">
+          <div className="w-full h-full relative z-10 min-h-[75vh] sm:min-h-[85vh] lg:min-h-[90vh] flex items-start sm:items-center pt-6 sm:pt-0">
             <AnimatePresence mode="wait">
               {displaySlides.map((slide, idx) => {
                 if (idx !== currentSlideIndex) return null;
@@ -181,7 +181,7 @@ export default function Home() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 1.2, ease: "easeInOut" }}
-                    className="absolute inset-0 w-full h-full flex items-center"
+                    className="absolute inset-0 w-full h-full flex items-start sm:items-center"
                   >
                     {/* Background Media: Vídeo HD ou Imagem de Alto Impacto */}
                     <div className="absolute inset-0 z-0 overflow-hidden bg-[#08454c]">
@@ -261,13 +261,13 @@ export default function Home() {
                       <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/85 via-transparent to-transparent pointer-events-none z-10" />
                     </div>
 
-                    <div className="container px-4 md:px-6 mx-auto relative z-10 py-12">
-                      <div className="max-w-3xl space-y-8 text-left">
+                    <div className="container px-4 md:px-6 mx-auto relative z-10 pt-4 pb-12 sm:py-12">
+                      <div className="max-w-3xl space-y-5 sm:space-y-8 text-left">
                         <motion.div
                           initial={{ opacity: 0, y: 30 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.8 }}
-                          className="space-y-6"
+                          className="space-y-4 sm:space-y-6"
                         >
                           <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.15] sm:leading-[1.1] tracking-tight drop-shadow-sm">
                             {slide.title}
