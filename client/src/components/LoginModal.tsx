@@ -228,3 +228,4 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
     </Dialog>
   );
 }
+

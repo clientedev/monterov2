@@ -193,15 +193,13 @@ export function Navbar() {
                 </div>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setIsLoginModalOpen(true)}
-                    className={cn(
+                  <Link href="/login" asChild>
+                    <a className={cn(
                       "text-sm font-bold cursor-pointer transition-colors duration-300 text-white hover:text-[#c65f54]"
-                    )}
-                  >
-                    Login
-                  </button>
+                    )}>
+                      Entrar
+                    </a>
+                  </Link>
                   <Link href="/contact" asChild>
                     <button className={cn(
                       "px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-500 transform hover:-translate-y-0.5 shadow-md cursor-pointer",
