@@ -35,8 +35,11 @@ export function BlueNovemberBadge() {
   const isBlueNovember = Boolean(settings?.themeNovembroAzul || settings?.activeTheme === "novembro_azul");
   const showBadge = settings?.themeNovembroAzulBadge !== false;
 
-  // Pop-up abre automaticamente uma única vez por sessão após 2s ao entrar no site
+  // Pop-up abre automaticamente uma única vez por sessão após 2s ao entrar no site (apenas no desktop para não travar mobile)
   useEffect(() => {
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    if (isMobile) return;
+
     if (!isAdmin && isBlueNovember && showBadge && !hasAutoOpened) {
       const alreadySeen = typeof window !== "undefined" && sessionStorage.getItem("seen_novembro_azul_popup");
       if (alreadySeen) return;

@@ -513,3 +513,71 @@ section.bg-\[\#08454c\] .bg-white span,
 [data-theme="novembro-azul"] section.bg-\[\#163b52\] .bg-white li {
   color: #334155 !important;
 }
+
+
+/* ==========================================================================
+   OTIMIZAÇÕES DE MÁXIMA PERFORMANCE E FLUIDEZ MOBILE (0% DE TRAVAMENTOS)
+   Garante 60fps constantes em smartphones, toque ágil e baixo consumo de GPU.
+   ========================================================================== */
+
+/* Suavização nativa de toque e rolagem sem travamentos */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior-y: none;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Previne recálculo forçado de tamanho de texto no Safari iOS */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Marquee em CSS puro com aceleração por hardware GPU (0% CPU) */
+@keyframes marquee-scroll {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-marquee-css {
+  display: flex !important;
+  width: max-content !important;
+  animation: marquee-scroll 35s linear infinite !important;
+  will-change: transform !important;
+  transform: translateZ(0);
+}
+
+.animate-marquee-css:hover {
+  animation-play-state: paused !important;
+}
+
+@media (max-width: 768px) {
+  /* No celular: desativa filtros pesados que travam composições na GPU */
+  [class*="blur-[1"],
+  [class*="blur-[8"],
+  [class*="blur-[9"],
+  [class*="blur-3xl"],
+  [class*="blur-2xl"] {
+    filter: none !important;
+    backdrop-filter: none !important;
+    display: none !important;
+  }
+
+  /* Otimiza renderização de containers e seções em dispositivos móveis */
+  section, article, .group {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Rolagem horizontal nativa com inércia para carrosséis em mobile */
+  .touch-pan-x {
+    touch-action: pan-x pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}

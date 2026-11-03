@@ -17,13 +17,23 @@ export function ChatBubble() {
     // Chat component with Carol animated avatar support
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
+    const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : false);
     const [isAnimReady, setIsAnimReady] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
-        setIsMobile(typeof window !== "undefined" && window.innerWidth < 640);
-        const timer = setTimeout(() => setIsAnimReady(true), 300);
-        return () => clearTimeout(timer);
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile, { passive: true });
+        // Só carrega a animação pesada no desktop
+        const timer = setTimeout(() => {
+            if (window.innerWidth >= 768) {
+                setIsAnimReady(true);
+            }
+        }, 1200);
+        return () => {
+            window.removeEventListener('resize', checkMobile);
+            clearTimeout(timer);
+        };
     }, []);
     const [messages, setMessages] = useState<Message[]>([
         { role: 'assistant', content: 'Olá! Sou a Carolzinha, especialista da Monteiro Corretora. Como posso ajudar com seus seguros e planos de saúde hoje?' }

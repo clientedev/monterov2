@@ -104,8 +104,11 @@ export function InstagramCachedVideo({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Economia de memória: só reproduz quando o vídeo estiver visível no viewport
+  // Economia de memória: no mobile desativa autoplay para poupar GPU; no desktop só reproduz no viewport
   useEffect(() => {
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    if (isMobile) return;
+
     const video = videoRef.current;
     const container = containerRef.current;
     if (!video || !container) return;

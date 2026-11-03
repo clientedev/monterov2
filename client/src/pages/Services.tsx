@@ -21,10 +21,10 @@ export default function ServicesPage() {
       <Navbar />
 
       {/* Premium Hero Section */}
-      <section className="relative pt-36 pb-28 lg:pt-48 lg:pb-40 bg-gradient-to-br from-[#08454c] via-[#08454c] to-[#163b52] text-white overflow-hidden">
+      <section className="relative pt-28 pb-16 lg:pt-48 lg:pb-40 bg-gradient-to-br from-[#08454c] via-[#08454c] to-[#163b52] text-white overflow-hidden">
         {/* Decorative elements */}
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-15%] left-[-5%] w-[450px] h-[450px] bg-[#809ba6]/15 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none hidden md:block" />
+        <div className="absolute bottom-[-15%] left-[-5%] w-[450px] h-[450px] bg-[#809ba6]/15 rounded-full blur-[100px] pointer-events-none hidden md:block" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
 
         <div className="absolute inset-0 z-0">
@@ -48,10 +48,10 @@ export default function ServicesPage() {
                 <Sparkles className="w-4 h-4 text-[#c65f54]" />
                 <span>Portfólio Boutique</span>
               </div>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.1] text-white tracking-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.15] sm:leading-[1.1] text-white tracking-tight">
                 {settings?.servicesTitle || "Seguros Estruturados & Benefícios Especiais"}
               </h1>
-              <p className="text-lg md:text-xl text-slate-200 font-light leading-relaxed max-w-2xl">
+              <p className="text-base sm:text-lg md:text-xl text-slate-200 font-light leading-relaxed max-w-2xl">
                 {settings?.servicesSubtitle || "Soluções completas de consultoria em risco para empresas e famílias que valorizam excelência técnica e atendimento sem atalhos."}
               </p>
             </motion.div>
@@ -88,7 +88,7 @@ export default function ServicesPage() {
 
       {/* Premium Trust Badges */}
       <section className="py-28 bg-white relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#08454c]/5 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#08454c]/5 rounded-full blur-[100px] pointer-events-none hidden md:block" />
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-20">
             <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Excelência Monteiro</span>
@@ -130,7 +130,7 @@ export default function ServicesPage() {
 
       {/* Bottom Premium CTA */}
       <section className="py-28 bg-[#08454c] text-white relative overflow-hidden border-t border-[#809ba6]/10">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[850px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[850px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none hidden md:block" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.03] pointer-events-none" />
         
         <div className="container px-4 md:px-6 mx-auto text-center max-w-4xl relative z-10 space-y-8">

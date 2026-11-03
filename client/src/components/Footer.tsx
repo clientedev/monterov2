@@ -16,8 +16,8 @@ export function Footer() {
   return (
     <footer className="bg-[#08454c] text-white pt-24 pb-12 relative overflow-hidden border-t border-[#809ba6]/15">
       {/* Decorative Brand Glow */}
-      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-[#c65f54]/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-10 w-[300px] h-[300px] bg-[#163b52]/30 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-[#c65f54]/5 rounded-full blur-[120px] pointer-events-none hidden md:block" />
+      <div className="absolute bottom-0 left-10 w-[300px] h-[300px] bg-[#163b52]/30 rounded-full blur-[80px] pointer-events-none hidden md:block" />
 
       <div className="container mx-auto px-4 md:px-6 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">

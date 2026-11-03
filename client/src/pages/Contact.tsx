@@ -53,10 +53,10 @@ export default function Contact() {
       <Navbar />
 
       {/* Hero Section */}
-      <div className="relative pt-36 pb-28 md:pt-48 md:pb-40 overflow-hidden bg-gradient-to-br from-[#08454c] via-[#08454c] to-[#163b52] text-white">
+      <div className="relative pt-28 pb-16 md:pt-48 md:pb-40 overflow-hidden bg-gradient-to-br from-[#08454c] via-[#08454c] to-[#163b52] text-white">
         {/* Dynamic Glowing Accents */}
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-15%] left-[-5%] w-[450px] h-[450px] bg-[#809ba6]/15 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none hidden md:block" />
+        <div className="absolute bottom-[-15%] left-[-5%] w-[450px] h-[450px] bg-[#809ba6]/15 rounded-full blur-[100px] pointer-events-none hidden md:block" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
 
         <div className="container px-4 md:px-6 mx-auto relative z-10 text-center">
@@ -70,10 +70,10 @@ export default function Contact() {
               <Sparkles className="w-4 h-4 text-[#c65f54]" />
               <span>Canais de Atendimento</span>
             </div>
-            <h1 className="text-4xl md:text-6xl font-display font-bold text-white tracking-tight leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-display font-bold text-white tracking-tight leading-tight">
               Fale com um Especialista
             </h1>
-            <p className="text-lg md:text-xl text-slate-200 max-w-xl mx-auto font-light leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-slate-200 max-w-xl mx-auto font-light leading-relaxed">
               Solicite uma cotação sob medida ou tire dúvidas sobre apólices com nossa equipe boutique.
             </p>
           </motion.div>

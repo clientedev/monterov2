@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { 
-  Instagram, Heart, Share2, Bookmark, ExternalLink, Play, Pause, 
+  Instagram, Heart, Share2, ExternalLink, Play, 
   Volume2, VolumeX, ShieldCheck, Check, Sparkles, FileText, ArrowRight,
-  Clock, BookOpen, ChevronRight, Award, CheckCircle2
+  Clock, CheckCircle2
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -127,6 +127,19 @@ export function InstagramPostCard({
 }: InstagramPostCardProps) {
   const { toast } = useToast();
 
+  // Detecção de dispositivo móvel para renderização super-leve e fluida sem sobrecarga de GPU
+  const [isMobileDevice, setIsMobileDevice] = useState(() => 
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileDevice(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // 1. Detecção do conteúdo do Instagram
   const rawTarget = post.instagramUrl || post.media_url || (post.postType === "instagram" ? post.videoUrl : null);
   const isInsta = Boolean(isInstagramContent(rawTarget) || post.instagramUrl || post.postType === "instagram");
@@ -152,8 +165,10 @@ export function InstagramPostCard({
     setLikeCount(post.likes ?? 0);
   }, [post.likes]);
 
-  // Economia de memória e CPU: só reproduz o vídeo quando o card estiver visível na tela
+  // Economia de memória e CPU: No desktop só reproduz quando visível; no mobile desativa autoplay em lote
   useEffect(() => {
+    if (isMobileDevice) return; // Em celulares, evita abrir múltiplos contextos de hardware decoding
+
     const video = videoRef.current;
     const container = containerRef.current;
     if (!video || !container) return;
@@ -171,7 +186,7 @@ export function InstagramPostCard({
 
     observer.observe(container);
     return () => observer.disconnect();
-  }, [streamUrl]);
+  }, [streamUrl, isMobileDevice]);
 
   // Formatação de data
   const formattedDate = post.publishedAt
@@ -286,7 +301,7 @@ export function InstagramPostCard({
   };
 
   // Proporções: Reels do Instagram usam formato vertical padrão (4/5)
-  // Artigos usam altura equilibrada (16/11) garantindo enquadramento perfeito sem esticar
+  // Artigos usam proporção equilibrada (16/11) garantindo enquadramento perfeito sem esticar
   const aspectClass = isInsta
     ? (aspectRatio === "vertical" ? "aspect-[9/16]" : "aspect-[4/5]")
     : "aspect-[16/11] max-h-[260px]";
@@ -388,8 +403,32 @@ export function InstagramPostCard({
           <span>{formattedDate}</span>
         </div>
 
-        {/* Reprodução de Vídeo Automática para Reels */}
-        {Boolean(streamUrl) && !hasVideoError ? (
+        {/* No Mobile para Reels: poster super nítido com botão "Assistir no Instagram" para 0% de lag na rolagem */}
+        {isMobileDevice && isInsta ? (
+          <div className="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden">
+            <img
+              src={fallbackCover}
+              alt={displayTitle}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30 pointer-events-none" />
+            <a
+              href={permalink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute inset-0 flex items-center justify-center cursor-pointer group/play"
+              title="Assistir Reel no Instagram"
+            >
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-black/75 backdrop-blur-md text-white border border-white/25 shadow-2xl hover:scale-105 active:scale-95 transition-transform">
+                <Play className="w-4 h-4 fill-white text-white" />
+                <span className="text-xs font-bold tracking-wide">Assistir no Instagram</span>
+              </div>
+            </a>
+          </div>
+        ) : Boolean(streamUrl) && !hasVideoError ? (
+          /* Desktop: vídeo com autoplay muted e loop suave */
           <div className="relative w-full h-full">
             <video
               ref={videoRef}
@@ -454,7 +493,7 @@ export function InstagramPostCard({
 
       {/* ── 3. CORPO DO CARD PREENCHIDO COM INFOS DO POST ── */}
       <div 
-        className="p-5 flex-1 flex flex-col justify-between bg-white z-10" 
+        className="p-4 sm:p-5 flex-1 flex flex-col justify-between bg-white z-10" 
         style={{ backgroundColor: "#ffffff" }}
       >
         <div className="flex-1 flex flex-col">
@@ -508,7 +547,7 @@ export function InstagramPostCard({
             )}
           </div>
 
-          {/* Box de Informações e Destaques do Post (Preenche o espaço em branco para artigos com conteúdo relevante) */}
+          {/* Box de Informações e Destaques do Post */}
           {!isInsta && (
             <div className="mt-2 mb-3 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
               <div className="font-semibold text-slate-800 flex items-center gap-1.5 mb-1.5" style={{ color: "#0f172a" }}>

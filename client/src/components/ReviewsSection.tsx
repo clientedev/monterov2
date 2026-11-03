@@ -519,14 +519,18 @@ export function ReviewsSection() {
               className="relative w-full overflow-hidden py-4 -mx-4 px-4"
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
+              onTouchStart={() => setIsHovered(true)}
+              onTouchEnd={() => {
+                setTimeout(() => setIsHovered(false), 2000);
+              }}
             >
               {/* Fade masks nas bordas para estética de revista/vitrine */}
-              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-16 md:w-28 bg-gradient-to-r from-[#f8f6f0] to-transparent z-20" />
-              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-16 md:w-28 bg-gradient-to-l from-[#f8f6f0] to-transparent z-20" />
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-10 md:w-28 bg-gradient-to-r from-[#f8f6f0] to-transparent z-20" />
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 md:w-28 bg-gradient-to-l from-[#f8f6f0] to-transparent z-20" />
 
               <div
                 ref={tickerRef}
-                className="flex items-stretch gap-6 overflow-x-auto scrollbar-none py-2"
+                className="flex items-stretch gap-4 md:gap-6 overflow-x-auto scrollbar-none py-2 touch-pan-x"
                 style={{ scrollBehavior: "auto" }}
               >
                 {marqueeCards.map((review, index) => {
@@ -534,7 +538,7 @@ export function ReviewsSection() {
                   return (
                     <div
                       key={`${review.id || index}-${index}`}
-                      className="w-[360px] md:w-[420px] shrink-0 h-full select-none"
+                      className="w-[85vw] max-w-[360px] md:w-[420px] shrink-0 h-full select-none"
                     >
                       <Card className="border border-slate-200/80 shadow-[0_6px_25px_rgba(8,69,76,0.04)] bg-white hover:shadow-[0_18px_40px_rgba(8,69,76,0.09)] hover:-translate-y-1 transition-all duration-300 rounded-[1.75rem] h-full flex flex-col overflow-hidden relative group">
                         

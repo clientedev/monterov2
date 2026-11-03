@@ -157,8 +157,8 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative min-h-[95vh] lg:min-h-screen flex items-center pt-24 pb-16 overflow-hidden bg-[#08454c] text-white">
         {/* Dynamic Blurry Glow Orbs */}
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#809ba6]/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none hidden md:block" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#809ba6]/10 rounded-full blur-[140px] pointer-events-none hidden md:block" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
 
         {loadingSettings ? (
@@ -269,17 +269,17 @@ export default function Home() {
                           transition={{ duration: 0.8 }}
                           className="space-y-6"
                         >
-                          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight drop-shadow-sm">
+                          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-display font-bold text-white leading-[1.15] sm:leading-[1.1] tracking-tight drop-shadow-sm">
                             {slide.title}
                           </h1>
                           {slide.subtitle && (
-                            <p className="text-base sm:text-lg md:text-xl text-slate-200 font-light max-w-xl leading-relaxed drop-shadow-sm">
+                            <p className="text-sm sm:text-base md:text-xl text-slate-200 font-light max-w-xl leading-relaxed drop-shadow-sm">
                               {slide.subtitle}
                             </p>
                           )}
-                          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4">
                             <Link href={slide.buttonLink || "/contact"}>
-                              <button className="px-8 py-4 rounded-full bg-[#c65f54] text-white font-bold text-lg hover:bg-[#c65f54]/95 transition-all hover:shadow-lg hover:shadow-[#c65f54]/25 hover:-translate-y-0.5 flex items-center justify-center gap-3 group">
+                              <button className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-[#c65f54] text-white font-bold text-base sm:text-lg hover:bg-[#c65f54]/95 transition-all hover:shadow-lg hover:shadow-[#c65f54]/25 hover:-translate-y-0.5 flex items-center justify-center gap-2.5 sm:gap-3 group">
                                 {slide.buttonText || "Consultoria Premium"}
                                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                               </button>
@@ -288,7 +288,7 @@ export default function Home() {
                               href={`https://wa.me/${whatsappNumber}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-8 py-4 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-white font-bold text-lg hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3 group/wa"
+                              className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-white font-bold text-base sm:text-lg hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2.5 sm:gap-3 group/wa"
                             >
                               <WhatsAppIcon className="w-5 h-5 text-[#25D366] transition-transform group-hover/wa:scale-110" />
                               <span>WhatsApp</span>
@@ -326,7 +326,7 @@ export default function Home() {
       </section>
 
       {/* Diferencial Monteiro - Logo abaixo do banner */}
-      <section className="py-28 bg-[#eae4da] relative overflow-hidden">
+      <section className="py-14 md:py-28 bg-[#eae4da] relative overflow-hidden">
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/3 h-[700px] bg-[#c65f54]/5 rounded-full blur-[140px] pointer-events-none hidden md:block" />
         <div className="absolute left-[-10%] top-[10%] w-[350px] h-[350px] bg-[#08454c]/5 rounded-full blur-[100px] pointer-events-none hidden md:block" />
 
@@ -415,10 +415,10 @@ export default function Home() {
       </section>
 
       {/* Últimas Publicações (Logo após Diferencial Monteiro) */}
-      <section className="py-20 bg-[#163b52] text-white relative overflow-hidden border-b border-white/10">
+      <section className="py-12 md:py-20 bg-[#163b52] text-white relative overflow-hidden border-b border-white/10">
         {/* Soft background glow */}
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute bottom-0 left-10 w-[400px] h-[400px] bg-[#08454c]/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none hidden md:block" />
+        <div className="absolute bottom-0 left-10 w-[400px] h-[400px] bg-[#08454c]/20 rounded-full blur-[120px] pointer-events-none hidden md:block" />
         
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
@@ -492,7 +492,7 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="py-28 bg-[#f5f2eb] relative border-t border-slate-100">
+      <section id="services" className="py-14 md:py-28 bg-[#f5f2eb] relative border-t border-slate-100">
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-20">
             <span className="text-[#c65f54] font-bold tracking-wider text-sm uppercase">Nossas Soluções</span>
@@ -525,9 +525,9 @@ export default function Home() {
       </section>
 
       {/* Seção A: Qualidade de Vida e Prevenção Ativa */}
-      <section className="py-28 bg-white relative overflow-hidden">
+      <section className="py-14 md:py-28 bg-white relative overflow-hidden">
         {/* Soft decorative glow */}
-        <div className="absolute left-0 top-0 w-[400px] h-[400px] bg-[#809ba6]/5 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute left-0 top-0 w-[400px] h-[400px] bg-[#809ba6]/5 rounded-full blur-[100px] pointer-events-none hidden md:block" />
         
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="grid lg:grid-cols-12 gap-16 items-center">
@@ -603,7 +603,7 @@ export default function Home() {
       </section>
 
       {/* Seção B: Nossos Pilares de Cuidado */}
-      <section className="py-28 bg-[#f5f2eb]/70 relative overflow-hidden border-t border-slate-100/50">
+      <section className="py-14 md:py-28 bg-[#f5f2eb]/70 relative overflow-hidden border-t border-slate-100/50">
         <div className="absolute right-[-10%] bottom-0 w-[500px] h-[500px] bg-[#c65f54]/3 rounded-full blur-[120px] pointer-events-none hidden md:block" />
         
         <div className="container px-4 md:px-6 mx-auto relative z-10">
@@ -681,7 +681,7 @@ export default function Home() {
       </section>
 
       {/* Partners / Logos Section */}
-      <section className="py-20 bg-white border-y border-slate-100 overflow-hidden">
+      <section className="py-12 md:py-20 bg-white border-y border-slate-100 overflow-hidden">
         <div className="container px-4 mx-auto mb-10 text-center">
           <span className="text-[#c65f54] font-bold tracking-wider text-xs uppercase">Conexões Globais</span>
           <h3 className="text-2xl md:text-3xl font-display font-bold text-[#163b52] mt-2">
@@ -690,20 +690,7 @@ export default function Home() {
         </div>
 
         <div className="relative flex overflow-x-hidden">
-          <motion.div
-            animate={{
-              x: ["0%", "-50%"],
-            }}
-            transition={{
-              x: {
-                repeat: Infinity,
-                repeatType: "loop",
-                duration: 40,
-                ease: "linear",
-              },
-            }}
-            className="flex w-max whitespace-nowrap items-center py-4"
-          >
+          <div className="animate-marquee-css flex items-center py-4">
             {[
               { name: "Azos", logo: "/partners/azos.jpg", link: "https://www.azos.com.br" },
               { name: "Omint", logo: "/partners/omint.jpg", link: "https://www.omint.com.br" },
@@ -736,23 +723,23 @@ export default function Home() {
                 href={p.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mx-12 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-60 hover:opacity-100 mix-blend-multiply"
+                className="mx-8 md:mx-12 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-60 hover:opacity-100 mix-blend-multiply shrink-0"
               >
                 <img
                   src={p.logo}
                   alt={p.name}
                   loading="lazy"
                   decoding="async"
-                  className="h-12 md:h-16 w-auto object-contain max-w-[130px]"
+                  className="h-10 md:h-16 w-auto object-contain max-w-[110px] md:max-w-[130px]"
                 />
               </a>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* Nossos Posts Section (Instagram & Blog) */}
-      <section id="posts" className="py-28 bg-[#f5f2eb] border-t border-slate-100 relative overflow-hidden">
+      <section id="posts" className="py-14 md:py-28 bg-[#f5f2eb] border-t border-slate-100 relative overflow-hidden">
         <div className="container px-4 md:px-6 mx-auto relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
             <div>
@@ -892,8 +879,8 @@ export default function Home() {
       </section>
 
       {/* Premium CTA Section */}
-      <section className="py-28 bg-[#08454c] relative overflow-hidden border-t border-[#809ba6]/10 text-white">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
+      <section className="py-14 md:py-28 bg-[#08454c] relative overflow-hidden border-t border-[#809ba6]/10 text-white">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none hidden md:block" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
         
         <div className="container px-4 md:px-6 mx-auto relative z-10 text-center max-w-4xl">

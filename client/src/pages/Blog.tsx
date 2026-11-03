@@ -461,7 +461,7 @@ export default function Blog() {
       {/* ── Page Banner ── */}
       <div className="bg-[#08454c] pt-28 pb-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.03]" />
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none hidden md:block" />
         <div className="container px-4 md:px-6 mx-auto relative z-10 text-center">
           <p className="text-[#c65f54] font-bold uppercase tracking-widest text-xs mb-3">Blog &amp; Redes Sociais</p>
           <h1 className="text-3xl md:text-5xl font-display font-bold text-white mb-3 leading-tight">

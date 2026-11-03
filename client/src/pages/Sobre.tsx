@@ -19,10 +19,10 @@ export default function Sobre() {
       <Navbar />
 
       {/* Hero Section */}
-      <div className="relative pt-36 pb-28 md:pt-48 md:pb-40 overflow-hidden bg-gradient-to-br from-[#08454c] via-[#08454c] to-[#163b52] text-white">
+      <div className="relative pt-28 pb-16 md:pt-48 md:pb-40 overflow-hidden bg-gradient-to-br from-[#08454c] via-[#08454c] to-[#163b52] text-white">
         {/* Dynamic Background Accents */}
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-15%] left-[-5%] w-[450px] h-[450px] bg-[#809ba6]/15 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#c65f54]/10 rounded-full blur-[120px] pointer-events-none hidden md:block" />
+        <div className="absolute bottom-[-15%] left-[-5%] w-[450px] h-[450px] bg-[#809ba6]/15 rounded-full blur-[100px] pointer-events-none hidden md:block" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
 
         <div className="absolute inset-0">
@@ -45,10 +45,10 @@ export default function Sobre() {
               <Sparkles className="w-4 h-4 text-[#c65f54]" />
               <span>Nossa Trajetória</span>
             </div>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.1] text-white tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.15] sm:leading-[1.1] text-white tracking-tight">
               {settings?.aboutTitle || "Sobre a Monteiro"}
             </h1>
-            <p className="text-lg md:text-xl text-slate-200 max-w-2xl font-light leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-slate-200 max-w-2xl font-light leading-relaxed">
               Aliamos a credibilidade do atendimento boutique corporativo à proximidade humana necessária para resguardar o que mais importa.
             </p>
           </motion.div>
@@ -56,8 +56,8 @@ export default function Sobre() {
       </div>
 
       {/* Main Content Area - Overlapping */}
-      <div className="container px-4 md:px-6 mx-auto relative z-20 -mt-16 mb-28">
-        <div className="bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-[0_4px_20px_rgba(8,69,76,0.04)] p-8 md:p-16 lg:p-24 border border-slate-100/50">
+      <div className="container px-4 md:px-6 mx-auto relative z-20 -mt-10 sm:-mt-16 mb-16 sm:mb-28">
+        <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] md:rounded-[3rem] shadow-[0_4px_20px_rgba(8,69,76,0.04)] p-6 sm:p-8 md:p-16 lg:p-24 border border-slate-100/50">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             {/* Story Column */}
             <motion.div
@@ -167,7 +167,7 @@ export default function Sobre() {
 
       {/* Boutique Call To Action */}
       <div className="py-28 bg-[#08454c] text-white relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#c65f54]/10 rounded-full blur-[140px] pointer-events-none hidden md:block" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/soft-wallpaper.png')] opacity-[0.03] pointer-events-none" />
 
         <div className="container px-4 md:px-6 mx-auto text-center max-w-4xl relative z-10 space-y-8">
