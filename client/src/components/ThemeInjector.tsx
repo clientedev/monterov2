@@ -8,8 +8,10 @@ export function ThemeInjector() {
         if (!settings) return;
 
         const root = document.documentElement;
-        const isPinkOctober = Boolean(settings.themeOutubroRosa || settings.activeTheme === "outubro_rosa");
-        const isBlueNovember = Boolean(settings.themeNovembroAzul || settings.activeTheme === "novembro_azul");
+        // activeTheme é a fonte prioritária de verdade
+        const activeTheme = settings.activeTheme || (settings.themeNovembroAzul ? "novembro_azul" : settings.themeOutubroRosa ? "outubro_rosa" : "default");
+        const isBlueNovember = activeTheme === "novembro_azul";
+        const isPinkOctober = activeTheme === "outubro_rosa";
 
         if (isBlueNovember) {
             root.setAttribute("data-theme", "novembro-azul");

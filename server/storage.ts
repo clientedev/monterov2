@@ -1234,24 +1234,38 @@ export class DatabaseStorage implements IStorage {
 
   private lastSettingsFetch: number = 0;
 
+  private normalizeTheme(s: SiteSettings): SiteSettings {
+    if (s.activeTheme === "novembro_azul") {
+      s.themeNovembroAzul = true;
+      s.themeOutubroRosa = false;
+    } else if (s.activeTheme === "outubro_rosa") {
+      s.themeOutubroRosa = true;
+      s.themeNovembroAzul = false;
+    } else if (s.activeTheme === "default") {
+      s.themeOutubroRosa = false;
+      s.themeNovembroAzul = false;
+    }
+    return s;
+  }
+
   // Site Settings
   async getSiteSettings(): Promise<SiteSettings> {
     const now = Date.now();
     if (now - this.lastSettingsFetch < 120000) {
-      return this.cachedSiteSettings;
+      return this.normalizeTheme(this.cachedSiteSettings);
     }
     try {
       const [settings] = await db.select().from(siteSettings);
       if (settings) {
         this.cachedSiteSettings = { ...this.cachedSiteSettings, ...settings };
         this.lastSettingsFetch = now;
-        return this.cachedSiteSettings;
+        return this.normalizeTheme(this.cachedSiteSettings);
       }
     } catch (err: any) {
       this.lastSettingsFetch = now;
       console.warn("[SiteSettings] Using cached settings (DB timeout/offline):", err.message);
     }
-    return this.cachedSiteSettings;
+    return this.normalizeTheme(this.cachedSiteSettings);
   }
 
   async updateSiteSettings(settings: InsertSiteSettings): Promise<SiteSettings> {

@@ -32,7 +32,7 @@ export function PinkOctoberBadge() {
 
   // Visível apenas no site público (não em rotas /admin)
   const isAdmin = location.startsWith("/admin");
-  const isPinkOctober = Boolean(settings?.themeOutubroRosa || settings?.activeTheme === "outubro_rosa");
+  const isPinkOctober = settings?.activeTheme === "outubro_rosa" || (Boolean(settings?.themeOutubroRosa) && settings?.activeTheme !== "novembro_azul" && settings?.activeTheme !== "default");
   const showBadge = settings?.themeOutubroRosaBadge !== false;
 
   // Pop-up abre automaticamente uma única vez por sessão após 2s ao entrar no site (apenas no desktop para não travar mobile)

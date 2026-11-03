@@ -3193,13 +3193,25 @@ export async function registerRoutes(
 
   app.get("/api/site-settings", async (req, res) => {
     const settings = await storage.getSiteSettings();
-    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=120, stale-while-revalidate=600");
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.json(settings);
   });
 
   app.patch("/api/site-settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const input = insertSiteSettingsSchema.partial().parse(req.body);
+      if (input.activeTheme) {
+        if (input.activeTheme === "novembro_azul") {
+          input.themeNovembroAzul = true;
+          input.themeOutubroRosa = false;
+        } else if (input.activeTheme === "outubro_rosa") {
+          input.themeOutubroRosa = true;
+          input.themeNovembroAzul = false;
+        } else if (input.activeTheme === "default") {
+          input.themeOutubroRosa = false;
+          input.themeNovembroAzul = false;
+        }
+      }
       const settings = await storage.updateSiteSettings(input as any);
       res.json(settings);
     } catch (err) {

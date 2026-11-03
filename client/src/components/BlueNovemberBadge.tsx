@@ -32,7 +32,7 @@ export function BlueNovemberBadge() {
 
   // Visível apenas no site público (não em rotas /admin)
   const isAdmin = location.startsWith("/admin");
-  const isBlueNovember = Boolean(settings?.themeNovembroAzul || settings?.activeTheme === "novembro_azul");
+  const isBlueNovember = settings?.activeTheme === "novembro_azul" || (Boolean(settings?.themeNovembroAzul) && settings?.activeTheme !== "outubro_rosa" && settings?.activeTheme !== "default");
   const showBadge = settings?.themeNovembroAzulBadge !== false;
 
   // Pop-up abre automaticamente uma única vez por sessão após 2s ao entrar no site (apenas no desktop para não travar mobile)

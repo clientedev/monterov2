@@ -806,9 +806,9 @@ export default function SiteConfigPage() {
                 smtpFrom: settings.smtpFrom || "",
                 resendApiKey: settings.resendApiKey || "",
                 activeTheme: settings.activeTheme || "default",
-                themeOutubroRosa: Boolean(settings.themeOutubroRosa || settings.activeTheme === "outubro_rosa"),
+                themeOutubroRosa: settings.activeTheme ? settings.activeTheme === "outubro_rosa" : Boolean(settings.themeOutubroRosa),
                 themeOutubroRosaBadge: settings.themeOutubroRosaBadge ?? true,
-                themeNovembroAzul: Boolean(settings.themeNovembroAzul || settings.activeTheme === "novembro_azul"),
+                themeNovembroAzul: settings.activeTheme ? settings.activeTheme === "novembro_azul" : Boolean(settings.themeNovembroAzul),
                 themeNovembroAzulBadge: settings.themeNovembroAzulBadge ?? true,
             });
         }
