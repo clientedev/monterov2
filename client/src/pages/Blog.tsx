@@ -53,7 +53,7 @@ function ShareModal({ post, onClose }: { post: any; onClose: () => void }) {
     post.youtubeUrl && ytId(post.youtubeUrl)
       ? `https://img.youtube.com/vi/${ytId(post.youtubeUrl)}/maxresdefault.jpg`
       : post.coverImage ||
-        "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=900";
+        "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=900";
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(postUrl);
@@ -309,7 +309,7 @@ function ShareModal({ post, onClose }: { post: any; onClose: () => void }) {
                 src={coverSrc}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover"
-                onError={e => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=300"; }}
+                onError={e => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=300"; }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#08454c]/90 via-[#163b52]/40 to-transparent" />
               {/* Brand */}
@@ -655,7 +655,7 @@ function Post({ post, index, isLiked, isSaved, onLike, onSave, onShare }: {
   const vid = post.youtubeUrl ? ytId(post.youtubeUrl) : null;
   const cover = post.videoUrl ? null
     : vid ? `https://img.youtube.com/vi/${vid}/maxresdefault.jpg`
-    : post.coverImage || "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=900";
+    : post.coverImage || "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=900";
 
   const triggerHeart = () => {
     if (!isLiked) onLike();

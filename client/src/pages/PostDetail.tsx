@@ -156,11 +156,11 @@ export default function PostDetail() {
           ) : (
             <div className="aspect-video overflow-hidden mb-12 shadow-lg bg-slate-950 flex items-center justify-center">
               <img
-                src={post.coverImage || "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200"}
+                src={post.coverImage || "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=1200"}
                 alt={post.title}
                 className="w-full h-full object-contain"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200";
+                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=1200";
                 }}
               />
             </div>

@@ -113,7 +113,7 @@ const SAMPLE_PRESETS = [
     },
     {
         name: "Vida & Sucessão",
-        image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=2000",
+        image: "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=2000",
         title: "Seguro de Vida e Sucessão Patrimonial",
         subtitle: "Garantia de liquidez imediata, segurança sucessória e proteção irrestrita para sua família e patrimônio construído.",
         buttonText: "Consultoria Especializada",
@@ -143,7 +143,7 @@ const SAMPLE_VIDEO_PRESETS = [
     {
         name: "Vida & Futuro Tranquilo HD",
         videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-mother-and-daughter-smiling-outdoors-42095-large.mp4",
-        poster: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=2000",
+        poster: "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=2000",
         title: "Seguro de Vida e Sucessão Patrimonial",
         subtitle: "Garantia de liquidez imediata e proteção irrestrita para o patrimônio da sua família.",
         buttonText: "Consultoria Especializada",
