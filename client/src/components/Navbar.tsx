@@ -360,7 +360,9 @@ export function Navbar() {
                   type="button"
                   onClick={() => {
                     setIsOpen(false);
-                    setIsLoginModalOpen(true);
+                    setTimeout(() => {
+                      setIsLoginModalOpen(true);
+                    }, 120);
                   }}
                   className="w-full py-3 px-5 rounded-full font-semibold text-white hover:bg-white/10 border border-white/20 flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer text-sm"
                 >

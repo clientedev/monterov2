@@ -5,13 +5,14 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import { Lock, User as UserIcon, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
+import { Lock, User as UserIcon, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, AlertCircle, X } from "lucide-react";
 import logo from "@assets/logo_monteiro_v2.png";
 import { User } from "@shared/schema";
 
@@ -75,9 +76,17 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden rounded-3xl bg-white border-0 shadow-2xl z-50">
+      <DialogContent 
+        className="w-[92vw] max-w-[420px] sm:max-w-[440px] p-0 overflow-hidden rounded-3xl bg-white border-0 shadow-2xl z-[99999] pointer-events-auto"
+      >
         {/* Cabeçalho Premium Monteiro */}
         <div className="bg-[#08454c] text-white p-6 sm:p-7 relative overflow-hidden">
+          {/* Botão de Fechar Nítido */}
+          <DialogClose className="absolute right-4 top-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-30">
+            <X className="h-4 w-4 text-white" />
+            <span className="sr-only">Fechar</span>
+          </DialogClose>
+
           {/* Luzes decorativas sutis */}
           <div className="absolute top-0 right-0 w-44 h-44 bg-[#c65f54]/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#809ba6]/15 rounded-full blur-2xl pointer-events-none" />
@@ -228,4 +237,3 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
     </Dialog>
   );
 }
-
