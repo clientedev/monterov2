@@ -9,16 +9,26 @@ export function ThemeInjector() {
 
         const root = document.documentElement;
         const isPinkOctober = Boolean(settings.themeOutubroRosa || settings.activeTheme === "outubro_rosa");
+        const isBlueNovember = Boolean(settings.themeNovembroAzul || settings.activeTheme === "novembro_azul");
 
-        if (isPinkOctober) {
+        if (isBlueNovember) {
+            root.setAttribute("data-theme", "novembro-azul");
+            root.classList.add("theme-novembro-azul");
+            root.classList.remove("theme-outubro-rosa");
+            root.style.setProperty("--primary-hex", "#2563eb");
+            root.style.setProperty("--secondary-hex", "#0284c7");
+            root.style.setProperty("--navbar-bg", "rgba(12, 25, 46, 0.95)");
+        } else if (isPinkOctober) {
             root.setAttribute("data-theme", "outubro-rosa");
             root.classList.add("theme-outubro-rosa");
+            root.classList.remove("theme-novembro-azul");
             root.style.setProperty("--primary-hex", "#d94676");
             root.style.setProperty("--secondary-hex", "#ea7297");
             root.style.setProperty("--navbar-bg", "rgba(69, 28, 43, 0.95)");
         } else {
             root.removeAttribute("data-theme");
             root.classList.remove("theme-outubro-rosa");
+            root.classList.remove("theme-novembro-azul");
             root.style.removeProperty("--navbar-bg");
 
             if (settings.primaryColor) {

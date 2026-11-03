@@ -218,6 +218,8 @@ export const siteSettings = pgTable("site_settings", {
   activeTheme: text("active_theme").notNull().default("default"),
   themeOutubroRosa: boolean("theme_outubro_rosa").notNull().default(false),
   themeOutubroRosaBadge: boolean("theme_outubro_rosa_badge").notNull().default(true),
+  themeNovembroAzul: boolean("theme_novembro_azul").notNull().default(false),
+  themeNovembroAzulBadge: boolean("theme_novembro_azul_badge").notNull().default(true),
 
   // Google Reviews Integration
   googleReviewUrl: text("google_review_url").notNull().default("https://g.page/r/CfNsrw-dt3q3EAE/review"),
@@ -415,6 +417,8 @@ export const insertSiteSettingsSchema = createInsertSchema(siteSettings, {
   activeTheme: z.string().optional(),
   themeOutubroRosa: z.boolean().optional(),
   themeOutubroRosaBadge: z.boolean().optional(),
+  themeNovembroAzul: z.boolean().optional(),
+  themeNovembroAzulBadge: z.boolean().optional(),
 }).omit({ id: true, updatedAt: true });
 export const insertHeroSlideSchema = createInsertSchema(heroSlides, {
   mediaType: z.enum(["image", "video"]).default("image"),

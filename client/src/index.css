@@ -297,6 +297,151 @@
   box-shadow: 0 20px 50px rgba(190, 95, 119, 0.12) !important;
 }
 
+/* ========================================================
+   TEMA EXCLUSIVO: NOVEMBRO AZUL (100% Reversível)
+   Paleta nobre, institucional, confiável e sofisticada (Midnight Navy / Royal Blue / Sky Ice).
+   Campanha de conscientização sobre a saúde masculina e prevenção do câncer de próstata.
+   Ao desativar o tema, tudo retorna 100% ao estado original.
+======================================================== */
+[data-theme="novembro-azul"] {
+  --primary: 221 83% 53%; /* #2563eb - Azul Royal vibrante e acolhedor */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 199 89% 48%; /* #0284c7 - Azul Celeste dinâmico e seguro */
+  --secondary-foreground: 0 0% 100%;
+  --ring: 221 83% 53%;
+  --brand-gradient-start: #0c192e; /* Azul Marinho nobre e institucional */
+  --brand-gradient-end: #071020; /* Midnight Sapphire */
+  --navbar-bg: rgba(12, 25, 46, 0.95);
+  --primary-hex: #2563eb;
+  --secondary-hex: #0284c7;
+  --primary-default: #2563eb;
+  --secondary-default: #0284c7;
+}
+
+/* Garantia de Títulos e Textos Brancos em Áreas Escuras */
+[data-theme="novembro-azul"] .text-white,
+[data-theme="novembro-azul"] [class*="text-white"],
+[data-theme="novembro-azul"] h1.text-white,
+[data-theme="novembro-azul"] h2.text-white,
+[data-theme="novembro-azul"] h3.text-white,
+[data-theme="novembro-azul"] h4.text-white,
+[data-theme="novembro-azul"] h5.text-white,
+[data-theme="novembro-azul"] h6.text-white {
+  color: #ffffff !important;
+}
+
+/* Títulos do Hero slider e subtítulos com máxima nitidez */
+[data-theme="novembro-azul"] section [class*="max-w-3xl"] h1,
+[data-theme="novembro-azul"] section [class*="max-w-3xl"] p,
+[data-theme="novembro-azul"] .hero-title {
+  color: #ffffff !important;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.65);
+}
+
+/* Seções e Banners escuros com textos brancos */
+[data-theme="novembro-azul"] section.bg-\[\#08454c\] h1,
+[data-theme="novembro-azul"] section.bg-\[\#08454c\] h2,
+[data-theme="novembro-azul"] section.bg-\[\#08454c\] h3,
+[data-theme="novembro-azul"] section.bg-\[\#08454c\] h4,
+[data-theme="novembro-azul"] section.bg-\[\#08454c\] p,
+[data-theme="novembro-azul"] section.bg-\[\#163b52\] h1,
+[data-theme="novembro-azul"] section.bg-\[\#163b52\] h2,
+[data-theme="novembro-azul"] section.bg-\[\#163b52\] h3,
+[data-theme="novembro-azul"] section.bg-\[\#163b52\] h4,
+[data-theme="novembro-azul"] section.bg-\[\#163b52\] p,
+[data-theme="novembro-azul"] div.bg-\[\#08454c\] h1,
+[data-theme="novembro-azul"] div.bg-\[\#08454c\] h2,
+[data-theme="novembro-azul"] div.bg-\[\#08454c\] h3,
+[data-theme="novembro-azul"] div.bg-\[\#08454c\] p,
+[data-theme="novembro-azul"] header h1,
+[data-theme="novembro-azul"] header h2,
+[data-theme="novembro-azul"] header p,
+[data-theme="novembro-azul"] footer h1,
+[data-theme="novembro-azul"] footer h2,
+[data-theme="novembro-azul"] footer h3,
+[data-theme="novembro-azul"] footer h4,
+[data-theme="novembro-azul"] footer h5,
+[data-theme="novembro-azul"] footer h6,
+[data-theme="novembro-azul"] footer p {
+  color: #ffffff !important;
+}
+
+/* Seções com fundo escuro da marca adaptadas para o azul marinho elegante */
+[data-theme="novembro-azul"] section.bg-\[\#08454c\],
+[data-theme="novembro-azul"] footer.bg-\[\#08454c\],
+[data-theme="novembro-azul"] header.bg-\[\#08454c\],
+[data-theme="novembro-azul"] div.bg-\[\#08454c\]:not([class*="mix-blend"]):not([class*="gradient"]):not([class*="blur"]):not([class*="opacity"]) {
+  background-color: #0c192e !important;
+}
+[data-theme="novembro-azul"] section.bg-\[\#163b52\] {
+  background-color: #071020 !important;
+}
+
+/* Botões da marca adaptados para azul royal vibrante */
+[data-theme="novembro-azul"] button.bg-\[\#08454c\],
+[data-theme="novembro-azul"] a.bg-\[\#08454c\] {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+[data-theme="novembro-azul"] button.bg-\[\#08454c\]:hover,
+[data-theme="novembro-azul"] a.bg-\[\#08454c\]:hover {
+  background-color: #1e40af !important;
+  color: #ffffff !important;
+}
+
+/* Destaques secundários adaptados para azul celeste / ciano nítido */
+[data-theme="novembro-azul"] .bg-\[\#c65f54\] {
+  background-color: #0284c7 !important;
+}
+[data-theme="novembro-azul"] .text-\[\#c65f54\] {
+  color: #0284c7 !important;
+}
+[data-theme="novembro-azul"] .border-\[\#c65f54\] {
+  border-color: #0284c7 !important;
+}
+[data-theme="novembro-azul"] button.bg-\[\#c65f54\],
+[data-theme="novembro-azul"] a.bg-\[\#c65f54\] {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+[data-theme="novembro-azul"] button.bg-\[\#c65f54\]:hover,
+[data-theme="novembro-azul"] a.bg-\[\#c65f54\]:hover {
+  background-color: #0369a1 !important;
+  color: #ffffff !important;
+}
+
+/* Bordas de destaque */
+[data-theme="novembro-azul"] .border-\[\#08454c\] {
+  border-color: #60a5fa !important;
+}
+
+/* Gradientes suaves e nobres */
+[data-theme="novembro-azul"] .from-\[\#08454c\] {
+  --tw-gradient-from: #0c192e var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(12, 25, 46, 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+[data-theme="novembro-azul"] .via-\[\#08454c\]\/70 {
+  --tw-gradient-stops: var(--tw-gradient-from), rgba(12, 25, 46, 0.7) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+[data-theme="novembro-azul"] .via-\[\#08454c\]\/90 {
+  --tw-gradient-stops: var(--tw-gradient-from), rgba(12, 25, 46, 0.9) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+[data-theme="novembro-azul"] .to-\[\#163b52\] {
+  --tw-gradient-to: #071020 var(--tw-gradient-to-position) !important;
+}
+
+/* Elementos de gradiente premium */
+[data-theme="novembro-azul"] .premium-gradient {
+  background-image: linear-gradient(135deg, #0c192e, #071020) !important;
+}
+[data-theme="novembro-azul"] .text-gold {
+  color: #93c5fd !important;
+}
+[data-theme="novembro-azul"] .premium-card:hover {
+  box-shadow: 0 20px 50px rgba(37, 99, 235, 0.14) !important;
+}
+
 /* Utilitário para ocultar barras de rolagem nativas preservando a rolagem suave */
 .scrollbar-none::-webkit-scrollbar {
   display: none;

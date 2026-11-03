@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import {
     Loader2,
     Plus,
+    Activity,
     Trash2,
     Save,
     MoveUp,
@@ -775,6 +776,8 @@ export default function SiteConfigPage() {
             activeTheme: "default",
             themeOutubroRosa: false,
             themeOutubroRosaBadge: true,
+            themeNovembroAzul: false,
+            themeNovembroAzulBadge: true,
         },
     });
 
@@ -805,6 +808,8 @@ export default function SiteConfigPage() {
                 activeTheme: settings.activeTheme || "default",
                 themeOutubroRosa: Boolean(settings.themeOutubroRosa || settings.activeTheme === "outubro_rosa"),
                 themeOutubroRosaBadge: settings.themeOutubroRosaBadge ?? true,
+                themeNovembroAzul: Boolean(settings.themeNovembroAzul || settings.activeTheme === "novembro_azul"),
+                themeNovembroAzulBadge: settings.themeNovembroAzulBadge ?? true,
             });
         }
     }, [settings, siteForm]);
@@ -1139,37 +1144,55 @@ export default function SiteConfigPage() {
                             {/* Live Status Banner */}
                             <div className={cn(
                                 "rounded-3xl p-6 md:p-8 border transition-all duration-500 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm",
-                                siteForm.watch("themeOutubroRosa")
+                                Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul")
+                                    ? "bg-gradient-to-r from-[#eff6ff] via-[#dbeafe] to-[#eff6ff] border-[#93c5fd]/70"
+                                    : Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa")
                                     ? "bg-gradient-to-r from-[#fbf6f7] via-[#f7edf1] to-[#f3e4e9] border-[#e8b4c0]/50"
                                     : "bg-slate-50 border-slate-200"
                             )}>
                                 <div className="flex items-start gap-4">
                                     <div className={cn(
                                         "w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm transition-transform duration-300",
-                                        siteForm.watch("themeOutubroRosa")
+                                        Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul")
+                                            ? "bg-[#2563eb] text-white shadow-[#2563eb]/30 scale-105"
+                                            : Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa")
                                             ? "bg-[#be5f77] text-white shadow-[#be5f77]/30 scale-105"
                                             : "bg-primary text-white"
                                     )}>
-                                        {siteForm.watch("themeOutubroRosa") ? "🎗️" : "🏛️"}
+                                        {Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul")
+                                            ? "💙"
+                                            : Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa")
+                                            ? "🎗️"
+                                            : "🏛️"}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <h3 className="text-xl font-bold font-display text-slate-900">
-                                                {siteForm.watch("themeOutubroRosa")
+                                                {Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul")
+                                                    ? "Tema Novembro Azul Ativado"
+                                                    : Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa")
                                                     ? "Tema Outubro Rosa Suave Ativado"
                                                     : "Tema Padrão Monteiro Ativado"}
                                             </h3>
                                             <Badge className={cn(
                                                 "font-bold uppercase tracking-wider text-[10px] px-2.5 py-0.5",
-                                                siteForm.watch("themeOutubroRosa")
+                                                Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul")
+                                                    ? "bg-[#2563eb] text-white hover:bg-[#2563eb]"
+                                                    : Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa")
                                                     ? "bg-[#be5f77] text-white hover:bg-[#be5f77]"
                                                     : "bg-slate-200 text-slate-700 hover:bg-slate-200"
                                             )}>
-                                                {siteForm.watch("themeOutubroRosa") ? "Campanha Ao Vivo" : "Identidade Original"}
+                                                {Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul")
+                                                    ? "Campanha Saúde Masculina Ao Vivo"
+                                                    : Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa")
+                                                    ? "Campanha Ao Vivo"
+                                                    : "Identidade Original"}
                                             </Badge>
                                         </div>
                                         <p className="text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                                            {siteForm.watch("themeOutubroRosa")
+                                            {Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul")
+                                                ? "O site público está exibindo a identidade visual Novembro Azul (Azul Royal, Marinho Profundo e Aço), com laço de apoio, modal educativo e foco no cuidado integral da saúde do homem."
+                                                : Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa")
                                                 ? "O site público está exibindo a paleta delicada e suave Outubro Rosa (Rose Quartz & Blush aveludado), com tipografia limpa, modal educativo discreto e contraste premium."
                                                 : "O site está utilizando as cores padrões da marca definidas na aba Estilo (Verde Profundo e Terracota Vital)."}
                                         </p>
@@ -1182,7 +1205,9 @@ export default function SiteConfigPage() {
                                     disabled={isUpdatingSettings}
                                     className={cn(
                                         "rounded-xl h-11 px-6 font-bold text-white shadow-md transition-all shrink-0 active:scale-95",
-                                        siteForm.watch("themeOutubroRosa")
+                                        Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul")
+                                            ? "bg-[#2563eb] hover:bg-[#1d4ed8] shadow-[#2563eb]/25"
+                                            : Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa")
                                             ? "bg-[#be5f77] hover:bg-[#b0536b] shadow-[#be5f77]/25"
                                             : "bg-primary hover:bg-primary/90"
                                     )}
@@ -1192,7 +1217,344 @@ export default function SiteConfigPage() {
                                 </Button>
                             </div>
 
-                            {/* Main Theme Card */}
+                            {/* Seletor Rápido de Temas (3 Cards) */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                                        Seletor de Temas Disponíveis
+                                    </Label>
+                                    <span className="text-xs text-slate-400">Alternância instantânea e 100% reversível</span>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* Card Padrão */}
+                                    <div
+                                        onClick={() => {
+                                            siteForm.setValue("activeTheme", "default", { shouldDirty: true });
+                                            siteForm.setValue("themeOutubroRosa", false, { shouldDirty: true });
+                                            siteForm.setValue("themeNovembroAzul", false, { shouldDirty: true });
+                                        }}
+                                        className={cn(
+                                            "rounded-2xl border-2 p-5 cursor-pointer transition-all duration-300 relative flex flex-col justify-between gap-4 bg-white hover:shadow-md",
+                                            !siteForm.watch("themeOutubroRosa") && !siteForm.watch("themeNovembroAzul") && siteForm.watch("activeTheme") === "default"
+                                                ? "border-primary shadow-md shadow-primary/10 ring-2 ring-primary/20"
+                                                : "border-slate-200/80 hover:border-slate-300 opacity-80 hover:opacity-100"
+                                        )}
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-xl bg-[#08454c] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                                    🏛️
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-sm text-slate-900">Padrão Monteiro</h4>
+                                                    <p className="text-xs text-slate-500">Identidade Institucional</p>
+                                                </div>
+                                            </div>
+                                            {!siteForm.watch("themeOutubroRosa") && !siteForm.watch("themeNovembroAzul") && (
+                                                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-sm animate-pulse" />
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-5 w-5 rounded-full bg-[#08454c] border border-white shadow-xs" title="Verde Petróleo" />
+                                            <span className="h-5 w-5 rounded-full bg-[#c65f54] border border-white shadow-xs" title="Terracota Vital" />
+                                            <span className="h-5 w-5 rounded-full bg-[#163b52] border border-white shadow-xs" title="Azul Profundo" />
+                                        </div>
+                                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                                            <span className="text-[11px] font-semibold text-slate-600">
+                                                {!siteForm.watch("themeOutubroRosa") && !siteForm.watch("themeNovembroAzul") ? "Tema Ativo" : "Clique para ativar"}
+                                            </span>
+                                            <span className={cn(
+                                                "text-xs font-bold px-2.5 py-1 rounded-lg transition-colors",
+                                                !siteForm.watch("themeOutubroRosa") && !siteForm.watch("themeNovembroAzul") ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                            )}>
+                                                {!siteForm.watch("themeOutubroRosa") && !siteForm.watch("themeNovembroAzul") ? "Ativo" : "Selecionar"}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Card Outubro Rosa */}
+                                    <div
+                                        onClick={() => {
+                                            siteForm.setValue("activeTheme", "outubro_rosa", { shouldDirty: true });
+                                            siteForm.setValue("themeOutubroRosa", true, { shouldDirty: true });
+                                            siteForm.setValue("themeNovembroAzul", false, { shouldDirty: true });
+                                        }}
+                                        className={cn(
+                                            "rounded-2xl border-2 p-5 cursor-pointer transition-all duration-300 relative flex flex-col justify-between gap-4 bg-white hover:shadow-md",
+                                            Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa")
+                                                ? "border-[#be5f77] shadow-md shadow-[#be5f77]/15 ring-2 ring-[#be5f77]/20"
+                                                : "border-slate-200/80 hover:border-slate-300 opacity-80 hover:opacity-100"
+                                        )}
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-xl bg-[#be5f77] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                                    🎗️
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-sm text-slate-900">Outubro Rosa</h4>
+                                                    <p className="text-xs text-slate-500">Saúde da Mulher</p>
+                                                </div>
+                                            </div>
+                                            {Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa") && (
+                                                <span className="h-2 w-2 rounded-full bg-[#be5f77] shadow-sm animate-pulse" />
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-5 w-5 rounded-full bg-[#be5f77] border border-white shadow-xs" title="Rose Quartz" />
+                                            <span className="h-5 w-5 rounded-full bg-[#d68a9f] border border-white shadow-xs" title="Blush Suave" />
+                                            <span className="h-5 w-5 rounded-full bg-[#38222c] border border-white shadow-xs" title="Malva Aveludado" />
+                                        </div>
+                                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                                            <span className="text-[11px] font-semibold text-slate-600">
+                                                {Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa") ? "Tema Ativo" : "Clique para ativar"}
+                                            </span>
+                                            <span className={cn(
+                                                "text-xs font-bold px-2.5 py-1 rounded-lg transition-colors",
+                                                Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa") ? "bg-[#be5f77] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                            )}>
+                                                {Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa") ? "Ativo" : "Selecionar"}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Card Novembro Azul */}
+                                    <div
+                                        onClick={() => {
+                                            siteForm.setValue("activeTheme", "novembro_azul", { shouldDirty: true });
+                                            siteForm.setValue("themeNovembroAzul", true, { shouldDirty: true });
+                                            siteForm.setValue("themeOutubroRosa", false, { shouldDirty: true });
+                                        }}
+                                        className={cn(
+                                            "rounded-2xl border-2 p-5 cursor-pointer transition-all duration-300 relative flex flex-col justify-between gap-4 bg-white hover:shadow-md",
+                                            Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul")
+                                                ? "border-[#2563eb] shadow-md shadow-[#2563eb]/15 ring-2 ring-[#2563eb]/20"
+                                                : "border-slate-200/80 hover:border-slate-300 opacity-80 hover:opacity-100"
+                                        )}
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-xl bg-[#2563eb] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                                    💙
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-sm text-slate-900">Novembro Azul</h4>
+                                                    <p className="text-xs text-slate-500">Saúde do Homem</p>
+                                                </div>
+                                            </div>
+                                            {Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul") && (
+                                                <span className="h-2 w-2 rounded-full bg-[#2563eb] shadow-sm animate-pulse" />
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-5 w-5 rounded-full bg-[#2563eb] border border-white shadow-xs" title="Azul Royal" />
+                                            <span className="h-5 w-5 rounded-full bg-[#0284c7] border border-white shadow-xs" title="Azul Celeste" />
+                                            <span className="h-5 w-5 rounded-full bg-[#0c192e] border border-white shadow-xs" title="Marinho Profundo" />
+                                        </div>
+                                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                                            <span className="text-[11px] font-semibold text-slate-600">
+                                                {Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul") ? "Tema Ativo" : "Clique para ativar"}
+                                            </span>
+                                            <span className={cn(
+                                                "text-xs font-bold px-2.5 py-1 rounded-lg transition-colors",
+                                                Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul") ? "bg-[#2563eb] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                            )}>
+                                                {Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul") ? "Ativo" : "Selecionar"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card Novembro Azul Detalhes */}
+                            <Card className="premium-card border-none shadow-sm overflow-hidden">
+                                <CardHeader className="bg-gradient-to-r from-[#2563eb]/10 via-[#0284c7]/5 to-transparent border-b border-[#93c5fd]/40 p-8">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#2563eb] to-[#1e40af] text-white flex items-center justify-center shadow-lg shadow-[#2563eb]/25">
+                                                <Activity className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <CardTitle className="text-2xl font-display font-bold text-slate-900 flex items-center gap-2">
+                                                    Novembro Azul — Saúde do Homem
+                                                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#93c5fd]/50">
+                                                        Campanha Especial
+                                                    </span>
+                                                </CardTitle>
+                                                <CardDescription className="text-slate-500">
+                                                    Transformação visual sofisticada e institucional em apoio à conscientização sobre a saúde masculina e prevenção do câncer de próstata.
+                                                </CardDescription>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+
+                                <CardContent className="p-8 space-y-8">
+                                    {/* Toggle Main Switch */}
+                                    <div className="rounded-2xl border border-slate-200/80 p-6 bg-white hover:border-[#93c5fd]/60 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-base font-bold text-slate-900">Ativar Tema Novembro Azul</span>
+                                                {Boolean(siteForm.watch("themeNovembroAzul") || siteForm.watch("activeTheme") === "novembro_azul") && (
+                                                    <span className="relative flex h-2.5 w-2.5">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#60a5fa] opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#2563eb]"></span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-sm text-slate-500 max-w-xl">
+                                                Aplica ao site uma paleta nobre de Azul Royal, Marinho Profundo e Aço. Quando desativado, o site retorna 100% à sua identidade original.
+                                            </p>
+                                        </div>
+
+                                        <FormField
+                                            name="themeNovembroAzul"
+                                            render={({ field }) => (
+                                                <FormItem className="flex items-center space-y-0">
+                                                    <FormControl>
+                                                        <Switch
+                                                            checked={Boolean(field.value || siteForm.watch("activeTheme") === "novembro_azul")}
+                                                            onCheckedChange={(checked) => {
+                                                                field.onChange(checked);
+                                                                if (checked) {
+                                                                    siteForm.setValue("themeOutubroRosa", false);
+                                                                    siteForm.setValue("activeTheme", "novembro_azul");
+                                                                } else {
+                                                                    siteForm.setValue("activeTheme", "default");
+                                                                }
+                                                            }}
+                                                            className="data-[state=checked]:bg-[#2563eb] h-7 w-12"
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    {/* Badge Switch */}
+                                    <div className="rounded-2xl border border-slate-200/80 p-6 bg-white hover:border-[#93c5fd]/60 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <span className="text-base font-bold text-slate-900">Exibir Selo Flutuante de Apoio à Causa (Novembro Azul)</span>
+                                            <p className="text-sm text-slate-500 max-w-xl">
+                                                Exibe uma pílula elegante ("💙 Novembro Azul") no canto inferior da tela pública que abre o modal clean e acolhedor de conscientização.
+                                            </p>
+                                        </div>
+
+                                        <FormField
+                                            name="themeNovembroAzulBadge"
+                                            render={({ field }) => (
+                                                <FormItem className="flex items-center space-y-0">
+                                                    <FormControl>
+                                                        <Switch
+                                                            checked={field.value !== false}
+                                                            onCheckedChange={field.onChange}
+                                                            disabled={!siteForm.watch("themeNovembroAzul") && siteForm.watch("activeTheme") !== "novembro_azul"}
+                                                            className="data-[state=checked]:bg-[#2563eb] h-7 w-12"
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    {/* Paleta Oficial Novembro Azul */}
+                                    <div className="space-y-4">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                                            Paleta de Identidade Novembro Azul
+                                        </Label>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#2563eb" }}>
+                                                    #2563eb
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Azul Royal</p>
+                                                    <p className="text-[11px] text-slate-500">Botões e Primário Confiável</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#0284c7" }}>
+                                                    #0284c7
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Azul Celeste</p>
+                                                    <p className="text-[11px] text-slate-500">Secundário e Destaques</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-white text-xs font-bold font-mono" style={{ backgroundColor: "#0c192e" }}>
+                                                    #0c192e
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Marinho Profundo</p>
+                                                    <p className="text-[11px] text-slate-500">Hero, Header e Rodapé</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner flex items-center justify-center text-[#1e40af] text-xs font-bold font-mono" style={{ backgroundColor: "#93c5fd" }}>
+                                                    #93c5fd
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Aço Gelo</p>
+                                                    <p className="text-[11px] text-slate-500">Badges e Bordas Leves</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-200 p-3.5 bg-slate-50/50 space-y-2">
+                                                <div className="h-14 rounded-xl shadow-inner border border-[#93c5fd]/50 flex items-center justify-center text-[#1d4ed8] text-xs font-bold font-mono" style={{ backgroundColor: "#f0f7ff" }}>
+                                                    #f0f7ff
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Soft Ice</p>
+                                                    <p className="text-[11px] text-slate-500">Superfícies e Cartões</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Live Interactive Preview Box Novembro Azul */}
+                                    <div className="space-y-4">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                                            Demonstração Visual em Tempo Real (Novembro Azul)
+                                        </Label>
+                                        <div className="rounded-3xl p-6 md:p-8 transition-all duration-500 border overflow-hidden bg-gradient-to-br from-[#0c192e] via-[#102340] to-[#071020] text-white border-blue-400/25 shadow-xl shadow-[#0c192e]/30">
+                                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                                                <div className="space-y-2 max-w-xl">
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-white/10 backdrop-blur-sm border border-white/20 text-sky-200">
+                                                        <span>💙 Novembro Azul • Conscientização & Cuidado</span>
+                                                    </div>
+                                                    <h4 className="text-2xl font-bold font-display leading-tight">
+                                                        Novembro Azul: cuidar da saúde também é coisa de homem.
+                                                    </h4>
+                                                    <p className="text-sm text-white/80">
+                                                        Sua saúde merece atenção. Prevenção é um ato de cuidado e quebrar o preconceito é o primeiro passo. Informação, prevenção e cuidado salvam vidas.
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                                                    <button
+                                                        type="button"
+                                                        className="px-6 py-3 rounded-full font-bold text-sm shadow-lg transition-all bg-white text-[#0c192e] hover:bg-white/90"
+                                                    >
+                                                        Solicitar Cotação
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="px-6 py-3 rounded-full font-bold text-sm transition-all border bg-[#2563eb] text-white border-sky-400/30 hover:bg-[#1d4ed8]"
+                                                    >
+                                                        Conhecer Planos
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Main Theme Card Outubro Rosa */}
                             <Card className="premium-card border-none shadow-sm overflow-hidden">
                                 <CardHeader className="bg-gradient-to-r from-[#be5f77]/10 via-[#d68a9f]/5 to-transparent border-b border-[#e8b4c0]/40 p-8">
                                     <div className="flex items-center justify-between">
@@ -1221,7 +1583,7 @@ export default function SiteConfigPage() {
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-base font-bold text-slate-900">Ativar Tema Outubro Rosa</span>
-                                                {siteForm.watch("themeOutubroRosa") && (
+                                                {Boolean(siteForm.watch("themeOutubroRosa") || siteForm.watch("activeTheme") === "outubro_rosa") && (
                                                     <span className="relative flex h-2.5 w-2.5">
                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#d68a9f] opacity-75"></span>
                                                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#be5f77]"></span>
@@ -1239,10 +1601,15 @@ export default function SiteConfigPage() {
                                                 <FormItem className="flex items-center space-y-0">
                                                     <FormControl>
                                                         <Switch
-                                                            checked={Boolean(field.value)}
+                                                            checked={Boolean(field.value || siteForm.watch("activeTheme") === "outubro_rosa")}
                                                             onCheckedChange={(checked) => {
                                                                 field.onChange(checked);
-                                                                siteForm.setValue("activeTheme", checked ? "outubro_rosa" : "default");
+                                                                if (checked) {
+                                                                    siteForm.setValue("themeNovembroAzul", false);
+                                                                    siteForm.setValue("activeTheme", "outubro_rosa");
+                                                                } else {
+                                                                    siteForm.setValue("activeTheme", "default");
+                                                                }
                                                             }}
                                                             className="data-[state=checked]:bg-[#be5f77] h-7 w-12"
                                                         />
@@ -1255,7 +1622,7 @@ export default function SiteConfigPage() {
                                     {/* Badge Switch */}
                                     <div className="rounded-2xl border border-slate-200/80 p-6 bg-white hover:border-[#d68a9f]/60 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <div className="space-y-1">
-                                            <span className="text-base font-bold text-slate-900">Exibir Selo Flutuante de Apoio à Causa</span>
+                                            <span className="text-base font-bold text-slate-900">Exibir Selo Flutuante de Apoio à Causa (Outubro Rosa)</span>
                                             <p className="text-sm text-slate-500 max-w-xl">
                                                 Exibe uma pílula minimalista e elegante ("🎗️ Outubro Rosa") no canto inferior da tela pública que abre um modal clean e acolhedor de conscientização.
                                             </p>
@@ -1269,7 +1636,7 @@ export default function SiteConfigPage() {
                                                         <Switch
                                                             checked={field.value !== false}
                                                             onCheckedChange={field.onChange}
-                                                            disabled={!siteForm.watch("themeOutubroRosa")}
+                                                            disabled={!siteForm.watch("themeOutubroRosa") && siteForm.watch("activeTheme") !== "outubro_rosa"}
                                                             className="data-[state=checked]:bg-[#be5f77] h-7 w-12"
                                                         />
                                                     </FormControl>
@@ -1336,26 +1703,19 @@ export default function SiteConfigPage() {
                                         </div>
                                     </div>
 
-                                    {/* Live Interactive Preview Box */}
+                                    {/* Live Interactive Preview Box Outubro Rosa */}
                                     <div className="space-y-4">
                                         <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                                            Demonstração Visual em Tempo Real
+                                            Demonstração Visual em Tempo Real (Outubro Rosa)
                                         </Label>
-                                        <div className={cn(
-                                            "rounded-3xl p-6 md:p-8 transition-all duration-500 border overflow-hidden",
-                                            siteForm.watch("themeOutubroRosa")
-                                                ? "bg-gradient-to-br from-[#38222c] via-[#482836] to-[#27161f] text-white border-[#e8b4c0]/25 shadow-xl shadow-[#38222c]/20"
-                                                : "bg-[#08454c] text-white border-slate-700"
-                                        )}>
+                                        <div className="rounded-3xl p-6 md:p-8 transition-all duration-500 border overflow-hidden bg-gradient-to-br from-[#38222c] via-[#482836] to-[#27161f] text-white border-[#e8b4c0]/25 shadow-xl shadow-[#38222c]/20">
                                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                                                 <div className="space-y-2 max-w-xl">
                                                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-white/10 backdrop-blur-sm border border-white/20">
-                                                        <span>{siteForm.watch("themeOutubroRosa") ? "🎗️ Conscientização & Cuidado" : "🏛️ Monteiro Seguros"}</span>
+                                                        <span>🎗️ Conscientização & Cuidado</span>
                                                     </div>
                                                     <h4 className="text-2xl font-bold font-display leading-tight">
-                                                        {siteForm.watch("themeOutubroRosa")
-                                                            ? "Cuidar de você e da sua saúde é o gesto mais bonito de proteção."
-                                                            : "Protegendo seu Futuro, Garantindo seu Legado."}
+                                                        Cuidar de você e da sua saúde é o gesto mais bonito de proteção.
                                                     </h4>
                                                     <p className="text-sm text-white/80">
                                                         Exemplo de como títulos, botões e cartões aparecerão para os visitantes do seu site com cores aveludadas e acolhedoras.
@@ -1365,23 +1725,13 @@ export default function SiteConfigPage() {
                                                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                                                     <button
                                                         type="button"
-                                                        className={cn(
-                                                            "px-6 py-3 rounded-full font-bold text-sm shadow-lg transition-all",
-                                                            siteForm.watch("themeOutubroRosa")
-                                                                ? "bg-white text-[#38222c] hover:bg-white/90"
-                                                                : "bg-white text-[#08454c] hover:bg-white/90"
-                                                        )}
+                                                        className="px-6 py-3 rounded-full font-bold text-sm shadow-lg transition-all bg-white text-[#38222c] hover:bg-white/90"
                                                     >
                                                         Solicitar Cotação
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        className={cn(
-                                                            "px-6 py-3 rounded-full font-bold text-sm transition-all border",
-                                                            siteForm.watch("themeOutubroRosa")
-                                                                ? "bg-[#be5f77] text-white border-[#d68a9f]/30 hover:bg-[#b0536b]"
-                                                                : "bg-[#c65f54] text-white border-transparent hover:bg-[#c65f54]/90"
-                                                        )}
+                                                        className="px-6 py-3 rounded-full font-bold text-sm transition-all border bg-[#be5f77] text-white border-[#d68a9f]/30 hover:bg-[#b0536b]"
                                                     >
                                                         Conhecer Planos
                                                     </button>
@@ -1398,7 +1748,7 @@ export default function SiteConfigPage() {
                                         <div className="space-y-1 text-sm">
                                             <p className="font-bold">Garantia de Reversibilidade 100%</p>
                                             <p className="text-emerald-800 leading-relaxed">
-                                                Suas cores oficiais configuradas na aba <strong>Estilo</strong> (Cor Primária e Cor Secundária) ficam intactas no banco de dados. Ao desativar o interruptor acima, o site volta instantaneamente ao visual padrão.
+                                                Suas cores oficiais configuradas na aba <strong>Estilo</strong> (Cor Primária e Cor Secundária) ficam intactas no banco de dados. Ao selecionar o tema padrão ou desativar o tema acima, o site volta instantaneamente ao visual institucional.
                                             </p>
                                         </div>
                                     </div>
@@ -1408,15 +1758,15 @@ export default function SiteConfigPage() {
                                         type="button"
                                         onClick={siteForm.handleSubmit(onSaveSettings, onFormError)}
                                         disabled={isUpdatingSettings}
-                                        className="h-11 px-6 bg-[#be5f77] hover:bg-[#b0536b] text-white rounded-xl gap-2 font-bold shadow-md shadow-[#be5f77]/20 active:scale-95 transition-all"
+                                        className="h-11 px-6 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-bold shadow-md active:scale-95 transition-all"
                                     >
                                         {isUpdatingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                        Salvar Configuração do Tema
+                                        Salvar Configuração de Temas
                                     </Button>
                                 </CardFooter>
                             </Card>
                         </TabsContent>
-
+                        
                         {/* Home Content & Hero TAB */}
                         <TabsContent value="home" className="mt-0 focus-visible:outline-none space-y-8">
                             <Card className="premium-card border-none shadow-sm">
