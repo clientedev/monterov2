@@ -58,7 +58,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     loginMutation.mutate(
-      { username, password },
+      { username: username.trim(), password },
       {
         onSuccess: (loggedUser: User) => {
           setIsOpen(false);

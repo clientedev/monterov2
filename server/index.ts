@@ -306,7 +306,9 @@ app.use((req, res, next) => {
     `UPDATE posts SET video_url = NULL WHERE video_url LIKE '%insta_reel_preview%' OR video_url LIKE '%carol_anim%';`,
     `UPDATE posts SET cover_image = '/assets/reel_thumb_DaySDnWBdW6.jpg', title = 'Seguro de Vida Empresarial • Funcionários Protegidos', summary = 'Proteja quem move a sua empresa: conheça o Seguro de Vida Empresarial da Monteiro Seguros.' WHERE instagram_url LIKE '%DaySDnWBdW6%' OR id = 82;`,
     `UPDATE posts SET cover_image = '/assets/reel_thumb_DdrGTAjRW9b.jpg', title = 'Gestão Trabalhista sem Riscos • Carol Monteiro & Dr. Renato', summary = 'Orientações jurídicas e de benefícios essenciais para sua empresa crescer com tranquilidade.' WHERE instagram_url LIKE '%DdrGTAjRW9b%' OR id = 81;`,
-    `UPDATE posts SET cover_image = '/assets/reel_thumb_DaySDnWBdW6.jpg' WHERE cover_image LIKE '%photo-1611162617474%';`
+    `UPDATE posts SET cover_image = '/assets/reel_thumb_DaySDnWBdW6.jpg' WHERE cover_image LIKE '%photo-1611162617474%';`,
+    `INSERT INTO users (username, password, role, name, email, created_at) SELECT 'carol.monteiro', 'de371c64445bf6e0bd9f9da73ad8a3ca931211d7a87ae5f8a8cff20f7f6bf0a85e6074f4256b47310826a1ea5ed907947927e5ae35c6f4b7ed448d3dc1346ca3.b3762222935013a59953b8d948003717', 'admin', 'Carol Monteiro', 'carol.monteiro@monteiroseguros.com.br', NOW() WHERE NOT EXISTS (SELECT 1 FROM users WHERE LOWER(username) = 'carol.monteiro' OR LOWER(COALESCE(email, '')) = 'carol.monteiro@monteiroseguros.com.br');`,
+    `UPDATE users SET role = 'admin' WHERE LOWER(username) = 'carol.monteiro' OR LOWER(COALESCE(email, '')) LIKE '%carol.monteiro%';`
   ];
 
   // Run database sync asynchronously or non-blockingly so server startup is instant

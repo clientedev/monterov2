@@ -86,14 +86,16 @@ export async function registerRoutes(
   // (using imported isAuthenticated)
 
   const isTeam = (req: any, res: any, next: any) => {
-    if (req.isAuthenticated() && (req.user.role === "admin" || req.user.role === "employee")) {
+    const role = (req.user?.role || "").toLowerCase();
+    if (req.isAuthenticated() && (role === "admin" || role === "employee")) {
       return next();
     }
     res.status(403).json({ message: "Forbidden: Team access required" });
   };
 
   const isAdmin = (req: any, res: any, next: any) => {
-    if (req.isAuthenticated() && req.user.role === "admin") {
+    const role = (req.user?.role || "").toLowerCase();
+    if (req.isAuthenticated() && role === "admin") {
       return next();
     }
     res.status(403).json({ message: "Forbidden: Admin access required" });
@@ -4968,6 +4970,28 @@ export async function registerRoutes(
       });
     }
 
+    // Seed / Ensure Carol Monteiro User
+    const existingCarol = await storage.getUserByUsername("carol.monteiro");
+    if (!existingCarol) {
+      const hashedPassword = await hashPassword("Monteiro@2026");
+      await storage.createUser({
+        username: "carol.monteiro",
+        password: hashedPassword,
+        name: "Carol Monteiro",
+        email: "carol.monteiro@monteiroseguros.com.br",
+        role: "admin",
+      });
+      console.log("[AUTH-SEED] Usuário carol.monteiro criado com sucesso como Administrador.");
+    } else {
+      if (existingCarol.role !== "admin") {
+        await storage.updateUserRole(existingCarol.id, "admin");
+        console.log(`[AUTH-SEED] Cargo de carol.monteiro atualizado para 'admin'.`);
+      }
+      if (!existingCarol.email) {
+        await storage.updateUserEmail(existingCarol.id, "carol.monteiro@monteiroseguros.com.br");
+      }
+    }
+
     // Seed Produtos de Seguro
     const existingProdutos = await storage.getProdutosSeguro();
     if (existingProdutos.length === 0) {
@@ -4980,8 +5004,9 @@ export async function registerRoutes(
     // Update existing users with no role to 'client'
     await db.execute(sql`UPDATE users SET role = 'client' WHERE role IS NULL`);
 
-    // Ensure 'admin' has the admin role
+    // Ensure 'admin' and 'carol.monteiro' have the admin role
     await db.execute(sql`UPDATE users SET role = 'admin' WHERE username = 'admin'`);
+    await db.execute(sql`UPDATE users SET role = 'admin' WHERE LOWER(username) = 'carol.monteiro' OR LOWER(COALESCE(email, '')) LIKE '%carol.monteiro%'`);
   } catch (seedErr) {
     console.warn("Seed data / startup DB updates skipped (DB unavailable):", seedErr instanceof Error ? seedErr.message : String(seedErr));
   }

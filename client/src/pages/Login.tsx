@@ -27,7 +27,7 @@ export default function Login() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     loginMutation.mutate(
-      { username, password },
+      { username: username.trim(), password },
       { onSuccess: (user: User) => setLocation(user.role === "client" ? "/dashboard" : "/admin") }
     );
   };

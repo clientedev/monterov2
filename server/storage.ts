@@ -693,7 +693,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const clean = (username || "").trim();
+    if (!clean) return undefined;
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          sql`LOWER(${users.username}) = LOWER(${clean})`,
+          sql`LOWER(COALESCE(${users.email}, '')) = LOWER(${clean})`
+        )
+      );
     return user;
   }
 
@@ -2780,7 +2790,13 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return this.users.find((u) => u.username === username);
+    const clean = (username || "").trim().toLowerCase();
+    if (!clean) return undefined;
+    return this.users.find(
+      (u) =>
+        (u.username || "").toLowerCase() === clean ||
+        (u.email && u.email.toLowerCase() === clean)
+    );
   }
 
   async createUser(user: InsertUser): Promise<User> {

@@ -101,11 +101,14 @@ export default function UsersPage() {
     });
 
     const employees = useMemo(() => {
-        return (users ?? []).filter((u) => u.role === "admin" || u.role === "employee");
+        return (users ?? []).filter((u) => {
+            const role = (u.role || "").toLowerCase();
+            return role === "admin" || role === "employee" || role !== "client";
+        });
     }, [users]);
 
     const clients = useMemo(() => {
-        return (users ?? []).filter((u) => u.role === "client");
+        return (users ?? []).filter((u) => (u.role || "").toLowerCase() === "client");
     }, [users]);
 
     const filteredClients = useMemo(() => {
@@ -398,7 +401,7 @@ export default function UsersPage() {
                                     <TableCell>
                                         {isAdmin ? (
                                             <Select
-                                                defaultValue={u.role}
+                                                value={(u.role || "employee").toLowerCase()}
                                                 onValueChange={(value) =>
                                                     updateRoleMutation.mutate({ id: u.id, role: value })
                                                 }
@@ -430,7 +433,7 @@ export default function UsersPage() {
                                             </Select>
                                         ) : (
                                             <span className="flex items-center gap-1.5 text-sm font-bold">
-                                                {u.role === "admin" ? (
+                                                {u.role?.toLowerCase() === "admin" ? (
                                                     <><Shield className="h-4 w-4 text-amber-600" /> Administrador</>
                                                 ) : (
                                                     <><UserIcon className="h-4 w-4 text-slate-500" /> Funcionário</>
