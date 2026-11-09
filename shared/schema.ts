@@ -119,6 +119,10 @@ export const leads = pgTable("leads", {
   value: text("value"),
   notes: text("notes"),
   assignedTo: integer("assigned_to").references(() => users.id), // Responsável pela oportunidade
+  reminderDate: timestamp("reminder_date"), // Data e hora do alarme
+  reminderNote: text("reminder_note"), // Mensagem / observação do lembrete
+  reminderEmail: text("reminder_email"), // E-mail destinatário (customizado ou responsável)
+  reminderSent: boolean("reminder_sent").default(false), // Flag se já foi disparado
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -405,7 +409,10 @@ export const insertContactSchema = createInsertSchema(contacts, {
   .omit({ id: true, createdAt: true })
   ;
 
-export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
+export const insertLeadSchema = createInsertSchema(leads, {
+  reminderDate: z.coerce.date().nullable().optional(),
+  reminderSent: z.boolean().optional(),
+}).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
 export const insertInteractionSchema = createInsertSchema(interactions).omit({ id: true, createdAt: true });
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({ id: true, createdAt: true });

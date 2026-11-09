@@ -544,6 +544,60 @@ export function buildLeadStatusChangedEmail(params: {
   };
 }
 
+/** Build email for lead scheduled reminder / alarm */
+export function buildLeadReminderEmail(params: {
+  recipientName: string;
+  clientName: string;
+  leadId: number;
+  reminderNote?: string;
+  reminderDate?: string;
+  product?: string;
+  value?: string;
+  status?: string;
+}): { subject: string; html: string } {
+  const { recipientName, clientName, leadId, reminderNote, reminderDate, product, value, status } = params;
+
+  const content = `
+    <p style="color: #334155; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+      Olá, <strong>${recipientName || "Equipe Monteiro"}</strong>! <br/>
+      Este é um <strong>lembrete programado de retorno/follow-up</strong> para a oportunidade abaixo no seu pipeline:
+    </p>
+    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${infoRow("Cliente / Oportunidade", clientName)}
+        ${product ? infoRow("Produto / Cobertura", product) : ""}
+        ${value ? infoRow("Valor Estimado", `R$ ${value}`) : ""}
+        ${status ? infoRow("Etapa no Funil", status) : ""}
+        ${reminderDate ? infoRow("Data Agendada", reminderDate) : ""}
+      </table>
+    </div>
+    ${
+      reminderNote
+        ? `
+    <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">
+      <p style="margin: 0 0 6px; color: #92400E; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+        📝 Anotação do Lembrete:
+      </p>
+      <p style="margin: 0; color: #78350F; font-size: 14px; line-height: 1.6; font-weight: 500; white-space: pre-wrap;">${reminderNote}</p>
+    </div>`
+        : ""
+    }
+    <p style="color: #64748B; font-size: 13px; line-height: 1.6;">
+      Dica: Acesse o Pipeline para atualizar a oportunidade, registrar o retorno ou avançar de etapa.
+    </p>`;
+
+  return {
+    subject: `⏰ Lembrete: ${clientName}${product ? ` • ${product}` : ""} — Monteiro Seguros`,
+    html: baseLayout({
+      title: "Alarme de Lembrete no Pipeline",
+      badge: "⏰ Follow-up Programado",
+      content,
+      buttonUrl: `${CRM_BASE_URL}/leads`,
+      buttonText: "Acessar Oportunidade no Pipeline →",
+    }),
+  };
+}
+
 /** Build email for task assignment */
 export function buildTaskAssignedEmail(params: {
   recipientName: string;

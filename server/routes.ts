@@ -62,8 +62,8 @@ export async function registerRoutes(
   );
 
   // Auto-ensure dynamic fields column exists for custom/renamed spreadsheet columns
-  db.execute(sql`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS dados_adicionais json DEFAULT '{}'::json`).catch(() => {});
-  db.execute(sql`ALTER TABLE apolices ADD COLUMN IF NOT EXISTS dados_adicionais json DEFAULT '{}'::json`).catch(() => {});
+  db.execute(sql`ALTER TABLE clientes ADD COLUMN IF NOT EXISTS dados_adicionais json DEFAULT '{}'::json`).catch(() => { });
+  db.execute(sql`ALTER TABLE apolices ADD COLUMN IF NOT EXISTS dados_adicionais json DEFAULT '{}'::json`).catch(() => { });
 
   // AI Chat Route (Groq Cloud + Ollama Local + Intelligent DB Fallback)
   app.post("/api/chat", async (req, res) => {
@@ -105,7 +105,7 @@ export async function registerRoutes(
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.redirect(fallbackImage);
-      
+
       // Request raw post so coverImage retains the data:... URI if present in DB
       const post = await storage.getPost(id, true);
       if (!post || !post.coverImage) {
@@ -129,7 +129,7 @@ export async function registerRoutes(
       if (post.coverImage.includes(`/api/posts/${id}/image`) || post.coverImage.startsWith("/api/posts")) {
         return res.redirect(fallbackImage);
       }
-      
+
       // 3. If it's a valid external URL, redirect to it
       if (post.coverImage.startsWith("http://") || post.coverImage.startsWith("https://")) {
         return res.redirect(post.coverImage);
@@ -335,7 +335,7 @@ export async function registerRoutes(
 
           // Regex para encontrar arquivos MP4 diretos ou escapados no HTML do embed
           const candidates: string[] = [];
-          
+
           const rawMatch = html.match(/(https?:[^\s"'\\]+?\.mp4[^\s"'\\]*)/gi);
           if (rawMatch) candidates.push(...rawMatch);
 
@@ -412,7 +412,7 @@ export async function registerRoutes(
 
     let cacheDir = path.resolve(process.cwd(), "static", "ig_cache");
     if (!fs.existsSync(cacheDir)) {
-      try { fs.mkdirSync(cacheDir, { recursive: true }); } catch {}
+      try { fs.mkdirSync(cacheDir, { recursive: true }); } catch { }
     }
     const thumbCachePath = path.join(cacheDir, `${reelId}_thumb.jpg`);
 
@@ -424,7 +424,7 @@ export async function registerRoutes(
           res.setHeader("Cache-Control", "public, max-age=604800, immutable");
           return fs.createReadStream(thumbCachePath).pipe(res);
         }
-      } catch {}
+      } catch { }
     }
 
     try {
@@ -437,7 +437,7 @@ export async function registerRoutes(
       if (resp.ok) {
         const buffer = Buffer.from(await resp.arrayBuffer());
         if (buffer.length > 5 * 1024) {
-          try { fs.writeFileSync(thumbCachePath, buffer); } catch {}
+          try { fs.writeFileSync(thumbCachePath, buffer); } catch { }
           res.setHeader("Content-Type", "image/jpeg");
           res.setHeader("Cache-Control", "public, max-age=604800, immutable");
           return res.send(buffer);
@@ -480,7 +480,7 @@ export async function registerRoutes(
           path.resolve(__dirname, "..", "dist", "public", "index.html"),
           path.resolve(__dirname, "..", "public", "index.html"),
         ];
-        
+
         for (const p of paths) {
           if (fs.existsSync(p)) {
             finalPath = p;
@@ -497,7 +497,7 @@ export async function registerRoutes(
       }
 
       let html = fs.readFileSync(finalPath, "utf8");
-      
+
       const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
       const host = req.get('host');
       const imageUrl = `${protocol}://${host}/api/posts/${post.id}/image`;
@@ -883,7 +883,7 @@ export async function registerRoutes(
     try {
       const input = api.inquiries.create.input.parse(req.body);
       const userId = req.isAuthenticated() ? (req.user as any).id : null;
-      
+
       // Find a fallback admin/employee if no logged-in user
       let attributionId = userId;
       if (!attributionId) {
@@ -1089,7 +1089,7 @@ export async function registerRoutes(
         type: "E-mail Aniversário",
         description: `E-mail comemorativo de aniversário enviado com sucesso para ${contact.email}.${customMessage ? ' (Mensagem personalizada)' : ''}`,
         date: new Date(),
-      }).catch(() => {});
+      }).catch(() => { });
 
       res.json({ success: true, message: `E-mail comemorativo enviado com sucesso para ${contact.name}!` });
     } catch (err: any) {
@@ -1249,7 +1249,7 @@ export async function registerRoutes(
           value: lead.value || undefined,
           status: lead.status,
         });
-        sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_assigned", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
+        sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_assigned", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => { });
       }
 
       res.status(201).json(lead);
@@ -1324,7 +1324,7 @@ export async function registerRoutes(
             "Authorization": `Bearer ${apiKey}`,
           },
           body: JSON.stringify(payload),
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       console.log(`[Monteiro Conecta] Notificação disparada (${action}) para lead #${lead.id}`);
@@ -1367,7 +1367,7 @@ export async function registerRoutes(
         newStatus: req.body.status,
         product: lead.product || undefined,
       });
-      sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_status_changed", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
+      sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_status_changed", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => { });
     }
 
     // Sincroniza alteração no Monteiro Conecta
@@ -1398,13 +1398,58 @@ export async function registerRoutes(
         value: lead.value || undefined,
         status: lead.status,
       });
-      sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_assigned", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => {});
+      sendCrmNotification({ userId: lead.assignedTo, eventType: "lead_assigned", recordType: "lead", recordId: lead.id, subject, htmlBody: html }).catch(() => { });
     }
 
     // Sincroniza alteração no Monteiro Conecta
     notifyMonteiroConectaLeadChange("updated", lead, { leadBefore, changerUserId: (req.user as any)?.id });
 
     res.json(lead);
+  });
+
+  // Lead Reminders (Alarmes & Follow-ups do Pipeline)
+  app.patch("/api/leads/:id/reminder", isTeam, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { reminderDate, reminderNote, reminderEmail } = req.body;
+
+      const parsedDate = reminderDate ? new Date(reminderDate) : null;
+
+      const updated = await storage.updateLead(id, {
+        reminderDate: parsedDate,
+        reminderNote: parsedDate ? (reminderNote || null) : null,
+        reminderEmail: parsedDate ? (reminderEmail || null) : null,
+        reminderSent: false, // Reset flag para novo disparo
+      } as any);
+
+      if (!updated) {
+        return res.status(404).json({ message: "Lead não encontrado" });
+      }
+
+      res.json(updated);
+    } catch (err: any) {
+      console.error("[Leads] Erro ao salvar lembrete:", err);
+      res.status(500).json({ message: err.message || "Erro ao salvar lembrete" });
+    }
+  });
+
+  app.post("/api/leads/:id/reminder/test", isTeam, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { reminderDate, reminderNote, reminderEmail } = req.body;
+      const { sendTestReminderEmail } = await import("./reminder-service");
+
+      const result = await sendTestReminderEmail(id, {
+        reminderDate,
+        reminderNote,
+        reminderEmail,
+      });
+
+      res.json(result);
+    } catch (err: any) {
+      console.error("[Leads] Erro ao enviar teste de lembrete:", err);
+      res.status(400).json({ message: err.message || "Erro ao enviar e-mail de teste" });
+    }
   });
 
   app.delete("/api/leads/:id", isTeam, async (req, res) => {
@@ -2178,14 +2223,14 @@ export async function registerRoutes(
           let existingContact: any = cliente.contactId
             ? allContacts.find((c) => c.id === cliente.contactId)
             : allContacts.find((candidate) => {
-                const candidateDoc = (candidate.document || "").replace(/\D/g, "");
-                const candidateEmail = (candidate.email || "").trim().toLowerCase();
-                const candidatePhone = (candidate.phone || "").replace(/\D/g, "");
-                const candidateName = (candidate.name || "").trim().toLowerCase();
-                if (cleanContactDoc && candidateDoc) return cleanContactDoc === candidateDoc;
-                if (cleanContactEmail && candidateEmail) return cleanContactEmail === candidateEmail;
-                return Boolean(cleanContactName && candidateName === cleanContactName && cleanContactPhone && candidatePhone === cleanContactPhone);
-              });
+              const candidateDoc = (candidate.document || "").replace(/\D/g, "");
+              const candidateEmail = (candidate.email || "").trim().toLowerCase();
+              const candidatePhone = (candidate.phone || "").replace(/\D/g, "");
+              const candidateName = (candidate.name || "").trim().toLowerCase();
+              if (cleanContactDoc && candidateDoc) return cleanContactDoc === candidateDoc;
+              if (cleanContactEmail && candidateEmail) return cleanContactEmail === candidateEmail;
+              return Boolean(cleanContactName && candidateName === cleanContactName && cleanContactPhone && candidatePhone === cleanContactPhone);
+            });
 
           const numericDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
           const type = cliente.type || (numericDoc.length > 11 ? "company" : "individual");
@@ -2432,14 +2477,14 @@ export async function registerRoutes(
       let existingContact: any = cliente.contactId
         ? allContacts.find((c) => c.id === cliente.contactId)
         : allContacts.find((candidate) => {
-            const candidateDoc = (candidate.document || "").replace(/\D/g, "");
-            const candidateEmail = (candidate.email || "").trim().toLowerCase();
-            const candidatePhone = (candidate.phone || "").replace(/\D/g, "");
-            const candidateName = (candidate.name || "").trim().toLowerCase();
-            if (cleanContactDoc && candidateDoc) return cleanContactDoc === candidateDoc;
-            if (cleanContactEmail && candidateEmail) return cleanContactEmail === candidateEmail;
-            return Boolean(cleanContactName && candidateName === cleanContactName && cleanContactPhone && candidatePhone === cleanContactPhone);
-          });
+          const candidateDoc = (candidate.document || "").replace(/\D/g, "");
+          const candidateEmail = (candidate.email || "").trim().toLowerCase();
+          const candidatePhone = (candidate.phone || "").replace(/\D/g, "");
+          const candidateName = (candidate.name || "").trim().toLowerCase();
+          if (cleanContactDoc && candidateDoc) return cleanContactDoc === candidateDoc;
+          if (cleanContactEmail && candidateEmail) return cleanContactEmail === candidateEmail;
+          return Boolean(cleanContactName && candidateName === cleanContactName && cleanContactPhone && candidatePhone === cleanContactPhone);
+        });
 
       const numericDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
       const type = cliente.type || (numericDoc.length > 11 ? "company" : "individual");
@@ -2479,7 +2524,7 @@ export async function registerRoutes(
           .select()
           .from(seguradoras)
           .where(eq(sql`lower(nome)`, cleanSegName));
-        
+
         if (existingSeg) {
           seguradoraId = existingSeg.id;
         } else {
@@ -2488,9 +2533,9 @@ export async function registerRoutes(
         }
       }
 
-      const hasPolicyFields = 
-        numeroApolice || idProposta || idApolice || seguradoraId || premio || 
-        inicioVigencia || fimVigencia || pdfApolice || cobertura || dataEmissao || 
+      const hasPolicyFields =
+        numeroApolice || idProposta || idApolice || seguradoraId || premio ||
+        inicioVigencia || fimVigencia || pdfApolice || cobertura || dataEmissao ||
         numeroProposta || linkFatura || formaPagamento || mesAtraso || faturasAberto;
 
       if (hasPolicyFields) {
@@ -2609,15 +2654,15 @@ export async function registerRoutes(
       const linkedContact = cliente.contactId
         ? await storage.getContact(cliente.contactId)
         : (await storage.getContacts()).find((candidate) => {
-            const doc = (candidate.document || "").replace(/\D/g, "");
-            const clientDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
-            const name = (candidate.name || "").trim().toLowerCase();
-            const clientName = (cliente.nome || "").trim().toLowerCase();
-            const phone = (candidate.phone || "").replace(/\D/g, "");
-            const clientPhone = (cliente.telefone || "").replace(/\D/g, "");
-            return (clientDoc && doc && clientDoc === doc) ||
-              (name === clientName && clientPhone && phone && clientPhone === phone);
-          });
+          const doc = (candidate.document || "").replace(/\D/g, "");
+          const clientDoc = (cliente.cpfCnpj || "").replace(/\D/g, "");
+          const name = (candidate.name || "").trim().toLowerCase();
+          const clientName = (cliente.nome || "").trim().toLowerCase();
+          const phone = (candidate.phone || "").replace(/\D/g, "");
+          const clientPhone = (cliente.telefone || "").replace(/\D/g, "");
+          return (clientDoc && doc && clientDoc === doc) ||
+            (name === clientName && clientPhone && phone && clientPhone === phone);
+        });
       if (linkedContact) {
         await storage.updateContact(linkedContact.id, {
           type: cliente.type,
@@ -3546,7 +3591,7 @@ export async function registerRoutes(
           source: "publica.cnpj.ws",
         };
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // 2. Try ReceitaWS (excellent for corporate emails and phones)
     try {
@@ -3574,7 +3619,7 @@ export async function registerRoutes(
           };
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // 3. Try MinhaReceita
     try {
@@ -3600,7 +3645,7 @@ export async function registerRoutes(
           source: "MinhaReceita",
         };
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // 4. Try BrasilAPI
     try {
@@ -3626,7 +3671,7 @@ export async function registerRoutes(
           source: "BrasilAPI",
         };
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return null;
   }
@@ -3673,7 +3718,7 @@ export async function registerRoutes(
         const u = new URL(candidateWebsite.startsWith("http") ? candidateWebsite : `https://${candidateWebsite}`);
         const h = u.hostname.replace(/^www\./, "").toLowerCase();
         candidateDomains.push(h);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const slug1 = coreName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
@@ -3710,7 +3755,7 @@ export async function registerRoutes(
             }
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 2. Direct website scraping for CNPJ and email
@@ -3736,7 +3781,7 @@ export async function registerRoutes(
             if (emails[0]) candidateEmail = emails[0];
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 3. Fallback: Search Places for website if missing
@@ -3784,10 +3829,10 @@ export async function registerRoutes(
                   }
                 }
               }
-            } catch (e) {}
+            } catch (e) { }
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 4. If CNPJ resolved, fetch full Receita Federal details
@@ -3948,9 +3993,9 @@ export async function registerRoutes(
     ];
 
     const cnaeClean = (cnae as string || "").replace(/\D/g, "");
-    
+
     // Detect niche from CNAE or keyword
-    let detectedNiche = cnaeClean 
+    let detectedNiche = cnaeClean
       ? NICHE_MAP.find(n => n.cnae === cnaeClean)
       : (keyword ? NICHE_MAP.find(n => n.terms.some(term => keyword.includes(term) || term.includes(keyword))) : undefined);
 
@@ -3970,14 +4015,14 @@ export async function registerRoutes(
       try {
         const params = new URLSearchParams();
         if (uf) params.set("uf", uf);
-        
+
         // Reverting to using NAME for municipio as it was likely what worked before
         if (municipio) {
           params.set("municipio", municipio.toUpperCase().trim());
         } else if (cityId) {
           params.set("municipio", cityId as string);
         }
-        
+
         if (cnaeCode) params.set("cnae", cnaeCode);
         if (keyword) params.set("q", keyword.toUpperCase());
         else if (bairroFiltroInput) params.set("q", bairroFiltroInput.toUpperCase());
@@ -4046,7 +4091,7 @@ export async function registerRoutes(
     // -----------------------------------------------------------------------
     // Post-processing filter: Ensure results match the city and bairro filters strictly (case-insensitive)
     // -----------------------------------------------------------------------
-    const normalize = (str: string) => 
+    const normalize = (str: string) =>
       str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
 
     const applyFilters = (items: any[]) => {
@@ -4116,7 +4161,7 @@ export async function registerRoutes(
       const areaSearchName = municipio || targetCity || "São Paulo";
       const areaId = await resolveOsmArea(areaSearchName, targetUf);
 
-      const overpassQuery = areaId 
+      const overpassQuery = areaId
         ? `[out:json][timeout:30];area(${areaId})->.searchArea;(${tagUnion});out center 100;`
         : `[out:json][timeout:30];area["name"~"${areaSearchName}",i][admin_level~"8|4"]->.searchArea;(${tagUnion});out center 100;`;
 
@@ -4166,7 +4211,7 @@ export async function registerRoutes(
                 };
               });
             if (bairroFiltroInput) {
-                console.log(`[CompanySearch] Aplicando filtro de bairro sugerido no OSM: ${bairroFiltroInput}`);
+              console.log(`[CompanySearch] Aplicando filtro de bairro sugerido no OSM: ${bairroFiltroInput}`);
             }
             apiSuccess = true;
             console.log(`[CompanySearch] OSM: ${results.length} negócios reais encontrados`);
@@ -4189,7 +4234,7 @@ export async function registerRoutes(
   // -----------------------------------------------------------------------
   // Termômetro de Leads API Endpoints
   // -----------------------------------------------------------------------
-    // Helper para enriquecer dados de CNPJ, email corporativo e telefone
+  // Helper para enriquecer dados de CNPJ, email corporativo e telefone
   async function autoEnrichLeadCompany(name: string, locationStr: string, website?: string, existingPhone?: string, existingDoc?: string) {
     try {
       return await discoverCnpjAndEmail(name, locationStr, website, existingPhone, existingDoc);
@@ -4265,7 +4310,7 @@ export async function registerRoutes(
           const radiusMeters = Math.min(Number(radiusKm) * 1000, 50000);
           const baseTerm = customQuery ? customQuery.trim() : productType;
           const productKeywords = PRODUCT_MAP[productType]?.queryKeywords || ["empresa", "comercio", "servicos"];
-          
+
           // Generate subquery terms to maximize discovery up to 100 companies
           const subQueryTerms = Array.from(new Set([
             `${baseTerm} em ${location}`,
@@ -4383,7 +4428,7 @@ export async function registerRoutes(
       if (results.length === 0) {
         const reqState = location.includes(",") ? location.split(",")[1].trim() : "SP";
         const reqCity = location.includes(",") ? location.split(",")[0].trim() : location;
-        
+
         try {
           const searchTerm = customQuery || productType;
           const publicSearchUrl = `${req.protocol}://${req.get("host")}/api/proxy/companies/search?state=${encodeURIComponent(reqState)}&city=${encodeURIComponent(reqCity)}&q=${encodeURIComponent(searchTerm)}`;
@@ -5029,7 +5074,7 @@ export async function registerRoutes(
       if (settings?.externalApiKey && settings.externalApiKey.trim()) {
         return cleanApiKey(settings.externalApiKey.split(",")[0]);
       }
-    } catch (_) {}
+    } catch (_) { }
     for (const k of Array.from(keys)) {
       if (k) return k;
     }
@@ -5632,7 +5677,7 @@ export async function registerRoutes(
               contactId: createdLead.contactId,
               assignedUserId: (req.user as any)?.id || createdLead.assignedTo || undefined,
             });
-          } catch (_) {}
+          } catch (_) { }
         }
       }
 
@@ -5983,9 +6028,9 @@ export async function registerRoutes(
       let linkedApolices = clienteId
         ? allApolices.filter(a => a.clienteId === clienteId)
         : (contactId ? allApolices.filter(a => {
-            const cli = allClientes.find(c => c.id === a.clienteId);
-            return cli && cli.contactId === contactId;
-          }) : []);
+          const cli = allClientes.find(c => c.id === a.clienteId);
+          return cli && cli.contactId === contactId;
+        }) : []);
 
       // Se não encontrou apólices direto pelo ID do cliente, busca por clientes com mesmo documento ou telefone
       if (linkedApolices.length === 0) {

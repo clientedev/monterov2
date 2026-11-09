@@ -299,6 +299,10 @@ app.use((req, res, next) => {
     `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS theme_outubro_rosa_badge boolean DEFAULT true NOT NULL;`,
     `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS theme_novembro_azul boolean DEFAULT false NOT NULL;`,
     `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS theme_novembro_azul_badge boolean DEFAULT true NOT NULL;`,
+    `ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_date timestamp;`,
+    `ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_note text;`,
+    `ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_email text;`,
+    `ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_sent boolean DEFAULT false;`,
     `UPDATE posts SET video_url = NULL WHERE video_url LIKE '%insta_reel_preview%' OR video_url LIKE '%carol_anim%';`,
     `UPDATE posts SET cover_image = '/assets/reel_thumb_DaySDnWBdW6.jpg', title = 'Seguro de Vida Empresarial • Funcionários Protegidos', summary = 'Proteja quem move a sua empresa: conheça o Seguro de Vida Empresarial da Monteiro Seguros.' WHERE instagram_url LIKE '%DaySDnWBdW6%' OR id = 82;`,
     `UPDATE posts SET cover_image = '/assets/reel_thumb_DdrGTAjRW9b.jpg', title = 'Gestão Trabalhista sem Riscos • Carol Monteiro & Dr. Renato', summary = 'Orientações jurídicas e de benefícios essenciais para sua empresa crescer com tranquilidade.' WHERE instagram_url LIKE '%DdrGTAjRW9b%' OR id = 81;`,
@@ -344,6 +348,14 @@ app.use((req, res, next) => {
   })();
 
   await registerRoutes(httpServer, app);
+
+  // Start automatic pipeline reminder email scheduler
+  try {
+    const { startReminderScheduler } = await import("./reminder-service");
+    startReminderScheduler();
+  } catch (schedErr) {
+    log(`Failed to start reminder scheduler: ${schedErr instanceof Error ? schedErr.message : String(schedErr)}`, "error");
+  }
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

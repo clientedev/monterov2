@@ -33,7 +33,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2, UserPlus, User as UserIcon, CheckCircle2, X, Check } from "lucide-react";
+import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2, UserPlus, User as UserIcon, CheckCircle2, X, Check, Bell, BellRing, Clock, Mail, Send, Calendar, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
     AlertDialog,
@@ -83,6 +83,7 @@ export default function LeadsPage() {
     const [editingLeadId, setEditingLeadId] = useState<number | null>(null);
     const [deleteLeadId, setDeleteLeadId] = useState<number | null>(null);
     const [viewContactId, setViewContactId] = useState<number | null>(null);
+    const [reminderLead, setReminderLead] = useState<Lead | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Dynamic Columns State
@@ -211,6 +212,38 @@ export default function LeadsPage() {
             toast({ title: "Lead removido" });
             setDeleteLeadId(null);
         },
+    });
+
+    const saveReminderMutation = useMutation({
+        mutationFn: async ({ id, reminderDate, reminderNote, reminderEmail }: { id: number; reminderDate: string | null; reminderNote: string | null; reminderEmail: string | null }) => {
+            const res = await apiRequest("PATCH", `/api/leads/${id}/reminder`, { reminderDate, reminderNote, reminderEmail });
+            return await res.json();
+        },
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+            if (variables.reminderDate) {
+                toast({ title: "⏰ Alarme salvo com sucesso!", description: "O lembrete será disparado automaticamente por e-mail." });
+            } else {
+                toast({ title: "Alarme removido deste lead." });
+            }
+            setReminderLead(null);
+        },
+        onError: (err: any) => {
+            toast({ title: "Erro ao salvar alarme", description: err.message, variant: "destructive" });
+        }
+    });
+
+    const testReminderMutation = useMutation({
+        mutationFn: async ({ id, reminderDate, reminderNote, reminderEmail }: { id: number; reminderDate?: string; reminderNote?: string; reminderEmail?: string }) => {
+            const res = await apiRequest("POST", `/api/leads/${id}/reminder/test`, { reminderDate, reminderNote, reminderEmail });
+            return await res.json();
+        },
+        onSuccess: (data: any) => {
+            toast({ title: "✅ E-mail de teste disparado!", description: data.message || `Enviado para ${data.targetEmail}` });
+        },
+        onError: (err: any) => {
+            toast({ title: "Falha ao enviar teste", description: err.message, variant: "destructive" });
+        }
     });
 
     const handleSaveColumn = async () => {
@@ -542,6 +575,7 @@ export default function LeadsPage() {
                                                                                 }}
                                                                                 onDelete={() => setDeleteLeadId(lead.id)}
                                                                                 onViewContact={(cId) => setViewContactId(cId)}
+                                                                                onReminder={() => setReminderLead(lead)}
                                                                             />
                                                                         </div>
                                                                     )}
@@ -606,6 +640,18 @@ export default function LeadsPage() {
                 open={!!viewContactId}
                 onOpenChange={(open) => !open && setViewContactId(null)}
             />
+
+            <LeadReminderModal
+                isOpen={Boolean(reminderLead)}
+                onClose={() => setReminderLead(null)}
+                lead={reminderLead}
+                contact={reminderLead ? getContactForLead(reminderLead.contactId) : null}
+                responsible={reminderLead ? getResponsibleUser(reminderLead.assignedTo) : null}
+                onSave={(data) => saveReminderMutation.mutate(data)}
+                onTest={(data) => testReminderMutation.mutate(data)}
+                isSaving={saveReminderMutation.isPending}
+                isTesting={testReminderMutation.isPending}
+            />
         </div>
     );
 }
@@ -618,7 +664,8 @@ function LeadCard({
     onMove,
     onEdit,
     onDelete,
-    onViewContact
+    onViewContact,
+    onReminder
 }: {
     lead: Lead,
     contact?: { name: string; [key: string]: any } | null,
@@ -627,17 +674,35 @@ function LeadCard({
     onMove: (s: string) => void,
     onEdit: () => void,
     onDelete: () => void,
-    onViewContact?: (contactId: number) => void
+    onViewContact?: (contactId: number) => void,
+    onReminder?: () => void
 }) {
     const statusIndex = columns.findIndex(s => s.id === lead.status);
     const nextStatus = statusIndex !== -1 && statusIndex < columns.length - 1 ? columns[statusIndex + 1].id : null;
     const prevStatus = statusIndex > 0 ? columns[statusIndex - 1].id : null;
 
+    const { text: reminderText, isOverdue, isToday } = formatLeadReminderDisplay(lead.reminderDate);
+
     return (
         <div className="group bg-white p-5 rounded-xl border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-[#1A3A4F] opacity-0 group-hover:opacity-100 transition-opacity" />
             
-            <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-gray-100">
+            <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-gray-100 z-10">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={cn(
+                        "h-6 w-6 rounded-md transition-colors",
+                        lead.reminderDate ? "text-amber-500 hover:text-amber-600 hover:bg-amber-50" : "text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+                    )} 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onReminder?.();
+                    }} 
+                    title={lead.reminderDate ? "⏰ Alarme Ativo: Gerenciar Lembrete & E-mail" : "⏰ Agendar Alarme & Lembrete por E-mail"}
+                >
+                    <Bell className={cn("h-3 w-3", lead.reminderDate && "fill-amber-500 text-amber-500")} />
+                </Button>
                 <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100" onClick={onEdit} title="✏️ Editar Venda e Responsável">
                     <Edit2 className="h-3 w-3" />
                 </Button>
@@ -655,13 +720,29 @@ function LeadCard({
                     >
                         {contact?.name || "Desconhecido"}
                     </h4>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-gray-100 text-gray-600">
                             {lead.source || "Direto"}
                         </span>
                         {lead.product && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary">
                                 {lead.product}
+                            </span>
+                        )}
+                        {lead.reminderDate && !lead.reminderSent && (
+                            <span 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onReminder?.();
+                                }}
+                                className={cn(
+                                    "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer shadow-xs transition-colors",
+                                    isOverdue ? "bg-rose-100 text-rose-700 border border-rose-300" : isToday ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-blue-100 text-blue-700 border border-blue-300"
+                                )}
+                                title={`Alarme programado: ${reminderText}`}
+                            >
+                                <Bell className="h-2.5 w-2.5 fill-current animate-pulse" />
+                                {isToday ? "Hoje" : isOverdue ? "Atrasado" : "Alarme"}
                             </span>
                         )}
                     </div>
@@ -685,6 +766,61 @@ function LeadCard({
                     ✏️
                 </button>
             </div>
+
+            {/* Bloco de Alarme / Lembrete por E-mail */}
+            {lead.reminderDate ? (
+                <div 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onReminder?.();
+                    }}
+                    className={cn(
+                        "flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer transition-all mb-3 shadow-xs",
+                        isOverdue && !lead.reminderSent
+                            ? "bg-rose-50/90 border-rose-200 text-rose-700 hover:bg-rose-100"
+                            : isToday && !lead.reminderSent
+                            ? "bg-amber-50/90 border-amber-200 text-amber-800 hover:bg-amber-100"
+                            : lead.reminderSent
+                            ? "bg-emerald-50/80 border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                            : "bg-blue-50/80 border-blue-200 text-blue-800 hover:bg-blue-100"
+                    )}
+                    title={lead.reminderNote ? `Nota: "${lead.reminderNote}" (Clique para editar ou disparar e-mail)` : "Clique para gerenciar o alarme e disparo por e-mail"}
+                >
+                    <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                        <BellRing className={cn(
+                            "h-3.5 w-3.5 shrink-0", 
+                            isOverdue && !lead.reminderSent ? "text-rose-600 animate-pulse" : isToday && !lead.reminderSent ? "text-amber-600" : lead.reminderSent ? "text-emerald-600" : "text-blue-600"
+                        )} />
+                        <span className="font-bold truncate text-[11px]">
+                            {isOverdue && !lead.reminderSent ? "⚠️ Atrasado: " : isToday && !lead.reminderSent ? "🚨 Hoje: " : lead.reminderSent ? "✓ Disparado: " : "⏰ Lembrete: "}
+                            {reminderText}
+                        </span>
+                    </div>
+                    <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/80 border border-black/5 shrink-0">
+                        {lead.reminderSent ? "E-mail Enviado" : "E-mail Ativo"}
+                    </span>
+                </div>
+            ) : (
+                <div className="flex items-center justify-between mb-3 text-xs">
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onReminder?.();
+                        }}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-amber-600 hover:bg-amber-50/70 px-2 py-1 rounded-lg border border-transparent hover:border-amber-200 transition-all cursor-pointer"
+                        title="Agendar alarme com data e notificação por e-mail"
+                    >
+                        <Bell className="h-3 w-3" />
+                        <span>Agendar Alarme</span>
+                    </button>
+                    {lead.reminderEmail && (
+                        <span className="text-[10px] text-slate-400 truncate max-w-[120px]" title={lead.reminderEmail}>
+                            ✉️ {lead.reminderEmail}
+                        </span>
+                    )}
+                </div>
+            )}
 
             <div className="mb-4">
                 <Select value={lead.status} onValueChange={onMove}>
@@ -1144,5 +1280,364 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                 }}
             />
         </>
+    );
+}
+
+function toDatetimeLocalValue(dateInput?: string | Date | null): string {
+    if (!dateInput) return "";
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatLeadReminderDisplay(dateVal: string | Date | null | undefined): { text: string; isOverdue: boolean; isToday: boolean } {
+    if (!dateVal) return { text: "", isOverdue: false, isToday: false };
+    const date = new Date(dateVal);
+    if (isNaN(date.getTime())) return { text: String(dateVal), isOverdue: false, isToday: false };
+
+    const now = new Date();
+    const isOverdue = date.getTime() < now.getTime();
+
+    const isToday =
+        date.getDate() === now.getDate() &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear();
+
+    const isTomorrow =
+        new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toDateString() ===
+        new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString();
+
+    const timeStr = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+    let text = "";
+    if (isToday) {
+        text = `Hoje às ${timeStr}`;
+    } else if (isTomorrow) {
+        text = `Amanhã às ${timeStr}`;
+    } else {
+        const dayMonth = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+        text = `${dayMonth} às ${timeStr}`;
+    }
+
+    return { text, isOverdue, isToday };
+}
+
+function LeadReminderModal({
+    isOpen,
+    onClose,
+    lead,
+    contact,
+    responsible,
+    onSave,
+    onTest,
+    isSaving,
+    isTesting,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    lead: Lead | null;
+    contact?: any;
+    responsible?: any;
+    onSave: (data: { id: number; reminderDate: string | null; reminderNote: string | null; reminderEmail: string | null }) => void;
+    onTest: (data: { id: number; reminderDate?: string; reminderNote?: string; reminderEmail?: string }) => void;
+    isSaving: boolean;
+    isTesting: boolean;
+}) {
+    const { toast } = useToast();
+    const [reminderDate, setReminderDate] = useState("");
+    const [reminderNote, setReminderNote] = useState("");
+    const [reminderEmail, setReminderEmail] = useState("");
+
+    useEffect(() => {
+        if (lead) {
+            setReminderDate(toDatetimeLocalValue(lead.reminderDate));
+            setReminderNote(lead.reminderNote || "");
+            setReminderEmail(lead.reminderEmail || responsible?.email || "");
+        } else {
+            setReminderDate("");
+            setReminderNote("");
+            setReminderEmail("");
+        }
+    }, [lead, responsible]);
+
+    if (!lead) return null;
+
+    const setPresetTime = (preset: "today_17" | "tomorrow_09" | "in_3_days" | "in_7_days") => {
+        const d = new Date();
+        if (preset === "today_17") {
+            d.setHours(17, 0, 0, 0);
+        } else if (preset === "tomorrow_09") {
+            d.setDate(d.getDate() + 1);
+            d.setHours(9, 0, 0, 0);
+        } else if (preset === "in_3_days") {
+            d.setDate(d.getDate() + 3);
+            d.setHours(10, 0, 0, 0);
+        } else if (preset === "in_7_days") {
+            d.setDate(d.getDate() + 7);
+            d.setHours(9, 0, 0, 0);
+        }
+        setReminderDate(toDatetimeLocalValue(d));
+    };
+
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!reminderDate) {
+            toast({
+                title: "Informe a data do alarme",
+                description: "Selecione uma data e hora para agendar o lembrete.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        onSave({
+            id: lead.id,
+            reminderDate: new Date(reminderDate).toISOString(),
+            reminderNote: reminderNote.trim() || null,
+            reminderEmail: reminderEmail.trim() || null,
+        });
+    };
+
+    const handleClear = () => {
+        onSave({
+            id: lead.id,
+            reminderDate: null,
+            reminderNote: null,
+            reminderEmail: null,
+        });
+    };
+
+    const handleTest = () => {
+        onTest({
+            id: lead.id,
+            reminderDate: reminderDate ? new Date(reminderDate).toISOString() : undefined,
+            reminderNote: reminderNote.trim() || undefined,
+            reminderEmail: reminderEmail.trim() || undefined,
+        });
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-lg p-0 overflow-hidden rounded-3xl border border-slate-200/80 shadow-2xl">
+                <div className="bg-gradient-to-br from-[#08454c] via-[#0b545d] to-[#163b52] p-6 text-white relative overflow-hidden">
+                    <div className="absolute top-[-40px] right-[-40px] w-36 h-36 bg-amber-400/15 rounded-full blur-2xl pointer-events-none" />
+
+                    <div className="relative z-10 flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-amber-300 shadow-sm shrink-0">
+                            <BellRing className="w-6 h-6 animate-pulse" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20 inline-block mb-1">
+                                Pipeline • Alarme &amp; Notificação
+                            </span>
+                            <DialogTitle className="text-xl font-display font-bold text-white tracking-tight">
+                                Agendar Lembrete de Oportunidade
+                            </DialogTitle>
+                            <p className="text-slate-300 text-xs mt-1 leading-relaxed">
+                                Defina data e hora para receber um alerta oficial por e-mail com todos os dados deste lead.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 space-y-5 bg-white max-h-[75vh] overflow-y-auto">
+                    {/* Resumo da Oportunidade */}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-slate-800 truncate">
+                                👤 {contact?.name || `Lead #${lead.id}`}
+                            </span>
+                            <Badge variant="outline" className="text-[10px] font-semibold">
+                                {lead.status}
+                            </Badge>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                            {lead.product && (
+                                <span><strong>Produto:</strong> {lead.product}</span>
+                            )}
+                            {lead.value && (
+                                <span><strong>Valor:</strong> R$ {lead.value}</span>
+                            )}
+                            <span><strong>Responsável:</strong> {responsible?.name || "Não atribuído"}</span>
+                        </div>
+                    </div>
+
+                    <form onSubmit={handleSave} className="space-y-4">
+                        {/* Seletor Rápido de Atalhos */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                Sugestões Rápidas de Horário
+                            </Label>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPresetTime("today_17")}
+                                    className="h-7 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
+                                >
+                                    Hoje às 17h
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPresetTime("tomorrow_09")}
+                                    className="h-7 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
+                                >
+                                    Amanhã às 09h
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPresetTime("in_3_days")}
+                                    className="h-7 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
+                                >
+                                    Em 3 dias (10h)
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPresetTime("in_7_days")}
+                                    className="h-7 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
+                                >
+                                    Em 1 semana
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Campo Data e Hora */}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="reminder-datetime" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                                Data &amp; Hora do Alarme *
+                            </Label>
+                            <Input
+                                id="reminder-datetime"
+                                type="datetime-local"
+                                value={reminderDate}
+                                onChange={(e) => setReminderDate(e.target.value)}
+                                required
+                                className="h-11 rounded-xl border-slate-200 focus:border-[#08454c] text-sm font-medium"
+                            />
+                            <p className="text-[11px] text-slate-400">
+                                O sistema verifica os alarmes a cada minuto e dispara o e-mail pontualmente.
+                            </p>
+                        </div>
+
+                        {/* Campo E-mail Destinatário */}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="reminder-email" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <Mail className="w-3.5 h-3.5 text-[#08454c]" />
+                                Enviar E-mail de Notificação Para:
+                            </Label>
+                            <Input
+                                id="reminder-email"
+                                type="email"
+                                value={reminderEmail}
+                                onChange={(e) => setReminderEmail(e.target.value)}
+                                placeholder="ex: corretor@monteiroseguros.com.br"
+                                className="h-11 rounded-xl border-slate-200 focus:border-[#08454c] text-sm"
+                            />
+                            <p className="text-[11px] text-slate-400">
+                                Por padrão, enviado ao e-mail do responsável ({responsible?.email || "configurado no sistema"}). Você pode alterar para qualquer outro destinatário.
+                            </p>
+                        </div>
+
+                        {/* Campo Nota do Lembrete */}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="reminder-note" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                📝 Mensagem / Instruções do Follow-up
+                            </Label>
+                            <Textarea
+                                id="reminder-note"
+                                value={reminderNote}
+                                onChange={(e) => setReminderNote(e.target.value)}
+                                placeholder="ex: Cobrar retorno do diretor comercial referente à proposta do Plano de Saúde e inclusão dos dependentes..."
+                                rows={3}
+                                className="rounded-xl border-slate-200 focus:border-[#08454c] text-sm"
+                            />
+                        </div>
+
+                        {/* Banner de Status Atual */}
+                        {lead.reminderDate && (
+                            <div className={cn(
+                                "p-3 rounded-xl border text-xs flex items-center justify-between gap-2",
+                                lead.reminderSent
+                                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                                    : "bg-amber-50 border-amber-200 text-amber-800"
+                            )}>
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 shrink-0" />
+                                    <span>
+                                        {lead.reminderSent
+                                            ? "Último e-mail de alarme já foi disparado. Ao salvar uma nova data futura, ele será rearmado."
+                                            : "Alarme atualmente ativo e aguardando o horário programado para envio."}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Botões do Rodapé */}
+                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                {lead.reminderDate && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleClear}
+                                        disabled={isSaving}
+                                        className="h-10 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                        Remover Alarme
+                                    </Button>
+                                )}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleTest}
+                                    disabled={isTesting || isSaving}
+                                    className="h-10 text-xs rounded-xl border-slate-200 hover:bg-slate-100"
+                                    title="Dispara imediatamente um e-mail de teste para o endereço configurado acima"
+                                >
+                                    {isTesting ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5 text-blue-600" />}
+                                    Testar E-mail Agora
+                                </Button>
+                            </div>
+
+                            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onClose}
+                                    className="h-10 text-xs rounded-xl"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={isSaving}
+                                    className="h-10 text-xs rounded-xl bg-[#08454c] hover:bg-[#0c5963] text-white font-bold px-5 shadow-sm"
+                                >
+                                    {isSaving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                                    Salvar Alarme
+                                </Button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }

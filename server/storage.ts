@@ -326,7 +326,7 @@ export class DatabaseStorage implements IStorage {
       tableName: 'session'
     });
     // Auto-aprovação de posts legados para garantir que nada fique oculto
-    db.update(posts).set({ isApproved: true }).where(eq(posts.isApproved, false)).catch(() => {});
+    db.update(posts).set({ isApproved: true }).where(eq(posts.isApproved, false)).catch(() => { });
   }
   private postsCache: Map<string, { data: Post[]; expiresAt: number }> = new Map();
   private servicesCache: { data: Service[]; expiresAt: number } | null = null;
@@ -1302,53 +1302,53 @@ export class DatabaseStorage implements IStorage {
     return this.cachedSiteSettings;
   }
 
-    private defaultHeroSlides: HeroSlide[] = [
-      {
-        id: 1,
-        title: "Planos de Saúde Individuais & Familiares",
-        subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
-        mediaType: "image",
-        imageBase64: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
-        videoUrl: null,
-        videoFit: "cover",
-        slideDuration: 7,
-        buttonText: "Cotação Individual",
-        buttonLink: "/contact",
-        order: 0,
-        isActive: true,
-        createdAt: new Date(),
-      },
-      {
-        id: 2,
-        title: "Benefícios Corporativos Sob Medida",
-        subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
-        mediaType: "image",
-        imageBase64: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
-        videoUrl: null,
-        videoFit: "cover",
-        slideDuration: 7,
-        buttonText: "Cotação Corporativa",
-        buttonLink: "/contact",
-        order: 1,
-        isActive: true,
-        createdAt: new Date(),
-      },
-      {
-        id: 3,
-        title: "Planos de Saúde Premium & Reembolso",
-        subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
-        mediaType: "image",
-        imageBase64: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
-        videoUrl: null,
-        videoFit: "cover",
-        slideDuration: 7,
-        buttonText: "Planos Premium",
-        buttonLink: "/contact",
-        order: 2,
-        isActive: true,
-        createdAt: new Date(),
-      }
-    ];
+  private defaultHeroSlides: HeroSlide[] = [
+    {
+      id: 1,
+      title: "Planos de Saúde Individuais & Familiares",
+      subtitle: "A proteção mais completa para quem você ama. Acesso aos melhores hospitais do país com condições diferenciadas e atendimento personalizado.",
+      mediaType: "image",
+      imageBase64: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=2000",
+      videoUrl: null,
+      videoFit: "cover",
+      slideDuration: 7,
+      buttonText: "Cotação Individual",
+      buttonLink: "/contact",
+      order: 0,
+      isActive: true,
+      createdAt: new Date(),
+    },
+    {
+      id: 2,
+      title: "Benefícios Corporativos Sob Medida",
+      subtitle: "Reduza a sinistralidade e valorize sua equipe. Planos de saúde empresariais customizados para pequenas, médias e grandes empresas.",
+      mediaType: "image",
+      imageBase64: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=2000",
+      videoUrl: null,
+      videoFit: "cover",
+      slideDuration: 7,
+      buttonText: "Cotação Corporativa",
+      buttonLink: "/contact",
+      order: 1,
+      isActive: true,
+      createdAt: new Date(),
+    },
+    {
+      id: 3,
+      title: "Planos de Saúde Premium & Reembolso",
+      subtitle: "Reembolsos diferenciados, telemedicina de ponta e assistência nacional e internacional. O padrão de saúde que sua família e executivos merecem.",
+      mediaType: "image",
+      imageBase64: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=2000",
+      videoUrl: null,
+      videoFit: "cover",
+      slideDuration: 7,
+      buttonText: "Planos Premium",
+      buttonLink: "/contact",
+      order: 2,
+      isActive: true,
+      createdAt: new Date(),
+    }
+  ];
 
   // Hero Slides
   async getHeroSlides(): Promise<HeroSlide[]> {
@@ -2569,8 +2569,8 @@ export class MemStorage implements IStorage {
   // Posts
   async getPosts(approvedOnly = true): Promise<Post[]> {
     const gracePeriod = new Date(Date.now() + 4 * 60 * 60 * 1000);
-    const results = approvedOnly 
-      ? this.posts.filter(p => (p.isApproved !== false) && (!p.publishedAt || new Date(p.publishedAt) <= gracePeriod)) 
+    const results = approvedOnly
+      ? this.posts.filter(p => (p.isApproved !== false) && (!p.publishedAt || new Date(p.publishedAt) <= gracePeriod))
       : this.posts;
     return [...results].sort((a, b) => {
       const timeA = a.publishedAt?.getTime() ?? 0;
@@ -2969,7 +2969,11 @@ export class MemStorage implements IStorage {
       product: lead.product || null,
       status: lead.status ?? "New",
       contactId: lead.contactId ?? 0,
-      assignedTo: lead.assignedTo || null
+      assignedTo: lead.assignedTo || null,
+      reminderDate: lead.reminderDate || null,
+      reminderNote: lead.reminderNote || null,
+      reminderEmail: lead.reminderEmail || null,
+      reminderSent: lead.reminderSent || false
     };
     this.leads.push(newLead);
     return newLead;
@@ -3097,11 +3101,11 @@ export class MemStorage implements IStorage {
   async updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined> {
     const index = this.tasks.findIndex(t => t.id === id);
     if (index === -1) return undefined;
-    
+
     // Create new object to avoid type errors with Partial<InsertTask> matching Task
     const existing = this.tasks[index];
     this.tasks[index] = { ...existing } as Task;
-    
+
     // Apply updates manually to handle type issues
     if (task.title !== undefined) this.tasks[index].title = task.title;
     if (task.description !== undefined) this.tasks[index].description = task.description;
@@ -3110,7 +3114,7 @@ export class MemStorage implements IStorage {
     if (task.assignedTo !== undefined) this.tasks[index].assignedTo = task.assignedTo;
     if (task.contactId !== undefined) this.tasks[index].contactId = task.contactId;
     if (task.dueDate !== undefined) this.tasks[index].dueDate = task.dueDate ? new Date(task.dueDate) : null;
-    
+
     return this.tasks[index];
   }
 
@@ -3281,9 +3285,9 @@ export class MemStorage implements IStorage {
 
   async createProspectingChecklist(checklist: InsertProspectingChecklist): Promise<ProspectingChecklist> {
     const id = this.currentId.prospectingChecklists++;
-    const newChecklist: ProspectingChecklist = { 
-      ...checklist, 
-      id, 
+    const newChecklist: ProspectingChecklist = {
+      ...checklist,
+      id,
       createdAt: new Date(),
       notes: checklist.notes ?? null,
       checklistData: checklist.checklistData ?? null
@@ -3300,7 +3304,7 @@ export class MemStorage implements IStorage {
 
   async createReview(userId: number | null, review: InsertReview): Promise<Review> {
     const id = this.currentId.reviews++;
-    const newReview: Review = { 
+    const newReview: Review = {
       id,
       userId: userId ?? null,
       authorName: review.authorName ?? null,
@@ -3313,8 +3317,8 @@ export class MemStorage implements IStorage {
       googleReviewUrl: review.googleReviewUrl ?? null,
       relativeTime: review.relativeTime ?? null,
       isFeatured: review.isFeatured ?? false,
-      isApproved: false, 
-      createdAt: new Date() 
+      isApproved: false,
+      createdAt: new Date()
     };
     this.reviewsData.push(newReview);
     return newReview;
@@ -3357,20 +3361,20 @@ export class MemStorage implements IStorage {
   async getCliente(id: number): Promise<Cliente | undefined> { return undefined; }
   async createCliente(c: InsertCliente): Promise<Cliente> { throw new Error("Not implemented"); }
   async updateCliente(id: number, c: Partial<InsertCliente>): Promise<Cliente | undefined> { return undefined; }
-  async deleteCliente(id: number): Promise<void> {}
+  async deleteCliente(id: number): Promise<void> { }
   async getSeguradoras(): Promise<Seguradora[]> { return []; }
   async createSeguradora(s: InsertSeguradora): Promise<Seguradora> { throw new Error("Not implemented"); }
   async updateSeguradora(id: number, s: Partial<InsertSeguradora>): Promise<Seguradora | undefined> { return undefined; }
-  async deleteSeguradora(id: number): Promise<void> {}
+  async deleteSeguradora(id: number): Promise<void> { }
   async getProdutosSeguro(): Promise<ProdutoSeguro[]> { return []; }
   async createProdutoSeguro(p: InsertProdutoSeguro): Promise<ProdutoSeguro> { throw new Error("Not implemented"); }
   async updateProdutoSeguro(id: number, p: Partial<InsertProdutoSeguro>): Promise<ProdutoSeguro | undefined> { return undefined; }
-  async deleteProdutoSeguro(id: number): Promise<void> {}
+  async deleteProdutoSeguro(id: number): Promise<void> { }
   async getApolices(): Promise<Apolice[]> { return []; }
   async getApolice(id: number): Promise<Apolice | undefined> { return undefined; }
   async createApolice(a: InsertApolice): Promise<Apolice> { throw new Error("Not implemented"); }
   async updateApolice(id: number, a: Partial<InsertApolice>): Promise<Apolice | undefined> { return undefined; }
-  async deleteApolice(id: number): Promise<void> {}
+  async deleteApolice(id: number): Promise<void> { }
   async getDashboardSeguros() {
     return { totalAtivas: 0, totalClientes: 0, totalVencidas: 0, vencendo30: 0, vencendo60: 0, valorTotal: "0.00", renovacaoMes: 0, porSeguradora: [], porProduto: [] };
   }
@@ -3380,30 +3384,30 @@ export class MemStorage implements IStorage {
   async getTodoistProject(id: number): Promise<TodoistProject | undefined> { return undefined; }
   async createTodoistProject(project: InsertTodoistProject): Promise<TodoistProject> { throw new Error("Not implemented"); }
   async updateTodoistProject(id: number, project: Partial<InsertTodoistProject>): Promise<TodoistProject | undefined> { return undefined; }
-  async deleteTodoistProject(id: number): Promise<void> {}
+  async deleteTodoistProject(id: number): Promise<void> { }
   async getTodoistLabels(): Promise<TodoistLabel[]> { return []; }
   async createTodoistLabel(label: InsertTodoistLabel): Promise<TodoistLabel> { throw new Error("Not implemented"); }
-  async deleteTodoistLabel(id: number): Promise<void> {}
+  async deleteTodoistLabel(id: number): Promise<void> { }
   async getTodoistTasks(filters?: any): Promise<any[]> { return []; }
   async getTodoistTask(id: number): Promise<any | undefined> { return undefined; }
   async createTodoistTask(task: InsertTodoistTask, subtaskTitles?: string[], labelIds?: number[], createdByUserId?: number): Promise<TodoistTask> { throw new Error("Not implemented"); }
   async updateTodoistTask(id: number, updates: Partial<InsertTodoistTask>, subtasksList?: any[], labelIds?: number[], updatedByUserId?: number): Promise<TodoistTask | undefined> { return undefined; }
   async completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }> { throw new Error("Not implemented"); }
-  async deleteTodoistTask(id: number): Promise<void> {}
+  async deleteTodoistTask(id: number): Promise<void> { }
   async restoreTodoistTask(id: number): Promise<TodoistTask | undefined> { return undefined; }
   async createTodoistSubtask(subtask: InsertTodoistSubtask): Promise<TodoistSubtask> { throw new Error("Not implemented"); }
   async updateTodoistSubtask(id: number, completed: boolean, title?: string): Promise<TodoistSubtask | undefined> { return undefined; }
-  async deleteTodoistSubtask(id: number): Promise<void> {}
+  async deleteTodoistSubtask(id: number): Promise<void> { }
   async getTodoistComments(taskId: number): Promise<any[]> { return []; }
   async createTodoistComment(comment: InsertTodoistComment): Promise<TodoistComment> { throw new Error("Not implemented"); }
   async getTodoistActivityLogs(taskId: number): Promise<any[]> { return []; }
   async getTodoistAutomations(): Promise<TodoistAutomation[]> { return []; }
   async createTodoistAutomation(automation: InsertTodoistAutomation): Promise<TodoistAutomation> { throw new Error("Not implemented"); }
   async updateTodoistAutomation(id: number, updates: Partial<InsertTodoistAutomation>): Promise<TodoistAutomation | undefined> { return undefined; }
-  async deleteTodoistAutomation(id: number): Promise<void> {}
+  async deleteTodoistAutomation(id: number): Promise<void> { }
   async triggerTodoistAutomations(eventType: string, context: any): Promise<number> { return 0; }
   async getTodoistNotifications(userId: number): Promise<TodoistNotification[]> { return []; }
-  async markTodoistNotificationRead(id: number): Promise<void> {}
+  async markTodoistNotificationRead(id: number): Promise<void> { }
   async getTodoistDashboardStats(userId: number): Promise<any> { return { myTasks: { todayCount: 0, overdueCount: 0, upcomingCount: 0, completedTodayCount: 0, totalPending: 0 }, priorityCounts: { P1: 0, P2: 0, P3: 0, P4: 0 }, crmIntelligence: { leadsWithoutContactCount: 0, leadsWithoutContact: [], staleLeadsCount: 0, staleLeads: [] } }; }
   async createLeadThermometerRecord(record: InsertLeadThermometerHistory): Promise<LeadThermometerHistory> {
     return {
