@@ -201,3 +201,4 @@ export function startReminderScheduler(): void {
     checkAndSendDueReminders().catch(() => {});
   }, 60 * 1000);
 }
+
