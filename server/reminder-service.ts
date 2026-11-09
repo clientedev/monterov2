@@ -1,60 +1,92 @@
 import { db } from "./db";
 import { storage } from "./storage";
-import { leads, users, contacts } from "@shared/schema";
-import { eq, and, lte, isNotNull, or, isNull } from "drizzle-orm";
+import { leads } from "@shared/schema";
+import { and, isNotNull, or, isNull, eq } from "drizzle-orm";
 import { sendEmail, buildLeadReminderEmail } from "./email";
 
-/** Format date/time to Brazilian Portuguese */
-export function formatDateTimeBR(dateInput: string | Date | null | undefined): string {
+/** Get date string YYYY-MM-DD in America/Sao_Paulo timezone */
+export function getDayStringBR(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return "";
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+/** Format day in Brazilian Portuguese (ex: "09/11/2026 (Hoje)" ou "15/11/2026") */
+export function formatDayBR(dateInput: string | Date | null | undefined): string {
   if (!dateInput) return "";
   try {
     const d = new Date(dateInput);
     if (isNaN(d.getTime())) return String(dateInput);
-    return new Intl.DateTimeFormat("pt-BR", {
+    const dayMonthYear = new Intl.DateTimeFormat("pt-BR", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
       timeZone: "America/Sao_Paulo",
     }).format(d);
+
+    const targetDay = getDayStringBR(d);
+    const today = getDayStringBR(new Date());
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = getDayStringBR(tomorrowDate);
+
+    if (targetDay === today) {
+      return `${dayMonthYear} (Hoje)`;
+    } else if (targetDay === tomorrow) {
+      return `${dayMonthYear} (Amanhã)`;
+    }
+    return dayMonthYear;
   } catch {
     return String(dateInput);
   }
 }
 
-/** Check database for overdue or due reminders and dispatch them via email */
+/** Check database for reminders due on or before today and dispatch them via email */
 export async function checkAndSendDueReminders(): Promise<number> {
   const now = new Date();
+  const todayStr = getDayStringBR(now);
   let dispatchedCount = 0;
 
   try {
-    let dueLeads: any[] = [];
+    let candidateLeads: any[] = [];
 
     try {
-      dueLeads = await db
+      candidateLeads = await db
         .select()
         .from(leads)
         .where(
           and(
             isNotNull(leads.reminderDate),
-            lte(leads.reminderDate, now),
             or(eq(leads.reminderSent, false), isNull(leads.reminderSent))
           )
         );
     } catch (dbErr: any) {
       // Fallback for storage memory / timeout
       const allLeads = await storage.getLeads();
-      dueLeads = allLeads.filter(
-        (l) => l.reminderDate && new Date(l.reminderDate) <= now && !l.reminderSent
-      );
+      candidateLeads = allLeads.filter((l) => l.reminderDate && !l.reminderSent);
     }
 
-    if (!dueLeads || dueLeads.length === 0) {
+    if (!candidateLeads || candidateLeads.length === 0) {
       return 0;
     }
 
-    console.log(`[reminder-service] ⏰ Encontrados ${dueLeads.length} lembrete(s) pendente(s) para disparo.`);
+    // Filter leads whose reminder day is today or earlier (independente da hora)
+    const dueLeads = candidateLeads.filter((lead) => {
+      const leadDayStr = getDayStringBR(lead.reminderDate);
+      return Boolean(leadDayStr && leadDayStr <= todayStr);
+    });
+
+    if (dueLeads.length === 0) {
+      return 0;
+    }
+
+    console.log(`[reminder-service] ⏰ Encontrados ${dueLeads.length} lembrete(s) do dia para disparo (Data de hoje: ${todayStr}).`);
 
     const settings = await storage.getSiteSettings();
     const fallbackEmail =
@@ -72,13 +104,12 @@ export async function checkAndSendDueReminders(): Promise<number> {
 
         if (!targetEmail || !targetEmail.includes("@")) {
           console.warn(`[reminder-service] ⚠️ Lead #${lead.id} sem e-mail válido para envio de lembrete.`);
-          // Mark sent to avoid infinite loop on unconfigured lead
           await storage.updateLead(lead.id, { reminderSent: true } as any);
           continue;
         }
 
         const clientName = contact?.name || `Oportunidade #${lead.id}`;
-        const formattedDate = formatDateTimeBR(lead.reminderDate);
+        const formattedDate = formatDayBR(lead.reminderDate);
 
         const { subject, html } = buildLeadReminderEmail({
           recipientName: assignedUser?.name || "Equipe Monteiro",
@@ -98,12 +129,11 @@ export async function checkAndSendDueReminders(): Promise<number> {
         });
 
         if (sendResult.success) {
-          console.log(`[reminder-service] ✅ Lembrete disparado com sucesso para ${targetEmail} (Lead #${lead.id} - ${clientName})`);
+          console.log(`[reminder-service] ✅ Lembrete disparado no dia com sucesso para ${targetEmail} (Lead #${lead.id} - ${clientName})`);
           await storage.updateLead(lead.id, { reminderSent: true } as any);
           dispatchedCount++;
         } else {
           console.error(`[reminder-service] ❌ Falha no envio para ${targetEmail} (Lead #${lead.id}):`, sendResult.error);
-          // Mark as sent so it doesn't repeatedly fail every minute
           await storage.updateLead(lead.id, { reminderSent: true } as any);
         }
       } catch (itemErr: any) {
@@ -150,7 +180,7 @@ export async function sendTestReminderEmail(
 
   const clientName = contact?.name || `Oportunidade #${lead.id}`;
   const reminderDateVal = overrideData?.reminderDate || lead.reminderDate || new Date();
-  const formattedDate = formatDateTimeBR(reminderDateVal);
+  const formattedDate = formatDayBR(reminderDateVal);
   const reminderNote = overrideData?.reminderNote ?? lead.reminderNote ?? "Teste de disparo imediato do alarme.";
 
   const { subject, html } = buildLeadReminderEmail({
@@ -189,7 +219,7 @@ export function startReminderScheduler(): void {
     clearInterval(schedulerTimer);
   }
 
-  console.log("[reminder-service] 🚀 Agendador de lembretes de pipeline iniciado (checagem a cada 60s)");
+  console.log("[reminder-service] 🚀 Agendador de lembretes diários do pipeline iniciado (checagem a cada 60s, disparo no dia independente da hora)");
 
   // Initial check after 5 seconds to allow DB tables and connections to settle
   setTimeout(() => {
@@ -201,4 +231,3 @@ export function startReminderScheduler(): void {
     checkAndSendDueReminders().catch(() => {});
   }, 60 * 1000);
 }
-

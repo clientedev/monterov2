@@ -1407,23 +1407,38 @@ export async function registerRoutes(
     res.json(lead);
   });
 
-  // Lead Reminders (Alarmes & Follow-ups do Pipeline)
+  // Lead Reminders (Alarmes & Follow-ups do Pipeline - Disparo no Dia)
   app.patch("/api/leads/:id/reminder", isTeam, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { reminderDate, reminderNote, reminderEmail } = req.body;
 
-      const parsedDate = reminderDate ? new Date(reminderDate) : null;
+      let parsedDate: Date | null = null;
+      if (reminderDate) {
+        if (typeof reminderDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(reminderDate)) {
+          parsedDate = new Date(`${reminderDate}T12:00:00.000Z`);
+        } else {
+          parsedDate = new Date(reminderDate);
+        }
+      }
 
       const updated = await storage.updateLead(id, {
         reminderDate: parsedDate,
         reminderNote: parsedDate ? (reminderNote || null) : null,
         reminderEmail: parsedDate ? (reminderEmail || null) : null,
-        reminderSent: false, // Reset flag para novo disparo
+        reminderSent: false, // Reset flag para novo disparo no dia
       } as any);
 
       if (!updated) {
         return res.status(404).json({ message: "Lead não encontrado" });
+      }
+
+      // Se o lembrete foi agendado para o dia de hoje (ou passado), aciona a checagem imediatamente
+      if (parsedDate) {
+        const { checkAndSendDueReminders } = await import("./reminder-service");
+        setTimeout(() => {
+          checkAndSendDueReminders().catch(() => {});
+        }, 1000);
       }
 
       res.json(updated);

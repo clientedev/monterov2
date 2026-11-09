@@ -681,7 +681,7 @@ function LeadCard({
     const nextStatus = statusIndex !== -1 && statusIndex < columns.length - 1 ? columns[statusIndex + 1].id : null;
     const prevStatus = statusIndex > 0 ? columns[statusIndex - 1].id : null;
 
-    const { text: reminderText, isOverdue, isToday } = formatLeadReminderDisplay(lead.reminderDate);
+    const { text: reminderText, isOverdue, isToday, isTomorrow } = formatLeadReminderDisplay(lead.reminderDate);
 
     return (
         <div className="group bg-white p-5 rounded-xl border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
@@ -699,7 +699,7 @@ function LeadCard({
                         e.stopPropagation();
                         onReminder?.();
                     }} 
-                    title={lead.reminderDate ? "⏰ Alarme Ativo: Gerenciar Lembrete & E-mail" : "⏰ Agendar Alarme & Lembrete por E-mail"}
+                    title={lead.reminderDate ? "⏰ Alarme Ativo: Gerenciar Lembrete & E-mail" : "⏰ Agendar Alarme do Dia & Lembrete por E-mail"}
                 >
                     <Bell className={cn("h-3 w-3", lead.reminderDate && "fill-amber-500 text-amber-500")} />
                 </Button>
@@ -739,10 +739,10 @@ function LeadCard({
                                     "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer shadow-xs transition-colors",
                                     isOverdue ? "bg-rose-100 text-rose-700 border border-rose-300" : isToday ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-blue-100 text-blue-700 border border-blue-300"
                                 )}
-                                title={`Alarme programado: ${reminderText}`}
+                                title={`Alarme programado para o dia: ${reminderText}`}
                             >
                                 <Bell className="h-2.5 w-2.5 fill-current animate-pulse" />
-                                {isToday ? "Hoje" : isOverdue ? "Atrasado" : "Alarme"}
+                                {isToday ? "Hoje" : isTomorrow ? "Amanhã" : isOverdue ? "Atrasado" : "No Dia"}
                             </span>
                         )}
                     </div>
@@ -792,12 +792,12 @@ function LeadCard({
                             isOverdue && !lead.reminderSent ? "text-rose-600 animate-pulse" : isToday && !lead.reminderSent ? "text-amber-600" : lead.reminderSent ? "text-emerald-600" : "text-blue-600"
                         )} />
                         <span className="font-bold truncate text-[11px]">
-                            {isOverdue && !lead.reminderSent ? "⚠️ Atrasado: " : isToday && !lead.reminderSent ? "🚨 Hoje: " : lead.reminderSent ? "✓ Disparado: " : "⏰ Lembrete: "}
+                            {isOverdue && !lead.reminderSent ? "⚠️ Atrasado: " : isToday && !lead.reminderSent ? "🚨 Disparo Hoje: " : isTomorrow && !lead.reminderSent ? "⏰ Amanhã: " : lead.reminderSent ? "✓ Disparado no dia " : "⏰ Lembrete: "}
                             {reminderText}
                         </span>
                     </div>
                     <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/80 border border-black/5 shrink-0">
-                        {lead.reminderSent ? "E-mail Enviado" : "E-mail Ativo"}
+                        {lead.reminderSent ? "✓ E-mail OK" : "Disparo no Dia"}
                     </span>
                 </div>
             ) : (
@@ -809,10 +809,10 @@ function LeadCard({
                             onReminder?.();
                         }}
                         className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-amber-600 hover:bg-amber-50/70 px-2 py-1 rounded-lg border border-transparent hover:border-amber-200 transition-all cursor-pointer"
-                        title="Agendar alarme com data e notificação por e-mail"
+                        title="Agendar alarme no dia com disparo por e-mail"
                     >
                         <Bell className="h-3 w-3" />
-                        <span>Agendar Alarme</span>
+                        <span>Agendar Alarme no Dia</span>
                     </button>
                     {lead.reminderEmail && (
                         <span className="text-[10px] text-slate-400 truncate max-w-[120px]" title={lead.reminderEmail}>
@@ -1283,48 +1283,41 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
     );
 }
 
-function toDatetimeLocalValue(dateInput?: string | Date | null): string {
+function toDateInputValue(dateInput?: string | Date | null): string {
     if (!dateInput) return "";
     const d = new Date(dateInput);
     if (isNaN(d.getTime())) return "";
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
-    const hours = String(d.getHours()).padStart(2, "0");
-    const minutes = String(d.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return `${year}-${month}-${day}`;
 }
 
-function formatLeadReminderDisplay(dateVal: string | Date | null | undefined): { text: string; isOverdue: boolean; isToday: boolean } {
-    if (!dateVal) return { text: "", isOverdue: false, isToday: false };
+function formatLeadReminderDisplay(dateVal: string | Date | null | undefined): { text: string; isOverdue: boolean; isToday: boolean; isTomorrow: boolean } {
+    if (!dateVal) return { text: "", isOverdue: false, isToday: false, isTomorrow: false };
     const date = new Date(dateVal);
-    if (isNaN(date.getTime())) return { text: String(dateVal), isOverdue: false, isToday: false };
+    if (isNaN(date.getTime())) return { text: String(dateVal), isOverdue: false, isToday: false, isTomorrow: false };
 
+    // Comparação de dia de calendário em meia-noite local
+    const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const now = new Date();
-    const isOverdue = date.getTime() < now.getTime();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
-    const isToday =
-        date.getDate() === now.getDate() &&
-        date.getMonth() === now.getMonth() &&
-        date.getFullYear() === now.getFullYear();
-
-    const isTomorrow =
-        new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toDateString() ===
-        new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString();
-
-    const timeStr = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const isToday = targetDate.getTime() === today.getTime();
+    const isTomorrow = targetDate.getTime() === tomorrow.getTime();
+    const isOverdue = targetDate.getTime() < today.getTime();
 
     let text = "";
     if (isToday) {
-        text = `Hoje às ${timeStr}`;
+        text = "Hoje";
     } else if (isTomorrow) {
-        text = `Amanhã às ${timeStr}`;
+        text = "Amanhã";
     } else {
-        const dayMonth = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-        text = `${dayMonth} às ${timeStr}`;
+        text = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
     }
 
-    return { text, isOverdue, isToday };
+    return { text, isOverdue, isToday, isTomorrow };
 }
 
 function LeadReminderModal({
@@ -1355,7 +1348,7 @@ function LeadReminderModal({
 
     useEffect(() => {
         if (lead) {
-            setReminderDate(toDatetimeLocalValue(lead.reminderDate));
+            setReminderDate(toDateInputValue(lead.reminderDate));
             setReminderNote(lead.reminderNote || "");
             setReminderEmail(lead.reminderEmail || responsible?.email || "");
         } else {
@@ -1367,29 +1360,30 @@ function LeadReminderModal({
 
     if (!lead) return null;
 
-    const setPresetTime = (preset: "today_17" | "tomorrow_09" | "in_3_days" | "in_7_days") => {
+    const setPresetDay = (preset: "today" | "tomorrow" | "in_3_days" | "in_7_days" | "next_monday") => {
         const d = new Date();
-        if (preset === "today_17") {
-            d.setHours(17, 0, 0, 0);
-        } else if (preset === "tomorrow_09") {
+        if (preset === "today") {
+            // Mantém hoje
+        } else if (preset === "tomorrow") {
             d.setDate(d.getDate() + 1);
-            d.setHours(9, 0, 0, 0);
         } else if (preset === "in_3_days") {
             d.setDate(d.getDate() + 3);
-            d.setHours(10, 0, 0, 0);
         } else if (preset === "in_7_days") {
             d.setDate(d.getDate() + 7);
-            d.setHours(9, 0, 0, 0);
+        } else if (preset === "next_monday") {
+            const dayOfWeek = d.getDay(); // 0 domingo, 1 segunda
+            const daysUntilMonday = ((1 + 7 - dayOfWeek) % 7) || 7;
+            d.setDate(d.getDate() + daysUntilMonday);
         }
-        setReminderDate(toDatetimeLocalValue(d));
+        setReminderDate(toDateInputValue(d));
     };
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         if (!reminderDate) {
             toast({
-                title: "Informe a data do alarme",
-                description: "Selecione uma data e hora para agendar o lembrete.",
+                title: "Selecione o dia do alarme",
+                description: "Escolha uma data para o disparo do lembrete por e-mail.",
                 variant: "destructive"
             });
             return;
@@ -1397,7 +1391,7 @@ function LeadReminderModal({
 
         onSave({
             id: lead.id,
-            reminderDate: new Date(reminderDate).toISOString(),
+            reminderDate, // Formato YYYY-MM-DD
             reminderNote: reminderNote.trim() || null,
             reminderEmail: reminderEmail.trim() || null,
         });
@@ -1415,7 +1409,7 @@ function LeadReminderModal({
     const handleTest = () => {
         onTest({
             id: lead.id,
-            reminderDate: reminderDate ? new Date(reminderDate).toISOString() : undefined,
+            reminderDate: reminderDate || undefined,
             reminderNote: reminderNote.trim() || undefined,
             reminderEmail: reminderEmail.trim() || undefined,
         });
@@ -1433,13 +1427,13 @@ function LeadReminderModal({
                         </div>
                         <div className="min-w-0 flex-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20 inline-block mb-1">
-                                Pipeline • Alarme &amp; Notificação
+                                Pipeline • Disparo no Dia
                             </span>
                             <DialogTitle className="text-xl font-display font-bold text-white tracking-tight">
-                                Agendar Lembrete de Oportunidade
+                                Agendar Lembrete no Dia
                             </DialogTitle>
                             <p className="text-slate-300 text-xs mt-1 leading-relaxed">
-                                Defina data e hora para receber um alerta oficial por e-mail com todos os dados deste lead.
+                                Escolha o dia para disparar a notificação por e-mail, independente do horário.
                             </p>
                         </div>
                     </div>
@@ -1468,67 +1462,76 @@ function LeadReminderModal({
                     </div>
 
                     <form onSubmit={handleSave} className="space-y-4">
-                        {/* Seletor Rápido de Atalhos */}
+                        {/* Seletor Rápido de Dias */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                Sugestões Rápidas de Horário
+                                Sugestões Rápidas de Dia
                             </Label>
                             <div className="flex flex-wrap gap-2">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setPresetTime("today_17")}
-                                    className="h-7 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
+                                    onClick={() => setPresetDay("today")}
+                                    className="h-8 text-xs font-bold rounded-lg border-amber-200 bg-amber-50/50 hover:bg-amber-100 text-amber-900"
                                 >
-                                    Hoje às 17h
+                                    ⚡ Hoje
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setPresetTime("tomorrow_09")}
-                                    className="h-7 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
+                                    onClick={() => setPresetDay("tomorrow")}
+                                    className="h-8 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
                                 >
-                                    Amanhã às 09h
+                                    Amanhã
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setPresetTime("in_3_days")}
-                                    className="h-7 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
+                                    onClick={() => setPresetDay("in_3_days")}
+                                    className="h-8 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
                                 >
-                                    Em 3 dias (10h)
+                                    Em 3 dias
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setPresetTime("in_7_days")}
-                                    className="h-7 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
+                                    onClick={() => setPresetDay("in_7_days")}
+                                    className="h-8 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
                                 >
                                     Em 1 semana
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPresetDay("next_monday")}
+                                    className="h-8 text-xs rounded-lg border-slate-200 hover:border-amber-400 hover:bg-amber-50"
+                                >
+                                    Próx. Segunda
                                 </Button>
                             </div>
                         </div>
 
-                        {/* Campo Data e Hora */}
+                        {/* Campo Data */}
                         <div className="space-y-1.5">
-                            <Label htmlFor="reminder-datetime" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <Label htmlFor="reminder-date-input" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                                 <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                                Data &amp; Hora do Alarme *
+                                Dia do Disparo do Lembrete *
                             </Label>
                             <Input
-                                id="reminder-datetime"
-                                type="datetime-local"
+                                id="reminder-date-input"
+                                type="date"
                                 value={reminderDate}
                                 onChange={(e) => setReminderDate(e.target.value)}
                                 required
-                                className="h-11 rounded-xl border-slate-200 focus:border-[#08454c] text-sm font-medium"
+                                className="h-11 rounded-xl border-slate-200 focus:border-[#08454c] text-sm font-semibold"
                             />
-                            <p className="text-[11px] text-slate-400">
-                                O sistema verifica os alarmes a cada minuto e dispara o e-mail pontualmente.
+                            <p className="text-[11px] text-slate-500 font-medium">
+                                ⚡ O e-mail será disparado no dia selecionado, independente da hora. Ao agendar para hoje, o disparo é feito imediatamente.
                             </p>
                         </div>
 
@@ -1579,7 +1582,7 @@ function LeadReminderModal({
                                     <span>
                                         {lead.reminderSent
                                             ? "Último e-mail de alarme já foi disparado. Ao salvar uma nova data futura, ele será rearmado."
-                                            : "Alarme atualmente ativo e aguardando o horário programado para envio."}
+                                            : "Alarme atualmente ativo para disparo no dia programado."}
                                     </span>
                                 </div>
                             </div>
