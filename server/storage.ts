@@ -92,7 +92,23 @@ import {
   type LeadDispatchGroup,
   type InsertLeadDispatchGroup,
 } from "@shared/schema";
-import { sql, and, desc, eq, asc, lte, or, isNull, inArray, gte, like, ne } from "drizzle-orm";
+import { sql, and, desc, eq, asc, lte, lt, gt, or, isNull, inArray, gte, like, ne } from "drizzle-orm";
+
+/**
+ * Início e fim do dia atual no fuso America/Sao_Paulo (UTC-3, sem horário de verão desde 2019).
+ * O servidor de produção roda em UTC; usar setHours() local fazia o "dia" virar às 21h no Brasil.
+ */
+function getBrDayBounds(reference: Date = new Date()): { start: Date; end: Date } {
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(reference);
+  const start = new Date(`${day}T00:00:00.000-03:00`);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return { start, end };
+}
 
 export function normalizePhone(phone: string | null | undefined): string {
   if (!phone) return "";
@@ -1914,8 +1930,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (filters?.view === 'today') {
-      const endOfDay = new Date();
-      endOfDay.setHours(23, 59, 59, 999);
+      const { end: endOfDay } = getBrDayBounds();
       conditions.push(
         and(
           lte(todoistTasks.dueDate, endOfDay),
@@ -1923,20 +1938,18 @@ export class DatabaseStorage implements IStorage {
         )
       );
     } else if (filters?.view === 'overdue') {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+      const { start: startOfDay } = getBrDayBounds();
       conditions.push(
         and(
-          lte(todoistTasks.dueDate, startOfDay),
+          lt(todoistTasks.dueDate, startOfDay),
           or(eq(todoistTasks.status, 'todo'), eq(todoistTasks.status, 'in_progress'))
         )
       );
     } else if (filters?.view === 'upcoming') {
-      const endOfDay = new Date();
-      endOfDay.setHours(23, 59, 59, 999);
+      const { end: endOfDay } = getBrDayBounds();
       conditions.push(
         and(
-          gte(todoistTasks.dueDate, endOfDay),
+          gt(todoistTasks.dueDate, endOfDay),
           or(eq(todoistTasks.status, 'todo'), eq(todoistTasks.status, 'in_progress'))
         )
       );
@@ -2212,6 +2225,27 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  /**
+   * Condições que identificam as outras ocorrências da MESMA série recorrente
+   * (mesmo título, regra, responsável, projeto e vínculos de CRM), ignorando excluídas e a própria tarefa.
+   */
+  private recurringSeriesConditions(t: TodoistTask): any[] {
+    const sameOrNull = (col: any, value: any) => (value === null || value === undefined ? isNull(col) : eq(col, value));
+    return [
+      ne(todoistTasks.id, t.id),
+      isNull(todoistTasks.deletedAt),
+      eq(todoistTasks.isRecurring, true),
+      eq(todoistTasks.title, t.title),
+      eq(todoistTasks.recurrenceRule, t.recurrenceRule as string),
+      sameOrNull(todoistTasks.assignedTo, t.assignedTo),
+      sameOrNull(todoistTasks.projectId, t.projectId),
+      sameOrNull(todoistTasks.contactId, t.contactId),
+      sameOrNull(todoistTasks.leadId, t.leadId),
+      sameOrNull(todoistTasks.clienteId, t.clienteId),
+      sameOrNull(todoistTasks.apoliceId, t.apoliceId),
+    ];
+  }
+
   async completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }> {
     const [existing] = await db.select().from(todoistTasks).where(eq(todoistTasks.id, id));
     if (!existing) throw new Error("Task not found");
@@ -2220,13 +2254,21 @@ export class DatabaseStorage implements IStorage {
     const newKanban = newStatus === 'done' ? 'concluido' : 'a_fazer';
     const completedAt = newStatus === 'done' ? new Date() : null;
 
+    // Atualização condicional: só altera se o status ainda for o que lemos.
+    // Evita que dois cliques/requisições simultâneas processem a mesma conclusão duas vezes.
     const [task] = await db.update(todoistTasks).set({
       status: newStatus,
       kanbanColumn: newKanban,
       completedAt,
       completedBy: newStatus === 'done' ? userId : null,
       updatedAt: new Date(),
-    }).where(eq(todoistTasks.id, id)).returning();
+    }).where(and(eq(todoistTasks.id, id), eq(todoistTasks.status, existing.status))).returning();
+
+    if (!task) {
+      // Outra requisição já alterou o status desta tarefa; não repete efeitos colaterais.
+      const [current] = await db.select().from(todoistTasks).where(eq(todoistTasks.id, id));
+      return { task: current };
+    }
 
     await db.insert(todoistActivityLogs).values({
       taskId: id,
@@ -2237,7 +2279,51 @@ export class DatabaseStorage implements IStorage {
 
     let nextOccurrenceTask: TodoistTask | undefined = undefined;
 
+    // Ao REABRIR uma tarefa recorrente (ex.: botão "Desfazer"), remove (soft delete, recuperável)
+    // a próxima ocorrência que foi gerada automaticamente na conclusão e ainda não foi mexida.
+    if (newStatus === 'todo' && existing.isRecurring && existing.recurrenceRule && existing.completedAt) {
+      const completedAtMs = new Date(existing.completedAt).getTime();
+      const siblings = await db.select().from(todoistTasks).where(
+        and(...this.recurringSeriesConditions(existing), ne(todoistTasks.status, 'done'))
+      );
+      for (const sib of siblings) {
+        const createdMs = sib.createdAt ? new Date(sib.createdAt).getTime() : 0;
+        const updatedMs = sib.updatedAt ? new Date(sib.updatedAt).getTime() : createdMs;
+        const generatedByThisCompletion = createdMs >= completedAtMs - 5000;
+        const untouched = sib.status === 'todo' && updatedMs - createdMs < 5000;
+        if (!generatedByThisCompletion || !untouched) continue;
+
+        const [{ count: commentsCount }] = await db.select({ count: sql<number>`count(*)` })
+          .from(todoistComments).where(eq(todoistComments.taskId, sib.id));
+        if (Number(commentsCount) > 0) continue;
+
+        // Só remove o que comprovadamente foi gerado pela recorrência
+        const [generatedLog] = await db.select({ id: todoistActivityLogs.id }).from(todoistActivityLogs).where(
+          and(eq(todoistActivityLogs.taskId, sib.id), eq(todoistActivityLogs.action, "criada por recorrência"))
+        ).limit(1);
+        if (!generatedLog) continue;
+
+        await db.update(todoistTasks).set({ deletedAt: new Date() }).where(eq(todoistTasks.id, sib.id));
+        await db.insert(todoistActivityLogs).values({
+          taskId: id,
+          userId,
+          action: "removeu ocorrência gerada",
+          details: `Tarefa reaberta: a próxima ocorrência #${sib.id} gerada automaticamente foi removida para evitar duplicidade.`,
+        });
+      }
+    }
+
+    // Ao CONCLUIR uma tarefa recorrente, só gera a próxima ocorrência se a série ainda não tiver
+    // nenhuma ocorrência em aberto (evita cópias da mesma tarefa no mesmo dia).
+    let seriesAlreadyHasOpenOccurrence = false;
     if (newStatus === 'done' && existing.isRecurring && existing.recurrenceRule) {
+      const [openSibling] = await db.select({ id: todoistTasks.id }).from(todoistTasks).where(
+        and(...this.recurringSeriesConditions(existing), ne(todoistTasks.status, 'done'))
+      ).limit(1);
+      seriesAlreadyHasOpenOccurrence = Boolean(openSibling);
+    }
+
+    if (newStatus === 'done' && existing.isRecurring && existing.recurrenceRule && !seriesAlreadyHasOpenOccurrence) {
       const baseDate = existing.dueDate ? new Date(existing.dueDate) : new Date();
       const nextDate = new Date(baseDate);
       const rule = existing.recurrenceRule.toLowerCase();
@@ -2261,9 +2347,8 @@ export class DatabaseStorage implements IStorage {
         nextDate.setDate(nextDate.getDate() + 7);
       }
 
-      // If nextDate is in the past, advance it to today or future
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // If nextDate is in the past, advance it to today or future (dia de hoje no horário de Brasília)
+      const { start: today } = getBrDayBounds();
       let safetyCounter = 0;
       while (nextDate < today && safetyCounter < 500) {
         safetyCounter++;
@@ -2282,7 +2367,12 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
+      // createdAt/updatedAt gravados pelo app (mesmo referencial do completedAt) para que o
+      // "Desfazer" consiga identificar com segurança a ocorrência gerada por esta conclusão.
+      const generatedAt = new Date();
       [nextOccurrenceTask] = await db.insert(todoistTasks).values({
+        createdAt: generatedAt,
+        updatedAt: generatedAt,
         title: existing.title,
         description: existing.description,
         projectId: existing.projectId,
@@ -2422,6 +2512,22 @@ export class DatabaseStorage implements IStorage {
 
       const title = context.title ? `${rule.actionTaskTitle}: ${context.title}` : rule.actionTaskTitle;
 
+      // Não cria de novo se já existe a mesma tarefa automática em aberto para o mesmo vínculo
+      const sameOrNull = (col: any, value: any) => (value === null || value === undefined ? isNull(col) : eq(col, value));
+      const [alreadyOpen] = await db.select({ id: todoistTasks.id }).from(todoistTasks).where(
+        and(
+          isNull(todoistTasks.deletedAt),
+          ne(todoistTasks.status, 'done'),
+          eq(todoistTasks.autoGeneratedBy, rule.name),
+          eq(todoistTasks.title, title),
+          sameOrNull(todoistTasks.leadId, context.leadId),
+          sameOrNull(todoistTasks.contactId, context.contactId),
+          sameOrNull(todoistTasks.clienteId, context.clienteId),
+          sameOrNull(todoistTasks.apoliceId, context.apoliceId),
+        )
+      ).limit(1);
+      if (alreadyOpen) continue;
+
       await db.insert(todoistTasks).values({
         title,
         description: `Gerado automaticamente via regra de automação CRM "${rule.name}".`,
@@ -2453,10 +2559,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTodoistDashboardStats(userId: number): Promise<any> {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    const { start: startOfDay, end: endOfDay } = getBrDayBounds();
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);

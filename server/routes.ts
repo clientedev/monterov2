@@ -1352,15 +1352,19 @@ export async function registerRoutes(
     const lead = await storage.updateLeadStatus(parseInt(req.params.id), req.body.status);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
 
-    // Trigger Todoist automations
-    await storage.triggerTodoistAutomations('lead_status_changed', {
-      leadId: lead.id,
-      contactId: lead.contactId,
-      assignedUserId: (req.user as any)?.id,
-      title: `Status: ${req.body.status}`,
-    });
+    const statusActuallyChanged = leadBefore?.status !== lead.status;
 
-    if (req.body.status === 'implemented' || req.body.status === 'closed') {
+    // Trigger Todoist automations (somente quando o status realmente mudou)
+    if (statusActuallyChanged) {
+      await storage.triggerTodoistAutomations('lead_status_changed', {
+        leadId: lead.id,
+        contactId: lead.contactId,
+        assignedUserId: (req.user as any)?.id,
+        title: `Status: ${req.body.status}`,
+      });
+    }
+
+    if (statusActuallyChanged && (req.body.status === 'implemented' || req.body.status === 'closed')) {
       await storage.triggerTodoistAutomations('deal_closed', {
         leadId: lead.id,
         contactId: lead.contactId,
@@ -3046,7 +3050,40 @@ export async function registerRoutes(
     try {
       const id = parseInt(req.params.id);
       const { subtasksList, labelIds, ...updates } = req.body;
-      const updated = await storage.updateTodoistTask(id, updates, subtasksList, labelIds, (req.user as any)?.id);
+      const userId = (req.user as any)?.id || 1;
+
+      // Datas chegam como texto no JSON; o banco precisa de Date.
+      for (const field of ["dueDate", "completedAt"] as const) {
+        if (updates[field] !== undefined && updates[field] !== null) {
+          const parsedDate = new Date(updates[field]);
+          if (isNaN(parsedDate.getTime())) {
+            return res.status(400).json({ message: `Data inválida em ${field}` });
+          }
+          updates[field] = parsedDate;
+        }
+      }
+      // Campos que não podem ser sobrescritos pelo cliente
+      delete updates.id;
+      delete updates.createdAt;
+      delete updates.updatedAt;
+      delete updates.deletedAt;
+
+      // Concluir/reabrir (ex.: arrastar para "Concluído" no Kanban) passa pela mesma lógica do
+      // botão de concluir, para tratar recorrência sem gerar ocorrências duplicadas.
+      if (typeof updates.status === "string") {
+        const current = await storage.getTodoistTask(id);
+        if (!current) return res.status(404).json({ message: "Tarefa não encontrada" });
+        const wasDone = current.status === "done";
+        const willBeDone = updates.status === "done";
+        if (wasDone !== willBeDone) {
+          await storage.completeTodoistTask(id, userId);
+          if (willBeDone) {
+            delete updates.status;
+          }
+        }
+      }
+
+      const updated = await storage.updateTodoistTask(id, updates, subtasksList, labelIds, userId);
       if (!updated) return res.status(404).json({ message: "Tarefa não encontrada" });
       res.json(updated);
     } catch (err: any) {

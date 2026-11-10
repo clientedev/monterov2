@@ -518,9 +518,15 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     </label>
                     <Input
                       type="date"
-                      value={task.dueDate ? String(task.dueDate).split("T")[0] : ""}
+                      value={task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : ""}
                       onChange={(e) =>
-                        updateTaskMutation.mutate({ dueDate: e.target.value ? new Date(e.target.value) : null })
+                        // Data no fuso local (Brasil), no horário da tarefa ou 12:00 — new Date("aaaa-mm-dd")
+                        // seria meia-noite UTC (21h do dia anterior no Brasil) e jogava a tarefa para o dia errado.
+                        updateTaskMutation.mutate({
+                          dueDate: e.target.value
+                            ? new Date(`${e.target.value}T${task.dueTime || "12:00"}:00`)
+                            : null,
+                        })
                       }
                       className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl"
                     />
@@ -533,7 +539,15 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
                     <Input
                       type="time"
                       value={task.dueTime || ""}
-                      onChange={(e) => updateTaskMutation.mutate({ dueTime: e.target.value || null })}
+                      onChange={(e) => {
+                        const newTime = e.target.value || null;
+                        const payload: any = { dueTime: newTime };
+                        // Mantém a data de vencimento coerente com o novo horário
+                        if (task.dueDate && newTime) {
+                          payload.dueDate = new Date(`${format(new Date(task.dueDate), "yyyy-MM-dd")}T${newTime}:00`);
+                        }
+                        updateTaskMutation.mutate(payload);
+                      }}
                       className="bg-white border-slate-200 text-xs text-slate-800 rounded-xl"
                     />
                   </div>
