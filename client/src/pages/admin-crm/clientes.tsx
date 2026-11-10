@@ -38,7 +38,7 @@ import { LifeInsuranceFieldsSection } from "@/components/LifeInsuranceFieldsSect
 import { SmartSpreadsheetImporter } from "@/components/SmartSpreadsheetImporter";
 import { ApoliceDialog } from "@/components/ApoliceDialog";
 
-const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+const ESTADOS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
 
 export interface ColumnConfig {
     id: string;
@@ -114,13 +114,13 @@ export default function ClientesPage() {
     useEffect(() => {
         try {
             localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(columnOrder));
-        } catch {}
+        } catch { }
     }, [columnOrder]);
 
     useEffect(() => {
         try {
             localStorage.setItem(HIDDEN_COLUMNS_STORAGE_KEY, JSON.stringify(hiddenColumns));
-        } catch {}
+        } catch { }
     }, [hiddenColumns]);
 
     const moveColumn = (fromIndex: number, toIndex: number) => {
@@ -618,9 +618,8 @@ export default function ClientesPage() {
                                 return (
                                     <div
                                         key={colId}
-                                        className={`flex items-center justify-between p-2 rounded-xl text-xs transition-colors ${
-                                            isVisible ? "bg-slate-50 border border-slate-100" : "bg-slate-100/50 opacity-60"
-                                        }`}
+                                        className={`flex items-center justify-between p-2 rounded-xl text-xs transition-colors ${isVisible ? "bg-slate-50 border border-slate-100" : "bg-slate-100/50 opacity-60"
+                                            }`}
                                     >
                                         <div className="flex items-center gap-2 flex-1 min-w-0">
                                             <span className="text-[10px] font-mono font-bold text-slate-400 w-4 text-center shrink-0">
@@ -682,9 +681,8 @@ export default function ClientesPage() {
                                         <TableHead
                                             key={colId}
                                             style={{ minWidth: col.minWidth }}
-                                            className={`font-bold text-xs uppercase tracking-wider text-slate-700 ${
-                                                col.align === "right" ? "text-right" : "text-left"
-                                            }`}
+                                            className={`font-bold text-xs uppercase tracking-wider text-slate-700 ${col.align === "right" ? "text-right" : "text-left"
+                                                }`}
                                         >
                                             {col.label}
                                         </TableHead>
@@ -768,11 +766,10 @@ export default function ClientesPage() {
                                                                         });
                                                                     }}
                                                                     disabled={toggleStatusMutation.isPending}
-                                                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all shadow-xs border ${
-                                                                        isAtivo
+                                                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all shadow-xs border ${isAtivo
                                                                             ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400"
                                                                             : "bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200"
-                                                                    }`}
+                                                                        }`}
                                                                     title="Clique para alternar entre Ativo e Não Ativo"
                                                                 >
                                                                     <span className={`h-2 w-2 rounded-full ${isAtivo ? "bg-emerald-500" : "bg-slate-400"}`} />
@@ -786,11 +783,10 @@ export default function ClientesPage() {
                                                             <TableCell key={colId}>
                                                                 <Badge
                                                                     variant="outline"
-                                                                    className={`text-xs gap-1 font-semibold ${
-                                                                        isCompany
+                                                                    className={`text-xs gap-1 font-semibold ${isCompany
                                                                             ? "border-indigo-200 bg-indigo-50 text-indigo-700"
                                                                             : "border-slate-200 bg-slate-50 text-slate-700"
-                                                                    }`}
+                                                                        }`}
                                                                 >
                                                                     {isCompany ? <Building className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
                                                                     {isCompany ? "Pessoa Jurídica" : "Pessoa Física"}
