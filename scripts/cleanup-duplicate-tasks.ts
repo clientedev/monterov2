@@ -2,8 +2,9 @@
  * Limpeza de tarefas duplicadas do "Tarefas & Kanban" (todoist_tasks).
  *
  * Duplicatas consideradas (somente tarefas EM ABERTO e não excluídas):
- *  - Recorrentes: mesma série (título, regra, responsável, projeto, contato, lead, cliente, apólice).
- *    Mantém a ocorrência com vencimento mais antigo (é a "atual" da série).
+ *  - Recorrentes: mesma tarefa (título, descrição, horário, regra, responsável, projeto, vínculos de CRM)
+ *    vencendo no MESMO DIA (horário de Brasília). Mantém a criada primeiro.
+ *    Tarefas com o mesmo título em datas ou horários diferentes NÃO são consideradas duplicadas.
  *  - Automáticas: mesma regra de automação + título + vínculos. Mantém a mais antiga.
  *
  * Segurança:
@@ -35,7 +36,9 @@ async function main() {
         (select count(*) from todoist_comments c where c.task_id = t.id) as comments_count,
         (select count(*) from todoist_subtasks s where s.task_id = t.id and s.completed) as done_subtasks,
         case
-          when t.is_recurring then concat_ws('|', 'R', t.title, t.recurrence_rule, t.assigned_to, t.project_id, t.contact_id, t.lead_id, t.cliente_id, t.apolice_id)
+          when t.is_recurring then concat_ws('|', 'R', t.title, coalesce(t.description, ''), coalesce(t.due_time, ''), t.recurrence_rule,
+            coalesce(t.assigned_to, 0), coalesce(t.project_id, 0), coalesce(t.contact_id, 0), coalesce(t.lead_id, 0), coalesce(t.cliente_id, 0), coalesce(t.apolice_id, 0),
+            coalesce(((t.due_date at time zone 'UTC') at time zone 'America/Sao_Paulo')::date::text, 'sem-data'))
           when t.auto_generated_by is not null then concat_ws('|', 'A', t.auto_generated_by, t.title, t.contact_id, t.lead_id, t.cliente_id, t.apolice_id)
         end as series_key
       from todoist_tasks t

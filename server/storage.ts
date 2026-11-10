@@ -2227,7 +2227,8 @@ export class DatabaseStorage implements IStorage {
 
   /**
    * Condições que identificam as outras ocorrências da MESMA série recorrente
-   * (mesmo título, regra, responsável, projeto e vínculos de CRM), ignorando excluídas e a própria tarefa.
+   * (mesmo título, descrição, horário, regra, responsável, projeto e vínculos de CRM),
+   * ignorando excluídas e a própria tarefa.
    */
   private recurringSeriesConditions(t: TodoistTask): any[] {
     const sameOrNull = (col: any, value: any) => (value === null || value === undefined ? isNull(col) : eq(col, value));
@@ -2237,6 +2238,8 @@ export class DatabaseStorage implements IStorage {
       eq(todoistTasks.isRecurring, true),
       eq(todoistTasks.title, t.title),
       eq(todoistTasks.recurrenceRule, t.recurrenceRule as string),
+      sameOrNull(todoistTasks.description, t.description),
+      sameOrNull(todoistTasks.dueTime, t.dueTime),
       sameOrNull(todoistTasks.assignedTo, t.assignedTo),
       sameOrNull(todoistTasks.projectId, t.projectId),
       sameOrNull(todoistTasks.contactId, t.contactId),
@@ -2313,59 +2316,57 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Ao CONCLUIR uma tarefa recorrente, só gera a próxima ocorrência se a série ainda não tiver
-    // nenhuma ocorrência em aberto (evita cópias da mesma tarefa no mesmo dia).
-    let seriesAlreadyHasOpenOccurrence = false;
+    // Ao CONCLUIR uma tarefa recorrente: calcula a próxima data e só cria a ocorrência se ainda
+    // não existir a mesma tarefa em aberto NAQUELE DIA (evita várias cópias iguais no mesmo dia,
+    // sem interferir em tarefas diferentes com o mesmo título em outras datas/horários).
+    let nextDate: Date | undefined;
     if (newStatus === 'done' && existing.isRecurring && existing.recurrenceRule) {
-      const [openSibling] = await db.select({ id: todoistTasks.id }).from(todoistTasks).where(
-        and(...this.recurringSeriesConditions(existing), ne(todoistTasks.status, 'done'))
-      ).limit(1);
-      seriesAlreadyHasOpenOccurrence = Boolean(openSibling);
-    }
-
-    if (newStatus === 'done' && existing.isRecurring && existing.recurrenceRule && !seriesAlreadyHasOpenOccurrence) {
-      const baseDate = existing.dueDate ? new Date(existing.dueDate) : new Date();
-      const nextDate = new Date(baseDate);
       const rule = existing.recurrenceRule.toLowerCase();
+      const advance = (d: Date) => {
+        if (rule === 'daily') {
+          d.setDate(d.getDate() + 1);
+        } else if (rule === 'weekdays') {
+          d.setDate(d.getDate() + 1);
+          if (d.getDay() === 6) d.setDate(d.getDate() + 2);
+          if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+        } else if (rule === 'weekly') {
+          d.setDate(d.getDate() + 7);
+        } else if (rule === 'monthly') {
+          d.setMonth(d.getMonth() + 1);
+        } else if (rule === 'yearly') {
+          d.setFullYear(d.getFullYear() + 1);
+        } else if (rule.startsWith('every_x_days:')) {
+          d.setDate(d.getDate() + (parseInt(rule.split(':')[1]) || 1));
+        } else {
+          d.setDate(d.getDate() + 7);
+        }
+      };
 
-      if (rule === 'daily') {
-        nextDate.setDate(nextDate.getDate() + 1);
-      } else if (rule === 'weekdays') {
-        nextDate.setDate(nextDate.getDate() + 1);
-        if (nextDate.getDay() === 6) nextDate.setDate(nextDate.getDate() + 2);
-        if (nextDate.getDay() === 0) nextDate.setDate(nextDate.getDate() + 1);
-      } else if (rule === 'weekly') {
-        nextDate.setDate(nextDate.getDate() + 7);
-      } else if (rule === 'monthly') {
-        nextDate.setMonth(nextDate.getMonth() + 1);
-      } else if (rule === 'yearly') {
-        nextDate.setFullYear(nextDate.getFullYear() + 1);
-      } else if (rule.startsWith('every_x_days:')) {
-        const days = parseInt(rule.split(':')[1]) || 1;
-        nextDate.setDate(nextDate.getDate() + days);
-      } else {
-        nextDate.setDate(nextDate.getDate() + 7);
-      }
+      const candidate = new Date(existing.dueDate ? new Date(existing.dueDate) : new Date());
+      advance(candidate);
 
-      // If nextDate is in the past, advance it to today or future (dia de hoje no horário de Brasília)
+      // Se a próxima data já passou, avança até hoje ou depois (dia de hoje no horário de Brasília)
       const { start: today } = getBrDayBounds();
       let safetyCounter = 0;
-      while (nextDate < today && safetyCounter < 500) {
+      while (candidate < today && safetyCounter < 1000) {
         safetyCounter++;
-        if (rule === 'daily') {
-          nextDate.setDate(nextDate.getDate() + 1);
-        } else if (rule === 'weekdays') {
-          nextDate.setDate(nextDate.getDate() + 1);
-          if (nextDate.getDay() === 6) nextDate.setDate(nextDate.getDate() + 2);
-          if (nextDate.getDay() === 0) nextDate.setDate(nextDate.getDate() + 1);
-        } else if (rule === 'weekly') {
-          nextDate.setDate(nextDate.getDate() + 7);
-        } else if (rule === 'monthly') {
-          nextDate.setMonth(nextDate.getMonth() + 1);
-        } else {
-          nextDate.setDate(nextDate.getDate() + 7);
-        }
+        advance(candidate);
       }
+
+      const { start: dayStart, end: dayEnd } = getBrDayBounds(candidate);
+      const [sameDayOpen] = await db.select({ id: todoistTasks.id }).from(todoistTasks).where(
+        and(
+          ...this.recurringSeriesConditions(existing),
+          ne(todoistTasks.status, 'done'),
+          gte(todoistTasks.dueDate, dayStart),
+          lte(todoistTasks.dueDate, dayEnd),
+        )
+      ).limit(1);
+
+      if (!sameDayOpen) nextDate = candidate;
+    }
+
+    if (nextDate) {
 
       // createdAt/updatedAt gravados pelo app (mesmo referencial do completedAt) para que o
       // "Desfazer" consiga identificar com segurança a ocorrência gerada por esta conclusão.
