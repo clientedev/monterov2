@@ -560,7 +560,7 @@ export function buildLeadReminderEmail(params: {
   const content = `
     <p style="color: #334155; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
       Olá, <strong>${recipientName || "Equipe Monteiro"}</strong>! <br/>
-      Este é um <strong>lembrete programado de retorno/follow-up</strong> para a oportunidade abaixo no seu pipeline:
+      Este é um <strong>retorno para o cliente programado</strong> para a oportunidade abaixo no seu pipeline:
     </p>
     <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
       <table width="100%" cellpadding="0" cellspacing="0">
@@ -576,7 +576,7 @@ export function buildLeadReminderEmail(params: {
         ? `
     <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">
       <p style="margin: 0 0 6px; color: #92400E; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
-        📝 Anotação do Lembrete:
+        📝 Observação do Retorno para o Cliente:
       </p>
       <p style="margin: 0; color: #78350F; font-size: 14px; line-height: 1.6; font-weight: 500; white-space: pre-wrap;">${reminderNote}</p>
     </div>`
@@ -587,10 +587,10 @@ export function buildLeadReminderEmail(params: {
     </p>`;
 
   return {
-    subject: `⏰ Lembrete: ${clientName}${product ? ` • ${product}` : ""} — Monteiro Seguros`,
+    subject: `⏰ Retorno para o Cliente: ${clientName}${product ? ` • ${product}` : ""} — Monteiro Seguros`,
     html: baseLayout({
-      title: "Alarme de Lembrete no Pipeline",
-      badge: "⏰ Follow-up Programado",
+      title: "Retorno para o Cliente — Pipeline",
+      badge: "⏰ Retorno para o Cliente",
       content,
       buttonUrl: `${CRM_BASE_URL}/leads`,
       buttonText: "Acessar Oportunidade no Pipeline →",

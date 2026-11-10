@@ -32,7 +32,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, CalendarDays, UserPlus } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { ProductSelector } from "@/components/ProductSelector";
+import { ProductSelector, isLifeInsuranceProduct } from "@/components/ProductSelector";
+import { LifeInsuranceFieldsSection } from "@/components/LifeInsuranceFieldsSection";
 
 // Calculate age from "DD/MM/AAAA" string or Date or ISO string
 function calcAge(dateVal: any): number | null {
@@ -99,6 +100,10 @@ export const DEFAULT_CONTACT_FORM_VALUES: InsertContact = {
     anniversaryDate: "",
     maritalStatus: "",
     productType: "",
+    lifeHeight: "",
+    lifeWeight: "",
+    lifeProfession: "",
+    lifeIncome: "",
     insurers: "",
     contactOrigin: "",
     isReferral: false,
@@ -149,6 +154,11 @@ export function ContactFormModal({
 
     const clientType = form.watch("type");
     const watchedAnniversary = form.watch("anniversaryDate");
+    const watchedProductType = form.watch("productType");
+    const lifeHeight = form.watch("lifeHeight");
+    const lifeWeight = form.watch("lifeWeight");
+    const lifeProfession = form.watch("lifeProfession");
+    const lifeIncome = form.watch("lifeIncome");
 
     // Load contact data if editing or reset to initialData/default
     useEffect(() => {
@@ -169,6 +179,10 @@ export function ContactFormModal({
                     anniversaryDate: found.anniversaryDate || "",
                     maritalStatus: found.maritalStatus || "",
                     productType: found.productType || "",
+                    lifeHeight: found.lifeHeight || "",
+                    lifeWeight: found.lifeWeight || "",
+                    lifeProfession: found.lifeProfession || "",
+                    lifeIncome: found.lifeIncome || "",
                     insurers: found.insurers || "",
                     contactOrigin: found.contactOrigin || "",
                     isReferral: found.isReferral || false,
@@ -593,6 +607,13 @@ export function ContactFormModal({
                                     </FormItem>
                                 )}
                             />
+                            {isLifeInsuranceProduct(watchedProductType) && (
+                                <LifeInsuranceFieldsSection
+                                    values={{ lifeHeight, lifeWeight, lifeProfession, lifeIncome }}
+                                    onChange={(field, val) => form.setValue(field, val)}
+                                    compact
+                                />
+                            )}
                         </div>
 
                         {/* ── Section 4: Origem, seguradora e gestão ───── */}

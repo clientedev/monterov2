@@ -64,6 +64,13 @@ export function normalizeProductName(name: string): string {
     return PRODUCT_SYNONYMS[key] || clean;
 }
 
+/** Checks whether the selected product text includes Life Insurance ("Vida" / "Seguro de Vida"). */
+export function isLifeInsuranceProduct(value?: string | string[] | null): boolean {
+    if (!value) return false;
+    const raw = Array.isArray(value) ? value.join(", ") : String(value);
+    return /vida/i.test(raw);
+}
+
 interface ProductSelectorProps {
     value?: string | string[] | null;
     onChange: (value: string) => void;

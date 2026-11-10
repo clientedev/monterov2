@@ -33,7 +33,8 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import * as XLSX from "xlsx";
-import { ProductSelector, STANDARD_PRODUCTS } from "@/components/ProductSelector";
+import { ProductSelector, STANDARD_PRODUCTS, isLifeInsuranceProduct } from "@/components/ProductSelector";
+import { LifeInsuranceFieldsSection } from "@/components/LifeInsuranceFieldsSection";
 import { SmartSpreadsheetImporter } from "@/components/SmartSpreadsheetImporter";
 import { ApoliceDialog } from "@/components/ApoliceDialog";
 
@@ -175,6 +176,10 @@ export default function ClientesPage() {
         observacoes: "",
         tags: "",
         productType: "",
+        lifeHeight: "",
+        lifeWeight: "",
+        lifeProfession: "",
+        lifeIncome: "",
         insurers: "",
         contactOrigin: "",
         isReferral: false,
@@ -216,6 +221,10 @@ export default function ClientesPage() {
             observacoes: "",
             tags: "",
             productType: "",
+            lifeHeight: "",
+            lifeWeight: "",
+            lifeProfession: "",
+            lifeIncome: "",
             insurers: "",
             contactOrigin: "",
             isReferral: false,
@@ -247,6 +256,10 @@ export default function ClientesPage() {
             observacoes: c.observacoes || "",
             tags: c.tags || "",
             productType: c.productType || "",
+            lifeHeight: c.lifeHeight || "",
+            lifeWeight: c.lifeWeight || "",
+            lifeProfession: c.lifeProfession || "",
+            lifeIncome: c.lifeIncome || "",
             insurers: c.insurers || "",
             contactOrigin: c.contactOrigin || "",
             isReferral: c.isReferral || false,
@@ -1160,6 +1173,24 @@ export default function ClientesPage() {
                                     className="mt-1 h-10 text-sm"
                                 />
                             </div>
+
+                            <div className="md:col-span-2 space-y-2">
+                                <Label className="text-xs font-semibold text-slate-700">Produtos de Seguro</Label>
+                                <ProductSelector
+                                    value={formData.productType}
+                                    onChange={(val) => setField("productType", val)}
+                                />
+                            </div>
+
+                            {isLifeInsuranceProduct(formData.productType) && (
+                                <div className="md:col-span-2">
+                                    <LifeInsuranceFieldsSection
+                                        values={formData}
+                                        onChange={(field, val) => setField(field, val)}
+                                        compact
+                                    />
+                                </div>
+                            )}
 
                             <div className="md:col-span-2">
                                 <Label className="text-xs font-semibold text-slate-700">Observações</Label>

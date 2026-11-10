@@ -98,6 +98,10 @@ export const contacts = pgTable("contacts", {
   anniversaryDate: text("anniversary_date"),  // "DD/MM/AAAA" format
   maritalStatus: text("marital_status"),      // solteiro, casado, divorciado, viuvo
   productType: text("product_type"),          // e.g. "Auto, Saúde"
+  lifeHeight: text("life_height"),            // Seguro de Vida: Altura (opcional)
+  lifeWeight: text("life_weight"),            // Seguro de Vida: Peso (opcional)
+  lifeProfession: text("life_profession"),    // Seguro de Vida: Profissão (opcional)
+  lifeIncome: text("life_income"),            // Seguro de Vida: Renda (opcional)
   insurers: text("insurers"),                 // comma-separated insurer names
   contactOrigin: text("contact_origin"),
   isReferral: boolean("is_referral").default(false).notNull(),
@@ -116,6 +120,10 @@ export const leads = pgTable("leads", {
   status: text("status").notNull().default("new"), // new, qualified, proposal, cancelled, implemented
   source: text("source"),
   product: text("product"), // NEW: selected product name
+  lifeHeight: text("life_height"), // Seguro de Vida: Altura (opcional)
+  lifeWeight: text("life_weight"), // Seguro de Vida: Peso (opcional)
+  lifeProfession: text("life_profession"), // Seguro de Vida: Profissão (opcional)
+  lifeIncome: text("life_income"), // Seguro de Vida: Renda (opcional)
   value: text("value"),
   notes: text("notes"),
   assignedTo: integer("assigned_to").references(() => users.id), // Responsável pela oportunidade
@@ -326,6 +334,10 @@ export const clientes = pgTable("clientes", {
   tags: text("tags"),
   anniversaryDate: text("anniversary_date"),
   productType: text("product_type"),
+  lifeHeight: text("life_height"),
+  lifeWeight: text("life_weight"),
+  lifeProfession: text("life_profession"),
+  lifeIncome: text("life_income"),
   insurers: text("insurers"),
   contactOrigin: text("contact_origin"),
   isReferral: boolean("is_referral").default(false).notNull(),
@@ -379,6 +391,10 @@ export const apolices = pgTable("apolices", {
   formaPagamento: text("forma_pagamento"),
   mesAtraso: text("mes_atraso"),
   faturasAberto: text("faturas_aberto"),
+  lifeHeight: text("life_height"),
+  lifeWeight: text("life_weight"),
+  lifeProfession: text("life_profession"),
+  lifeIncome: text("life_income"),
   dadosAdicionais: json("dados_adicionais"),
   createdAt: timestamp("created_at").defaultNow(),
 });

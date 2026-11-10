@@ -28,6 +28,7 @@ import {
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ApoliceDialog } from "@/components/ApoliceDialog";
+import { LifeInsuranceSummary } from "@/components/LifeInsuranceFieldsSection";
 
 /** Converte qualquer formato de valor monetário para número, retorna null se inválido */
 function parsePremio(val: string | null | undefined): number | null {
@@ -301,6 +302,16 @@ export default function ClienteDetalhePage() {
                 </div>
             </div>
 
+            <LifeInsuranceSummary
+                values={{
+                    lifeHeight: (cliente as any).lifeHeight,
+                    lifeWeight: (cliente as any).lifeWeight,
+                    lifeProfession: (cliente as any).lifeProfession,
+                    lifeIncome: (cliente as any).lifeIncome,
+                }}
+                variant="detail"
+            />
+
             {/* Apolices Section */}
             <div>
                 <div className="flex items-center justify-between mb-4">
@@ -463,6 +474,15 @@ export default function ClienteDetalhePage() {
                                         </div>
                                     )}
                                 </div>
+                                <LifeInsuranceSummary
+                                    values={{
+                                        lifeHeight: (selectedApolice as any).lifeHeight,
+                                        lifeWeight: (selectedApolice as any).lifeWeight,
+                                        lifeProfession: (selectedApolice as any).lifeProfession,
+                                        lifeIncome: (selectedApolice as any).lifeIncome,
+                                    }}
+                                    variant="detail"
+                                />
                                 {selectedApolice.observacoes && (
                                     <div className="bg-gray-50 rounded-lg p-3">
                                         <p className="text-xs text-gray-400 uppercase font-medium mb-1">Observações</p>

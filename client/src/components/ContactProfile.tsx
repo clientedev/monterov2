@@ -2,7 +2,8 @@ import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, Interaction, Lead, Task, InsertContact, ContactFile } from "@shared/schema";
-import { ProductSelector } from "@/components/ProductSelector";
+import { ProductSelector, isLifeInsuranceProduct } from "@/components/ProductSelector";
+import { LifeInsuranceFieldsSection, LifeInsuranceSummary } from "@/components/LifeInsuranceFieldsSection";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -304,6 +305,10 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
         anniversaryDate: string;
         maritalStatus: string;
         productType: string;
+        lifeHeight: string;
+        lifeWeight: string;
+        lifeProfession: string;
+        lifeIncome: string;
         insurers: string;
         contactOrigin: string;
         isReferral: boolean;
@@ -323,6 +328,10 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
         anniversaryDate: "",
         maritalStatus: "",
         productType: "",
+        lifeHeight: "",
+        lifeWeight: "",
+        lifeProfession: "",
+        lifeIncome: "",
         insurers: "",
         contactOrigin: "",
         isReferral: false,
@@ -346,6 +355,10 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                 anniversaryDate: contact.anniversaryDate || "",
                 maritalStatus: contact.maritalStatus || "",
                 productType: contact.productType || "",
+                lifeHeight: contact.lifeHeight || "",
+                lifeWeight: contact.lifeWeight || "",
+                lifeProfession: contact.lifeProfession || "",
+                lifeIncome: contact.lifeIncome || "",
                 insurers: contact.insurers || "",
                 contactOrigin: contact.contactOrigin || "",
                 isReferral: contact.isReferral || false,
@@ -376,6 +389,10 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                     nomeRepresentante: data.responsibleName,
                     anniversaryDate: data.anniversaryDate,
                     productType: data.productType,
+                    lifeHeight: data.lifeHeight,
+                    lifeWeight: data.lifeWeight,
+                    lifeProfession: data.lifeProfession,
+                    lifeIncome: data.lifeIncome,
                     insurers: data.insurers,
                     contactOrigin: data.contactOrigin,
                     isReferral: data.isReferral,
@@ -1054,6 +1071,15 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                     onChange={(val) => setFormData(prev => ({ ...prev, productType: val }))}
                                                 />
                                             </div>
+                                            {isLifeInsuranceProduct(formData.productType) && (
+                                                <div className="md:col-span-2">
+                                                    <LifeInsuranceFieldsSection
+                                                        values={formData}
+                                                        onChange={(field, val) => setFormData(prev => ({ ...prev, [field]: val }))}
+                                                        compact
+                                                    />
+                                                </div>
+                                            )}
                                             <div className="space-y-1.5">
                                                 <Label className="text-xs font-bold text-slate-700">Seguradoras</Label>
                                                 <Input
@@ -1257,6 +1283,16 @@ export function ContactProfile({ contactId, open, onOpenChange }: ContactProfile
                                                     </CardContent>
                                                 </Card>
                                             )}
+
+                                            <LifeInsuranceSummary
+                                                values={{
+                                                    lifeHeight: contact.lifeHeight,
+                                                    lifeWeight: contact.lifeWeight,
+                                                    lifeProfession: contact.lifeProfession,
+                                                    lifeIncome: contact.lifeIncome,
+                                                }}
+                                                variant="detail"
+                                            />
 
                                             {contact.insurers && (
                                                 <Card className="border-none bg-slate-50/50">

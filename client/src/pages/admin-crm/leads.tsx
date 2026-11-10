@@ -51,7 +51,8 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import { cn } from "@/lib/utils";
 import { ContactProfile } from "@/components/ContactProfile";
 import { ContactFormModal } from "@/components/ContactFormModal";
-import { STANDARD_PRODUCTS } from "@/components/ProductSelector";
+import { STANDARD_PRODUCTS, isLifeInsuranceProduct } from "@/components/ProductSelector";
+import { LifeInsuranceFieldsSection, LifeInsuranceSummary } from "@/components/LifeInsuranceFieldsSection";
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
@@ -222,14 +223,14 @@ export default function LeadsPage() {
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
             if (variables.reminderDate) {
-                toast({ title: "⏰ Alarme salvo com sucesso!", description: "O lembrete será disparado automaticamente por e-mail." });
+                toast({ title: "⏰ Retorno salvo com sucesso!", description: "O retorno para o cliente será disparado automaticamente por e-mail." });
             } else {
-                toast({ title: "Alarme removido deste lead." });
+                toast({ title: "Retorno para o cliente removido deste lead." });
             }
             setReminderLead(null);
         },
         onError: (err: any) => {
-            toast({ title: "Erro ao salvar alarme", description: err.message, variant: "destructive" });
+            toast({ title: "Erro ao salvar retorno para o cliente", description: err.message, variant: "destructive" });
         }
     });
 
@@ -699,7 +700,7 @@ function LeadCard({
                         e.stopPropagation();
                         onReminder?.();
                     }} 
-                    title={lead.reminderDate ? "⏰ Alarme Ativo: Gerenciar Lembrete & E-mail" : "⏰ Agendar Alarme do Dia & Lembrete por E-mail"}
+                    title={lead.reminderDate ? "⏰ Retorno Ativo: Gerenciar Retorno para o Cliente" : "⏰ Agendar Retorno para o Cliente"}
                 >
                     <Bell className={cn("h-3 w-3", lead.reminderDate && "fill-amber-500 text-amber-500")} />
                 </Button>
@@ -739,7 +740,7 @@ function LeadCard({
                                     "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer shadow-xs transition-colors",
                                     isOverdue ? "bg-rose-100 text-rose-700 border border-rose-300" : isToday ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-blue-100 text-blue-700 border border-blue-300"
                                 )}
-                                title={`Alarme programado para o dia: ${reminderText}`}
+                                title={`Retorno para o cliente programado para: ${reminderText}`}
                             >
                                 <Bell className="h-2.5 w-2.5 fill-current animate-pulse" />
                                 {isToday ? "Hoje" : isTomorrow ? "Amanhã" : isOverdue ? "Atrasado" : "No Dia"}
@@ -767,7 +768,18 @@ function LeadCard({
                 </button>
             </div>
 
-            {/* Bloco de Alarme / Lembrete por E-mail */}
+            {/* Dados opcionais de Seguro de Vida */}
+            <LifeInsuranceSummary
+                values={{
+                    lifeHeight: lead.lifeHeight,
+                    lifeWeight: lead.lifeWeight,
+                    lifeProfession: lead.lifeProfession,
+                    lifeIncome: lead.lifeIncome,
+                }}
+                variant="card"
+            />
+
+            {/* Bloco de Retorno para o Cliente por E-mail */}
             {lead.reminderDate ? (
                 <div 
                     onClick={(e) => {
@@ -784,7 +796,7 @@ function LeadCard({
                             ? "bg-emerald-50/80 border-emerald-200 text-emerald-800 hover:bg-emerald-100"
                             : "bg-blue-50/80 border-blue-200 text-blue-800 hover:bg-blue-100"
                     )}
-                    title={lead.reminderNote ? `Nota: "${lead.reminderNote}" (Clique para editar ou disparar e-mail)` : "Clique para gerenciar o alarme e disparo por e-mail"}
+                    title={lead.reminderNote ? `Nota: "${lead.reminderNote}" (Clique para editar ou disparar e-mail)` : "Clique para gerenciar o retorno para o cliente"}
                 >
                     <div className="flex items-center gap-1.5 min-w-0 pr-1">
                         <BellRing className={cn(
@@ -792,7 +804,7 @@ function LeadCard({
                             isOverdue && !lead.reminderSent ? "text-rose-600 animate-pulse" : isToday && !lead.reminderSent ? "text-amber-600" : lead.reminderSent ? "text-emerald-600" : "text-blue-600"
                         )} />
                         <span className="font-bold truncate text-[11px]">
-                            {isOverdue && !lead.reminderSent ? "⚠️ Atrasado: " : isToday && !lead.reminderSent ? "🚨 Disparo Hoje: " : isTomorrow && !lead.reminderSent ? "⏰ Amanhã: " : lead.reminderSent ? "✓ Disparado no dia " : "⏰ Lembrete: "}
+                            {isOverdue && !lead.reminderSent ? "⚠️ Atrasado: " : isToday && !lead.reminderSent ? "🚨 Retorno Hoje: " : isTomorrow && !lead.reminderSent ? "⏰ Amanhã: " : lead.reminderSent ? "✓ Disparado no dia " : "⏰ Retorno p/ cliente: "}
                             {reminderText}
                         </span>
                     </div>
@@ -809,10 +821,10 @@ function LeadCard({
                             onReminder?.();
                         }}
                         className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-amber-600 hover:bg-amber-50/70 px-2 py-1 rounded-lg border border-transparent hover:border-amber-200 transition-all cursor-pointer"
-                        title="Agendar alarme no dia com disparo por e-mail"
+                        title="Agendar retorno para o cliente com disparo por e-mail"
                     >
                         <Bell className="h-3 w-3" />
-                        <span>Agendar Alarme no Dia</span>
+                        <span>Retorno para o Cliente</span>
                     </button>
                     {lead.reminderEmail && (
                         <span className="text-[10px] text-slate-400 truncate max-w-[120px]" title={lead.reminderEmail}>
@@ -903,6 +915,10 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
             value: initialData.value || "",
             source: initialData.source || "",
             product: initialData.product || "",
+            lifeHeight: initialData.lifeHeight || "",
+            lifeWeight: initialData.lifeWeight || "",
+            lifeProfession: initialData.lifeProfession || "",
+            lifeIncome: initialData.lifeIncome || "",
             notes: initialData.notes || "",
             assignedTo: initialData.assignedTo || undefined,
         } : {
@@ -910,6 +926,10 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
             status: columns[0]?.id || "new",
             source: "",
             product: "",
+            lifeHeight: "",
+            lifeWeight: "",
+            lifeProfession: "",
+            lifeIncome: "",
             value: "",
             notes: "",
             assignedTo: undefined,
@@ -917,6 +937,11 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
     });
 
     const selectedContactId = form.watch("contactId");
+    const selectedProduct = form.watch("product");
+    const lifeHeight = form.watch("lifeHeight");
+    const lifeWeight = form.watch("lifeWeight");
+    const lifeProfession = form.watch("lifeProfession");
+    const lifeIncome = form.watch("lifeIncome");
 
     // Sync input text query with selected contact
     useEffect(() => {
@@ -946,6 +971,10 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                 value: initialData.value || "",
                 source: initialData.source || "",
                 product: initialData.product || "",
+                lifeHeight: initialData.lifeHeight || "",
+                lifeWeight: initialData.lifeWeight || "",
+                lifeProfession: initialData.lifeProfession || "",
+                lifeIncome: initialData.lifeIncome || "",
                 notes: initialData.notes || "",
                 assignedTo: initialData.assignedTo || undefined,
             });
@@ -1231,6 +1260,14 @@ function LeadForm({ contacts, users = [], columns, onSubmit, isPending, initialD
                             )}
                         />
                     </div>
+
+                    {isLifeInsuranceProduct(selectedProduct) && (
+                        <LifeInsuranceFieldsSection
+                            values={{ lifeHeight, lifeWeight, lifeProfession, lifeIncome }}
+                            onChange={(field, val) => form.setValue(field, val)}
+                        />
+                    )}
+
                     <FormField
                         control={form.control}
                         name="value"
@@ -1382,8 +1419,8 @@ function LeadReminderModal({
         e.preventDefault();
         if (!reminderDate) {
             toast({
-                title: "Selecione o dia do alarme",
-                description: "Escolha uma data para o disparo do lembrete por e-mail.",
+                title: "Selecione o dia do retorno",
+                description: "Escolha uma data para o disparo do retorno para o cliente por e-mail.",
                 variant: "destructive"
             });
             return;
@@ -1430,10 +1467,10 @@ function LeadReminderModal({
                                 Pipeline • Disparo no Dia
                             </span>
                             <DialogTitle className="text-xl font-display font-bold text-white tracking-tight">
-                                Agendar Lembrete no Dia
+                                Agendar Retorno para o Cliente
                             </DialogTitle>
                             <p className="text-slate-300 text-xs mt-1 leading-relaxed">
-                                Escolha o dia para disparar a notificação por e-mail, independente do horário.
+                                Escolha o dia para disparar o retorno para o cliente por e-mail, independente do horário.
                             </p>
                         </div>
                     </div>
@@ -1520,7 +1557,7 @@ function LeadReminderModal({
                         <div className="space-y-1.5">
                             <Label htmlFor="reminder-date-input" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                                 <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                                Dia do Disparo do Lembrete *
+                                Dia do Retorno para o Cliente *
                             </Label>
                             <Input
                                 id="reminder-date-input"
@@ -1581,8 +1618,8 @@ function LeadReminderModal({
                                     <Clock className="w-4 h-4 shrink-0" />
                                     <span>
                                         {lead.reminderSent
-                                            ? "Último e-mail de alarme já foi disparado. Ao salvar uma nova data futura, ele será rearmado."
-                                            : "Alarme atualmente ativo para disparo no dia programado."}
+                                            ? "Último e-mail de retorno para o cliente já foi disparado. Ao salvar uma nova data futura, ele será rearmado."
+                                            : "Retorno para o cliente atualmente ativo para disparo no dia programado."}
                                     </span>
                                 </div>
                             </div>
@@ -1601,7 +1638,7 @@ function LeadReminderModal({
                                         className="h-10 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl"
                                     >
                                         <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                                        Remover Alarme
+                                        Remover Retorno
                                     </Button>
                                 )}
                                 <Button
@@ -1634,7 +1671,7 @@ function LeadReminderModal({
                                     className="h-10 text-xs rounded-xl bg-[#08454c] hover:bg-[#0c5963] text-white font-bold px-5 shadow-sm"
                                 >
                                     {isSaving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                                    Salvar Alarme
+                                    Salvar Retorno
                                 </Button>
                             </div>
                         </div>

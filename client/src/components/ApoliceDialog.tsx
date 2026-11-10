@@ -14,6 +14,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { isLifeInsuranceProduct } from "@/components/ProductSelector";
+import { LifeInsuranceFieldsSection } from "@/components/LifeInsuranceFieldsSection";
 import { Badge } from "@/components/ui/badge";
 import {
   FileUp, Sparkles, CheckCircle2, FileText, Loader2, AlertCircle,
@@ -94,6 +96,10 @@ export function ApoliceDialog({
   const [pdfApolice, setPdfApolice] = useState("");
   const [mesAtraso, setMesAtraso] = useState("");
   const [faturasAberto, setFaturasAberto] = useState("");
+  const [lifeHeight, setLifeHeight] = useState("");
+  const [lifeWeight, setLifeWeight] = useState("");
+  const [lifeProfession, setLifeProfession] = useState("");
+  const [lifeIncome, setLifeIncome] = useState("");
 
   // Attached PDF & Extraction State
   const [isReadingPdf, setIsReadingPdf] = useState(false);
@@ -134,6 +140,10 @@ export function ApoliceDialog({
         setPdfApolice(editApolice.pdfApolice || "");
         setMesAtraso(editApolice.mesAtraso || "");
         setFaturasAberto(editApolice.faturasAberto || "");
+        setLifeHeight((editApolice as any).lifeHeight || "");
+        setLifeWeight((editApolice as any).lifeWeight || "");
+        setLifeProfession((editApolice as any).lifeProfession || "");
+        setLifeIncome((editApolice as any).lifeIncome || "");
         setPdfFileName(editApolice.pdfApolice ? editApolice.pdfApolice.split("/").pop() || "Documento Anexo" : null);
         setExtractedSummary(null);
       } else {
@@ -159,6 +169,10 @@ export function ApoliceDialog({
         setPdfApolice("");
         setMesAtraso("");
         setFaturasAberto("");
+        setLifeHeight("");
+        setLifeWeight("");
+        setLifeProfession("");
+        setLifeIncome("");
         setPdfFileName(null);
         setPdfFileSize(null);
         setExtractedSummary(null);
@@ -389,6 +403,10 @@ export function ApoliceDialog({
         formaPagamento: formaPagamento || null,
         mesAtraso: mesAtraso || null,
         faturasAberto: faturasAberto || null,
+        lifeHeight: lifeHeight || null,
+        lifeWeight: lifeWeight || null,
+        lifeProfession: lifeProfession || null,
+        lifeIncome: lifeIncome || null,
       };
 
       if (editApolice) {
@@ -754,6 +772,19 @@ export function ApoliceDialog({
               />
             </div>
           </div>
+
+          {isLifeInsuranceProduct(produtos?.find(p => String(p.id) === String(produtoId))?.nome) && (
+            <LifeInsuranceFieldsSection
+              values={{ lifeHeight, lifeWeight, lifeProfession, lifeIncome }}
+              onChange={(field, val) => {
+                if (field === "lifeHeight") setLifeHeight(val);
+                else if (field === "lifeWeight") setLifeWeight(val);
+                else if (field === "lifeProfession") setLifeProfession(val);
+                else if (field === "lifeIncome") setLifeIncome(val);
+              }}
+              compact
+            />
+          )}
 
           {/* ── ADDITIONAL POLICY DETAILS ───────────────────────────────────── */}
           <div className="pt-2 border-t border-slate-200">

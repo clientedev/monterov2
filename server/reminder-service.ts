@@ -181,7 +181,7 @@ export async function sendTestReminderEmail(
   const clientName = contact?.name || `Oportunidade #${lead.id}`;
   const reminderDateVal = overrideData?.reminderDate || lead.reminderDate || new Date();
   const formattedDate = formatDayBR(reminderDateVal);
-  const reminderNote = overrideData?.reminderNote ?? lead.reminderNote ?? "Teste de disparo imediato do alarme.";
+  const reminderNote = overrideData?.reminderNote ?? lead.reminderNote ?? "Teste de disparo imediato do retorno para o cliente.";
 
   const { subject, html } = buildLeadReminderEmail({
     recipientName: assignedUser?.name || "Equipe Monteiro",
