@@ -49,6 +49,30 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// Campos que nunca devem sair do servidor (hash de senha e token de primeiro acesso dos usuários).
+const SENSITIVE_RESPONSE_KEYS = new Set(["password", "firstLoginToken"]);
+
+function stripSensitiveFields(value: any, depth = 0): any {
+  if (depth > 12 || value === null || typeof value !== "object") return value;
+  if (value instanceof Date || Buffer.isBuffer(value)) return value;
+  if (Array.isArray(value)) return value.map((v) => stripSensitiveFields(v, depth + 1));
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return value;
+  const out: Record<string, any> = {};
+  for (const key of Object.keys(value)) {
+    if (SENSITIVE_RESPONSE_KEYS.has(key)) continue;
+    out[key] = stripSensitiveFields(value[key], depth + 1);
+  }
+  return out;
+}
+
+function summarizeForLog(body: any): string {
+  if (Array.isArray(body)) return `[${body.length} itens]`;
+  const text = JSON.stringify(body);
+  if (!text) return "";
+  return text.length > 300 ? `${text.slice(0, 300)}… (${text.length} chars)` : text;
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -56,16 +80,19 @@ app.use((req, res, next) => {
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
+    const safeBody = stripSensitiveFields(bodyJson);
+    capturedJsonResponse = safeBody;
+    return originalResJson.apply(res, [safeBody, ...args]);
   };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      // Só registra o corpo de respostas de erro (resumido): respostas completas
+      // enchiam o log com imagens em base64 e dados de clientes.
+      if (capturedJsonResponse && res.statusCode >= 400) {
+        logLine += ` :: ${summarizeForLog(capturedJsonResponse)}`;
       }
 
       log(logLine);
@@ -375,6 +402,25 @@ app.use((req, res, next) => {
     log(`Failed to start reminder scheduler: ${schedErr instanceof Error ? schedErr.message : String(schedErr)}`, "error");
   }
 
+  // Limpeza automática de tarefas duplicadas (soft delete: recuperável via deleted_at = NULL).
+  // Desative com TASK_DEDUP_ON_START=false.
+  if (process.env.TASK_DEDUP_ON_START !== "false") {
+    (async () => {
+      try {
+        const { storage } = await import("./storage");
+        const result = await storage.dedupeTodoistTasks(true);
+        if (result.removedIds.length > 0) {
+          log(`Tarefas duplicadas movidas para a lixeira: ${result.removedIds.length} (em ${result.groups} grupos). IDs: ${result.removedIds.join(",")}`, "tasks-dedupe");
+          log(`Para desfazer: UPDATE todoist_tasks SET deleted_at = NULL WHERE id IN (${result.removedIds.join(",")});`, "tasks-dedupe");
+        } else {
+          log("Nenhuma tarefa duplicada encontrada.", "tasks-dedupe");
+        }
+      } catch (err) {
+        log(`Falha na limpeza de tarefas duplicadas: ${err instanceof Error ? err.message : String(err)}`, "tasks-dedupe");
+      }
+    })();
+  }
+
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -413,3 +459,4 @@ app.use((req, res, next) => {
     },
   );
 })();
+

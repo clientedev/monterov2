@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -178,21 +178,31 @@ export default function TodoistModulePage() {
   };
 
   // Complete task mutation
+  // Tarefas com conclusão/reabertura em andamento: ignora cliques repetidos até o servidor responder.
+  const pendingCompleteIds = useRef<Set<number>>(new Set());
   const completeTaskMutation = useMutation({
-    mutationFn: async (taskId: number) => {
-      const res = await apiRequest("POST", `/api/todoist/tasks/${taskId}/complete`);
+    mutationFn: async ({ taskId, done }: { taskId: number; done: boolean }) => {
+      const res = await apiRequest("POST", `/api/todoist/tasks/${taskId}/complete`, { done });
       return res.json();
     },
-    onSuccess: () => {
+    onSettled: (_data, _err, vars) => {
+      pendingCompleteIds.current.delete(vars.taskId);
       queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/todoist/dashboard"] });
     },
   });
 
+  const setTaskDone = (taskId: number, done: boolean) => {
+    if (pendingCompleteIds.current.has(taskId)) return false;
+    pendingCompleteIds.current.add(taskId);
+    completeTaskMutation.mutate({ taskId, done });
+    return true;
+  };
+
   const handleToggleCompleteWithUndo = (task: any) => {
-    setLastAction({ type: 'complete', task });
-    completeTaskMutation.mutate(task.id);
     const willBeDone = task.status !== "done";
+    if (!setTaskDone(task.id, willBeDone)) return;
+    setLastAction({ type: 'complete', task: { ...task, doneAfterAction: willBeDone } });
     toast({
       title: willBeDone ? "Tarefa marcada como concluída!" : "Tarefa reaberta!",
       action: (
@@ -200,7 +210,7 @@ export default function TodoistModulePage() {
           variant="outline"
           size="sm"
           onClick={() => {
-            completeTaskMutation.mutate(task.id);
+            setTaskDone(task.id, !willBeDone);
             setLastAction(null);
           }}
           className="bg-white text-primary border-primary/30 font-bold hover:bg-primary/10 h-8 px-2.5 text-xs shadow-sm"
@@ -316,7 +326,7 @@ export default function TodoistModulePage() {
                 if (lastAction.type === 'delete') {
                   restoreTaskMutation.mutate(lastAction.task.id);
                 } else if (lastAction.type === 'complete') {
-                  completeTaskMutation.mutate(lastAction.task.id);
+                  setTaskDone(lastAction.task.id, !lastAction.task.doneAfterAction);
                   setLastAction(null);
                 }
               }}
@@ -696,7 +706,7 @@ export default function TodoistModulePage() {
           {/* VIEW: KANBAN */}
           {activeView === "kanban" && (
             <DragDropContext onDragEnd={handleDragEnd}>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-[repeat(4,minmax(260px,1fr))] gap-4 overflow-x-auto pb-2">
                 {[
                   { id: "backlog", title: "Backlog", color: "border-slate-300 text-slate-600 bg-slate-100" },
                   { id: "a_fazer", title: "A Fazer", color: "border-blue-300 text-blue-700 bg-blue-50" },

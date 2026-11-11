@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -43,15 +43,24 @@ export function TodoistCrmSection({
     },
   });
 
+  const pendingCompleteIds = useRef<Set<number>>(new Set());
   const toggleCompleteMutation = useMutation({
-    mutationFn: async (taskId: number) => {
-      const res = await apiRequest("POST", `/api/todoist/tasks/${taskId}/complete`);
+    mutationFn: async ({ taskId, done }: { taskId: number; done: boolean }) => {
+      const res = await apiRequest("POST", `/api/todoist/tasks/${taskId}/complete`, { done });
       return res.json();
     },
-    onSuccess: () => {
+    onSettled: (_data, _err, vars) => {
+      pendingCompleteIds.current.delete(vars.taskId);
       queryClient.invalidateQueries({ queryKey: ["/api/todoist/tasks"] });
     },
   });
+
+  const toggleComplete = (taskId: number) => {
+    if (pendingCompleteIds.current.has(taskId)) return;
+    const task = (tasks as any[]).find((t: any) => t.id === taskId);
+    pendingCompleteIds.current.add(taskId);
+    toggleCompleteMutation.mutate({ taskId, done: task?.status !== "done" });
+  };
 
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: number) => {
@@ -134,7 +143,7 @@ export function TodoistCrmSection({
             <TodoistTaskItem
               key={task.id}
               task={task}
-              onToggleComplete={(id) => toggleCompleteMutation.mutate(id)}
+              onToggleComplete={(id) => toggleComplete(id)}
               onSelectTask={(t) => setSelectedTaskId(t.id)}
               onDeleteTask={() => handleDeleteWithUndo(task)}
             />
@@ -150,7 +159,7 @@ export function TodoistCrmSection({
                   <TodoistTaskItem
                     key={task.id}
                     task={task}
-                    onToggleComplete={(id) => toggleCompleteMutation.mutate(id)}
+                    onToggleComplete={(id) => toggleComplete(id)}
                     onSelectTask={(t) => setSelectedTaskId(t.id)}
                     onDeleteTask={() => handleDeleteWithUndo(task)}
                   />

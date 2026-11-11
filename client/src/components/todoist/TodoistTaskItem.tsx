@@ -85,9 +85,9 @@ export function TodoistTaskItem({ task, onToggleComplete, onSelectTask, onDelete
       {/* Main Details */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
             <h4
-              className={`text-sm font-semibold truncate ${
+              className={`text-sm font-semibold break-words line-clamp-2 w-full ${
                 isDone ? "line-through text-slate-400" : "text-slate-900"
               }`}
             >
@@ -123,7 +123,7 @@ export function TodoistTaskItem({ task, onToggleComplete, onSelectTask, onDelete
           </div>
 
           {/* Quick Actions (Edit & Delete) */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
             <Button
               variant="ghost"
               size="icon"

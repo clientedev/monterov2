@@ -297,7 +297,8 @@ export interface IStorage {
   getTodoistTask(id: number): Promise<any | undefined>;
   createTodoistTask(task: InsertTodoistTask, subtaskTitles?: string[], labelIds?: number[], createdByUserId?: number): Promise<TodoistTask>;
   updateTodoistTask(id: number, updates: Partial<InsertTodoistTask>, subtasksList?: { id?: number; title: string; completed?: boolean }[], labelIds?: number[], updatedByUserId?: number): Promise<TodoistTask | undefined>;
-  completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }>;
+  completeTodoistTask(id: number, userId: number, done?: boolean): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }>;
+  dedupeTodoistTasks(apply: boolean): Promise<{ removedIds: number[]; groups: number }>;
   deleteTodoistTask(id: number): Promise<void>;
   restoreTodoistTask(id: number): Promise<TodoistTask | undefined>;
 
@@ -1965,62 +1966,71 @@ export class DatabaseStorage implements IStorage {
 
     const rawTasks = await query.orderBy(asc(todoistTasks.dueDate), desc(todoistTasks.priority));
 
-    const hydratedTasks = await Promise.all(rawTasks.map(async (t) => {
-      let project = undefined;
-      if (t.projectId) {
-        [project] = await db.select().from(todoistProjects).where(eq(todoistProjects.id, t.projectId));
-      }
+    // Carrega os relacionamentos em lote (antes eram ~9 consultas por tarefa).
+    const uniq = (vals: (number | null | undefined)[]) => Array.from(new Set(vals.filter((v): v is number => typeof v === "number")));
+    const byId = <T extends { id: number }>(list: T[]) => new Map(list.map((x) => [x.id, x] as [number, T]));
+    const taskIds = rawTasks.map((t) => t.id);
+    const projectIds = uniq(rawTasks.map((t) => t.projectId));
+    const userIds = uniq(rawTasks.map((t) => t.assignedTo));
+    const contactIds = uniq(rawTasks.map((t) => t.contactId));
+    const leadIds = uniq(rawTasks.map((t) => t.leadId));
+    const clienteIds = uniq(rawTasks.map((t) => t.clienteId));
+    const apoliceIds = uniq(rawTasks.map((t) => t.apoliceId));
 
-      let assignee = undefined;
-      if (t.assignedTo) {
-        [assignee] = await db.select().from(users).where(eq(users.id, t.assignedTo));
-      }
+    const [projectsList, usersList, contactsList, leadsList, clientesList, apolicesList, subtasksList, labelLinks, commentCounts] = await Promise.all([
+      projectIds.length ? db.select().from(todoistProjects).where(inArray(todoistProjects.id, projectIds)) : Promise.resolve([]),
+      userIds.length ? db.select().from(users).where(inArray(users.id, userIds)) : Promise.resolve([]),
+      contactIds.length ? db.select().from(contacts).where(inArray(contacts.id, contactIds)) : Promise.resolve([]),
+      leadIds.length ? db.select().from(leads).where(inArray(leads.id, leadIds)) : Promise.resolve([]),
+      clienteIds.length ? db.select().from(clientes).where(inArray(clientes.id, clienteIds)) : Promise.resolve([]),
+      apoliceIds.length ? db.select().from(apolices).where(inArray(apolices.id, apoliceIds)) : Promise.resolve([]),
+      taskIds.length ? db.select().from(todoistSubtasks).where(inArray(todoistSubtasks.taskId, taskIds)).orderBy(asc(todoistSubtasks.order)) : Promise.resolve([]),
+      taskIds.length ? db.select().from(todoistTaskLabels).where(inArray(todoistTaskLabels.taskId, taskIds)) : Promise.resolve([]),
+      taskIds.length
+        ? db.select({ taskId: todoistComments.taskId, count: sql<number>`count(*)` }).from(todoistComments).where(inArray(todoistComments.taskId, taskIds)).groupBy(todoistComments.taskId)
+        : Promise.resolve([] as { taskId: number; count: number }[]),
+    ]);
 
-      let contact = undefined;
-      if (t.contactId) {
-        [contact] = await db.select().from(contacts).where(eq(contacts.id, t.contactId));
-      }
+    const labelIdsUsed = uniq(labelLinks.map((l: any) => l.labelId));
+    const labelsList = labelIdsUsed.length ? await db.select().from(todoistLabels).where(inArray(todoistLabels.id, labelIdsUsed)) : [];
 
-      let lead = undefined;
-      if (t.leadId) {
-        [lead] = await db.select().from(leads).where(eq(leads.id, t.leadId));
-      }
+    const projectMap = byId(projectsList as any[]);
+    const userMap = byId(usersList as any[]);
+    const contactMap = byId(contactsList as any[]);
+    const leadMap = byId(leadsList as any[]);
+    const clienteMap = byId(clientesList as any[]);
+    const apoliceMap = byId(apolicesList as any[]);
+    const labelMap = byId(labelsList as any[]);
+    const subtasksByTask = new Map<number, any[]>();
+    for (const st of subtasksList as any[]) {
+      if (!subtasksByTask.has(st.taskId)) subtasksByTask.set(st.taskId, []);
+      subtasksByTask.get(st.taskId)!.push(st);
+    }
+    const labelsByTask = new Map<number, TodoistLabel[]>();
+    for (const link of labelLinks as any[]) {
+      const label = labelMap.get(link.labelId);
+      if (!label) continue;
+      if (!labelsByTask.has(link.taskId)) labelsByTask.set(link.taskId, []);
+      labelsByTask.get(link.taskId)!.push(label as TodoistLabel);
+    }
+    const commentsByTask = new Map<number, number>((commentCounts as any[]).map((c) => [c.taskId, Number(c.count || 0)]));
 
-      let cliente = undefined;
-      if (t.clienteId) {
-        [cliente] = await db.select().from(clientes).where(eq(clientes.id, t.clienteId));
-      }
-
-      let apolice = undefined;
-      if (t.apoliceId) {
-        [apolice] = await db.select().from(apolices).where(eq(apolices.id, t.apoliceId));
-      }
-
-      const subtasks = await db.select().from(todoistSubtasks).where(eq(todoistSubtasks.taskId, t.id)).orderBy(asc(todoistSubtasks.order));
-
-      const labelLinks = await db.select().from(todoistTaskLabels).where(eq(todoistTaskLabels.taskId, t.id));
-      let taskLabels: TodoistLabel[] = [];
-      if (labelLinks.length > 0) {
-        const labelIds = labelLinks.map(l => l.labelId);
-        taskLabels = await db.select().from(todoistLabels).where(inArray(todoistLabels.id, labelIds));
-      }
-
-      const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(todoistComments).where(eq(todoistComments.taskId, t.id));
-
+    const hydratedTasks = rawTasks.map((t) => {
+      const assignee = t.assignedTo ? userMap.get(t.assignedTo) : undefined;
       return {
         ...t,
-        project,
+        project: t.projectId ? projectMap.get(t.projectId) : undefined,
         assignee,
         assigneeUser: assignee,
-        contact,
-        lead,
-        cliente,
-        apolice,
-        subtasks,
-        labels: taskLabels,
-        commentsCount: Number(count || 0),
+        contact: t.contactId ? contactMap.get(t.contactId) : undefined,
+        lead: t.leadId ? leadMap.get(t.leadId) : undefined,
+        cliente: t.clienteId ? clienteMap.get(t.clienteId) : undefined,
+        apolice: t.apoliceId ? apoliceMap.get(t.apoliceId) : undefined,
+        subtasks: subtasksByTask.get(t.id) || [],
+        labels: labelsByTask.get(t.id) || [],
+        commentsCount: commentsByTask.get(t.id) || 0,
       };
-    }));
+    });
 
     if (filters?.labelId) {
       return hydratedTasks.filter(t => t.labels.some((l: any) => l.id === filters.labelId));
@@ -2100,7 +2110,46 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  private taskCreateLocks = new Map<string, Promise<unknown>>();
+
   async createTodoistTask(task: InsertTodoistTask, subtaskTitles?: string[], labelIds?: number[], createdByUserId?: number): Promise<TodoistTask> {
+    // Requisições simultâneas da mesma tarefa (duplo clique) são processadas uma de cada vez,
+    // para que a segunda encontre a primeira na verificação abaixo.
+    const lockKey = `${task.createdBy}|${task.title}`;
+    const previous = this.taskCreateLocks.get(lockKey) || Promise.resolve();
+    const run = previous.catch(() => undefined).then(() => this.createTodoistTaskUnlocked(task, subtaskTitles, labelIds, createdByUserId));
+    this.taskCreateLocks.set(lockKey, run);
+    try {
+      return await run;
+    } finally {
+      if (this.taskCreateLocks.get(lockKey) === run) this.taskCreateLocks.delete(lockKey);
+    }
+  }
+
+  private async createTodoistTaskUnlocked(task: InsertTodoistTask, subtaskTitles?: string[], labelIds?: number[], createdByUserId?: number): Promise<TodoistTask> {
+    // Proteção contra envio duplicado (duplo clique / Enter repetido / reenvio da rede):
+    // se o mesmo usuário acabou de criar a mesma tarefa, devolve a que já existe.
+    const sameOrNull = (col: any, value: any) => (value === null || value === undefined ? isNull(col) : eq(col, value));
+    const [recentTwin] = await db.select().from(todoistTasks).where(
+      and(
+        isNull(todoistTasks.deletedAt),
+        eq(todoistTasks.createdBy, task.createdBy),
+        eq(todoistTasks.title, task.title),
+        sameOrNull(todoistTasks.description, task.description),
+        sameOrNull(todoistTasks.dueDate, task.dueDate),
+        sameOrNull(todoistTasks.dueTime, task.dueTime),
+        sameOrNull(todoistTasks.assignedTo, task.assignedTo),
+        sameOrNull(todoistTasks.projectId, task.projectId),
+        sameOrNull(todoistTasks.contactId, task.contactId),
+        sameOrNull(todoistTasks.leadId, task.leadId),
+        sameOrNull(todoistTasks.clienteId, task.clienteId),
+        sameOrNull(todoistTasks.apoliceId, task.apoliceId),
+        // created_at usa o relógio do próprio banco (DEFAULT now()), então comparamos com ele.
+        sql`${todoistTasks.createdAt} >= localtimestamp - interval '15 seconds'`,
+      )
+    ).limit(1);
+    if (recentTwin) return recentTwin;
+
     const [newTask] = await db.insert(todoistTasks).values(task).returning();
 
     if (subtaskTitles && subtaskTitles.length > 0) {
@@ -2174,7 +2223,7 @@ export class DatabaseStorage implements IStorage {
         taskId: id,
         userId,
         action: "alterou a data de vencimento",
-        details: `Vencimento definido para ${new Date(updates.dueDate).toLocaleDateString('pt-BR')}.`,
+        details: `Vencimento definido para ${new Date(updates.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`,
       });
     }
 
@@ -2249,9 +2298,15 @@ export class DatabaseStorage implements IStorage {
     ];
   }
 
-  async completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }> {
+  async completeTodoistTask(id: number, userId: number, done?: boolean): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }> {
     const [existing] = await db.select().from(todoistTasks).where(eq(todoistTasks.id, id));
     if (!existing) throw new Error("Task not found");
+
+    // Quando o cliente informa o estado desejado, a chamada é idempotente: clicar duas vezes
+    // (ou repetir a requisição) não alterna o status de volta nem gera ocorrências extras.
+    if (done !== undefined && (existing.status === 'done') === done) {
+      return { task: existing };
+    }
 
     const newStatus = existing.status === 'done' ? 'todo' : 'done';
     const newKanban = newStatus === 'done' ? 'concluido' : 'a_fazer';
@@ -2300,9 +2355,13 @@ export class DatabaseStorage implements IStorage {
           .from(todoistComments).where(eq(todoistComments.taskId, sib.id));
         if (Number(commentsCount) > 0) continue;
 
-        // Só remove o que comprovadamente foi gerado pela recorrência
+        // Só remove a ocorrência gerada pela conclusão DESTA tarefa (não a de uma cópia irmã)
         const [generatedLog] = await db.select({ id: todoistActivityLogs.id }).from(todoistActivityLogs).where(
-          and(eq(todoistActivityLogs.taskId, sib.id), eq(todoistActivityLogs.action, "criada por recorrência"))
+          and(
+            eq(todoistActivityLogs.taskId, sib.id),
+            eq(todoistActivityLogs.action, "criada por recorrência"),
+            like(todoistActivityLogs.details, `%(origem #${id})%`),
+          )
         ).limit(1);
         if (!generatedLog) continue;
 
@@ -2322,24 +2381,29 @@ export class DatabaseStorage implements IStorage {
     let nextDate: Date | undefined;
     if (newStatus === 'done' && existing.isRecurring && existing.recurrenceRule) {
       const rule = existing.recurrenceRule.toLowerCase();
+      // As contas de dia/semana são feitas no relógio de Brasília (o servidor roda em UTC;
+      // uma tarefa às 22h de sexta seria "sábado" em UTC e pularia o dia útil errado).
+      const BR_OFFSET_MS = 3 * 60 * 60 * 1000;
       const advance = (d: Date) => {
+        const br = new Date(d.getTime() - BR_OFFSET_MS);
         if (rule === 'daily') {
-          d.setDate(d.getDate() + 1);
+          br.setUTCDate(br.getUTCDate() + 1);
         } else if (rule === 'weekdays') {
-          d.setDate(d.getDate() + 1);
-          if (d.getDay() === 6) d.setDate(d.getDate() + 2);
-          if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+          br.setUTCDate(br.getUTCDate() + 1);
+          if (br.getUTCDay() === 6) br.setUTCDate(br.getUTCDate() + 2);
+          if (br.getUTCDay() === 0) br.setUTCDate(br.getUTCDate() + 1);
         } else if (rule === 'weekly') {
-          d.setDate(d.getDate() + 7);
+          br.setUTCDate(br.getUTCDate() + 7);
         } else if (rule === 'monthly') {
-          d.setMonth(d.getMonth() + 1);
+          br.setUTCMonth(br.getUTCMonth() + 1);
         } else if (rule === 'yearly') {
-          d.setFullYear(d.getFullYear() + 1);
+          br.setUTCFullYear(br.getUTCFullYear() + 1);
         } else if (rule.startsWith('every_x_days:')) {
-          d.setDate(d.getDate() + (parseInt(rule.split(':')[1]) || 1));
+          br.setUTCDate(br.getUTCDate() + (parseInt(rule.split(':')[1]) || 1));
         } else {
-          d.setDate(d.getDate() + 7);
+          br.setUTCDate(br.getUTCDate() + 7);
         }
+        d.setTime(br.getTime() + BR_OFFSET_MS);
       };
 
       const candidate = new Date(existing.dueDate ? new Date(existing.dueDate) : new Date());
@@ -2414,7 +2478,7 @@ export class DatabaseStorage implements IStorage {
         taskId: nextOccurrenceTask.id,
         userId,
         action: "criada por recorrência",
-        details: `Próxima ocorrência gerada para ${nextDate.toLocaleDateString('pt-BR')}.`,
+        details: `Próxima ocorrência gerada para ${nextDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (origem #${id}).`,
       });
     }
 
@@ -2428,6 +2492,60 @@ export class DatabaseStorage implements IStorage {
   async restoreTodoistTask(id: number): Promise<TodoistTask | undefined> {
     const [restored] = await db.update(todoistTasks).set({ deletedAt: null }).where(eq(todoistTasks.id, id)).returning();
     return restored;
+  }
+
+  /**
+   * Remove (soft delete, recuperável) cópias idênticas de tarefas:
+   *  - Recorrentes: mesma série (título, descrição, horário, regra, responsável, projeto, vínculos de CRM)
+   *    no MESMO DIA (Brasília) e na mesma situação (em aberto / concluída). Mantém uma por dia.
+   *  - Automáticas em aberto: mesma regra + título + vínculos. Mantém a mais antiga.
+   * Nunca remove tarefas com comentários, com subtarefas concluídas ou em andamento.
+   */
+  async dedupeTodoistTasks(apply: boolean): Promise<{ removedIds: number[]; groups: number }> {
+    const { rows } = await pool.query(`
+      with base as (
+        select t.id, t.status, t.created_at, t.completed_at,
+          (select count(*) from todoist_comments c where c.task_id = t.id) as comments_count,
+          (select count(*) from todoist_subtasks s where s.task_id = t.id and s.completed) as done_subtasks,
+          case
+            when t.is_recurring then concat_ws('|', 'R', case when t.status = 'done' then 'done' else 'open' end,
+              t.title, coalesce(t.description, ''), coalesce(t.due_time, ''), coalesce(t.recurrence_rule, ''),
+              coalesce(t.assigned_to, 0), coalesce(t.project_id, 0), coalesce(t.contact_id, 0), coalesce(t.lead_id, 0),
+              coalesce(t.cliente_id, 0), coalesce(t.apolice_id, 0),
+              coalesce(((t.due_date at time zone 'UTC') at time zone 'America/Sao_Paulo')::date::text, 'sem-data'))
+            when t.auto_generated_by is not null and t.status <> 'done' then concat_ws('|', 'A', t.auto_generated_by, t.title,
+              coalesce(t.contact_id, 0), coalesce(t.lead_id, 0), coalesce(t.cliente_id, 0), coalesce(t.apolice_id, 0))
+          end as series_key
+        from todoist_tasks t
+        where t.deleted_at is null and t.status <> 'cancelled'
+          and (t.is_recurring or t.auto_generated_by is not null)
+      ),
+      ranked as (
+        select *,
+          row_number() over (
+            partition by series_key
+            order by (status = 'in_progress') desc, comments_count desc, done_subtasks desc,
+                     completed_at asc nulls last, created_at asc, id asc
+          ) as rn,
+          count(*) over (partition by series_key) as group_size
+        from base
+        where series_key is not null
+      )
+      select id, series_key from ranked
+      where group_size > 1 and rn > 1
+        and status in ('todo', 'done') and comments_count = 0 and done_subtasks = 0
+      order by id`);
+
+    const removedIds = rows.map((r: any) => Number(r.id));
+    const groups = new Set(rows.map((r: any) => r.series_key)).size;
+
+    if (apply && removedIds.length > 0) {
+      await pool.query(
+        `update todoist_tasks set deleted_at = now() where id = any($1::int[]) and deleted_at is null`,
+        [removedIds]
+      );
+    }
+    return { removedIds, groups };
   }
 
   async createTodoistSubtask(subtask: InsertTodoistSubtask): Promise<TodoistSubtask> {
@@ -2565,7 +2683,10 @@ export class DatabaseStorage implements IStorage {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const allUserTasks = await db.select().from(todoistTasks).where(eq(todoistTasks.assignedTo, userId));
+    // Ignora tarefas excluídas (lixeira) e canceladas nos contadores.
+    const allUserTasks = (await db.select().from(todoistTasks).where(
+      and(eq(todoistTasks.assignedTo, userId), isNull(todoistTasks.deletedAt))
+    )).filter(t => t.status !== 'cancelled');
     const todayTasks = allUserTasks.filter(t => t.dueDate && t.dueDate <= endOfDay && t.status !== 'done');
     const overdueTasks = allUserTasks.filter(t => t.dueDate && t.dueDate < startOfDay && t.status !== 'done');
     const upcomingTasks = allUserTasks.filter(t => t.dueDate && t.dueDate > endOfDay && t.status !== 'done');
@@ -3520,7 +3641,8 @@ export class MemStorage implements IStorage {
   async getTodoistTask(id: number): Promise<any | undefined> { return undefined; }
   async createTodoistTask(task: InsertTodoistTask, subtaskTitles?: string[], labelIds?: number[], createdByUserId?: number): Promise<TodoistTask> { throw new Error("Not implemented"); }
   async updateTodoistTask(id: number, updates: Partial<InsertTodoistTask>, subtasksList?: any[], labelIds?: number[], updatedByUserId?: number): Promise<TodoistTask | undefined> { return undefined; }
-  async completeTodoistTask(id: number, userId: number): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }> { throw new Error("Not implemented"); }
+  async completeTodoistTask(id: number, userId: number, done?: boolean): Promise<{ task: TodoistTask; nextOccurrenceTask?: TodoistTask }> { throw new Error("Not implemented"); }
+  async dedupeTodoistTasks(apply: boolean): Promise<{ removedIds: number[]; groups: number }> { return { removedIds: [], groups: 0 }; }
   async deleteTodoistTask(id: number): Promise<void> { }
   async restoreTodoistTask(id: number): Promise<TodoistTask | undefined> { return undefined; }
   async createTodoistSubtask(subtask: InsertTodoistSubtask): Promise<TodoistSubtask> { throw new Error("Not implemented"); }

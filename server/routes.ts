@@ -623,7 +623,7 @@ export async function registerRoutes(
     res.json(post);
   });
 
-  app.post("/api/posts", isAuthenticated, async (req, res) => {
+  app.post("/api/posts", isTeam, async (req, res) => {
     try {
       let rawSlug = req.body.slug && typeof req.body.slug === "string" ? req.body.slug.trim() : "";
       if (!rawSlug && req.body.title) {
@@ -963,8 +963,12 @@ export async function registerRoutes(
   app.get("/api/my-apolices", isAuthenticated, async (req, res) => {
     try {
       const currentUser = req.user as any;
-      // Busca cliente na tabela clientes via email do usuário
-      const userEmail = currentUser.email || currentUser.username;
+      // Só mostra apólices para contas vinculadas a um contato pela equipe ("Gerar conta").
+      // O e-mail de cadastro público não é verificado: usar ele permitiria que qualquer pessoa
+      // se cadastrasse com o e-mail de outro cliente e visse as apólices dele.
+      if (!currentUser.contactId) return res.json([]);
+      const [linkedContact] = await db.select({ email: contacts.email }).from(contacts).where(eq(contacts.id, currentUser.contactId));
+      const userEmail = linkedContact?.email || currentUser.email;
       if (!userEmail) return res.json([]);
 
       const clienteRows = await db
@@ -1661,8 +1665,12 @@ export async function registerRoutes(
 
   app.post("/api/user/change-password", isAuthenticated, async (req, res) => {
     try {
-      const { currentPassword, newPassword } = req.body;
+      const { currentPassword, newPassword } = req.body || {};
       const user = req.user as any;
+
+      if (typeof currentPassword !== "string" || !currentPassword || typeof newPassword !== "string" || newPassword.length < 6) {
+        return res.status(400).json({ message: "Informe a senha atual e uma nova senha com pelo menos 6 caracteres" });
+      }
 
       const isValid = await comparePasswords(currentPassword, user.password);
 
@@ -1710,7 +1718,7 @@ export async function registerRoutes(
   // ============================================================
   // CONTACT FILES (ANEXOS / ARQUIVOS DO CONTATO)
   // ============================================================
-  app.get("/api/contacts/:id/files", isAuthenticated, async (req, res) => {
+  app.get("/api/contacts/:id/files", isTeam, async (req, res) => {
     try {
       const contactId = parseInt(req.params.id);
       const files = await db
@@ -1724,12 +1732,16 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/contacts/:id/files", isAuthenticated, async (req, res) => {
+  app.post("/api/contacts/:id/files", isTeam, async (req, res) => {
     try {
       const contactId = parseInt(req.params.id);
-      const { fileName, fileUrl, fileType, fileSize } = req.body;
-      if (!fileName || !fileUrl) {
+      const { fileName, fileUrl, fileType, fileSize } = req.body || {};
+      if (!fileName || !fileUrl || typeof fileUrl !== "string") {
         return res.status(400).json({ message: "Nome e arquivo são obrigatórios" });
+      }
+      // Aceita apenas arquivo enviado (data:) ou link http(s); bloqueia "javascript:" e afins.
+      if (!/^(data:|https?:\/\/)/i.test(fileUrl.trim())) {
+        return res.status(400).json({ message: "Formato de arquivo inválido" });
       }
       const currentUser = req.user as any;
       const [newFile] = await db
@@ -1749,7 +1761,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/contact-files/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/contact-files/:id", isTeam, async (req, res) => {
     try {
       const fileId = parseInt(req.params.id);
       await db.delete(contactFiles).where(eq(contactFiles.id, fileId));
@@ -1762,7 +1774,7 @@ export async function registerRoutes(
   // ============================================================
   // GERAR CONTA DO CLIENTE & PRIMEIRO ACESSO
   // ============================================================
-  app.post("/api/contacts/:id/generate-account", isAuthenticated, async (req, res) => {
+  app.post("/api/contacts/:id/generate-account", isTeam, async (req, res) => {
     try {
       const contactId = parseInt(req.params.id);
       const [contact] = await db.select().from(contacts).where(eq(contacts.id, contactId));
@@ -1776,7 +1788,7 @@ export async function registerRoutes(
       const existingUsers = await db.select().from(users).where(eq(users.email, contact.email));
       let clientUser = existingUsers[0];
 
-      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const token = crypto.randomBytes(24).toString("hex");
       const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
       if (!clientUser) {
@@ -1803,6 +1815,11 @@ export async function registerRoutes(
           .returning();
         clientUser = newUser;
       } else {
+        // Nunca transforma um usuário da equipe em cliente (nem gera link de senha para ele).
+        const existingRole = String(clientUser.role || "").toLowerCase();
+        if (existingRole === "admin" || existingRole === "employee") {
+          return res.status(409).json({ message: "Este e-mail pertence a um usuário da equipe. Use outro e-mail para a conta do cliente." });
+        }
         const [updatedUser] = await db
           .update(users)
           .set({
@@ -2907,7 +2924,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/tasks/:id/status", isAuthenticated, async (req, res) => {
+  app.patch("/api/tasks/:id/status", isTeam, async (req, res) => {
     const task = await storage.updateTaskStatus(parseInt(req.params.id), req.body.status);
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
@@ -3076,7 +3093,7 @@ export async function registerRoutes(
         const wasDone = current.status === "done";
         const willBeDone = updates.status === "done";
         if (wasDone !== willBeDone) {
-          await storage.completeTodoistTask(id, userId);
+          await storage.completeTodoistTask(id, userId, willBeDone);
           if (willBeDone) {
             delete updates.status;
           }
@@ -3095,7 +3112,9 @@ export async function registerRoutes(
     try {
       const id = parseInt(req.params.id);
       const userId = (req.user as any)?.id || 1;
-      const result = await storage.completeTodoistTask(id, userId);
+      // "done" opcional: true = concluir, false = reabrir. Sem ele, mantém o comportamento antigo (alternar).
+      const done = typeof req.body?.done === "boolean" ? req.body.done : undefined;
+      const result = await storage.completeTodoistTask(id, userId, done);
       res.json(result);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -3105,6 +3124,17 @@ export async function registerRoutes(
   app.delete("/api/todoist/tasks/:id", isTeam, async (req, res) => {
     await storage.deleteTodoistTask(parseInt(req.params.id));
     res.sendStatus(204);
+  });
+
+  // Limpeza de tarefas duplicadas (somente admin). Sem ?apply=1 apenas simula.
+  app.post("/api/todoist/tasks/dedupe", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const apply = req.query.apply === "1" || req.body?.apply === true;
+      const result = await storage.dedupeTodoistTasks(apply);
+      res.json({ applied: apply, groups: result.groups, count: result.removedIds.length, removedIds: result.removedIds });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   app.post("/api/todoist/tasks/:id/restore", isTeam, async (req, res) => {
@@ -3346,7 +3376,7 @@ export async function registerRoutes(
   });
 
   // CNPJ Proxy with multiple fallback APIs
-  app.get("/api/proxy/cnpj/:cnpj", isAuthenticated, async (req, res) => {
+  app.get("/api/proxy/cnpj/:cnpj", isTeam, async (req, res) => {
     const cnpj = req.params.cnpj.replace(/\D/g, "");
 
     if (cnpj.length !== 14) {
@@ -3581,13 +3611,13 @@ export async function registerRoutes(
   });
 
   // Prospecting Checklists
-  app.get("/api/prospecting", isAuthenticated, async (req, res) => {
+  app.get("/api/prospecting", isTeam, async (req, res) => {
     const contactId = req.query.contactId ? parseInt(req.query.contactId as string) : undefined;
     const results = await storage.getProspectingChecklists(contactId);
     res.json(results);
   });
 
-  app.post("/api/prospecting", isAuthenticated, async (req, res) => {
+  app.post("/api/prospecting", isTeam, async (req, res) => {
     try {
       const input = req.body;
       const userId = (req.user as any).id;
@@ -3946,7 +3976,7 @@ export async function registerRoutes(
   }
 
   // Direct CNPJ Lookup Proxy
-  app.get("/api/proxy/companies/:cnpj", isAuthenticated, async (req, res) => {
+  app.get("/api/proxy/companies/:cnpj", isTeam, async (req, res) => {
     const cnpj = req.params.cnpj.replace(/\D/g, "");
     if (cnpj.length !== 14) {
       return res.status(400).json({ message: "CNPJ inválido" });
@@ -3965,7 +3995,7 @@ export async function registerRoutes(
   });
 
   // Auto-Discover CNPJ for Lead by Name & Region
-  app.get("/api/proxy/companies/discover", isAuthenticated, async (req, res) => {
+  app.get("/api/proxy/companies/discover", isTeam, async (req, res) => {
     try {
       const { q, name, city, state, address, document, website, phone } = req.query;
       const searchName = (q as string || name as string || "").trim();
@@ -4022,7 +4052,7 @@ export async function registerRoutes(
   });
 
   // Company Search Proxy (Filtered by region and CNAE)
-  app.get("/api/proxy/companies/search", isAuthenticated, async (req, res) => {
+  app.get("/api/proxy/companies/search", isTeam, async (req, res) => {
     const { state, city, cnae, q, neighborhood, cityId } = req.query;
 
     if (!state && !q) {
@@ -5078,10 +5108,9 @@ export async function registerRoutes(
       const userId = (req.user as any).id;
       const updatedUser = await storage.updateUserProfile(userId, { name, avatar });
       if (updatedUser) {
+        // Só atualiza a foto do contato vinculado (o e-mail do cadastro público não é verificado).
         if (updatedUser.contactId) {
           await db.execute(sql`UPDATE contacts SET avatar = ${avatar || null} WHERE id = ${updatedUser.contactId}`);
-        } else if (updatedUser.email) {
-          await db.execute(sql`UPDATE contacts SET avatar = ${avatar || null} WHERE email = ${updatedUser.email}`);
         }
       }
       res.json(updatedUser);

@@ -94,7 +94,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
 
   const completeTaskMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/todoist/tasks/${taskId}/complete`);
+      const res = await apiRequest("POST", `/api/todoist/tasks/${taskId}/complete`, { done: task?.status !== "done" });
       return res.json();
     },
     onSuccess: () => {
@@ -203,7 +203,7 @@ export function TodoistTaskDetailModal({ taskId, open, onOpenChange }: TodoistTa
             <div className="p-6 bg-slate-50 border-b border-slate-200 flex items-start justify-between gap-4">
               <div className="flex items-start gap-3 flex-1">
                 <button
-                  onClick={() => completeTaskMutation.mutate()}
+                  onClick={() => { if (!completeTaskMutation.isPending) completeTaskMutation.mutate(); }}
                   className={`mt-1 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     task.status === "done"
                       ? "bg-emerald-600 border-emerald-600 text-white"

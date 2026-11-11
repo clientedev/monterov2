@@ -146,6 +146,7 @@ export function TodoistQuickAddModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (createTaskMutation.isPending) return;
     if (!title.trim()) {
       toast({ title: "Digite o título da tarefa", variant: "destructive" });
       return;

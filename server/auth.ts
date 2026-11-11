@@ -94,16 +94,25 @@ export function setupAuth(app: Express) {
                 return res.status(400).send("User already exists");
             }
 
-            const hashedPassword = await hashPassword(req.body.password);
+            const { username, password, name, email } = req.body || {};
+            if (typeof username !== "string" || !username.trim() || typeof password !== "string" || password.length < 6) {
+                return res.status(400).send("Usuário e senha (mínimo 6 caracteres) são obrigatórios");
+            }
+            const hashedPassword = await hashPassword(password);
+            // Cadastro público aceita apenas os dados básicos: vínculo com contato, papel e
+            // campos de primeiro acesso são definidos somente pela equipe.
             const user = await storage.createUser({
-                ...req.body,
+                username: username.trim(),
+                name: typeof name === "string" && name.trim() ? name.trim() : username.trim(),
+                email: typeof email === "string" && email.trim() ? email.trim() : null,
                 password: hashedPassword,
                 role: "client", // Force client role for public registration
-            });
+            } as any);
 
             req.login(user, (err) => {
                 if (err) return next(err);
-                res.status(201).json(user);
+                const { password: _pw, firstLoginToken: _tk, ...safeUser } = user as any;
+                res.status(201).json(safeUser);
             });
         } catch (err) {
             next(err);
