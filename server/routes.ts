@@ -12,6 +12,7 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./auth";
 import { db, pool } from "./db";
 import { sql, eq, or, and, desc, asc } from "drizzle-orm";
+import { alertSiteInquiry } from "./site-inquiry-alerts";
 import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact, sendClientWelcomeEmail, sendOpportunityNotificationEmail, sendEmail } from "./email";
 import {
   insertInquirySchema,
@@ -919,6 +920,26 @@ export async function registerRoutes(
       });
 
       res.status(201).json(inquiry);
+
+      // Avisa a equipe (tarefa no Kanban + sininho + e-mail) sem atrasar a resposta ao visitante
+      (async () => {
+        try {
+          const team = (await storage.getUsers()).filter(u => ["admin", "employee"].includes(String(u.role || "").toLowerCase()));
+          const owner = team.find(u => u.id === contact.assignedTo);
+          const admin = team.find(u => String(u.role).toLowerCase() === "admin");
+          const responsibleId = owner?.id || admin?.id || attributionId;
+          await alertSiteInquiry({
+            contactId: contact.id,
+            name: input.name,
+            email: input.email || null,
+            phone: input.phone || null,
+            message: input.message,
+            responsibleId,
+          });
+        } catch (alertErr) {
+          console.error("[site-inquiry] Falha ao avisar a equipe:", alertErr);
+        }
+      })();
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
