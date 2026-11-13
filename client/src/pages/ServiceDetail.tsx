@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useServices } from "@/hooks/use-content";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { useRoute, Link } from "wouter";
+import { getServiceIcon } from "@/lib/service-icons";
 import { EmbeddedChat } from "@/components/EmbeddedChat";
 import { Loader2, ArrowLeft, Shield, Car, Heart, Briefcase, Home, Activity, CheckCircle2 } from "lucide-react";
 
@@ -46,7 +47,7 @@ export default function ServiceDetail() {
         );
     }
 
-    const Icon = iconMap[service.icon] || Shield;
+    const Icon = getServiceIcon(service);
 
     // Creating some mocked benefits based on the generic service info for visual richness
     const benefits = [

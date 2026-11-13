@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Shield, Car, Heart, Briefcase, Home, Activity } from "lucide-react";
 import type { Service } from "@shared/schema";
 import { Link } from "wouter";
+import { getServiceIcon } from "@/lib/service-icons";
 
 const iconMap: Record<string, any> = {
   Shield, Car, Heart, Briefcase, Home, Activity
@@ -13,7 +14,7 @@ interface ServiceCardProps {
 }
 
 export function ServiceCard({ service, index }: ServiceCardProps) {
-  const Icon = iconMap[service.icon] || Shield;
+  const Icon = getServiceIcon(service);
 
   return (
     <Link href={`/services/${service.id}`}>
