@@ -33,7 +33,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2, UserPlus, User as UserIcon, CheckCircle2, X, Check, Bell, BellRing, Clock, Mail, Send, Calendar, AlertCircle } from "lucide-react";
+import { Loader2, Plus, ArrowRight, Target, TrendingUp, Filter, Search, Maximize2, Minimize2, UserPlus, User as UserIcon, CheckCircle2, X, Check, Bell, BellRing, Clock, Mail, Send, Calendar, AlertCircle, Columns3, Rows3, Rows4 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
     AlertDialog,
@@ -50,6 +50,12 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { cn } from "@/lib/utils";
 import { ContactProfile } from "@/components/ContactProfile";
+import { useAuth } from "@/hooks/use-auth";
+import { CompactLeadCard, UltraLeadCard } from "@/components/admin-crm/pipeline/PipelineCards";
+import { PipelineList } from "@/components/admin-crm/pipeline/PipelineList";
+import {
+    type LeadActivity, type PipelineView, PIPELINE_VIEWS, computeActivity, formatBRL, leadInColumn, loadPref, parseBRL, savePref,
+} from "@/components/admin-crm/pipeline/pipeline-utils";
 import { ContactFormModal } from "@/components/ContactFormModal";
 import { STANDARD_PRODUCTS, isLifeInsuranceProduct } from "@/components/ProductSelector";
 import { LifeInsuranceFieldsSection, LifeInsuranceSummary } from "@/components/LifeInsuranceFieldsSection";
@@ -77,6 +83,7 @@ const COLOR_OPTIONS = [
 
 export default function LeadsPage() {
     const { toast } = useToast();
+    const { user: authUser } = useAuth();
     const { settings, updateSettings } = useSiteSettings();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -331,6 +338,109 @@ export default function LeadsPage() {
         updateStatusMutation.mutate({ id: leadId, status: newStatus });
     };
 
+    const viewPrefKey = `monteiro:pipeline:${authUser?.id ?? "anon"}`;
+    const [view, setViewState] = useState<PipelineView>(() => loadPref<PipelineView>(`${viewPrefKey}:view`, "compact"));
+    useEffect(() => {
+        // troca de usuário no mesmo navegador: carrega a preferência dele
+        setViewState(loadPref<PipelineView>(`${viewPrefKey}:view`, "compact"));
+    }, [viewPrefKey]);
+    const setView = (v: PipelineView) => {
+        setViewState(v);
+        savePref(`${viewPrefKey}:view`, v);
+    };
+
+    const [productFilter, setProductFilter] = useState<string>("all");
+    const [urgencyFilter, setUrgencyFilter] = useState<string>("all");
+
+    const { data: interactions } = useQuery<any[]>({ queryKey: ["/api/interactions"] });
+    const { data: pipelineTasks } = useQuery<any[]>({ queryKey: ["/api/todoist/tasks?assignedTo=all"] });
+
+    const interactionsByContact = useMemo(() => {
+        const m = new Map<number, Date>();
+        for (const it of interactions || []) {
+            if (!it?.contactId || !it?.date) continue;
+            const d = new Date(it.date);
+            if (isNaN(d.getTime())) continue;
+            const prev = m.get(it.contactId);
+            if (!prev || d > prev) m.set(it.contactId, d);
+        }
+        return m;
+    }, [interactions]);
+
+    const taskList = useMemo(() => (pipelineTasks || []).map((t: any) => ({
+        id: t.id, title: t.title, status: t.status, dueDate: t.dueDate, leadId: t.leadId ?? null, contactId: t.contactId ?? null,
+    })), [pipelineTasks]);
+
+    const activityByLead = useMemo(() => {
+        const m = new Map<number, LeadActivity>();
+        for (const l of leads || []) m.set(l.id, computeActivity(l, interactionsByContact, taskList));
+        return m;
+    }, [leads, interactionsByContact, taskList]);
+
+    const productOptions = useMemo(() => {
+        const s = new Set<string>();
+        for (const l of leads || []) if (l.product) s.add(l.product);
+        return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    }, [leads]);
+
+    const filteredLeads = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        const qDigits = q.replace(/\D/g, "");
+        return (leads || []).filter((l) => {
+            if (selectedResponsible !== "all" && (selectedResponsible === "unassigned" ? !!l.assignedTo : String(l.assignedTo) !== String(selectedResponsible))) return false;
+            if (productFilter !== "all" && (l.product || "") !== productFilter) return false;
+            if (urgencyFilter !== "all" && activityByLead.get(l.id)?.urgency !== urgencyFilter) return false;
+            if (!q) return true;
+            const c = getContactForLead(l.contactId);
+            const hay = `${c?.name || ""} ${c?.email || ""} ${l.product || ""} ${l.source || ""} ${l.notes || ""}`.toLowerCase();
+            return hay.includes(q) || (qDigits.length >= 4 && String(c?.phone || "").replace(/\D/g, "").includes(qDigits));
+        });
+    }, [leads, search, selectedResponsible, productFilter, urgencyFilter, activityByLead, contacts, clientes]);
+
+    const isClosedLost = (status?: string | null) => /cancel|perdid/i.test(status || "");
+    const totals = useMemo(() => {
+        let open = 0, count = 0;
+        for (const l of filteredLeads) {
+            count++;
+            if (!isClosedLost(l.status)) open += parseBRL(l.value);
+        }
+        return { open, count };
+    }, [filteredLeads]);
+
+    const assignMutation = useMutation({
+        mutationFn: async ({ id, assignedTo }: { id: number; assignedTo: number | null }) => {
+            const res = await apiRequest("PATCH", `/api/leads/${id}`, { assignedTo });
+            return await res.json();
+        },
+        onMutate: async ({ id, assignedTo }) => {
+            await queryClient.cancelQueries({ queryKey: ["/api/leads"] });
+            const previousLeads = queryClient.getQueryData<Lead[]>(["/api/leads"]);
+            if (previousLeads) queryClient.setQueryData<Lead[]>(["/api/leads"], previousLeads.map((l) => (l.id === id ? { ...l, assignedTo } : l)));
+            return { previousLeads };
+        },
+        onError: (_e, _v, ctx) => {
+            if (ctx?.previousLeads) queryClient.setQueryData(["/api/leads"], ctx.previousLeads);
+            toast({ title: "Não foi possível alterar o responsável", variant: "destructive" });
+        },
+        onSuccess: () => toast({ title: "Responsável atualizado" }),
+        onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/leads"] }),
+    });
+
+    const cardProps = (lead: Lead) => ({
+        lead,
+        contact: getContactForLead(lead.contactId) as any,
+        responsible: getResponsibleUser(lead.assignedTo) as any,
+        activity: activityByLead.get(lead.id) || computeActivity(lead, interactionsByContact, taskList),
+        columns,
+        staff: staffUsers as any,
+        onOpen: () => lead.contactId && setViewContactId(lead.contactId),
+        onEdit: () => { setEditingLeadId(lead.id); setOpen(true); },
+        onDelete: () => setDeleteLeadId(lead.id),
+        onReminder: () => setReminderLead(lead),
+        onMove: (status: string) => updateStatusMutation.mutate({ id: lead.id, status }),
+        onAssign: (userId: number | null) => assignMutation.mutate({ id: lead.id, assignedTo: userId }),
+    });
+
     if (leadsLoading) {
         return (
             <div className="flex h-full items-center justify-center">
@@ -339,94 +449,149 @@ export default function LeadsPage() {
         );
     }
 
+    const boardHeight = isExpanded ? "h-[calc(100vh-92px)]" : "h-[calc(100vh-196px)] min-h-[420px]";
+    const colWidth = view === "ultra" ? "w-[78vw] sm:w-[248px]" : "w-[82vw] sm:w-[276px]";
+    const filtersActive = selectedResponsible !== "all" || productFilter !== "all" || urgencyFilter !== "all" || search !== "";
+
     return (
-        <div className={`space-y-6 ${isExpanded ? "fixed inset-0 z-50 bg-[#f1f5f9] p-8 overflow-hidden flex flex-col transition-all duration-300" : ""}`}>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-display font-bold text-gray-900">Funil de Vendas</h2>
-                    <p className="text-muted-foreground mt-1">Gerencie seus negócios e acompanhe a conversão de leads.</p>
+        <div className={cn("flex flex-col gap-3", isExpanded && "fixed inset-0 z-50 bg-[#f1f5f9] p-4 sm:p-5 overflow-hidden")}>
+            {/* Cabeçalho compacto */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <div className="flex items-baseline gap-3 mr-auto min-w-0">
+                    <h2 className="text-xl sm:text-2xl font-display font-bold text-gray-900 whitespace-nowrap">Funil de Vendas</h2>
+                    <div className="flex items-baseline gap-2 text-[12px] text-slate-500 whitespace-nowrap">
+                        <span><strong className="font-semibold text-slate-800 tabular-nums">{totals.count}</strong> oportunidades</span>
+                        <span className="text-slate-300">·</span>
+                        <span title="Soma dos valores, sem as canceladas"><strong className="font-semibold text-slate-800 tabular-nums">{formatBRL(totals.open, true)}</strong> no funil</span>
+                    </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <Button 
-                        variant="outline" 
-                        onClick={() => setIsExpanded(!isExpanded)} 
-                        className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 h-10 px-4 rounded-xl shadow-sm"
-                    >
-                        {isExpanded ? <Minimize2 className="mr-2 h-4 w-4" /> : <Maximize2 className="mr-2 h-4 w-4" />}
-                        {isExpanded ? "Reduzir Tela" : "Expandir Quadro"}
-                    </Button>
+                <div className="relative order-last w-full sm:order-none sm:w-56">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <Input
+                        placeholder="Buscar cliente, produto, telefone…"
+                        className="pl-8 h-8 rounded-lg border-slate-200 bg-white text-[13px]"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
 
-                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-xl border border-gray-200 shadow-sm h-10">
-                        <UserIcon className="h-4 w-4 text-slate-400 shrink-0" />
-                        <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Responsável:</span>
-                        <Select value={selectedResponsible} onValueChange={setSelectedResponsible}>
-                            <SelectTrigger className="border-none shadow-none h-8 p-0 text-xs font-bold text-slate-800 focus:ring-0 focus:outline-none min-w-[110px]">
-                                <SelectValue placeholder="Todos" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all" className="font-bold text-xs">Todos os Funcionários</SelectItem>
-                                <SelectItem value="unassigned" className="text-xs font-bold text-amber-600">Não atribuído</SelectItem>
-                                {staffUsers.map((u) => (
-                                    <SelectItem key={u.id} value={u.id.toString()} className="text-xs font-medium">
-                                        {u.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                <div className="flex items-center gap-1.5 max-w-full overflow-x-auto scrollbar-none -mx-1 px-1 py-0.5">
+                    <Select value={selectedResponsible} onValueChange={setSelectedResponsible}>
+                        <SelectTrigger className={cn("h-8 w-auto shrink-0 whitespace-nowrap min-w-[120px] gap-1.5 rounded-lg border-slate-200 bg-white px-2.5 text-[12px] font-medium", selectedResponsible !== "all" && "border-primary/40 text-primary")}>
+                            <UserIcon className="h-3.5 w-3.5 text-slate-400" />
+                            <SelectValue placeholder="Responsável" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="text-xs font-semibold">Todos os responsáveis</SelectItem>
+                            <SelectItem value="unassigned" className="text-xs text-amber-700">Não atribuído</SelectItem>
+                            {staffUsers.map((u) => <SelectItem key={u.id} value={u.id.toString()} className="text-xs">{u.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={productFilter} onValueChange={setProductFilter}>
+                        <SelectTrigger className={cn("h-8 w-auto shrink-0 whitespace-nowrap min-w-[104px] gap-1.5 rounded-lg border-slate-200 bg-white px-2.5 text-[12px] font-medium", productFilter !== "all" && "border-primary/40 text-primary")}>
+                            <Filter className="h-3.5 w-3.5 text-slate-400" />
+                            <SelectValue placeholder="Produto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="text-xs font-semibold">Todos os produtos</SelectItem>
+                            {productOptions.map((p) => <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
+                        <SelectTrigger className={cn("h-8 w-auto shrink-0 whitespace-nowrap min-w-[104px] gap-1.5 rounded-lg border-slate-200 bg-white px-2.5 text-[12px] font-medium", urgencyFilter !== "all" && "border-primary/40 text-primary")}>
+                            <AlertCircle className="h-3.5 w-3.5 text-slate-400" />
+                            <SelectValue placeholder="Prioridade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all" className="text-xs font-semibold">Todas as prioridades</SelectItem>
+                            <SelectItem value="alta" className="text-xs">Alta · retorno ou tarefa atrasada</SelectItem>
+                            <SelectItem value="media" className="text-xs">Média · hoje ou amanhã</SelectItem>
+                            <SelectItem value="normal" className="text-xs">Normal</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    {filtersActive && (
+                        <Button variant="ghost" size="sm" className="h-8 px-2 shrink-0 text-[12px] text-slate-500" onClick={() => { setSearch(""); setSelectedResponsible("all"); setProductFilter("all"); setUrgencyFilter("all"); }}>
+                            <X className="h-3.5 w-3.5 mr-1" />Limpar
+                        </Button>
+                    )}
+                </div>
 
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                            placeholder="Buscar lead..."
-                            className="pl-9 h-10 w-64 rounded-xl border-gray-200"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-
-                    <Dialog open={open} onOpenChange={(v) => {
-                        setOpen(v);
-                        if (!v) setEditingLeadId(null);
-                    }}>
-                        <DialogTrigger asChild>
-                            <Button
-                                onClick={() => {
-                                    setEditingLeadId(null);
-                                    setOpen(true);
-                                }}
-                                className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 h-10 px-6 font-bold"
+                {/* Seletor de visualização */}
+                <div role="radiogroup" aria-label="Modo de visualização" className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 h-8">
+                    {PIPELINE_VIEWS.map((v) => {
+                        const Icon = v.id === "compact" ? Columns3 : v.id === "list" ? Rows3 : Rows4;
+                        const active = view === v.id;
+                        return (
+                            <button
+                                key={v.id}
+                                type="button"
+                                role="radio"
+                                aria-checked={active}
+                                title={v.hint}
+                                onClick={() => setView(v.id)}
+                                className={cn(
+                                    "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[12px] font-medium transition-colors",
+                                    active ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100",
+                                )}
                             >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Novo Negócio
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px] w-[92vw] max-h-[90vh] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-white flex flex-col">
-                            <DialogHeader className="p-6 bg-slate-50 border-b border-slate-100 shrink-0">
-                                <DialogTitle className="text-2xl font-display font-bold text-slate-900 tracking-tight">
-                                    {editingLeadId ? "Editar Negócio" : "Iniciar Novo Negócio"}
-                                </DialogTitle>
-                            </DialogHeader>
-                            <div className="p-6 overflow-y-auto flex-1 box-border">
-                                <LeadForm
-                                    contacts={contacts || []}
-                                    users={staffUsers}
-                                    columns={columns}
-                                    initialData={editingLeadId ? leads?.find(l => l.id === editingLeadId) : undefined}
-                                    onSubmit={(data: InsertLead) => {
-                                        if (editingLeadId) {
-                                            updateLeadMutation.mutate(data);
-                                        } else {
-                                            createMutation.mutate(data);
-                                        }
-                                    }}
-                                    isPending={createMutation.isPending || updateLeadMutation.isPending}
-                                />
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                                <Icon className="h-3.5 w-3.5" />
+                                <span className="hidden md:inline">{v.label}</span>
+                            </button>
+                        );
+                    })}
                 </div>
+
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    title={isExpanded ? "Reduzir tela" : "Expandir quadro"}
+                    className="h-8 w-8 rounded-lg border-slate-200 bg-white text-slate-600"
+                >
+                    {isExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                </Button>
+
+                <Dialog open={open} onOpenChange={(v) => {
+                    setOpen(v);
+                    if (!v) setEditingLeadId(null);
+                }}>
+                    <DialogTrigger asChild>
+                        <Button
+                            onClick={() => {
+                                setEditingLeadId(null);
+                                setOpen(true);
+                            }}
+                            className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-white text-[12px] font-semibold"
+                        >
+                            <Plus className="mr-1 h-3.5 w-3.5" />
+                            Nova oportunidade
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[500px] w-[92vw] max-h-[90vh] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-white flex flex-col">
+                        <DialogHeader className="p-6 bg-slate-50 border-b border-slate-100 shrink-0">
+                            <DialogTitle className="text-2xl font-display font-bold text-slate-900 tracking-tight">
+                                {editingLeadId ? "Editar Negócio" : "Iniciar Novo Negócio"}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="p-6 overflow-y-auto flex-1 box-border">
+                            <LeadForm
+                                contacts={contacts || []}
+                                users={staffUsers}
+                                columns={columns}
+                                initialData={editingLeadId ? leads?.find(l => l.id === editingLeadId) : undefined}
+                                onSubmit={(data: InsertLead) => {
+                                    if (editingLeadId) {
+                                        updateLeadMutation.mutate(data);
+                                    } else {
+                                        createMutation.mutate(data);
+                                    }
+                                }}
+                                isPending={createMutation.isPending || updateLeadMutation.isPending}
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             {/* Custom Column Dialog */}
@@ -472,41 +637,54 @@ export default function LeadsPage() {
                 </DialogContent>
             </Dialog>
 
-            <div className={`flex-1 overflow-x-auto pb-6 scrollbar-elegant ${isExpanded ? "flex-1" : ""}`}>
+            {view === "list" ? (
+                <PipelineList
+                    rows={filteredLeads.map(cardProps)}
+                    columns={columns}
+                    staff={staffUsers as any}
+                    prefKey={viewPrefKey}
+                    maxHeight={isExpanded ? "calc(100vh - 92px)" : "calc(100vh - 196px)"}
+                />
+            ) : (
+            <div className="flex-1 min-h-0 overflow-x-auto pb-2 scrollbar-elegant snap-x snap-mandatory sm:snap-none">
                 <DragDropContext onDragEnd={onDragEnd}>
                     <Droppable droppableId="board" type="column" direction="horizontal">
                         {(provided) => (
-                            <div 
+                            <div
                                 {...provided.droppableProps}
                                 ref={provided.innerRef}
-                                className="flex gap-6 h-full min-w-[900px]"
+                                className="flex gap-2.5 h-full"
                             >
-                                {columns.map((column: any, index: number) => (
+                                {columns.map((column: any, index: number) => {
+                                    const columnLeads = filteredLeads.filter((l) => leadInColumn(l, column, columns, index));
+                                    const columnTotal = columnLeads.reduce((acc, l) => acc + parseBRL(l.value), 0);
+                                    return (
                                     <Draggable key={column.id} draggableId={column.id} index={index}>
                                         {(columnProvided, columnSnapshot) => (
                                             <div
                                                 ref={columnProvided.innerRef}
                                                 {...columnProvided.draggableProps}
                                                 className={cn(
-                                                    "flex-shrink-0 w-80 flex flex-col relative bg-slate-100/40 rounded-2xl border border-slate-200/60 p-3 h-full",
-                                                    columnSnapshot.isDragging ? "shadow-2xl ring-2 ring-primary/10 rotate-[1deg]" : "",
-                                                    isExpanded ? "h-[calc(100vh-160px)]" : "h-[calc(100vh-280px)]"
+                                                    "flex-shrink-0 snap-start flex flex-col rounded-xl border border-slate-200/70 bg-slate-100/50",
+                                                    colWidth,
+                                                    boardHeight,
+                                                    columnSnapshot.isDragging && "shadow-xl ring-1 ring-primary/20",
                                                 )}
                                             >
-                                                {/* Column Header */}
-                                                <div 
+                                                {/* Cabeçalho da coluna */}
+                                                <div
                                                     {...columnProvided.dragHandleProps}
-                                                    className="flex items-center justify-between mb-4 px-2 cursor-grab active:cursor-grabbing"
+                                                    className="group/col flex items-center gap-1.5 px-2.5 pt-2 pb-1.5 cursor-grab active:cursor-grabbing"
                                                 >
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={cn("h-2.5 w-2.5 rounded-full", column.color?.replace("text-", "bg-") || "bg-blue-500")} />
-                                                        <h3 className="font-display font-bold text-gray-800 tracking-tight">{column.label}</h3>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg"
+                                                    <span className={cn("h-2 w-2 rounded-full shrink-0", column.color?.replace("text-", "bg-") || "bg-blue-500")} />
+                                                    <h3 className="font-semibold text-[13px] text-slate-800 truncate">{column.label}</h3>
+                                                    <span className="text-[11px] font-medium text-slate-400 tabular-nums">{columnLeads.length}</span>
+                                                    <span className="ml-auto text-[11px] font-medium text-slate-500 tabular-nums group-hover/col:hidden">{formatBRL(columnTotal, true)}</span>
+                                                    <div className="ml-auto hidden group-hover/col:flex items-center">
+                                                        <button
+                                                            type="button"
+                                                            title="Editar coluna"
+                                                            className="h-6 w-6 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-200/60"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 setEditingColumn(column);
@@ -517,18 +695,18 @@ export default function LeadsPage() {
                                                             }}
                                                         >
                                                             <Edit2 className="h-3 w-3" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg"
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            title="Excluir coluna"
+                                                            className="h-6 w-6 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 handleDeleteColumn(column.id);
                                                             }}
                                                         >
                                                             <Trash2 className="h-3 w-3" />
-                                                        </Button>
+                                                        </button>
                                                     </div>
                                                 </div>
 
@@ -538,21 +716,12 @@ export default function LeadsPage() {
                                                             {...provided.droppableProps}
                                                             ref={provided.innerRef}
                                                             className={cn(
-                                                                "flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin rounded-xl p-1",
-                                                                snapshot.isDraggingOver ? "bg-slate-200/30" : ""
+                                                                "flex-1 overflow-y-auto scrollbar-thin px-1.5 pb-1.5 rounded-b-xl transition-colors",
+                                                                view === "ultra" ? "space-y-[3px]" : "space-y-1.5",
+                                                                snapshot.isDraggingOver && "bg-primary/5",
                                                             )}
                                                         >
-                                                            {leads?.filter(l => {
-                                                                const isDirectMatch = l.status === column.id || (Boolean(l.status) && Boolean(column.id) && l.status.toLowerCase() === column.id.toLowerCase());
-                                                                const isUnmappedFallback = (l.status === "Ativo" || l.status === "ativo" || !columns.some((c: any) => c.id === l.status || (l.status && c.id && c.id.toLowerCase() === l.status.toLowerCase()))) && (column.id === "new" || index === 0);
-                                                                return (isDirectMatch || isUnmappedFallback) && (
-                                                                    search === "" ||
-                                                                    getContactForLead(l.contactId)?.name.toLowerCase().includes(search.toLowerCase())
-                                                                ) && (
-                                                                    selectedResponsible === "all" ||
-                                                                    (selectedResponsible === "unassigned" ? !l.assignedTo : String(l.assignedTo) === String(selectedResponsible))
-                                                                );
-                                                            }).map((lead, leadIdx) => (
+                                                            {columnLeads.map((lead, leadIdx) => (
                                                                 <Draggable key={lead.id} draggableId={lead.id.toString()} index={leadIdx}>
                                                                     {(provided, snapshot) => (
                                                                         <div
@@ -561,38 +730,33 @@ export default function LeadsPage() {
                                                                             {...provided.dragHandleProps}
                                                                             style={{
                                                                                 ...provided.draggableProps.style,
-                                                                                cursor: snapshot.isDragging ? 'grabbing' : 'grab'
+                                                                                cursor: snapshot.isDragging ? "grabbing" : "pointer",
                                                                             }}
                                                                         >
-                                                                            <LeadCard
-                                                                                lead={lead}
-                                                                                contact={getContactForLead(lead.contactId)}
-                                                                                responsible={getResponsibleUser(lead.assignedTo)}
-                                                                                columns={columns}
-                                                                                onMove={(newStatus) => updateStatusMutation.mutate({ id: lead.id, status: newStatus })}
-                                                                                onEdit={() => {
-                                                                                    setEditingLeadId(lead.id);
-                                                                                    setOpen(true);
-                                                                                }}
-                                                                                onDelete={() => setDeleteLeadId(lead.id)}
-                                                                                onViewContact={(cId) => setViewContactId(cId)}
-                                                                                onReminder={() => setReminderLead(lead)}
-                                                                            />
+                                                                            {view === "ultra" ? (
+                                                                                <UltraLeadCard {...cardProps(lead)} dragging={snapshot.isDragging} />
+                                                                            ) : (
+                                                                                <CompactLeadCard {...cardProps(lead)} dragging={snapshot.isDragging} />
+                                                                            )}
                                                                         </div>
                                                                     )}
                                                                 </Draggable>
                                                             ))}
                                                             {provided.placeholder}
+                                                            {columnLeads.length === 0 && !snapshot.isDraggingOver && (
+                                                                <div className="py-6 text-center text-[11px] text-slate-400">Sem oportunidades</div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </Droppable>
                                             </div>
                                         )}
                                     </Draggable>
-                                ))}
+                                    );
+                                })}
                                 {provided.placeholder}
 
-                                <div className="w-80 shrink-0">
+                                <div className="w-44 shrink-0">
                                     <button
                                         onClick={() => {
                                             setEditingColumn(null);
@@ -600,10 +764,10 @@ export default function LeadsPage() {
                                             setNewColColor("blue");
                                             setColumnDialogOpen(true);
                                         }}
-                                        className="w-full h-14 rounded-2xl border-2 border-dashed border-slate-300 hover:border-slate-400 hover:bg-white text-slate-400 hover:text-slate-600 transition-all font-bold text-sm flex items-center justify-center gap-2 group shadow-sm"
+                                        className="w-full h-10 rounded-xl border border-dashed border-slate-300 hover:border-slate-400 hover:bg-white text-slate-400 hover:text-slate-600 transition-colors font-medium text-[12px] flex items-center justify-center gap-1.5"
                                     >
-                                        <Plus className="h-5 w-5 transition-transform group-hover:scale-125" />
-                                        Nova Coluna
+                                        <Plus className="h-3.5 w-3.5" />
+                                        Nova coluna
                                     </button>
                                 </div>
                             </div>
@@ -611,6 +775,7 @@ export default function LeadsPage() {
                     </Droppable>
                 </DragDropContext>
             </div>
+            )}
 
             <AlertDialog open={!!deleteLeadId} onOpenChange={(open) => !open && setDeleteLeadId(null)}>
                 <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
@@ -653,247 +818,6 @@ export default function LeadsPage() {
                 isSaving={saveReminderMutation.isPending}
                 isTesting={testReminderMutation.isPending}
             />
-        </div>
-    );
-}
-
-function LeadCard({
-    lead,
-    contact,
-    responsible,
-    columns,
-    onMove,
-    onEdit,
-    onDelete,
-    onViewContact,
-    onReminder
-}: {
-    lead: Lead,
-    contact?: { name: string; [key: string]: any } | null,
-    responsible?: { id: number; name: string; avatar?: string | null } | null,
-    columns: any[],
-    onMove: (s: string) => void,
-    onEdit: () => void,
-    onDelete: () => void,
-    onViewContact?: (contactId: number) => void,
-    onReminder?: () => void
-}) {
-    const statusIndex = columns.findIndex(s => s.id === lead.status);
-    const nextStatus = statusIndex !== -1 && statusIndex < columns.length - 1 ? columns[statusIndex + 1].id : null;
-    const prevStatus = statusIndex > 0 ? columns[statusIndex - 1].id : null;
-
-    const { text: reminderText, isOverdue, isToday, isTomorrow } = formatLeadReminderDisplay(lead.reminderDate);
-
-    return (
-        <div className="group bg-white p-5 rounded-xl border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-[#1A3A4F] opacity-0 group-hover:opacity-100 transition-opacity" />
-            
-            <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-gray-100 z-10">
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className={cn(
-                        "h-6 w-6 rounded-md transition-colors",
-                        lead.reminderDate ? "text-amber-500 hover:text-amber-600 hover:bg-amber-50" : "text-slate-400 hover:text-slate-900 hover:bg-slate-100"
-                    )} 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onReminder?.();
-                    }} 
-                    title={lead.reminderDate ? "⏰ Retorno Ativo: Gerenciar Retorno para o Cliente" : "⏰ Agendar Retorno para o Cliente"}
-                >
-                    <Bell className={cn("h-3 w-3", lead.reminderDate && "fill-amber-500 text-amber-500")} />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100" onClick={onEdit} title="✏️ Editar Venda e Responsável">
-                    <Edit2 className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50" onClick={onDelete} title="Excluir Venda">
-                    <Trash2 className="h-3 w-3" />
-                </Button>
-            </div>
-
-            <div className="flex justify-between items-start mb-3">
-                <div className="flex-1 pr-12">
-                    <h4 
-                        className="font-bold text-gray-900 line-clamp-1 cursor-pointer hover:text-primary transition-colors hover:underline text-base"
-                        onClick={() => lead.contactId && onViewContact?.(lead.contactId)}
-                        title="Clique para ver e editar os dados do contato"
-                    >
-                        {contact?.name || "Desconhecido"}
-                    </h4>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-gray-100 text-gray-600">
-                            {lead.source || "Direto"}
-                        </span>
-                        {lead.product && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary">
-                                {lead.product}
-                            </span>
-                        )}
-                        {lead.reminderDate && !lead.reminderSent && (
-                            <span 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onReminder?.();
-                                }}
-                                className={cn(
-                                    "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer shadow-xs transition-colors",
-                                    isOverdue ? "bg-rose-100 text-rose-700 border border-rose-300" : isToday ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-blue-100 text-blue-700 border border-blue-300"
-                                )}
-                                title={`Retorno para o cliente programado para: ${reminderText}`}
-                            >
-                                <Bell className="h-2.5 w-2.5 fill-current animate-pulse" />
-                                {isToday ? "Hoje" : isTomorrow ? "Amanhã" : isOverdue ? "Atrasado" : "No Dia"}
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Responsável display block */}
-            <div className="flex items-center justify-between bg-slate-50/80 px-2.5 py-1.5 rounded-lg border border-slate-100 mb-3 text-xs">
-                <div className="flex items-center gap-1.5 overflow-hidden">
-                    <div className="h-5 w-5 rounded-full bg-primary/15 text-primary font-bold text-[10px] flex items-center justify-center shrink-0">
-                        {responsible?.name?.charAt(0).toUpperCase() || "?"}
-                    </div>
-                    <span className="text-slate-500 font-medium">Responsável:</span>
-                    <strong className="text-slate-800 font-semibold truncate">{responsible?.name || "Não atribuído"}</strong>
-                </div>
-                <button
-                    onClick={onEdit}
-                    className="text-slate-400 hover:text-primary transition-colors p-0.5"
-                    title="Editar responsável"
-                >
-                    ✏️
-                </button>
-            </div>
-
-            {/* Dados opcionais de Seguro de Vida */}
-            <LifeInsuranceSummary
-                values={{
-                    lifeHeight: lead.lifeHeight,
-                    lifeWeight: lead.lifeWeight,
-                    lifeProfession: lead.lifeProfession,
-                    lifeIncome: lead.lifeIncome,
-                }}
-                variant="card"
-            />
-
-            {/* Bloco de Retorno para o Cliente por E-mail */}
-            {lead.reminderDate ? (
-                <div 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onReminder?.();
-                    }}
-                    className={cn(
-                        "flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer transition-all mb-3 shadow-xs",
-                        isOverdue && !lead.reminderSent
-                            ? "bg-rose-50/90 border-rose-200 text-rose-700 hover:bg-rose-100"
-                            : isToday && !lead.reminderSent
-                            ? "bg-amber-50/90 border-amber-200 text-amber-800 hover:bg-amber-100"
-                            : lead.reminderSent
-                            ? "bg-emerald-50/80 border-emerald-200 text-emerald-800 hover:bg-emerald-100"
-                            : "bg-blue-50/80 border-blue-200 text-blue-800 hover:bg-blue-100"
-                    )}
-                    title={lead.reminderNote ? `Nota: "${lead.reminderNote}" (Clique para editar ou disparar e-mail)` : "Clique para gerenciar o retorno para o cliente"}
-                >
-                    <div className="flex items-center gap-1.5 min-w-0 pr-1">
-                        <BellRing className={cn(
-                            "h-3.5 w-3.5 shrink-0", 
-                            isOverdue && !lead.reminderSent ? "text-rose-600 animate-pulse" : isToday && !lead.reminderSent ? "text-amber-600" : lead.reminderSent ? "text-emerald-600" : "text-blue-600"
-                        )} />
-                        <span className="font-bold truncate text-[11px]">
-                            {isOverdue && !lead.reminderSent ? "⚠️ Atrasado: " : isToday && !lead.reminderSent ? "🚨 Retorno Hoje: " : isTomorrow && !lead.reminderSent ? "⏰ Amanhã: " : lead.reminderSent ? "✓ Disparado no dia " : "⏰ Retorno p/ cliente: "}
-                            {reminderText}
-                        </span>
-                    </div>
-                    <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/80 border border-black/5 shrink-0">
-                        {lead.reminderSent ? "✓ E-mail OK" : "Disparo no Dia"}
-                    </span>
-                </div>
-            ) : (
-                <div className="flex items-center justify-between mb-3 text-xs">
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onReminder?.();
-                        }}
-                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-amber-600 hover:bg-amber-50/70 px-2 py-1 rounded-lg border border-transparent hover:border-amber-200 transition-all cursor-pointer"
-                        title="Agendar retorno para o cliente com disparo por e-mail"
-                    >
-                        <Bell className="h-3 w-3" />
-                        <span>Retorno para o Cliente</span>
-                    </button>
-                    {lead.reminderEmail && (
-                        <span className="text-[10px] text-slate-400 truncate max-w-[120px]" title={lead.reminderEmail}>
-                            ✉️ {lead.reminderEmail}
-                        </span>
-                    )}
-                </div>
-            )}
-
-            <div className="mb-4">
-                <Select value={lead.status} onValueChange={onMove}>
-                    <SelectTrigger className="h-8 text-[11px] font-bold border-gray-100 bg-slate-50/50 hover:bg-slate-50 rounded-lg">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {columns.map(s => (
-                            <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
-                                {s.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-
-            <div className="bg-slate-50 rounded-lg p-3 mb-4">
-                <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Valor Estimado:</span>
-                    <strong className="text-secondary font-display font-black text-sm text-right leading-none">
-                        {lead.value ? `R$ ${lead.value}` : "Sob consulta"}
-                    </strong>
-                </div>
-            </div>
-
-            {lead.notes ? (
-                <p className="text-xs text-gray-500 mb-4 line-clamp-2 leading-relaxed italic border-l-2 border-primary/20 pl-2">
-                    "{lead.notes}"
-                </p>
-            ) : (
-                <div className="h-4"></div>
-            )}
-
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div className="flex gap-2">
-                    {prevStatus && (
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 px-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                            onClick={() => onMove(prevStatus)}
-                        >
-                            <ArrowRight className="h-4 w-4 rotate-180" />
-                        </Button>
-                    )}
-                </div>
-
-                <div className="flex gap-2">
-                    {nextStatus && (
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="h-8 px-4 text-[11px] font-bold bg-primary hover:bg-[#1A3A4F] text-white shadow-md shadow-primary/20 transition-all group-hover:shadow-lg"
-                            onClick={() => onMove(nextStatus)}
-                        >
-                            Avançar
-                                                            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                        </Button>
-                    )}
-                </div>
-            </div>
         </div>
     );
 }
