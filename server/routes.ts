@@ -5688,7 +5688,9 @@ export async function registerRoutes(
       const contactPayload: InsertContact = {
         name: contactName,
         type: body.type === "company" ? "company" : "individual",
-        phone: rawPhone || (existingMatch?.phone || null),
+        // Nunca troca o telefone de um cadastro existente: se ele foi encontrado por documento/e-mail,
+        // o número recebido pode ser de outra pessoa (foi assim que o telefone do Joel foi parar na Luciana).
+        phone: (existingMatch?.phone && cleanDigits(existingMatch.phone)) ? existingMatch.phone : (rawPhone || null),
         email: inputEmail || (existingMatch?.email || null),
         document: rawDoc || (existingMatch?.document || null),
         address: fullAddress || (existingMatch?.address || null),
