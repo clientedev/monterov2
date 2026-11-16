@@ -13,6 +13,7 @@ import { setupAuth, hashPassword, comparePasswords, isAuthenticated } from "./au
 import { db, pool } from "./db";
 import { sql, eq, or, and, desc, asc } from "drizzle-orm";
 import { alertSiteInquiry } from "./site-inquiry-alerts";
+import { bestPhoneScore, pickByPhone } from "./phone-match";
 import { sendCrmNotification, buildLeadAssignedEmail, buildLeadStatusChangedEmail, buildTaskAssignedEmail, sendBirthdayEmailToContact, sendClientWelcomeEmail, sendOpportunityNotificationEmail, sendEmail } from "./email";
 import {
   insertInquirySchema,
@@ -5150,27 +5151,11 @@ export async function registerRoutes(
   }
 
   function matchesPhone(inputPhone: string, cPhone: string): boolean {
-    const d1 = cleanDigits(inputPhone);
-    const d2 = cleanDigits(cPhone);
-    if (!d1 || !d2) return false;
-    if (d1 === d2) return true;
-
-    const noCc1 = d1.length >= 10 && d1.startsWith("55") ? d1.slice(2) : d1;
-    const noCc2 = d2.length >= 10 && d2.startsWith("55") ? d2.slice(2) : d2;
-    if (noCc1 === noCc2) return true;
-
-    if (noCc1.length === 11 && noCc2.length === 10) {
-      if (noCc1.slice(0, 2) === noCc2.slice(0, 2) && noCc1.slice(3) === noCc2.slice(2)) return true;
-    }
-    if (noCc2.length === 11 && noCc1.length === 10) {
-      if (noCc2.slice(0, 2) === noCc1.slice(0, 2) && noCc2.slice(3) === noCc1.slice(2)) return true;
-    }
-
-    if (d1.length >= 8 && d2.length >= 8) {
-      if (d1.endsWith(d2.slice(-8)) || d2.endsWith(d1.slice(-8))) return true;
-    }
-
-    return false;
+    // Compara DDD + número (com/sem 55 e 9º dígito), aceitando campos com vários números.
+    // Não usa mais "mesmos 8 últimos dígitos", que juntava pessoas diferentes.
+    const a = cleanDigits(inputPhone);
+    if (!a || !cPhone) return false;
+    return bestPhoneScore(a, cPhone) > 0;
   }
 
   function cleanApiKey(val: unknown): string {
@@ -5495,12 +5480,20 @@ export async function registerRoutes(
       // 2. Busca contato existente (Regra: Nunca rejeitar telefone existente, sempre fazer UPSERT)
       const allExistingContacts = await storage.getContacts();
 
-      const existingMatch = allExistingContacts.find(c => {
-        if (rawPhone && c.phone && matchesPhone(rawPhone, c.phone)) return true;
-        if (rawDoc && c.document && cleanDigits(c.document) === cleanDigits(rawDoc) && cleanDigits(rawDoc).length >= 11) return true;
-        if (inputEmail && c.email && c.email.trim().toLowerCase() === inputEmail.toLowerCase()) return true;
-        return false;
-      });
+      // Ordem de prioridade: telefone (o número do WhatsApp manda) > documento > e-mail.
+      // Antes o primeiro contato que batesse em QUALQUER critério vencia, o que ligava
+      // oportunidades ao cliente errado.
+      const existingMatch =
+        (rawPhone ? pickByPhone(rawPhone, allExistingContacts, c => [c.phone]) : undefined) ||
+        (rawDoc && cleanDigits(rawDoc).length >= 11
+          ? allExistingContacts.find(c => c.document && cleanDigits(c.document) === cleanDigits(rawDoc))
+          : undefined) ||
+        (inputEmail
+          ? allExistingContacts.find(c =>
+              c.email && c.email.trim().toLowerCase() === inputEmail.toLowerCase() &&
+              // com telefone informado, só aceita e-mail de contato que ainda não tem telefone
+              (!rawPhone || !cleanDigits(c.phone)))
+          : undefined);
 
       if (!contactName) {
         if (existingMatch?.name) {
@@ -6068,21 +6061,21 @@ export async function registerRoutes(
       const cleanEmailInput = email.toLowerCase();
       const cleanNameInput = nameQuery.toLowerCase();
 
-      let matchedContact = allContacts.find(c => {
-        if (phone && c.phone && matchesPhone(phone, c.phone)) return true;
-        if (cleanDocInput && c.document && cleanDigits(c.document) === cleanDocInput && cleanDocInput.length >= 11) return true;
-        if (cleanEmailInput && c.email && c.email.toLowerCase() === cleanEmailInput) return true;
-        if (cleanNameInput && c.name && c.name.toLowerCase() === cleanNameInput) return true;
-        return false;
-      });
+      // Prioridade: telefone (melhor correspondência) > documento > e-mail > nome
+      const byDoc = <T,>(list: T[], get: (x: T) => string | null | undefined) =>
+        cleanDocInput.length >= 11 ? list.find(x => cleanDigits(get(x)) === cleanDocInput) : undefined;
+      let matchedContact =
+        (phone ? pickByPhone(phone, allContacts, c => [c.phone]) : undefined) ||
+        byDoc(allContacts, c => c.document) ||
+        (cleanEmailInput ? allContacts.find(c => c.email && c.email.toLowerCase() === cleanEmailInput) : undefined) ||
+        (!phone && cleanNameInput ? allContacts.find(c => c.name && c.name.toLowerCase() === cleanNameInput) : undefined);
 
-      let matchedCliente = allClientes.find(c => {
-        if (phone && (c.telefone || c.whatsapp) && (matchesPhone(phone, c.telefone || "") || matchesPhone(phone, c.whatsapp || ""))) return true;
-        if (cleanDocInput && c.cpfCnpj && cleanDigits(c.cpfCnpj) === cleanDocInput && cleanDocInput.length >= 11) return true;
-        if (cleanEmailInput && c.email && c.email.toLowerCase() === cleanEmailInput) return true;
-        if (cleanNameInput && c.nome && c.nome.toLowerCase() === cleanNameInput) return true;
-        return false;
-      });
+      let matchedCliente =
+        (matchedContact ? allClientes.find(c => c.contactId === matchedContact!.id) : undefined) ||
+        (!matchedContact && phone ? pickByPhone(phone, allClientes, c => [c.telefone, c.whatsapp]) : undefined) ||
+        (!matchedContact ? byDoc(allClientes, c => c.cpfCnpj) : undefined) ||
+        (!matchedContact && cleanEmailInput ? allClientes.find(c => c.email && c.email.toLowerCase() === cleanEmailInput) : undefined) ||
+        (!matchedContact && !phone && cleanNameInput ? allClientes.find(c => c.nome && c.nome.toLowerCase() === cleanNameInput) : undefined);
 
       // Se achou contato mas não cliente, vincula ou cria registro em clientes
       if (matchedContact && !matchedCliente) {
