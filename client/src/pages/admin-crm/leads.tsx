@@ -54,7 +54,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { CompactLeadCard, UltraLeadCard } from "@/components/admin-crm/pipeline/PipelineCards";
 import { PipelineList } from "@/components/admin-crm/pipeline/PipelineList";
 import {
-    type LeadActivity, type PipelineView, PIPELINE_VIEWS, computeActivity, formatBRL, leadInColumn, loadPref, parseBRL, savePref,
+    type LeadActivity, type PipelineView, PIPELINE_VIEWS, DEFAULT_PIPELINE_VIEW, computeActivity, formatBRL, leadInColumn, loadPref, parseBRL, savePref,
 } from "@/components/admin-crm/pipeline/pipeline-utils";
 import { ContactFormModal } from "@/components/ContactFormModal";
 import { STANDARD_PRODUCTS, isLifeInsuranceProduct } from "@/components/ProductSelector";
@@ -352,10 +352,10 @@ export default function LeadsPage() {
     };
 
     const viewPrefKey = `monteiro:pipeline:${authUser?.id ?? "anon"}`;
-    const [view, setViewState] = useState<PipelineView>(() => loadPref<PipelineView>(`${viewPrefKey}:view`, "compact"));
+    const [view, setViewState] = useState<PipelineView>(() => loadPref<PipelineView>(`${viewPrefKey}:view`, DEFAULT_PIPELINE_VIEW));
     useEffect(() => {
         // troca de usuário no mesmo navegador: carrega a preferência dele
-        setViewState(loadPref<PipelineView>(`${viewPrefKey}:view`, "compact"));
+        setViewState(loadPref<PipelineView>(`${viewPrefKey}:view`, DEFAULT_PIPELINE_VIEW));
     }, [viewPrefKey]);
     const setView = (v: PipelineView) => {
         setViewState(v);

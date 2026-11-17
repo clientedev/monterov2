@@ -3,10 +3,13 @@ import type { Lead } from "@shared/schema";
 export type PipelineView = "compact" | "list" | "ultra";
 
 export const PIPELINE_VIEWS: { id: PipelineView; label: string; hint: string }[] = [
+  { id: "ultra", label: "Ultra", hint: "Máxima densidade: uma linha por oportunidade" },
   { id: "compact", label: "Compacto", hint: "Kanban com cards enxutos" },
   { id: "list", label: "Lista", hint: "Tabela com ordenação e colunas configuráveis" },
-  { id: "ultra", label: "Ultra", hint: "Máxima densidade: uma linha por oportunidade" },
 ];
+
+/** Modo usado por quem ainda não escolheu nenhum. */
+export const DEFAULT_PIPELINE_VIEW: PipelineView = "ultra";
 
 /** Preferência salva por usuário e por dispositivo (localStorage). */
 export function loadPref<T>(key: string, fallback: T): T {
