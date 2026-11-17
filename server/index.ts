@@ -402,23 +402,6 @@ app.use((req, res, next) => {
     log(`Failed to start reminder scheduler: ${schedErr instanceof Error ? schedErr.message : String(schedErr)}`, "error");
   }
 
-  // [TEMPORARIO] Diagnostico somente leitura: oportunidades do Conecta ligadas ao contato errado (Luciana/Joel).
-  (async () => {
-    try {
-      const { pool } = await import("./db");
-      const q = async (label: string, sql: string) => {
-        const r = await pool.query(sql);
-        log(`${label}: ${JSON.stringify(r.rows)}`, "diag-conecta");
-      };
-      await q("contacts", `select id, name, phone, email, document, created_at from contacts where name ilike '%zabotti%' or name ilike '%joel%' order by id`);
-      await q("leads", `select l.id, l.contact_id, l.product, l.value, l.source, l.status, l.created_at, left(coalesce(l.notes,''),120) as notes from leads l join contacts c on c.id = l.contact_id where c.name ilike '%zabotti%' or c.name ilike '%joel%' order by l.id`);
-      await q("interactions", `select i.id, i.contact_id, i.type, left(i.description,200) as description, i.date from interactions i join contacts c on c.id = i.contact_id where (c.name ilike '%zabotti%' or c.name ilike '%joel%') and i.date > now() - interval '10 days' order by i.id`);
-      await q("clientes", `select id, nome, telefone, whatsapp, contact_id from clientes where nome ilike '%zabotti%' or nome ilike '%joel%' order by id`);
-    } catch (err) {
-      log(`falha: ${err instanceof Error ? err.message : String(err)}`, "diag-conecta");
-    }
-  })();
-
   // Limpeza automática de tarefas duplicadas (soft delete: recuperável via deleted_at = NULL).
   // Desative com TASK_DEDUP_ON_START=false.
   if (process.env.TASK_DEDUP_ON_START !== "false") {

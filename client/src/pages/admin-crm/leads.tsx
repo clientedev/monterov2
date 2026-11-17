@@ -147,7 +147,10 @@ export default function LeadsPage() {
         if (!contactId) return null;
         const contact = contacts?.find(c => String(c.id) === String(contactId));
         if (contact) return contact;
-        const cliente = clientes?.find(c => String(c.id) === String(contactId));
+        // Contatos e clientes de seguro são tabelas diferentes: o id 388 de um não é o id 388 do outro.
+        // Só usa o cliente que está VINCULADO a este contato (antes, um contato recém-criado pelo
+        // Conecta aparecia com o nome de outro cliente que tinha o mesmo número de id).
+        const cliente = clientes?.find(c => c.contactId != null && String(c.contactId) === String(contactId));
         if (cliente) {
             return {
                 id: cliente.id,
@@ -159,6 +162,16 @@ export default function LeadsPage() {
         }
         return null;
     };
+
+    // Oportunidade criada fora desta tela (Conecta, site) com contato novo: recarrega a lista de contatos.
+    const missingContactKey = useMemo(() => {
+        if (!leads || !contacts) return "";
+        const known = new Set(contacts.map(c => String(c.id)));
+        return Array.from(new Set(leads.filter(l => l.contactId && !known.has(String(l.contactId))).map(l => String(l.contactId)))).sort().join(",");
+    }, [leads, contacts]);
+    useEffect(() => {
+        if (missingContactKey) queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+    }, [missingContactKey]);
 
     const updateStatusMutation = useMutation({
         mutationFn: async ({ id, status }: { id: number; status: string }) => {
