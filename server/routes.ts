@@ -5973,6 +5973,104 @@ export async function registerRoutes(
     }
   });
 
+  // 1b. Clientes por seguradora (usado pelas Automações do Monteiro Conecta).
+  //     Somente leitura. Junta três fontes: apólices (apolices → seguradoras),
+  //     o campo "seguradoras" do cliente de seguro e o do contato do CRM.
+  app.get([
+    "/api/v1/external/insurers",
+    "/api/external/insurers",
+  ], externalApiKeyAuth, async (_req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT s.nome AS name, COUNT(DISTINCT a.cliente_id)::int AS clients
+        FROM seguradoras s
+        LEFT JOIN apolices a ON a.seguradora_id = s.id AND a.status <> 'cancelada'
+        GROUP BY s.nome
+        ORDER BY clients DESC, s.nome ASC
+      `);
+      return res.json({ insurers: result.rows });
+    } catch (err: any) {
+      console.error("[External API] Error listing insurers:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get([
+    "/api/v1/external/clients/by-insurer",
+    "/api/external/clients/by-insurer",
+  ], externalApiKeyAuth, async (req, res) => {
+    try {
+      const insurer = String(req.query.insurer || "").trim();
+      if (insurer.length < 2) {
+        return res.status(400).json({ error: "Informe o nome da seguradora (parâmetro insurer)" });
+      }
+      const includeCanceled = String(req.query.includeCanceled || "") === "true";
+      const like = `%${insurer}%`;
+      const result = await pool.query(
+        `
+        WITH by_policy AS (
+          SELECT c.id AS cliente_id, c.nome AS name,
+                 COALESCE(NULLIF(TRIM(c.whatsapp), ''), NULLIF(TRIM(c.telefone), ''), NULLIF(TRIM(ct.phone), '')) AS phone,
+                 STRING_AGG(DISTINCT s.nome, ', ') AS insurers,
+                 COUNT(DISTINCT a.id)::int AS policies,
+                 MIN(a.fim_vigencia) FILTER (WHERE a.fim_vigencia >= NOW()) AS next_expiry
+          FROM apolices a
+          JOIN seguradoras s ON s.id = a.seguradora_id
+          JOIN clientes c ON c.id = a.cliente_id
+          LEFT JOIN contacts ct ON ct.id = c.contact_id
+          WHERE s.nome ILIKE $1 AND ($2::boolean OR a.status <> 'cancelada')
+          GROUP BY c.id, c.nome, c.whatsapp, c.telefone, ct.phone
+        ),
+        by_cliente_field AS (
+          SELECT c.id AS cliente_id, c.nome AS name,
+                 COALESCE(NULLIF(TRIM(c.whatsapp), ''), NULLIF(TRIM(c.telefone), ''), NULLIF(TRIM(ct.phone), '')) AS phone,
+                 c.insurers AS insurers, 0 AS policies, NULL::timestamp AS next_expiry
+          FROM clientes c
+          LEFT JOIN contacts ct ON ct.id = c.contact_id
+          WHERE c.insurers ILIKE $1 AND ($2::boolean OR COALESCE(c.status, 'ativo') NOT ILIKE 'cancel%')
+        ),
+        by_contact_field AS (
+          SELECT NULL::int AS cliente_id, ct.name AS name, NULLIF(TRIM(ct.phone), '') AS phone,
+                 ct.insurers AS insurers, 0 AS policies, NULL::timestamp AS next_expiry
+          FROM contacts ct
+          WHERE ct.insurers ILIKE $1 AND ($2::boolean OR ct.status <> 'Cancelado')
+        )
+        SELECT * FROM by_policy
+        UNION ALL SELECT * FROM by_cliente_field WHERE cliente_id NOT IN (SELECT cliente_id FROM by_policy)
+        UNION ALL SELECT * FROM by_contact_field
+        `,
+        [like, includeCanceled],
+      );
+
+      // Deduplica por telefone (só dígitos); mantém o registro com mais apólices.
+      const byPhone = new Map<string, any>();
+      const withoutPhone: any[] = [];
+      for (const row of result.rows) {
+        const digits = String(row.phone || "").replace(/\D/g, "");
+        if (digits.length < 10) {
+          withoutPhone.push({ name: row.name, insurers: row.insurers });
+          continue;
+        }
+        const prev = byPhone.get(digits);
+        if (!prev || (row.policies || 0) > (prev.policies || 0)) {
+          byPhone.set(digits, {
+            name: row.name,
+            phone: digits,
+            insurers: row.insurers,
+            policies: row.policies || 0,
+            nextExpiry: row.next_expiry,
+            clienteId: row.cliente_id,
+          });
+        }
+      }
+      const clients = Array.from(byPhone.values()).sort((a, b) => String(a.name).localeCompare(String(b.name), "pt-BR"));
+      return res.json({ insurer, total: clients.length, clients, withoutPhone: withoutPhone.length });
+    } catch (err: any) {
+      console.error("[External API] Error listing clients by insurer:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // 2. POST /api/v1/external/contacts - Cadastro / Upsert de Contatos e Oportunidades
   app.post([
     "/api/v1/external/contacts",
