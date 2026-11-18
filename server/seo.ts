@@ -285,8 +285,18 @@ export async function seoForPath(rawPath: string): Promise<PageSeo & { redirect?
   // Início
   if (path === "/") {
     const hero = plain(s.heroSubtitle || "");
-    const intro = hero.includes(b.name) ? hero : `${b.name}: ${hero}`;
-    const desc = clip(`${intro}${svcNames.length ? ` ${svcNames.slice(0, 4).join(", ")}${b.where ? ` em ${b.where}` : ""}.` : ""}`);
+    // Descrição montada com os serviços cadastrados: é o que as pessoas buscam no Google.
+    const list = svcNames.map((n, i) => (i === 0 ? n : n.charAt(0).toLowerCase() + n.slice(1)));
+    const make = (k: number) => {
+      const l = list.slice(0, k);
+      const j = l.length > 1 ? `${l.slice(0, -1).join(", ")} e ${l[l.length - 1]}` : l[0] || "";
+      return `Corretora de seguros e benefícios${b.where ? ` em ${b.where}` : ""}: ${j}. Consultoria para empresas e famílias.`;
+    };
+    let k = list.length;
+    while (k > 1 && make(k).length > 160) k--;
+    const desc = svcNames.length
+      ? clip(make(k), 160)
+      : clip(hero.includes(b.name) ? hero : `${b.name}: ${hero}`);
     const posts = d.posts.slice(0, 6);
     const inner = `<h1>${esc(b.name)} — ${esc(tagline)}</h1>
 <p>${esc(hero)}</p>
