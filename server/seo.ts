@@ -83,6 +83,8 @@ const paragraphs = (s: unknown, limit = 60) =>
     .map((p) => `<p>${esc(p)}</p>`)
     .join("");
 
+const firstParagraph = (s: unknown) => plain(s).split(/\n+/).map((p) => p.trim()).find(Boolean) || "";
+
 const abs = (u?: string | null) => {
   if (!u || u.startsWith("data:")) return null;
   if (/^https?:\/\//i.test(u)) return u;
@@ -148,7 +150,7 @@ function organization(d: SiteData): JsonLd {
     url: `${SITE_URL}/`,
     logo: { "@type": "ImageObject", url: LOGO, width: 512, height: 512 },
     image: OG_IMAGE,
-    description: clip(plain(s.heroSubtitle || s.aboutContent || ""), 300),
+    description: clip(firstParagraph(s.aboutContent) || plain(s.heroSubtitle || ""), 300),
     slogan: plain(s.footerText || "") || undefined,
     founder: {
       "@type": "Person",
@@ -284,7 +286,8 @@ export async function seoForPath(rawPath: string): Promise<PageSeo & { redirect?
 
   // Início
   if (path === "/") {
-    const hero = plain(s.heroSubtitle || "");
+    // O "subtítulo do topo" do painel não aparece no site; o texto de apresentação real é o da página Sobre.
+    const hero = firstParagraph(s.aboutContent) || plain(s.heroSubtitle || "");
     // Descrição montada com os serviços cadastrados: é o que as pessoas buscam no Google.
     const list = svcNames.map((n, i) => (i === 0 ? n : n.charAt(0).toLowerCase() + n.slice(1)));
     const make = (k: number) => {
