@@ -21,11 +21,18 @@ import BlogPost from "@/pages/PostDetail";
 import Contact from "@/pages/Contact";
 import PublicServicesPage from "@/pages/Services";
 import ServiceDetail from "./pages/ServiceDetail";
-import CustomerDashboard from "./pages/CustomerDashboard";
-import ProfilePage from "./pages/Profile";
-import CreatePasswordPage from "./pages/CreatePassword";
+// Área do cliente, painel e telas internas ficam fora do carregamento inicial do site público.
+const CustomerDashboard = lazy(() => import("./pages/CustomerDashboard"));
+const ProfilePage = lazy(() => import("./pages/Profile"));
+const CreatePasswordPage = lazy(() => import("./pages/CreatePassword"));
+const AdminLayout = lazy(() => import("@/pages/admin-crm/layout"));
+const ExternalRegisterContactModal = lazy(() => import("@/pages/ExternalRegisterContactModal"));
 
-import AdminLayout from "@/pages/admin-crm/layout";
+const pageFallback = (
+  <div className="flex items-center justify-center min-h-screen">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  </div>
+);
 
 // Admin CRM Pages (Code-split to ensure public mobile site loads instantly)
 const ContactsPage = lazy(() => import("@/pages/admin-crm/contacts"));
@@ -69,15 +76,17 @@ function ProtectedAdminRoute({ path, component: Component }: { path: string; com
 
   return (
     <Route path={path}>
-      <AdminLayout>
-        <Suspense fallback={
-          <div className="flex items-center justify-center min-h-[350px]">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        }>
-          <Component />
-        </Suspense>
-      </AdminLayout>
+      <Suspense fallback={pageFallback}>
+        <AdminLayout>
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[350px]">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          }>
+            <Component />
+          </Suspense>
+        </AdminLayout>
+      </Suspense>
     </Route>
   );
 }
@@ -99,12 +108,12 @@ function ProtectedClientRoute({ path, component: Component }: { path: string; co
 
   return (
     <Route path={path}>
-      <Component />
+      <Suspense fallback={pageFallback}>
+        <Component />
+      </Suspense>
     </Route>
   );
 }
-
-import ExternalRegisterContactModal from "@/pages/ExternalRegisterContactModal";
 
 function Router() {
   return (
@@ -166,7 +175,9 @@ function App() {
           <ThemeInjector />
           <ScrollToTop />
           <SeoSync />
-          <Router />
+          <Suspense fallback={pageFallback}>
+            <Router />
+          </Suspense>
           <PinkOctoberBadge />
           <BlueNovemberBadge />
                     <Toaster />
