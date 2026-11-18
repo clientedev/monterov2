@@ -392,6 +392,8 @@ app.use((req, res, next) => {
     }
   })();
 
+  const { registerSeo } = await import("./seo");
+  registerSeo(app);
   await registerRoutes(httpServer, app);
 
   // Start automatic pipeline reminder email scheduler

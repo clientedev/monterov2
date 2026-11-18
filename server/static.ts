@@ -1,9 +1,12 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
+import { renderIndex } from "./seo";
 
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
+  let template: string | null = null;
+  const getTemplate = () => (template ??= fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8"));
   if (!fs.existsSync(distPath)) {
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
@@ -13,6 +16,8 @@ export function serveStatic(app: Express) {
   // Serve hashed assets with immutable long-term caching, and standard files with validation
   app.use(
     express.static(distPath, {
+      // index.html é sempre montado abaixo, com o SEO de cada página.
+      index: false,
       maxAge: "1d",
       setHeaders: (res, filePath) => {
         if (filePath.includes("assets") || filePath.match(/\.[a-f0-9]{8,}\.(js|css|png|jpg|webp|svg)$/i)) {
@@ -37,6 +42,14 @@ export function serveStatic(app: Express) {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, proxy-revalidate");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
-    res.sendFile(path.resolve(distPath, "index.html"));
+    renderIndex(getTemplate(), req.originalUrl)
+      .then(({ html, status, redirect }) => {
+        if (redirect) return res.redirect(301, redirect);
+        res.status(status).type("html").send(html);
+      })
+      .catch((err) => {
+        console.warn("[SEO] falha ao montar a página, enviando index.html simples:", err?.message);
+        res.sendFile(path.resolve(distPath, "index.html"));
+      });
   });
 }

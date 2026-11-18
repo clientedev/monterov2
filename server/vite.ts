@@ -48,7 +48,10 @@ export async function setupVite(server: Server, app: Express) {
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
       const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      const { renderIndex } = await import("./seo");
+      const out = await renderIndex(page, url);
+      if (out.redirect) return res.redirect(301, out.redirect);
+      res.status(out.status).set({ "Content-Type": "text/html" }).end(out.html);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

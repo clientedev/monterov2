@@ -10,6 +10,7 @@ import { ThemeInjector } from "@/components/ThemeInjector";
 import { PinkOctoberBadge } from "@/components/PinkOctoberBadge";
 import { BlueNovemberBadge } from "@/components/BlueNovemberBadge";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { SeoSync } from "@/components/SeoSync";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
@@ -164,6 +165,7 @@ function App() {
         <TooltipProvider>
           <ThemeInjector />
           <ScrollToTop />
+          <SeoSync />
           <Router />
           <PinkOctoberBadge />
           <BlueNovemberBadge />

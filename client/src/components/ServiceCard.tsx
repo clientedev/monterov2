@@ -3,6 +3,7 @@ import { ArrowRight, Shield, Car, Heart, Briefcase, Home, Activity } from "lucid
 import type { Service } from "@shared/schema";
 import { Link } from "wouter";
 import { getServiceIcon } from "@/lib/service-icons";
+import { servicePath } from "@shared/seo-paths";
 
 const iconMap: Record<string, any> = {
   Shield, Car, Heart, Briefcase, Home, Activity
@@ -17,7 +18,7 @@ export function ServiceCard({ service, index }: ServiceCardProps) {
   const Icon = getServiceIcon(service);
 
   return (
-    <Link href={`/services/${service.id}`}>
+    <Link href={servicePath(service)}>
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
