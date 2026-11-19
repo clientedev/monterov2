@@ -243,7 +243,11 @@ function shell(d: SiteData, inner: string, crumbs?: Array<[string, string]>): st
   return `<div id="seo-ssr"><header><a href="/" class="seo-brand">${esc(b.name)}</a><nav>${nav}</nav></header>${trail}<main>${inner}</main><footer><strong>${esc(b.name)}</strong>${svc}<p>${contact}</p></footer></div>`;
 }
 
-const SSR_STYLE = `<style id="seo-ssr-style">#seo-ssr{font-family:Inter,system-ui,sans-serif;color:#163b52;max-width:1100px;margin:0 auto;padding:24px;line-height:1.6}#seo-ssr header{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;padding:12px 0 24px}#seo-ssr a{color:#08454c}#seo-ssr nav a{margin-right:14px;text-decoration:none;font-weight:600}#seo-ssr .seo-brand{font-weight:800;font-size:1.25rem;text-decoration:none}#seo-ssr h1{font-size:2.2rem;line-height:1.2;margin:.4em 0}#seo-ssr h2{font-size:1.4rem;margin:1.4em 0 .4em}#seo-ssr footer{margin-top:48px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:.9rem}#seo-ssr .seo-crumbs{font-size:.85rem;margin-bottom:8px}#seo-ssr ul{padding-left:1.2em}</style>`;
+const SSR_STYLE = `<style id="seo-ssr-style">#seo-ssr{font-family:Inter,system-ui,sans-serif;color:#163b52;max-width:1100px;margin:0 auto;padding:24px;line-height:1.6}#seo-ssr header{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;padding:12px 0 24px}#seo-ssr a{color:#08454c}#seo-ssr nav a{margin-right:14px;text-decoration:none;font-weight:600}#seo-ssr .seo-brand{font-weight:800;font-size:1.25rem;text-decoration:none}#seo-ssr h1{font-size:2.2rem;line-height:1.2;margin:.4em 0}#seo-ssr h2{font-size:1.4rem;margin:1.4em 0 .4em}#seo-ssr footer{margin-top:48px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:.9rem}#seo-ssr .seo-crumbs{font-size:.85rem;margin-bottom:8px}#seo-ssr ul{padding-left:1.2em}html:has(#seo-ssr)::after{content:"";position:fixed;inset:0;z-index:2147483647;background:#fff url(/logo-monteiro-512.png) center/112px no-repeat;animation:seo-splash-out 0s linear 6s forwards}@keyframes seo-splash-out{to{visibility:hidden}}</style>`;
+// O HTML acima é para o Google e para quem está sem JavaScript. Para o visitante,
+// uma tela branca com o logo cobre esse conteúdo até o React montar o site (o
+// seletor :has deixa de valer sozinho quando o React substitui o #seo-ssr). Se o
+// JavaScript falhar, a capa some em 6 s e o conteúdo fica visível.
 
 // ---------------------------------------------------------------- páginas
 
@@ -434,15 +438,34 @@ ${posts.length ? `<h2>${esc(plain(s.blogTitle) || "Blog")}</h2><ul>${posts.map((
     if (post && post.isApproved !== false) {
       const url = `${SITE_URL}/blog/${post.slug}`;
       const crumbs: Array<[string, string]> = [["Início", "/"], ["Blog", "/blog"], [post.title, `/blog/${post.slug}`]];
-      const desc = clip(plain(post.summary || post.content));
+      // Resumo curto vira uma descrição pobre no Google: usa o começo do próprio artigo.
+      const summary = plain(post.summary || "");
+      const body = plain(post.content || "");
+      const desc = clip(summary.length >= 110 || body.length < 80 ? summary || body : body);
+      // Título muito curto ("Alice", "Benefícios"): no Google usa a frase do resumo, se for boa.
+      const firstSentence = summary.split(/(?<=[.!?])\s/)[0].replace(/[.!]$/, "").trim();
+      const t = post.title.trim();
+      const norm = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const joined = `${t}: ${firstSentence.charAt(0).toLowerCase()}${firstSentence.slice(1)}`;
+      const seoTitle =
+        t.length >= 30 || firstSentence.length < 15 || norm(firstSentence) === norm(t)
+          ? t
+          : norm(firstSentence).includes(norm(t)) && firstSentence.length <= 75
+            ? firstSentence
+            : joined.length <= 75
+              ? joined
+              : t;
+      // Posts importados do Instagram só trazem o link do post: ficam fora do índice.
+      const thin = post.postType === "instagram" && body.length < 400;
       const img = abs(post.coverImage) || OG_IMAGE;
       const published = (post.publishedAt || post.createdAt) ? new Date((post.publishedAt || post.createdAt) as any).toISOString() : undefined;
       const inner = `<article><h1>${esc(post.title)}</h1>${published ? `<p><time datetime="${published}">${new Date(published).toLocaleDateString("pt-BR")}</time></p>` : ""}<p><strong>${esc(plain(post.summary))}</strong></p>${paragraphs(post.content, 200)}</article>
 <p><a href="/blog">Mais artigos</a> · <a href="/contact">Fale com um consultor</a></p>`;
       return base(d, {
-        title: `${post.title} | ${b.name}`,
+        title: `${seoTitle} | ${b.name}`,
         description: desc,
         canonical: url,
+        ...(thin ? { robots: "noindex, follow" } : {}),
         ogType: "article",
         image: img,
         imageAlt: post.title,
@@ -451,7 +474,7 @@ ${posts.length ? `<h2>${esc(plain(s.blogTitle) || "Blog")}</h2><ul>${posts.map((
           {
             "@type": "BlogPosting",
             "@id": `${url}#artigo`,
-            headline: clip(post.title, 110),
+            headline: clip(seoTitle, 110),
             description: desc,
             image: [img],
             url,
@@ -601,7 +624,7 @@ export function registerSeo(app: Express) {
         { loc: "/sobre", priority: "0.7", changefreq: "monthly" },
         { loc: "/contact", priority: "0.7", changefreq: "yearly" },
         { loc: "/blog", lastmod: latestPost, priority: "0.7", changefreq: "weekly" },
-        ...d.posts.map((p) => ({ loc: `/blog/${p.slug}`, lastmod: day(p.publishedAt || p.createdAt), priority: "0.6", changefreq: "monthly" })),
+        ...d.posts.filter((p) => p.postType !== "instagram").map((p) => ({ loc: `/blog/${p.slug}`, lastmod: day(p.publishedAt || p.createdAt), priority: "0.6", changefreq: "monthly" })),
       ];
       const body = urls
         .map(
